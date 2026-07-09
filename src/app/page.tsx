@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { WaitlistForm } from "@/components/waitlist-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Logo } from "@/components/logo";
 
 const FEATURES = [
   {
@@ -33,7 +32,7 @@ export default function LandingPage() {
   return (
     <main className="flex min-h-screen flex-col bg-white">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
-        <Logo />
+        <span className="text-lg font-semibold tracking-tight text-slate-900">SignedBy</span>
         <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
           Sign in
         </Link>
