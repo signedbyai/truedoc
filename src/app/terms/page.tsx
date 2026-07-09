@@ -5,11 +5,11 @@ export default function TermsPage() {
     <LegalPage title="Terms of Service" effectiveDate="July 10, 2026">
       <p>
         These Terms of Service (&ldquo;Terms&rdquo;) govern access to and use of SignedBy, an electronic signature
-        and document-workflow service operated at signedby.ai (&ldquo;SignedBy,&rdquo; &ldquo;we,&rdquo;
-        &ldquo;us,&rdquo; or &ldquo;our&rdquo;). By creating an account, uploading a document, or signing a
-        document through SignedBy, you agree to these Terms. If you are using SignedBy on behalf of an organization,
-        you represent that you have authority to bind that organization, and &ldquo;you&rdquo; refers to that
-        organization.
+        and document-workflow service operated at signedby.ai by SPRK10 B.V., a company incorporated in the
+        Netherlands (&ldquo;SignedBy,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;). By creating
+        an account, uploading a document, or signing a document through SignedBy, you agree to these Terms. If you
+        are using SignedBy on behalf of an organization, you represent that you have authority to bind that
+        organization, and &ldquo;you&rdquo; refers to that organization.
       </p>
       <p>
         <em>
@@ -126,9 +126,10 @@ export default function TermsPage() {
 
       <h2>12. Governing law</h2>
       <p>
-        These Terms are governed by the laws of the United States and the state in which SignedBy&apos;s operating
-        entity is organized, without regard to conflict-of-law principles. <em>[State to be finalized once SignedBy&apos;s
-        business entity is formed.]</em>
+        These Terms are governed by the laws of the Netherlands, without regard to conflict-of-law principles. Any
+        dispute arising out of or in connection with these Terms will be submitted to the exclusive jurisdiction of
+        the competent courts of Amsterdam, the Netherlands, except where mandatory consumer-protection law gives you
+        the right to bring a claim in your own country of residence.
       </p>
 
       <h2>13. Contact</h2>

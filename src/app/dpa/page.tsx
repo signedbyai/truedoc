@@ -8,6 +8,7 @@ export default function DpaPage() {
         <a href="/terms" className="underline">
           Terms of Service
         </a>{" "}
+        between the Customer and SPRK10 B.V., a company incorporated in the Netherlands (&ldquo;SignedBy&rdquo;),
         and applies where SignedBy processes personal data on behalf of a customer (&ldquo;Customer&rdquo;) in the
         course of providing the service — for example, the names and email addresses of Signers a Customer invites
         to sign a document.
@@ -15,18 +16,19 @@ export default function DpaPage() {
       <p>
         <em>
           This document is a first draft prepared for SignedBy&apos;s launch. It has not yet been reviewed by a
-          licensed attorney and should be reviewed before being relied upon as a final, binding agreement,
-          particularly if you need it to satisfy GDPR Article 28 or similar requirements.
+          licensed attorney and should be reviewed before being relied upon as a final, binding agreement. Because
+          SignedBy is established in the Netherlands, this DPA is intended to meet the requirements of Article 28 of
+          the GDPR.
         </em>
       </p>
 
       <h2>1. Roles of the parties</h2>
       <p>
         For personal data submitted to SignedBy by or through a Customer&apos;s use of the service (including data
-        about that Customer&apos;s Signers), the Customer is the controller (or &ldquo;business,&rdquo; depending on
-        applicable law) and SignedBy is the processor (or &ldquo;service provider&rdquo;). SignedBy processes such
-        data only on the Customer&apos;s documented instructions, as reflected in this DPA and the Customer&apos;s
-        configuration and use of the service.
+        about that Customer&apos;s Signers), the Customer is the controller and SignedBy is the processor within the
+        meaning of the GDPR (or &ldquo;business&rdquo; and &ldquo;service provider,&rdquo; respectively, under other
+        applicable law). SignedBy processes such data only on the Customer&apos;s documented instructions, as
+        reflected in this DPA and the Customer&apos;s configuration and use of the service.
       </p>
 
       <h2>2. Scope and nature of processing</h2>
@@ -54,7 +56,9 @@ export default function DpaPage() {
       <p>
         We will provide reasonable advance notice before adding or replacing a sub-processor that processes personal
         data covered by this DPA, so the Customer can object on reasonable grounds. Each sub-processor is bound by
-        confidentiality and data-protection obligations at least as protective as this DPA.
+        confidentiality and data-protection obligations at least as protective as this DPA. Where a sub-processor is
+        located outside the European Economic Area, SignedBy relies on appropriate transfer safeguards recognized
+        under GDPR, such as the European Commission&apos;s Standard Contractual Clauses.
       </p>
 
       <h2>4. SignedBy&apos;s obligations</h2>

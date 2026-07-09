@@ -4,9 +4,10 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" effectiveDate="July 10, 2026">
       <p>
-        This Privacy Policy explains how SignedBy (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;)
-        collects, uses, and protects personal data when you use signedby.ai, whether as an account holder
-        (&ldquo;Sender&rdquo;) or as someone asked to sign a document (&ldquo;Signer&rdquo;).
+        This Privacy Policy explains how SignedBy, operated by SPRK10 B.V., a company incorporated in the
+        Netherlands (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;), collects, uses, and protects personal
+        data when you use signedby.ai, whether as an account holder (&ldquo;Sender&rdquo;) or as someone asked to
+        sign a document (&ldquo;Signer&rdquo;).
       </p>
       <p>
         <em>
@@ -105,18 +106,21 @@ export default function PrivacyPage() {
 
       <h2>6. Your rights</h2>
       <p>
-        Depending on where you live, you may have rights to access, correct, export, or delete personal data we hold
+        Under the EU General Data Protection Regulation (GDPR) and, depending on where you live, other applicable
+        privacy laws, you may have the right to access, correct, export, restrict, or delete personal data we hold
         about you, or to object to certain processing. You can exercise most of these rights directly from your
-        account settings, or by emailing privacy@signedby.ai. Where we act as a processor on behalf of a Sender (for
-        example, for a Signer&apos;s data), we will direct your request to that Sender or assist them in responding,
-        consistent with our Data Processing Addendum.
+        account settings, or by emailing privacy@signedby.ai. You also have the right to lodge a complaint with your
+        local data protection authority — in the Netherlands, this is the Autoriteit Persoonsgegevens. Where we act
+        as a processor on behalf of a Sender (for example, for a Signer&apos;s data), we will direct your request to
+        that Sender or assist them in responding, consistent with our Data Processing Addendum.
       </p>
 
-      <h2>7. International users</h2>
+      <h2>7. International users and data transfers</h2>
       <p>
-        SignedBy is operated from the United States. If you access the service from outside the United States, your
-        information will be transferred to and processed in the United States and other countries where our
-        sub-processors operate.
+        SignedBy is operated by SPRK10 B.V. from the Netherlands. Several of our sub-processors (see Section 3) are
+        based in the United States. Where personal data is transferred outside the European Economic Area, we rely
+        on appropriate safeguards recognized under GDPR, such as the European Commission&apos;s Standard Contractual
+        Clauses, to protect that data.
       </p>
 
       <h2>8. Children&apos;s privacy</h2>
