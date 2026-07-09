@@ -83,7 +83,7 @@ export function PricingCards({
         {PLANS.map((p) => {
           const isCurrent = currentPlan === p.id;
           return (
-            <Card key={p.id} className={cn(isCurrent && "border-slate-900")}>
+            <Card key={p.id} className={cn("flex h-full flex-col", isCurrent && "border-slate-900")}>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between text-base">
                   {p.name}
@@ -94,7 +94,7 @@ export function PricingCards({
                   )}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex flex-1 flex-col">
                 <p className="text-2xl font-bold text-slate-900">{p.price}</p>
                 <p className="mt-1 text-xs text-slate-500">{p.blurb}</p>
                 <ul className="mt-4 space-y-1.5 text-xs text-slate-600">
@@ -103,7 +103,7 @@ export function PricingCards({
                   ))}
                 </ul>
 
-                <div className="mt-5">
+                <div className="mt-auto pt-5">
                   {p.id === "free" ? (
                     isLoggedIn ? (
                       <Button variant="outline" className="w-full" disabled>
