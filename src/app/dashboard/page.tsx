@@ -1,6 +1,16 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: "Draft",
+  sent: "Sent",
+  completed: "Completed",
+  declined: "Declined",
+  voided: "Voided",
+};
 
 // Protected dashboard shell — middleware already redirects unauthenticated
 // requests to /login, this is a second server-side check as defense in depth.
@@ -16,6 +26,12 @@ export default async function DashboardPage() {
     .from("organization_members")
     .select("role, organizations(id, name, plan)")
     .eq("user_id", user.id);
+
+  const { data: documents } = await supabase
+    .from("documents")
+    .select("id, title, status, page_count, created_at")
+    .order("created_at", { ascending: false })
+    .limit(20);
 
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-10">
@@ -55,12 +71,41 @@ export default async function DashboardPage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Documents</CardTitle>
-            <CardDescription>Upload &amp; field-placement editor lands in Week 3&ndash;4 of the build.</CardDescription>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle>Documents</CardTitle>
+              <CardDescription>Upload a PDF and place signature fields.</CardDescription>
+            </div>
+            <Link href="/dashboard/documents/new" className={buttonVariants({ size: "default" })}>
+              Upload document
+            </Link>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-slate-500">Coming soon.</p>
+            {documents && documents.length > 0 ? (
+              <ul className="divide-y divide-slate-100">
+                {documents.map((doc) => (
+                  <li key={doc.id} className="flex items-center justify-between py-3">
+                    <div>
+                      <Link
+                        href={`/dashboard/documents/${doc.id}`}
+                        className="text-sm font-medium text-slate-900 hover:underline"
+                      >
+                        {doc.title}
+                      </Link>
+                      <p className="text-xs text-slate-500">
+                        {doc.page_count} page{doc.page_count === 1 ? "" : "s"} &middot;{" "}
+                        {new Date(doc.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                      {STATUS_LABEL[doc.status] ?? doc.status}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-slate-500">No documents yet — upload your first PDF to get started.</p>
+            )}
           </CardContent>
         </Card>
       </div>

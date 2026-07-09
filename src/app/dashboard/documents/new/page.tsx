@@ -1,0 +1,119 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+export default function NewDocumentPage() {
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [title, setTitle] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
+  const [status, setStatus] = useState<"idle" | "uploading" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  function handleFileChosen(f: File) {
+    if (f.type !== "application/pdf") {
+      setStatus("error");
+      setErrorMessage("Only PDF files are supported right now.");
+      return;
+    }
+    setStatus("idle");
+    setFile(f);
+    if (!title) setTitle(f.name.replace(/\.pdf$/i, ""));
+  }
+
+  async function handleUpload() {
+    if (!file) return;
+    setStatus("uploading");
+    setErrorMessage("");
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("title", title);
+
+    try {
+      const res = await fetch("/api/documents", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatus("error");
+        setErrorMessage(data.error ?? "Upload failed.");
+        return;
+      }
+      router.push(`/dashboard/documents/${data.id}`);
+    } catch {
+      setStatus("error");
+      setErrorMessage("Upload failed. Check your connection and try again.");
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-slate-50 px-6 py-10">
+      <div className="mx-auto max-w-xl">
+        <h1 className="mb-6 text-2xl font-semibold text-slate-900">Upload a document</h1>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>New document</CardTitle>
+            <CardDescription>Upload a PDF, then place signature fields on the next screen.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                const dropped = e.dataTransfer.files?.[0];
+                if (dropped) handleFileChosen(dropped);
+              }}
+              onClick={() => fileInputRef.current?.click()}
+              className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors ${
+                isDragging ? "border-slate-900 bg-slate-100" : "border-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const chosen = e.target.files?.[0];
+                  if (chosen) handleFileChosen(chosen);
+                }}
+              />
+              {file ? (
+                <p className="text-sm font-medium text-slate-900">{file.name}</p>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-slate-900">Click to choose a PDF, or drag one here</p>
+                  <p className="mt-1 text-xs text-slate-500">Up to 25MB</p>
+                </>
+              )}
+            </div>
+
+            {file && (
+              <div className="space-y-1.5">
+                <Label htmlFor="title">Document title</Label>
+                <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
+              </div>
+            )}
+
+            {status === "error" && <p className="text-sm text-red-600">{errorMessage}</p>}
+
+            <Button className="w-full" disabled={!file || status === "uploading"} onClick={handleUpload}>
+              {status === "uploading" ? "Uploading…" : "Upload & continue"}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </main>
+  );
+}
