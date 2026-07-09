@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ export default function NewDocumentPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [status, setStatus] = useState<"idle" | "uploading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   function handleFileChosen(f: File) {
     if (f.type !== "application/pdf") {
@@ -31,6 +33,7 @@ export default function NewDocumentPage() {
     if (!file) return;
     setStatus("uploading");
     setErrorMessage("");
+    setShowUpgrade(false);
 
     const formData = new FormData();
     formData.append("file", file);
@@ -42,6 +45,7 @@ export default function NewDocumentPage() {
       if (!res.ok) {
         setStatus("error");
         setErrorMessage(data.error ?? "Upload failed.");
+        setShowUpgrade(Boolean(data.upgrade));
         return;
       }
       router.push(`/dashboard/documents/${data.id}`);
@@ -106,7 +110,19 @@ export default function NewDocumentPage() {
               </div>
             )}
 
-            {status === "error" && <p className="text-sm text-red-600">{errorMessage}</p>}
+            {status === "error" && (
+              <p className="text-sm text-red-600">
+                {errorMessage}
+                {showUpgrade && (
+                  <>
+                    {" "}
+                    <Link href="/pricing" className="font-medium underline">
+                      View plans
+                    </Link>
+                  </>
+                )}
+              </p>
+            )}
 
             <Button className="w-full" disabled={!file || status === "uploading"} onClick={handleUpload}>
               {status === "uploading" ? "Uploading…" : "Upload & continue"}

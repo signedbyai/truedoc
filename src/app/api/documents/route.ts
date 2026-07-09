@@ -10,6 +10,26 @@ export async function POST(request: Request) {
   if (!ctx) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   const { supabase, user, orgId } = ctx;
 
+  const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
+  if (!org || org.plan === "free") {
+    const startOfMonth = new Date();
+    startOfMonth.setUTCDate(1);
+    startOfMonth.setUTCHours(0, 0, 0, 0);
+
+    const { count } = await supabase
+      .from("documents")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", orgId)
+      .gte("created_at", startOfMonth.toISOString());
+
+    if ((count ?? 0) >= 3) {
+      return NextResponse.json(
+        { error: "You've hit the Free plan's 3 documents/month limit. Upgrade to keep going.", upgrade: true },
+        { status: 402 }
+      );
+    }
+  }
+
   const formData = await request.formData();
   const file = formData.get("file");
   const title = String(formData.get("title") || "");

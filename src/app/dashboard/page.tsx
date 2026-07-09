@@ -36,9 +36,14 @@ export default async function DashboardPage() {
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-10">
       <div className="mx-auto max-w-3xl space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Welcome back</h1>
-          <p className="text-sm text-slate-600">Signed in as {user.email}</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">Welcome back</h1>
+            <p className="text-sm text-slate-600">Signed in as {user.email}</p>
+          </div>
+          <Link href="/dashboard/billing" className="text-sm font-medium text-slate-500 hover:text-slate-700">
+            Billing
+          </Link>
         </div>
 
         <Card>

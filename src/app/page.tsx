@@ -24,7 +24,7 @@ const FEATURES = [
 const PRICING = [
   { name: "Free", price: "$0", blurb: "3 documents/mo, 1 user" },
   { name: "Starter", price: "$7/mo", blurb: "Unlimited documents, 1 user" },
-  { name: "Team", price: "$14/user/mo", blurb: "Shared templates, bulk send" },
+  { name: "Team", price: "$14/mo", blurb: "Shared templates, bulk send" },
   { name: "Business", price: "$29/mo", blurb: "Up to 5 users, API access" },
 ];
 
@@ -76,6 +76,11 @@ export default function LandingPage() {
             </Card>
           ))}
         </div>
+        <p className="mt-6 text-center">
+          <Link href="/pricing" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+            See full plan details →
+          </Link>
+        </p>
       </section>
 
       <footer className="mt-auto border-t border-slate-100 px-6 py-8 text-center text-xs text-slate-400">
