@@ -10,6 +10,7 @@ const fieldSchema = z.object({
   width: z.number().min(0).max(1),
   height: z.number().min(0).max(1),
   required: z.boolean().default(true),
+  signer_id: z.string().uuid().nullable().optional(),
 });
 
 const bodySchema = z.object({ fields: z.array(fieldSchema) });
@@ -20,7 +21,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const { data, error } = await supabase
     .from("document_fields")
-    .select("id, type, page, x, y, width, height, required")
+    .select("id, type, page, x, y, width, height, required, signer_id")
     .eq("document_id", id)
     .order("created_at", { ascending: true });
 
