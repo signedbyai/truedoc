@@ -47,6 +47,33 @@ export async function sendSignerInviteEmail(opts: {
   });
 }
 
+export async function sendDeclineNotificationEmail(opts: {
+  to: string;
+  documentTitle: string;
+  documentId: string;
+  signerName: string | null;
+  signerEmail: string;
+  reason: string | null;
+}) {
+  const link = `${appUrl()}/dashboard/documents/${opts.documentId}`;
+  const who = opts.signerName ? `${opts.signerName} (${opts.signerEmail})` : opts.signerEmail;
+
+  await getClient().emails.send({
+    from: FROM,
+    to: opts.to,
+    subject: `${who} declined to sign "${opts.documentTitle}"`,
+    html: `
+      <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <p><strong>${who}</strong> declined to sign <strong>${opts.documentTitle}</strong>.</p>
+        ${opts.reason ? `<p style="color:#334155;">Reason given: &ldquo;${opts.reason}&rdquo;</p>` : ""}
+        <p style="margin: 32px 0;">
+          <a href="${link}" style="background:#0f172a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">View document</a>
+        </p>
+      </div>
+    `,
+  });
+}
+
 export async function sendCompletionEmail(opts: {
   to: string;
   documentTitle: string;

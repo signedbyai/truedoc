@@ -1,6 +1,16 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { FieldEditor } from "@/components/field-editor";
+import { VoidDocumentButton } from "@/components/void-document-button";
+
+const SIGNER_STATUS_LABEL: Record<string, string> = {
+  pending: "Not yet sent",
+  sent: "Sent",
+  viewed: "Viewed",
+  signed: "Signed",
+  declined: "Declined",
+};
 
 export default async function DocumentEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -53,6 +63,56 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
             >
               {doc.signed_file_path ? "Download signed PDF" : "Signed PDF pending…"}
             </a>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (doc.status === "sent" || doc.status === "declined" || doc.status === "voided") {
+    const { data: signers } = await supabase
+      .from("signers")
+      .select("id, name, email, status, signed_at")
+      .eq("document_id", id)
+      .order("order_index", { ascending: true });
+
+    const statusCopy: Record<string, { label: string; className: string }> = {
+      sent: { label: "Out for signature", className: "text-blue-600" },
+      declined: { label: "Declined by a signer", className: "text-red-600" },
+      voided: { label: "Voided", className: "text-slate-500" },
+    };
+    const { label, className } = statusCopy[doc.status];
+
+    return (
+      <main className="min-h-screen bg-slate-50 px-6 py-10">
+        <div className="mx-auto max-w-2xl space-y-6">
+          <div>
+            <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
+              ← Dashboard
+            </Link>
+            <h1 className="mt-2 text-2xl font-semibold text-slate-900">{doc.title}</h1>
+            <p className={`text-sm ${className}`}>{label}</p>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-white p-6">
+            <h2 className="text-sm font-semibold text-slate-900">Signers</h2>
+            <ul className="mt-3 space-y-2 text-sm text-slate-700">
+              {(signers || []).map((s) => (
+                <li key={s.id} className="flex items-center justify-between">
+                  <span>{s.name ? `${s.name} <${s.email}>` : s.email}</span>
+                  <span className="text-xs text-slate-500">
+                    {SIGNER_STATUS_LABEL[s.status] ?? s.status}
+                    {s.signed_at ? ` · ${new Date(s.signed_at).toLocaleDateString()}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            {doc.status === "sent" && (
+              <div className="mt-6 border-t border-slate-100 pt-4">
+                <VoidDocumentButton documentId={id} />
+              </div>
+            )}
           </div>
         </div>
       </main>

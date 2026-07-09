@@ -84,7 +84,18 @@ export default function LandingPage() {
       </section>
 
       <footer className="mt-auto border-t border-slate-100 px-6 py-8 text-center text-xs text-slate-400">
-        © {new Date().getFullYear()} SignedBy. signedby.ai
+        <p>© {new Date().getFullYear()} SignedBy. signedby.ai</p>
+        <p className="mt-2 space-x-4">
+          <Link href="/terms" className="hover:text-slate-600">
+            Terms
+          </Link>
+          <Link href="/privacy" className="hover:text-slate-600">
+            Privacy
+          </Link>
+          <Link href="/dpa" className="hover:text-slate-600">
+            DPA
+          </Link>
+        </p>
       </footer>
     </main>
   );

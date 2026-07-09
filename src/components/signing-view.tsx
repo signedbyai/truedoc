@@ -43,6 +43,10 @@ export function SigningView({
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [documentCompleted, setDocumentCompleted] = useState(false);
+  const [declined, setDeclined] = useState(false);
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
+  const [declining, setDeclining] = useState(false);
   const padRef = useRef<SignatureCanvas | null>(null);
 
   useEffect(() => {
@@ -131,6 +135,41 @@ export function SigningView({
     }
   }
 
+  async function handleDecline() {
+    setDeclining(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/sign/${token}/decline`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: declineReason.trim() || undefined }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Something went wrong");
+      }
+      setShowDeclineModal(false);
+      setDeclined(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
+    } finally {
+      setDeclining(false);
+    }
+  }
+
+  if (declined) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <h1 className="text-lg font-semibold text-slate-900">Declined</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            You declined to sign{signerName ? `, ${signerName}` : ""}. The sender has been notified.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   if (done) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
@@ -163,6 +202,13 @@ export function SigningView({
         </div>
         <div className="flex items-center gap-3">
           {error && <span className="text-sm text-red-600">{error}</span>}
+          <button
+            onClick={() => setShowDeclineModal(true)}
+            disabled={submitting}
+            className="text-sm font-medium text-slate-500 hover:text-red-600"
+          >
+            Decline to sign
+          </button>
           <Button onClick={handleSubmit} disabled={submitting}>
             {submitting ? "Submitting…" : "Sign & submit"}
           </Button>
@@ -206,6 +252,41 @@ export function SigningView({
           <p className="text-sm text-red-600">Couldn&apos;t load this document ({pageCount} expected pages).</p>
         )}
       </div>
+
+      {showDeclineModal && (
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+            <p className="text-sm font-medium text-slate-900">Decline to sign this document?</p>
+            <p className="mt-1 text-xs text-slate-500">
+              The sender will be notified. This can&apos;t be undone from your side.
+            </p>
+            <textarea
+              value={declineReason}
+              onChange={(e) => setDeclineReason(e.target.value)}
+              placeholder="Reason (optional)"
+              rows={3}
+              className="mt-3 w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm text-slate-800 placeholder:text-slate-400"
+            />
+            {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setShowDeclineModal(false)}
+                disabled={declining}
+                className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDecline}
+                disabled={declining}
+                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {declining ? "Declining…" : "Decline to sign"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {signaturePadFor && (
         <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-4">

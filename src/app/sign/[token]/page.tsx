@@ -21,6 +21,15 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
     return <StatusScreen title="Signing declined" message={`You declined to sign "${document.title}".`} />;
   }
 
+  if (document.status === "declined") {
+    return (
+      <StatusScreen
+        title="Document declined"
+        message={`Signing was declined by another party, so "${document.title}" is no longer awaiting your signature.`}
+      />
+    );
+  }
+
   if (document.status === "voided") {
     return <StatusScreen title="No longer available" message="This document has been voided by the sender." />;
   }
