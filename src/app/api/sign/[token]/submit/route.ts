@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSignerByToken } from "@/lib/signing";
 import { sendSignerInviteEmail, sendCompletionEmail } from "@/lib/email";
+import { generateSignedPdf } from "@/lib/generate-signed-pdf";
 
 const bodySchema = z.object({
   consent: z.literal(true),
@@ -83,10 +84,26 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     .order("order_index", { ascending: true });
 
   const stillPending = (allSigners || []).filter((s) => s.id !== signer.id && s.status !== "signed");
+  const documentCompleted = stillPending.length === 0;
 
-  if (stillPending.length === 0) {
+  if (documentCompleted) {
     await admin.from("documents").update({ status: "completed" }).eq("id", document.id);
-    await admin.from("audit_events").insert({ document_id: document.id, event_type: "completed" });
+    const { data: completedEvent } = await admin
+      .from("audit_events")
+      .insert({ document_id: document.id, event_type: "completed" })
+      .select("id")
+      .single();
+
+    try {
+      const { hash } = await generateSignedPdf(document.id);
+      if (completedEvent) {
+        await admin.from("audit_events").update({ document_hash: hash }).eq("id", completedEvent.id);
+      }
+    } catch (err) {
+      // Don't block completion on PDF generation — the doc is still legally
+      // signed via the audit trail; the file can be regenerated later.
+      console.error("Signed PDF generation failed", err);
+    }
 
     const { data: doc } = await admin.from("documents").select("owner_id, title").eq("id", document.id).single();
     if (doc) {
@@ -136,5 +153,5 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     }
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, completed: documentCompleted });
 }

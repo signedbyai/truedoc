@@ -42,6 +42,7 @@ export function SigningView({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const [documentCompleted, setDocumentCompleted] = useState(false);
   const padRef = useRef<SignatureCanvas | null>(null);
 
   useEffect(() => {
@@ -120,6 +121,8 @@ export function SigningView({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Something went wrong");
       }
+      const data = await res.json().catch(() => ({}));
+      setDocumentCompleted(Boolean(data.completed));
       setDone(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
@@ -134,9 +137,18 @@ export function SigningView({
         <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
           <h1 className="text-lg font-semibold text-slate-900">Signed</h1>
           <p className="mt-2 text-sm text-slate-600">
-            Thanks{signerName ? `, ${signerName}` : ""} — your signature has been recorded. You&apos;ll receive a copy once
-            everyone has signed.
+            {documentCompleted
+              ? "Thanks" + (signerName ? `, ${signerName}` : "") + " — everyone has signed. Your copy is ready below."
+              : `Thanks${signerName ? `, ${signerName}` : ""} — your signature has been recorded. You'll receive a copy once everyone has signed.`}
           </p>
+          {documentCompleted && (
+            <a
+              href={`/api/sign/${token}/signed-file`}
+              className="mt-4 inline-block rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              Download signed PDF
+            </a>
+          )}
         </div>
       </main>
     );

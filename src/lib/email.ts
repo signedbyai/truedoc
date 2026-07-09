@@ -53,6 +53,7 @@ export async function sendCompletionEmail(opts: {
   documentId: string;
 }) {
   const link = `${appUrl()}/dashboard/documents/${opts.documentId}`;
+  const downloadLink = `${appUrl()}/api/documents/${opts.documentId}/signed-file`;
 
   await getClient().emails.send({
     from: FROM,
@@ -62,8 +63,9 @@ export async function sendCompletionEmail(opts: {
       <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
         <p><strong>${opts.documentTitle}</strong> has been signed by everyone and is now complete.</p>
         <p style="margin: 32px 0;">
-          <a href="${link}" style="background:#0f172a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">View document</a>
+          <a href="${downloadLink}" style="background:#0f172a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Download signed PDF</a>
         </p>
+        <p style="color:#64748b;font-size:13px;"><a href="${link}" style="color:#64748b;">View in dashboard</a></p>
       </div>
     `,
   });
