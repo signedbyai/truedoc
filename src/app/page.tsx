@@ -43,7 +43,7 @@ export default function LandingPage() {
           E-signatures, without the per-seat tax.
         </h1>
         <p className="max-w-xl text-lg text-slate-600">
-          SignedBy is a fast, affordable alternative to SignNow — built for solo professionals and
+          SignedBy is a fast, affordable alternative for e-Signatures — built for solo professionals and
           small teams who sign a handful of documents a month, not a whole sales floor.
         </p>
         <WaitlistForm />
