@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 const bodySchema = z.object({ email: z.string().email() });
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const allowed = await checkRateLimit(`waitlist:${ip}`, 5, 600);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests. Try again in a few minutes." }, { status: 429 });
+  }
+
   const json = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
 

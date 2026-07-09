@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { PDFDocument } from "pdf-lib";
 import { getUserAndOrg } from "@/lib/org";
 import { uploadToR2 } from "@/lib/r2";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25MB — generous for contracts, keeps R2/function costs predictable
 
@@ -9,6 +10,13 @@ export async function POST(request: Request) {
   const ctx = await getUserAndOrg();
   if (!ctx) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   const { supabase, user, orgId } = ctx;
+
+  // Authenticated, but still worth capping — an uncapped upload endpoint is
+  // a cost/abuse vector (R2 storage + PDF parsing) even behind a login.
+  const uploadOk = await checkRateLimit(`upload:${orgId}`, 30, 600);
+  if (!uploadOk) {
+    return NextResponse.json({ error: "Too many uploads. Try again in a few minutes." }, { status: 429 });
+  }
 
   const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
   if (!org || org.plan === "free") {

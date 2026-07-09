@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSignerByToken } from "@/lib/signing";
 import { sendDeclineNotificationEmail } from "@/lib/email";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 const bodySchema = z.object({
   reason: z.string().trim().max(500).optional(),
@@ -12,6 +13,12 @@ const bodySchema = z.object({
 // terminal, document-level status (see documents.status check constraint).
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
+
+  const allowed = await checkRateLimit(`sign-decline:${getClientIp(request)}`, 10, 600);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many attempts. Try again in a few minutes." }, { status: 429 });
+  }
+
   const result = await getSignerByToken(token);
   if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const { admin, signer, document } = result;

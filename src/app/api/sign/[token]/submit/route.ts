@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getSignerByToken } from "@/lib/signing";
 import { sendSignerInviteEmail, sendCompletionEmail } from "@/lib/email";
 import { generateSignedPdf } from "@/lib/generate-signed-pdf";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 const bodySchema = z.object({
   consent: z.literal(true),
@@ -11,6 +12,14 @@ const bodySchema = z.object({
 
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
+
+  // Generous — real signers can retry a few times after a validation error —
+  // but caps scripted hammering of a single signing link.
+  const allowed = await checkRateLimit(`sign-submit:${getClientIp(request)}`, 20, 600);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many attempts. Try again in a few minutes." }, { status: 429 });
+  }
+
   const result = await getSignerByToken(token);
   if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const { admin, signer, document } = result;
