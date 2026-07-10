@@ -479,7 +479,8 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
                         e.stopPropagation();
                         removeField(f.id);
                       }}
-                      className="absolute -right-2 -top-2 hidden h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white group-hover:flex"
+                      aria-label={`Remove ${def.label.toLowerCase()} field`}
+                      className="absolute -right-2.5 -top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white shadow-sm"
                     >
                       ×
                     </button>
