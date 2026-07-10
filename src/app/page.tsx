@@ -32,7 +32,10 @@ export default function LandingPage() {
   return (
     <main className="flex min-h-screen flex-col bg-white">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
-        <span className="text-lg font-semibold tracking-tight text-slate-900">SignedBy</span>
+        <span className="flex items-baseline gap-1.5">
+          <span className="text-lg font-semibold tracking-tight text-slate-900">SignedBy</span>
+          <span className="text-xs font-medium text-slate-400">BETA</span>
+        </span>
         <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
           Sign in
         </Link>
