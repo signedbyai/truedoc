@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { teamMemberLimit } from "@/lib/plan";
 
 export const bodySchema = z.object({ token: z.string().uuid() });
 
@@ -37,6 +38,24 @@ export async function POST(request: Request) {
       { error: `This invite was sent to ${invite.email}. Log in with that email address to accept it.` },
       { status: 403 }
     );
+  }
+
+  // Defense in depth: re-check the seat cap at accept time too, since time
+  // may have passed since the invite was sent and other invites may have
+  // been accepted in the meantime.
+  const { data: org } = await admin.from("organizations").select("plan").eq("id", invite.org_id).single();
+  const limit = teamMemberLimit(org?.plan);
+  if (limit !== null) {
+    const { count: memberCount } = await admin
+      .from("organization_members")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", invite.org_id);
+    if ((memberCount ?? 0) >= limit) {
+      return NextResponse.json(
+        { error: "This organization has reached its plan's team member limit. Contact the org owner." },
+        { status: 400 }
+      );
+    }
   }
 
   const { error: memberError } = await admin

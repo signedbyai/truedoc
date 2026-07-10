@@ -24,7 +24,7 @@ const FEATURES = [
 const PRICING = [
   { name: "Free", price: "$0", blurb: "3 documents/mo, 1 user" },
   { name: "Starter", price: "$7/mo", blurb: "Unlimited documents, 1 user" },
-  { name: "Team", price: "$14/mo", blurb: "Shared templates, bulk send" },
+  { name: "Team", price: "$14/mo", blurb: "Up to 3 users, bulk send" },
   { name: "Business", price: "$29/mo", blurb: "Up to 5 users, API access" },
 ];
 

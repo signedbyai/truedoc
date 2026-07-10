@@ -33,7 +33,7 @@ const PLANS: {
     id: "team",
     name: "Team",
     price: "$14/mo",
-    blurb: "For small teams",
+    blurb: "Up to 3 users",
     features: ["Everything in Starter", "Shared templates", "Bulk send", "Basic branding"],
   },
   {

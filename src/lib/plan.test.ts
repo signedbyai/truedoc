@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planHasFeature } from "./plan";
+import { planHasFeature, teamMemberLimit } from "./plan";
 
 describe("planHasFeature", () => {
   it("gates templates/reminders to starter, team, and business", () => {
@@ -32,5 +32,22 @@ describe("planHasFeature", () => {
   it("treats a missing/null plan as free", () => {
     expect(planHasFeature(null, "teamMembers")).toBe(false);
     expect(planHasFeature(undefined, "apiAccess")).toBe(false);
+  });
+});
+
+describe("teamMemberLimit", () => {
+  it("caps team at 3 and business at 5", () => {
+    expect(teamMemberLimit("team")).toBe(3);
+    expect(teamMemberLimit("business")).toBe(5);
+  });
+
+  it("has no cap for plans without the teamMembers feature", () => {
+    expect(teamMemberLimit("free")).toBeNull();
+    expect(teamMemberLimit("starter")).toBeNull();
+  });
+
+  it("treats a missing/null plan as free (no cap, since it's blocked earlier anyway)", () => {
+    expect(teamMemberLimit(null)).toBeNull();
+    expect(teamMemberLimit(undefined)).toBeNull();
   });
 });

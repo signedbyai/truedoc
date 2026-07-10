@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUserAndOrg } from "@/lib/org";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { planHasFeature } from "@/lib/plan";
+import { planHasFeature, teamMemberLimit } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { TeamPanel } from "@/components/team-panel";
@@ -61,7 +61,12 @@ export default async function TeamPage() {
           </CardHeader>
           <CardContent>
             {hasTeam ? (
-              <TeamPanel currentUserId={user.id} members={members} invites={invites || []} />
+              <TeamPanel
+                currentUserId={user.id}
+                members={members}
+                invites={invites || []}
+                seatLimit={teamMemberLimit(org?.plan)}
+              />
             ) : (
               <div className="space-y-4">
                 <ul className="divide-y divide-slate-100">

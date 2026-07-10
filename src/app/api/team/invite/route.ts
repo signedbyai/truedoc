@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserAndOrg } from "@/lib/org";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { planHasFeature } from "@/lib/plan";
+import { planHasFeature, teamMemberLimit } from "@/lib/plan";
 import { sendTeamInviteEmail } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -57,6 +57,28 @@ export async function POST(request: Request) {
       if (data?.user?.email?.toLowerCase() === email) {
         return NextResponse.json({ error: "That person is already a member of this org." }, { status: 400 });
       }
+    }
+  }
+
+  // Seat cap check. Counts current members plus other pending invites (not
+  // this one — if this is a resend to the same email, it doesn't add a net
+  // new seat) so a sender can't queue up more invites than the plan allows.
+  const limit = teamMemberLimit(org.plan);
+  if (limit !== null) {
+    const { count: pendingCount } = await supabase
+      .from("org_invites")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", orgId)
+      .neq("email", email)
+      .is("accepted_at", null)
+      .gt("expires_at", new Date().toISOString());
+
+    const seatsUsed = (existingMembers?.length ?? 0) + (pendingCount ?? 0);
+    if (seatsUsed >= limit) {
+      return NextResponse.json(
+        { error: `Your plan allows up to ${limit} team members. Upgrade to add more.`, upgrade: true },
+        { status: 402 }
+      );
     }
   }
 

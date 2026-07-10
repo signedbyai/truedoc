@@ -41,3 +41,17 @@ export const FEATURE_UPGRADE_PLAN: Record<Feature, PlanId> = {
   apiAccess: "business",
   paymentCollection: "business",
 };
+
+// Team member seat caps — matches the "Up to N users" pricing-cards.tsx
+// copy. Only plans that unlock teamMembers at all need an entry; plans
+// below that (free/starter) are blocked earlier by planHasFeature and
+// never reach a seat-limit check.
+const TEAM_MEMBER_LIMIT: Partial<Record<PlanId, number>> = {
+  team: 3,
+  business: 5,
+};
+
+/** Returns the seat cap for a plan, or null if the plan has no cap. */
+export function teamMemberLimit(plan: string | null | undefined): number | null {
+  return TEAM_MEMBER_LIMIT[(plan || "free") as PlanId] ?? null;
+}
