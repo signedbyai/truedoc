@@ -31,7 +31,7 @@ export default async function DashboardPage() {
     .from("documents")
     .select("id, title, status, page_count, created_at")
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(5);
 
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-10">
@@ -42,6 +42,9 @@ export default async function DashboardPage() {
             <p className="text-sm text-slate-600">Signed in as {user.email}</p>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/dashboard/documents" className="text-sm font-medium text-slate-500 hover:text-slate-700">
+              Documents
+            </Link>
             <Link href="/dashboard/templates" className="text-sm font-medium text-slate-500 hover:text-slate-700">
               Templates
             </Link>
@@ -89,7 +92,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <div>
-              <CardTitle>Documents</CardTitle>
+              <CardTitle>Recent documents</CardTitle>
               <CardDescription>Upload a PDF and place signature fields.</CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -127,6 +130,11 @@ export default async function DashboardPage() {
             ) : (
               <p className="text-sm text-slate-500">No documents yet — upload your first PDF to get started.</p>
             )}
+            <div className="mt-4 border-t border-slate-100 pt-3">
+              <Link href="/dashboard/documents" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+                View all documents →
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>

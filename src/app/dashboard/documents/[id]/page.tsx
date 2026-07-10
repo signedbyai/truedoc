@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { FieldEditor } from "@/components/field-editor";
 import { VoidDocumentButton } from "@/components/void-document-button";
 import { RemindSignerButton } from "@/components/remind-signer-button";
+import { AuditTrail, type AuditEvent } from "@/components/audit-trail";
 import { planHasFeature } from "@/lib/plan";
 
 const SIGNER_STATUS_LABEL: Record<string, string> = {
@@ -46,6 +47,12 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
       .eq("document_id", id)
       .order("order_index", { ascending: true });
 
+    const { data: auditEvents } = await supabase
+      .from("audit_events")
+      .select("id, event_type, created_at, metadata, signers(name, email)")
+      .eq("document_id", id)
+      .order("created_at", { ascending: true });
+
     return (
       <main className="min-h-screen bg-slate-50 px-6 py-10">
         <div className="mx-auto max-w-2xl space-y-6">
@@ -74,6 +81,13 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
               {doc.signed_file_path ? "Download signed PDF" : "Signed PDF pending…"}
             </a>
           </div>
+
+          <div className="rounded-lg border border-slate-200 bg-white p-6">
+            <h2 className="text-sm font-semibold text-slate-900">Document history</h2>
+            <div className="mt-4">
+              <AuditTrail events={(auditEvents || []) as unknown as AuditEvent[]} />
+            </div>
+          </div>
         </div>
       </main>
     );
@@ -85,6 +99,12 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
       .select("id, name, email, status, signed_at")
       .eq("document_id", id)
       .order("order_index", { ascending: true });
+
+    const { data: auditEvents } = await supabase
+      .from("audit_events")
+      .select("id, event_type, created_at, metadata, signers(name, email)")
+      .eq("document_id", id)
+      .order("created_at", { ascending: true });
 
     const statusCopy: Record<string, { label: string; className: string }> = {
       sent: { label: "Out for signature", className: "text-blue-600" },
@@ -134,6 +154,13 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
                 <VoidDocumentButton documentId={id} />
               </div>
             )}
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-white p-6">
+            <h2 className="text-sm font-semibold text-slate-900">Document history</h2>
+            <div className="mt-4">
+              <AuditTrail events={(auditEvents || []) as unknown as AuditEvent[]} />
+            </div>
           </div>
         </div>
       </main>
