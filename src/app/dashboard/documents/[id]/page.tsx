@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { FieldEditor } from "@/components/field-editor";
 import { VoidDocumentButton } from "@/components/void-document-button";
 import { RemindSignerButton } from "@/components/remind-signer-button";
+import { planHasFeature } from "@/lib/plan";
 
 const SIGNER_STATUS_LABEL: Record<string, string> = {
   pending: "Not yet sent",
@@ -24,11 +25,17 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
 
   const { data: doc } = await supabase
     .from("documents")
-    .select("id, title, page_count, status, signed_file_path")
+    .select(
+      "id, title, page_count, status, signed_file_path, payment_link_url, payment_label, organizations(plan)"
+    )
     .eq("id", id)
     .single();
 
   if (!doc) notFound();
+
+  const orgData = doc.organizations as unknown as { plan?: string } | { plan?: string }[] | undefined;
+  const orgPlan = Array.isArray(orgData) ? orgData[0]?.plan : orgData?.plan;
+  const hasPaymentCollection = planHasFeature(orgPlan, "paymentCollection");
 
   if (doc.status === "completed") {
     const { data: signers } = await supabase
@@ -125,5 +132,13 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
     );
   }
 
-  return <FieldEditor documentId={doc.id} pageCount={doc.page_count} />;
+  return (
+    <FieldEditor
+      documentId={doc.id}
+      pageCount={doc.page_count}
+      hasPaymentCollection={hasPaymentCollection}
+      initialPaymentLinkUrl={doc.payment_link_url}
+      initialPaymentLabel={doc.payment_label}
+    />
+  );
 }

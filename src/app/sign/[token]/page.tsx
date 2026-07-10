@@ -75,6 +75,14 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
     brandColor: org?.brand_color || null,
   };
 
+  // Gated on the org's *current* plan, not just whether the field is set —
+  // a downgrade after the document was sent shouldn't keep showing a Pay
+  // button. See src/lib/plan.ts.
+  const payment =
+    document.payment_link_url && planHasFeature(org?.plan, "paymentCollection")
+      ? { url: document.payment_link_url, label: document.payment_label }
+      : null;
+
   return (
     <SigningView
       token={token}
@@ -83,6 +91,7 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
       signerName={signer.name}
       fields={visibleFields}
       branding={branding}
+      payment={payment}
     />
   );
 }

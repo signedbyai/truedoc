@@ -17,7 +17,7 @@ export async function getSignerByToken(token: string) {
 
   const { data: document } = await admin
     .from("documents")
-    .select("id, title, page_count, org_id, status")
+    .select("id, title, page_count, org_id, status, payment_link_url, payment_label")
     .eq("id", signer.document_id)
     .single();
 

@@ -51,7 +51,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const { data: template } = await supabase
     .from("templates")
-    .select("id, org_id, name, base_file_path, page_count, field_map")
+    .select("id, org_id, name, base_file_path, page_count, field_map, payment_link_url, payment_label")
     .eq("id", id)
     .single();
   if (!template || template.org_id !== orgId) {
@@ -80,6 +80,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         file_path: template.base_file_path,
         original_filename: `${title}.pdf`,
         page_count: template.page_count,
+        payment_link_url: template.payment_link_url,
+        payment_label: template.payment_label,
       })
       .select("id")
       .single();

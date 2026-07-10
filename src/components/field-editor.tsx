@@ -59,9 +59,26 @@ function recipientColor(recipients: Recipient[], signerId: string | null) {
   return RECIPIENT_COLORS[idx % RECIPIENT_COLORS.length] ?? RECIPIENT_COLORS[0];
 }
 
-export function FieldEditor({ documentId, pageCount }: { documentId: string; pageCount: number }) {
+export function FieldEditor({
+  documentId,
+  pageCount,
+  hasPaymentCollection,
+  initialPaymentLinkUrl,
+  initialPaymentLabel,
+}: {
+  documentId: string;
+  pageCount: number;
+  hasPaymentCollection: boolean;
+  initialPaymentLinkUrl: string | null;
+  initialPaymentLabel: string | null;
+}) {
   const router = useRouter();
   const [selectedTool, setSelectedTool] = useState<FieldType | null>(null);
+  const [paymentLinkUrl, setPaymentLinkUrl] = useState(initialPaymentLinkUrl || "");
+  const [paymentLabel, setPaymentLabel] = useState(initialPaymentLabel || "");
+  const [showPaymentEditor, setShowPaymentEditor] = useState(false);
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
   const [fields, setFields] = useState<Field[]>([]);
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [activeRecipientId, setActiveRecipientId] = useState<string | null>(null);
@@ -405,6 +422,26 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
     }
   }
 
+  async function savePayment() {
+    setSavingPayment(true);
+    setPaymentError("");
+    try {
+      const res = await fetch(`/api/documents/${documentId}/payment`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payment_link_url: paymentLinkUrl.trim(), payment_label: paymentLabel.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Couldn't save the payment link.");
+      setShowPaymentEditor(false);
+      setStatusMessage(paymentLinkUrl.trim() ? "Payment link saved." : "Payment link removed.");
+    } catch (err) {
+      setPaymentError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSavingPayment(false);
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
       <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
@@ -509,6 +546,55 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
               className="rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-500 hover:border-slate-400 hover:text-slate-700"
             >
               + Add recipient
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-6 py-2.5">
+          <span className="text-xs font-medium text-slate-500">Payment:</span>
+          {!hasPaymentCollection ? (
+            <a href="/pricing" className="text-xs text-slate-400 hover:text-slate-600">
+              Request payment on signing (Business)
+            </a>
+          ) : showPaymentEditor ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Input
+                value={paymentLabel}
+                onChange={(e) => setPaymentLabel(e.target.value)}
+                placeholder="Label, e.g. $500 deposit"
+                className="h-7 w-40 text-xs"
+              />
+              <Input
+                value={paymentLinkUrl}
+                onChange={(e) => setPaymentLinkUrl(e.target.value)}
+                placeholder="https://buy.stripe.com/..."
+                className="h-7 w-56 text-xs"
+              />
+              <button
+                onClick={savePayment}
+                disabled={savingPayment}
+                className="rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
+              >
+                {savingPayment ? "Saving…" : "Save"}
+              </button>
+              <button onClick={() => setShowPaymentEditor(false)} className="text-xs text-slate-400 hover:text-slate-600">
+                Cancel
+              </button>
+              {paymentError && <span className="text-xs text-red-600">{paymentError}</span>}
+            </div>
+          ) : paymentLinkUrl ? (
+            <button
+              onClick={() => setShowPaymentEditor(true)}
+              className="flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+            >
+              {paymentLabel || "Payment link set"}
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowPaymentEditor(true)}
+              className="rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-500 hover:border-slate-400 hover:text-slate-700"
+            >
+              + Add payment link
             </button>
           )}
         </div>

@@ -36,6 +36,8 @@ type Branding = {
   brandColor: string | null;
 };
 
+type Payment = { url: string; label: string | null } | null;
+
 export function SigningView({
   token,
   documentTitle,
@@ -43,6 +45,7 @@ export function SigningView({
   signerName,
   fields: initialFields,
   branding,
+  payment,
 }: {
   token: string;
   documentTitle: string;
@@ -50,8 +53,14 @@ export function SigningView({
   signerName: string | null;
   fields: Field[];
   branding: Branding;
+  payment: Payment;
 }) {
   const accentColor = branding.hasCustomBranding ? branding.brandColor : null;
+
+  function handlePayClick() {
+    if (!payment) return;
+    fetch(`/api/sign/${token}/payment-click`, { method: "POST" }).catch(() => {});
+  }
   const [pageCanvases, setPageCanvases] = useState<{ page: number; dataUrl: string; width: number; height: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [values, setValues] = useState<Record<string, string>>(() =>
@@ -252,6 +261,20 @@ export function SigningView({
               Download signed PDF
             </a>
           )}
+          {payment && (
+            <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
+              <p className="text-xs text-amber-900">{payment.label || "A payment is requested for this document."}</p>
+              <a
+                href={payment.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={handlePayClick}
+                className="mt-2 inline-block rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
+              >
+                Pay now
+              </a>
+            </div>
+          )}
         </div>
       </main>
     );
@@ -307,6 +330,21 @@ export function SigningView({
         I agree to sign this document electronically and understand it carries the same legal weight as a handwritten
         signature.
       </label>
+
+      {payment && (
+        <div className="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-6 py-2.5">
+          <p className="text-xs text-amber-900">{payment.label || "A payment is requested for this document."}</p>
+          <a
+            href={payment.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={handlePayClick}
+            className="whitespace-nowrap rounded-md bg-amber-600 px-3 py-1 text-xs font-medium text-white hover:bg-amber-700"
+          >
+            Pay now
+          </a>
+        </div>
+      )}
 
       <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-6 py-10">
         {loading && <p className="text-sm text-slate-500">Loading document…</p>}

@@ -15,6 +15,10 @@ const FEATURE_PLANS = {
   customBranding: ["business"],
   // Business: "API access"
   apiAccess: ["business"],
+  // Business: "Payment collection" — an external link (e.g. a Stripe Payment
+  // Link the org already owns), not a Connect-style in-app charge. See
+  // src/app/api/documents/[id]/payment/route.ts for why.
+  paymentCollection: ["business"],
 } as const;
 
 export type Feature = keyof typeof FEATURE_PLANS;
@@ -29,4 +33,5 @@ export const FEATURE_UPGRADE_PLAN: Record<Feature, PlanId> = {
   branding: "team",
   customBranding: "business",
   apiAccess: "business",
+  paymentCollection: "business",
 };

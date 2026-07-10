@@ -11,8 +11,8 @@ describe("planHasFeature", () => {
     }
   });
 
-  it("gates customBranding and apiAccess to business only", () => {
-    for (const feature of ["customBranding", "apiAccess"] as const) {
+  it("gates customBranding, apiAccess, and paymentCollection to business only", () => {
+    for (const feature of ["customBranding", "apiAccess", "paymentCollection"] as const) {
       expect(planHasFeature("free", feature)).toBe(false);
       expect(planHasFeature("starter", feature)).toBe(false);
       expect(planHasFeature("team", feature)).toBe(false);
