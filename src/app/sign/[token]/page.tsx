@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getSignerByToken } from "@/lib/signing";
 import { SigningView } from "@/components/signing-view";
+import { planHasFeature } from "@/lib/plan";
 
 export default async function SignPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -59,6 +60,21 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
     (f) => f.signer_id === signer.id || (f.signer_id === null && signerCount === 1)
   );
 
+  const { data: org } = await admin
+    .from("organizations")
+    .select("id, name, plan, logo_url, brand_color")
+    .eq("id", document.org_id)
+    .single();
+
+  const branding = {
+    orgId: document.org_id,
+    orgName: org?.name || "SignedBy",
+    hasBranding: planHasFeature(org?.plan, "branding"),
+    hasCustomBranding: planHasFeature(org?.plan, "customBranding"),
+    hasLogo: Boolean(org?.logo_url),
+    brandColor: org?.brand_color || null,
+  };
+
   return (
     <SigningView
       token={token}
@@ -66,6 +82,7 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
       pageCount={document.page_count}
       signerName={signer.name}
       fields={visibleFields}
+      branding={branding}
     />
   );
 }

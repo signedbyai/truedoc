@@ -1,13 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUserAndOrg } from "@/lib/org";
+import { planHasFeature } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { UseTemplateButton } from "@/components/use-template-button";
 import { DeleteTemplateButton } from "@/components/delete-template-button";
+import { BulkSendButton } from "@/components/bulk-send-button";
 
 export default async function TemplatesPage() {
   const ctx = await getUserAndOrg();
   if (!ctx) redirect("/login");
+
+  const { data: org } = await ctx.supabase.from("organizations").select("plan").eq("id", ctx.orgId).single();
+  const hasBulkSend = planHasFeature(org?.plan, "bulkSend");
 
   const { data: templates } = await ctx.supabase
     .from("templates")
@@ -46,8 +51,15 @@ export default async function TemplatesPage() {
                         {Array.isArray(t.field_map) && t.field_map.length === 1 ? "" : "s"} ·{" "}
                         {new Date(t.created_at).toLocaleDateString()}
                       </p>
-                      <div className="mt-1">
+                      <div className="mt-1 flex items-center gap-3">
                         <DeleteTemplateButton templateId={t.id} />
+                        {hasBulkSend ? (
+                          <BulkSendButton templateId={t.id} />
+                        ) : (
+                          <Link href="/pricing" className="text-xs text-slate-400 hover:text-slate-600">
+                            Bulk send (Team+)
+                          </Link>
+                        )}
                       </div>
                     </div>
                     <UseTemplateButton templateId={t.id} />

@@ -102,6 +102,31 @@ export async function sendDeclineNotificationEmail(opts: {
   });
 }
 
+export async function sendTeamInviteEmail(opts: {
+  to: string;
+  orgName: string;
+  inviterEmail: string;
+  token: string;
+}) {
+  const link = `${appUrl()}/team/accept/${opts.token}`;
+
+  await getClient().emails.send({
+    from: FROM,
+    to: opts.to,
+    subject: `${opts.inviterEmail} invited you to join ${opts.orgName} on SignedBy`,
+    html: `
+      <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <p>Hi,</p>
+        <p><strong>${opts.inviterEmail}</strong> invited you to join <strong>${opts.orgName}</strong>'s workspace on SignedBy.</p>
+        <p style="margin: 32px 0;">
+          <a href="${link}" style="background:#0f172a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Accept invite</a>
+        </p>
+        <p style="color:#64748b;font-size:13px;">This invite expires in 14 days. If you weren't expecting this, you can ignore this email.</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendCompletionEmail(opts: {
   to: string;
   documentTitle: string;

@@ -14,6 +14,7 @@ export default async function PricingPage() {
       .from("organization_members")
       .select("organizations(plan)")
       .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
       .limit(1)
       .single();
     const org = membership?.organizations as unknown as { plan?: string } | { plan?: string }[] | undefined;

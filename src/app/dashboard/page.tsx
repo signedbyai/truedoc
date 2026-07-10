@@ -45,6 +45,12 @@ export default async function DashboardPage() {
             <Link href="/dashboard/templates" className="text-sm font-medium text-slate-500 hover:text-slate-700">
               Templates
             </Link>
+            <Link href="/dashboard/team" className="text-sm font-medium text-slate-500 hover:text-slate-700">
+              Team
+            </Link>
+            <Link href="/dashboard/settings" className="text-sm font-medium text-slate-500 hover:text-slate-700">
+              Settings
+            </Link>
             <Link href="/dashboard/billing" className="text-sm font-medium text-slate-500 hover:text-slate-700">
               Billing
             </Link>

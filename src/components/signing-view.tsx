@@ -27,19 +27,31 @@ type Field = {
   value: string | null;
 };
 
+type Branding = {
+  orgId: string;
+  orgName: string;
+  hasBranding: boolean;
+  hasCustomBranding: boolean;
+  hasLogo: boolean;
+  brandColor: string | null;
+};
+
 export function SigningView({
   token,
   documentTitle,
   pageCount,
   signerName,
   fields: initialFields,
+  branding,
 }: {
   token: string;
   documentTitle: string;
   pageCount: number;
   signerName: string | null;
   fields: Field[];
+  branding: Branding;
 }) {
+  const accentColor = branding.hasCustomBranding ? branding.brandColor : null;
   const [pageCanvases, setPageCanvases] = useState<{ page: number; dataUrl: string; width: number; height: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [values, setValues] = useState<Record<string, string>>(() =>
@@ -247,10 +259,23 @@ export function SigningView({
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
-        <div>
-          <h1 className="text-sm font-semibold text-slate-900">{documentTitle}</h1>
-          {signerName && <p className="text-xs text-slate-500">Signing as {signerName}</p>}
+      <div
+        className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3"
+        style={accentColor ? { borderBottomColor: accentColor, borderBottomWidth: 2 } : undefined}
+      >
+        <div className="flex items-center gap-3">
+          {branding.hasCustomBranding && branding.hasLogo && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`/api/org/${branding.orgId}/logo`}
+              alt={branding.orgName}
+              className="h-7 w-7 rounded object-contain"
+            />
+          )}
+          <div>
+            <h1 className="text-sm font-semibold text-slate-900">{documentTitle}</h1>
+            {signerName && <p className="text-xs text-slate-500">Signing as {signerName}</p>}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {error && <span className="text-sm text-red-600">{error}</span>}
@@ -267,7 +292,11 @@ export function SigningView({
           >
             Decline to sign
           </button>
-          <Button onClick={handleSubmit} disabled={submitting}>
+          <Button
+            onClick={handleSubmit}
+            disabled={submitting}
+            style={accentColor ? { backgroundColor: accentColor } : undefined}
+          >
             {submitting ? "Submitting…" : "Sign & submit"}
           </Button>
         </div>
@@ -316,6 +345,10 @@ export function SigningView({
         {!loading && pageCanvases.length === 0 && (
           <p className="text-sm text-red-600">Couldn&apos;t load this document ({pageCount} expected pages).</p>
         )}
+      </div>
+
+      <div className="border-t border-slate-100 bg-white px-6 py-4 text-center text-xs text-slate-400">
+        {branding.hasBranding ? `Sent via ${branding.orgName}` : "Signed with SignedBy"}
       </div>
 
       {showDeclineModal && (
