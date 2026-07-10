@@ -4,8 +4,9 @@ import { getSignerByToken } from "@/lib/signing";
 import { sendSignerInviteEmail, sendCompletionEmail } from "@/lib/email";
 import { generateSignedPdf } from "@/lib/generate-signed-pdf";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { computeSigningOutcome } from "@/lib/signing-routing";
 
-const bodySchema = z.object({
+export const bodySchema = z.object({
   consent: z.literal(true),
   values: z.record(z.string().uuid(), z.string()),
 });
@@ -99,10 +100,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     .eq("document_id", document.id)
     .order("order_index", { ascending: true });
 
-  const stillPending = (allSigners || []).filter((s) => s.id !== signer.id && s.status !== "signed");
-  const documentCompleted = stillPending.length === 0;
+  const outcome = computeSigningOutcome(allSigners || [], signer.id);
+  const documentCompleted = outcome.documentCompleted;
 
-  if (documentCompleted) {
+  if (outcome.documentCompleted) {
     await admin.from("documents").update({ status: "completed" }).eq("id", document.id);
     const { data: completedEvent } = await admin
       .from("audit_events")
@@ -131,42 +132,32 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
         );
       }
     }
-  } else {
-    const currentTier = signer.order_index;
-    const currentTierStillPending = stillPending.some((s) => s.order_index === currentTier);
-    const futureTiers = stillPending.filter((s) => s.order_index > currentTier);
+  } else if (outcome.nextUpSignerIds.length > 0) {
+    const nextUp = (allSigners || []).filter((s) => outcome.nextUpSignerIds.includes(s.id));
+    const { data: org } = await admin
+      .from("documents")
+      .select("org_id, title, organizations(name)")
+      .eq("id", document.id)
+      .single();
+    const senderName = (org as unknown as { organizations?: { name?: string } })?.organizations?.name || "Someone";
 
-    if (!currentTierStillPending && futureTiers.length > 0) {
-      const nextTier = Math.min(...futureTiers.map((s) => s.order_index));
-      const nextUp = futureTiers.filter((s) => s.order_index === nextTier && s.status === "pending");
-      if (nextUp.length > 0) {
-        const { data: org } = await admin
-          .from("documents")
-          .select("org_id, title, organizations(name)")
-          .eq("id", document.id)
-          .single();
-        const senderName =
-          (org as unknown as { organizations?: { name?: string } })?.organizations?.name || "Someone";
-
-        for (const nextSigner of nextUp) {
-          await sendSignerInviteEmail({
-            to: nextSigner.email,
-            signerName: nextSigner.name,
-            senderName,
-            documentTitle: org?.title || document.title,
-            signingToken: nextSigner.signing_token,
-          }).catch((err) => console.error("Invite email failed", err));
-        }
-
-        await admin
-          .from("signers")
-          .update({ status: "sent", sent_at: new Date().toISOString() })
-          .in(
-            "id",
-            nextUp.map((s) => s.id)
-          );
-      }
+    for (const nextSigner of nextUp) {
+      await sendSignerInviteEmail({
+        to: nextSigner.email,
+        signerName: nextSigner.name,
+        senderName,
+        documentTitle: org?.title || document.title,
+        signingToken: nextSigner.signing_token,
+      }).catch((err) => console.error("Invite email failed", err));
     }
+
+    await admin
+      .from("signers")
+      .update({ status: "sent", sent_at: new Date().toISOString() })
+      .in(
+        "id",
+        nextUp.map((s) => s.id)
+      );
   }
 
   return NextResponse.json({ success: true, completed: documentCompleted });

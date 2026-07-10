@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
-const fieldSchema = z.object({
+export const fieldSchema = z.object({
   type: z.enum(["signature", "initials", "date", "text", "checkbox"]),
   page: z.number().int().min(1),
   x: z.number().min(0).max(1),
@@ -15,7 +15,7 @@ const fieldSchema = z.object({
   template_role: z.number().int().nullable().optional(),
 });
 
-const bodySchema = z.object({ fields: z.array(fieldSchema) });
+export const bodySchema = z.object({ fields: z.array(fieldSchema) });
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

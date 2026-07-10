@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { findFreePosition } from "@/lib/field-geometry";
 
 type FieldType = "signature" | "initials" | "date" | "text" | "checkbox";
 
@@ -56,34 +57,6 @@ function recipientColor(recipients: Recipient[], signerId: string | null) {
   if (!signerId) return { border: "border-slate-400", bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400" };
   const idx = recipients.findIndex((r) => r.id === signerId);
   return RECIPIENT_COLORS[idx % RECIPIENT_COLORS.length] ?? RECIPIENT_COLORS[0];
-}
-
-type Rect = { x: number; y: number; width: number; height: number };
-
-function rectsOverlap(a: Rect, b: Rect) {
-  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
-}
-
-// Two fields silently stacking on top of each other used to be possible —
-// the bottom one becomes invisible and, if required, gives the signer no
-// way to find or fill it. Instead of allowing that, nudge a new/moved field
-// down-and-across in small steps until it no longer overlaps anything else
-// on the same page. Gives up gracefully (keeps the requested spot) if the
-// page is too crowded to find a free spot within a reasonable number of tries.
-function findFreePosition(page: number, x: number, y: number, width: number, height: number, existing: Field[]) {
-  const onSamePage = existing.filter((f) => f.page === page);
-  let candidate = { x, y };
-  const step = 0.03;
-
-  for (let attempt = 0; attempt < 40; attempt++) {
-    const collides = onSamePage.some((f) => rectsOverlap({ ...candidate, width, height }, f));
-    if (!collides) return candidate;
-    candidate = {
-      x: Math.min(Math.max(candidate.x + (attempt % 2 === 0 ? step : 0), 0), 1 - width),
-      y: Math.min(Math.max(candidate.y + step, 0), 1 - height),
-    };
-  }
-  return candidate;
 }
 
 export function FieldEditor({ documentId, pageCount }: { documentId: string; pageCount: number }) {
