@@ -28,6 +28,7 @@ export default async function BillingPage({
     .from("organization_members")
     .select("organizations(id, plan, stripe_customer_id)")
     .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
     .limit(1)
     .single();
 

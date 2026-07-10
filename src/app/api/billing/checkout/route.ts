@@ -32,27 +32,37 @@ export async function POST(request: Request) {
   if (!org) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
 
   const stripe = getStripe();
-  let customerId = org.stripe_customer_id;
 
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: user.email,
-      name: org.name,
-      metadata: { org_id: orgId },
+  try {
+    let customerId = org.stripe_customer_id;
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: org.name,
+        metadata: { org_id: orgId },
+      });
+      customerId = customer.id;
+      await supabase.from("organizations").update({ stripe_customer_id: customerId }).eq("id", orgId);
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customerId,
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${appUrl()}/dashboard/billing?success=1`,
+      cancel_url: `${appUrl()}/dashboard/billing?canceled=1`,
+      subscription_data: { metadata: { org_id: orgId, plan } },
+      metadata: { org_id: orgId, plan },
     });
-    customerId = customer.id;
-    await supabase.from("organizations").update({ stripe_customer_id: customerId }).eq("id", orgId);
+
+    return NextResponse.json({ url: session.url });
+  } catch (err) {
+    // Common causes: priceId is from a different mode (test vs live) than
+    // the configured STRIPE_SECRET_KEY, or the stored customer id was
+    // created under a different key/mode.
+    console.error("Stripe checkout session failed", err);
+    const message = err instanceof Error ? err.message : "Couldn't start checkout.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    customer: customerId,
-    line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${appUrl()}/dashboard/billing?success=1`,
-    cancel_url: `${appUrl()}/dashboard/billing?canceled=1`,
-    subscription_data: { metadata: { org_id: orgId, plan } },
-    metadata: { org_id: orgId, plan },
-  });
-
-  return NextResponse.json({ url: session.url });
 }

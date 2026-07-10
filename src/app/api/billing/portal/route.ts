@@ -17,11 +17,20 @@ export async function POST() {
     return NextResponse.json({ error: "No billing account yet — subscribe to a plan first." }, { status: 400 });
   }
 
-  const stripe = getStripe();
-  const session = await stripe.billingPortal.sessions.create({
-    customer: org.stripe_customer_id,
-    return_url: `${appUrl()}/dashboard/billing`,
-  });
-
-  return NextResponse.json({ url: session.url });
+  try {
+    const stripe = getStripe();
+    const session = await stripe.billingPortal.sessions.create({
+      customer: org.stripe_customer_id,
+      return_url: `${appUrl()}/dashboard/billing`,
+    });
+    return NextResponse.json({ url: session.url });
+  } catch (err) {
+    // Common causes: the Customer Portal hasn't been activated for this
+    // Stripe account/mode yet (Settings -> Billing -> Customer portal), or
+    // the stored customer id was created under a different API key/mode
+    // than the one currently configured.
+    console.error("Stripe billing portal session failed", err);
+    const message = err instanceof Error ? err.message : "Couldn't open the billing portal.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
