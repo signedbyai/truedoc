@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getUserAndOrg } from "@/lib/org";
 import { planHasFeature } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
 import { UseTemplateButton } from "@/components/use-template-button";
 import { DeleteTemplateButton } from "@/components/delete-template-button";
 import { BulkSendButton } from "@/components/bulk-send-button";
@@ -27,15 +28,19 @@ export default async function TemplatesPage() {
           </div>
           <Card>
             <CardHeader>
-              <CardTitle>Templates are a Starter plan feature</CardTitle>
-              <CardDescription>
-                Upgrade to Starter ($7/mo) to save reusable field layouts and reuse them across documents.
-              </CardDescription>
+              <CardTitle>Templates</CardTitle>
+              <CardDescription>Save reusable field layouts and reuse them across documents.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Link href="/pricing" className="text-sm font-medium text-slate-900 underline hover:no-underline">
-                View plans
-              </Link>
+              <div className="rounded-md border border-dashed border-slate-300 p-4 text-center">
+                <p className="text-sm font-medium text-slate-900">Templates &amp; reminders</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Saving templates and sending reminders is available on the Starter plan and up.
+                </p>
+                <Link href="/pricing" className={buttonVariants({ size: "default", className: "mt-3" })}>
+                  Upgrade to Starter
+                </Link>
+              </div>
             </CardContent>
           </Card>
         </div>
