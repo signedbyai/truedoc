@@ -10,23 +10,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 // consumes the single-use token before the person ever clicks it — causing
 // "email link is invalid or has expired" and an apparent sign-in loop.
 //
-// Fix: the email link points here with the real link stashed in the URL
-// fragment (the part after #). Fragments are never sent to a server — only
-// JavaScript running in a real browser can read them. So automated scanners
-// hitting this page server-side see nothing to fetch, while a human's browser
-// extracts the real link and finishes sign-in with one click.
+// Fix (per Supabase's own docs, "Option 2" under email prefetching): the email
+// link points here with the real confirmation link passed as a query param
+// instead. This page never auto-follows it — it just shows a button. A scanner
+// that only fetches the URL (not execute JS or click things) never consumes
+// the token; only a human clicking "Continue" does.
 export default function ConfirmPage() {
   const [confirmUrl, setConfirmUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "missing">("idle");
 
   useEffect(() => {
-    // Fragment is only ever available client-side (it's never sent to the
-    // server, by design — that's the whole point of this page), so this has
-    // to run post-mount. One-time read, no cascading updates follow.
-    const hash = window.location.hash.slice(1);
-    if (hash) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client-only read of the URL fragment, cannot be derived during render/SSR
-      setConfirmUrl(hash);
+    const params = new URLSearchParams(window.location.search);
+    const url = params.get("confirmation_url");
+    if (url) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client-only read of the URL query string, cannot be derived during render/SSR
+      setConfirmUrl(url);
     } else {
       setStatus("missing");
     }
