@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { WaitlistForm } from "@/components/waitlist-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
 
 const FEATURES = [
   {
@@ -46,8 +46,10 @@ export default function LandingPage() {
           SignedBy is a fast, affordable alternative for e-Signatures — built for solo professionals and
           small teams who sign a handful of documents a month, not a whole sales floor.
         </p>
-        <WaitlistForm />
-        <p className="text-xs text-slate-400">No credit card. We&apos;ll email you the day we open up.</p>
+        <Link href="/login" className={buttonVariants({ size: "lg" })}>
+          Sign up free
+        </Link>
+        <p className="text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-6 py-12">
