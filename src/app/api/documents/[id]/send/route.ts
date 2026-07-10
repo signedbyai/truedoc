@@ -56,7 +56,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
   await supabase
     .from("signers")
-    .update({ status: "sent" })
+    .update({ status: "sent", sent_at: new Date().toISOString() })
     .in(
       "id",
       toNotify.map((s) => s.id)

@@ -18,6 +18,10 @@ type Field = {
   height: number; // 0-1
   required: boolean;
   signerId: string | null;
+  // Set only on fields seeded from a template, before real recipients exist.
+  // 0-based "recipient slot" — auto-bound to a real signerId as recipients
+  // are added, in order. Meaningless once signerId is set.
+  templateRole: number | null;
 };
 
 type Recipient = {
@@ -68,6 +72,10 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateError, setTemplateError] = useState("");
   const pageRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const dragState = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
 
@@ -92,10 +100,13 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
         }
         if (Array.isArray(fieldsData.fields)) {
           setFields(
-            fieldsData.fields.map((f: Omit<Field, "signerId"> & { signer_id: string | null }) => ({
-              ...f,
-              signerId: f.signer_id,
-            }))
+            fieldsData.fields.map(
+              (f: Omit<Field, "signerId" | "templateRole"> & { signer_id: string | null; template_role: number | null }) => ({
+                ...f,
+                signerId: f.signer_id,
+                templateRole: f.template_role,
+              })
+            )
           );
         }
       })
@@ -145,17 +156,29 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
   function addRecipient() {
     const email = newEmail.trim();
     if (!email) return;
+    const roleClaimed = recipients.length;
     const recipient: Recipient = {
       id: `new-${crypto.randomUUID()}`,
       name: newName.trim(),
       email,
-      order_index: recipients.length,
+      order_index: roleClaimed,
     };
     setRecipients((prev) => [...prev, recipient]);
     setActiveRecipientId(recipient.id);
     setNewName("");
     setNewEmail("");
     setShowAddRecipient(false);
+
+    // Claim any template-seeded fields waiting for this recipient slot —
+    // roles are numbered in the order recipients were added, both when a
+    // template was saved and here when it's reused.
+    setFields((prev) =>
+      prev.map((f) =>
+        f.signerId === null && f.templateRole === roleClaimed
+          ? { ...f, signerId: recipient.id, templateRole: null }
+          : f
+      )
+    );
   }
 
   function removeRecipient(id: string) {
@@ -180,6 +203,7 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
         height: def.height,
         required: true,
         signerId: activeRecipientId,
+        templateRole: null,
       };
       setFields((prev) => [...prev, newField]);
     },
@@ -278,7 +302,7 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        fields: currentFields.map(({ type, page, x, y, width, height, required, signerId }) => ({
+        fields: currentFields.map(({ type, page, x, y, width, height, required, signerId, templateRole }) => ({
           type,
           page,
           x,
@@ -287,6 +311,7 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
           height,
           required,
           signer_id: signerId,
+          template_role: templateRole,
         })),
       }),
     });
@@ -329,6 +354,36 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
     }
   }
 
+  async function handleSaveAsTemplate() {
+    if (!templateName.trim()) return;
+    setSavingTemplate(true);
+    setTemplateError("");
+    const ok = await persist(); // make sure the DB has the latest fields/recipients before reading them back
+    if (!ok) {
+      setTemplateError("Couldn't save — try again.");
+      setSavingTemplate(false);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/documents/${documentId}/save-as-template`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: templateName.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Couldn't save as a template.");
+      }
+      setShowSaveTemplateModal(false);
+      setTemplateName("");
+      setStatusMessage("Saved as template.");
+    } catch (err) {
+      setTemplateError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSavingTemplate(false);
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
       <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
@@ -356,6 +411,16 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
             </Button>
             <Button variant="outline" onClick={handleSaveDraft} disabled={saving || sending}>
               {saving ? "Saving…" : "Save draft"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setTemplateError("");
+                setShowSaveTemplateModal(true);
+              }}
+              disabled={saving || sending || fields.length === 0}
+            >
+              Save as template
             </Button>
             <Button onClick={handleSend} disabled={saving || sending}>
               {sending ? "Sending…" : "Send for signature"}
@@ -473,7 +538,9 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
                       height: `${f.height * 100}%`,
                     }}
                   >
-                    {def.label}
+                    {f.signerId === null && f.templateRole !== null
+                      ? `${def.label} · Signer ${f.templateRole + 1}`
+                      : def.label}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -494,6 +561,38 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
           <p className="text-sm text-red-600">Couldn&apos;t load this document ({pageCount} expected pages).</p>
         )}
       </div>
+
+      {showSaveTemplateModal && (
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+            <p className="text-sm font-medium text-slate-900">Save as template</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Field positions and recipient roles are saved (e.g. &quot;Signer 1&quot;, &quot;Signer 2&quot;) — the
+              actual recipients you pick each time you use this template.
+            </p>
+            <Input
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="Template name"
+              className="mt-3"
+              onKeyDown={(e) => e.key === "Enter" && handleSaveAsTemplate()}
+            />
+            {templateError && <p className="mt-2 text-sm text-red-600">{templateError}</p>}
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setShowSaveTemplateModal(false)}
+                disabled={savingTemplate}
+                className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <Button onClick={handleSaveAsTemplate} disabled={savingTemplate || !templateName.trim()}>
+                {savingTemplate ? "Saving…" : "Save template"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -41,9 +41,14 @@ export default async function DashboardPage() {
             <h1 className="text-2xl font-semibold text-slate-900">Welcome back</h1>
             <p className="text-sm text-slate-600">Signed in as {user.email}</p>
           </div>
-          <Link href="/dashboard/billing" className="text-sm font-medium text-slate-500 hover:text-slate-700">
-            Billing
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/dashboard/templates" className="text-sm font-medium text-slate-500 hover:text-slate-700">
+              Templates
+            </Link>
+            <Link href="/dashboard/billing" className="text-sm font-medium text-slate-500 hover:text-slate-700">
+              Billing
+            </Link>
+          </div>
         </div>
 
         <Card>
@@ -81,9 +86,14 @@ export default async function DashboardPage() {
               <CardTitle>Documents</CardTitle>
               <CardDescription>Upload a PDF and place signature fields.</CardDescription>
             </div>
-            <Link href="/dashboard/documents/new" className={buttonVariants({ size: "default" })}>
-              Upload document
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/dashboard/templates" className={buttonVariants({ variant: "outline", size: "default" })}>
+                From template
+              </Link>
+              <Link href="/dashboard/documents/new" className={buttonVariants({ size: "default" })}>
+                Upload document
+              </Link>
+            </div>
           </CardHeader>
           <CardContent>
             {documents && documents.length > 0 ? (

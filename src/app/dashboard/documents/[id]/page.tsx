@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { FieldEditor } from "@/components/field-editor";
 import { VoidDocumentButton } from "@/components/void-document-button";
+import { RemindSignerButton } from "@/components/remind-signer-button";
 
 const SIGNER_STATUS_LABEL: Record<string, string> = {
   pending: "Not yet sent",
@@ -98,11 +99,16 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
             <h2 className="text-sm font-semibold text-slate-900">Signers</h2>
             <ul className="mt-3 space-y-2 text-sm text-slate-700">
               {(signers || []).map((s) => (
-                <li key={s.id} className="flex items-center justify-between">
+                <li key={s.id} className="flex items-center justify-between gap-3">
                   <span>{s.name ? `${s.name} <${s.email}>` : s.email}</span>
-                  <span className="text-xs text-slate-500">
-                    {SIGNER_STATUS_LABEL[s.status] ?? s.status}
-                    {s.signed_at ? ` · ${new Date(s.signed_at).toLocaleDateString()}` : ""}
+                  <span className="flex items-center gap-2">
+                    {doc.status === "sent" && (s.status === "sent" || s.status === "viewed") && (
+                      <RemindSignerButton documentId={id} signerId={s.id} />
+                    )}
+                    <span className="text-xs text-slate-500">
+                      {SIGNER_STATUS_LABEL[s.status] ?? s.status}
+                      {s.signed_at ? ` · ${new Date(s.signed_at).toLocaleDateString()}` : ""}
+                    </span>
                   </span>
                 </li>
               ))}

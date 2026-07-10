@@ -11,6 +11,8 @@ const fieldSchema = z.object({
   height: z.number().min(0).max(1),
   required: z.boolean().default(true),
   signer_id: z.string().uuid().nullable().optional(),
+  // Only meaningful while signer_id is null — see field-editor.tsx.
+  template_role: z.number().int().nullable().optional(),
 });
 
 const bodySchema = z.object({ fields: z.array(fieldSchema) });
@@ -21,7 +23,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const { data, error } = await supabase
     .from("document_fields")
-    .select("id, type, page, x, y, width, height, required, signer_id")
+    .select("id, type, page, x, y, width, height, required, signer_id, template_role")
     .eq("document_id", id)
     .order("created_at", { ascending: true });
 

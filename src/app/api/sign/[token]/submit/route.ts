@@ -153,7 +153,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
         await admin
           .from("signers")
-          .update({ status: "sent" })
+          .update({ status: "sent", sent_at: new Date().toISOString() })
           .in(
             "id",
             nextUp.map((s) => s.id)

@@ -47,6 +47,34 @@ export async function sendSignerInviteEmail(opts: {
   });
 }
 
+export async function sendReminderEmail(opts: {
+  to: string;
+  signerName: string | null;
+  senderName: string;
+  documentTitle: string;
+  signingToken: string;
+}) {
+  const link = `${appUrl()}/sign/${opts.signingToken}`;
+  const greeting = opts.signerName ? `Hi ${opts.signerName},` : "Hi,";
+
+  await getClient().emails.send({
+    from: FROM,
+    to: opts.to,
+    subject: `Reminder: ${opts.documentTitle} is waiting for your signature`,
+    html: `
+      <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <p>${greeting}</p>
+        <p>Just a reminder — <strong>${opts.senderName}</strong> is still waiting on your signature for
+        <strong>${opts.documentTitle}</strong>.</p>
+        <p style="margin: 32px 0;">
+          <a href="${link}" style="background:#0f172a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Review &amp; sign</a>
+        </p>
+        <p style="color:#64748b;font-size:13px;">No account needed — this link is unique to you. If you weren't expecting this, you can ignore this email.</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendDeclineNotificationEmail(opts: {
   to: string;
   documentTitle: string;
