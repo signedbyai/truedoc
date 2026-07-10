@@ -68,6 +68,12 @@ export function SigningView({
   );
   const [consent, setConsent] = useState(false);
   const [signaturePadFor, setSignaturePadFor] = useState<string | null>(null);
+  // Remembers the last drawn signature/initials so subsequent fields of the
+  // same type in this document are pre-filled instead of forcing a redraw.
+  const [savedTypeValues, setSavedTypeValues] = useState<{ signature: string; initials: string }>({
+    signature: "",
+    initials: "",
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [missingFieldIds, setMissingFieldIds] = useState<Set<string>>(new Set());
@@ -145,7 +151,26 @@ export function SigningView({
     }
     const dataUrl = padRef.current.getTrimmedCanvas().toDataURL("image/png");
     setValue(signaturePadFor, dataUrl);
+    const field = initialFields.find((f) => f.id === signaturePadFor);
+    if (field?.type === "signature" || field?.type === "initials") {
+      setSavedTypeValues((prev) => ({ ...prev, [field.type]: dataUrl }));
+    }
     setSignaturePadFor(null);
+  }
+
+  // Signature/initials fields open the draw pad the first time, but once a
+  // signature (or initials) has been drawn once, later fields of the same
+  // type in this document are filled instantly instead of asking again.
+  // Clicking an already-filled field still reopens the pad to redraw it.
+  function handleSignatureFieldClick(field: Field) {
+    if (!values[field.id]) {
+      const saved = savedTypeValues[field.type as "signature" | "initials"];
+      if (saved) {
+        setValue(field.id, saved);
+        return;
+      }
+    }
+    setSignaturePadFor(field.id);
   }
 
   async function handleSubmit() {
@@ -373,7 +398,7 @@ export function SigningView({
                     value={values[f.id] || ""}
                     invalid={missingFieldIds.has(f.id)}
                     onChange={(v) => setValue(f.id, v)}
-                    onOpenPad={() => setSignaturePadFor(f.id)}
+                    onOpenPad={() => handleSignatureFieldClick(f)}
                   />
                 </div>
               ))}
