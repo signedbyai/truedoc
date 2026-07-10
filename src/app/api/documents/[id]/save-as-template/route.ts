@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserAndOrg } from "@/lib/org";
+import { planHasFeature } from "@/lib/plan";
 
 const bodySchema = z.object({ name: z.string().trim().min(1).max(200) });
 
@@ -21,6 +22,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: "Give the template a name." }, { status: 400 });
+  }
+
+  const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
+  if (!planHasFeature(org?.plan, "templates")) {
+    return NextResponse.json(
+      { error: "Templates are a Starter plan feature. Upgrade to save documents as templates.", upgrade: true },
+      { status: 402 }
+    );
   }
 
   const { data: doc } = await supabase

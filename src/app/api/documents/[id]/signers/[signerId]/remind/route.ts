@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUserAndOrg } from "@/lib/org";
 import { sendReminderEmail } from "@/lib/email";
+import { planHasFeature } from "@/lib/plan";
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string; signerId: string }> }) {
   const { id, signerId } = await params;
@@ -26,7 +27,13 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "This signer hasn't been notified yet, or has already responded." }, { status: 400 });
   }
 
-  const { data: org } = await supabase.from("organizations").select("name").eq("id", orgId).single();
+  const { data: org } = await supabase.from("organizations").select("name, plan").eq("id", orgId).single();
+  if (!planHasFeature(org?.plan, "reminders")) {
+    return NextResponse.json(
+      { error: "Reminders are a Starter plan feature. Upgrade to send reminders.", upgrade: true },
+      { status: 402 }
+    );
+  }
   const senderName = org?.name || user.email || "Someone";
 
   try {

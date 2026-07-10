@@ -13,6 +13,35 @@ export default async function TemplatesPage() {
 
   const { data: org } = await ctx.supabase.from("organizations").select("plan").eq("id", ctx.orgId).single();
   const hasBulkSend = planHasFeature(org?.plan, "bulkSend");
+  const hasTemplates = planHasFeature(org?.plan, "templates");
+
+  if (!hasTemplates) {
+    return (
+      <main className="min-h-screen bg-slate-50 px-6 py-10">
+        <div className="mx-auto max-w-3xl space-y-6">
+          <div>
+            <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
+              ← Dashboard
+            </Link>
+            <h1 className="mt-2 text-2xl font-semibold text-slate-900">Templates</h1>
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Templates are a Starter plan feature</CardTitle>
+              <CardDescription>
+                Upgrade to Starter ($7/mo) to save reusable field layouts and reuse them across documents.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link href="/pricing" className="text-sm font-medium text-slate-900 underline hover:no-underline">
+                View plans
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    );
+  }
 
   const { data: templates } = await ctx.supabase
     .from("templates")

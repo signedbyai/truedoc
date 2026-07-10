@@ -63,12 +63,14 @@ export function FieldEditor({
   documentId,
   pageCount,
   hasPaymentCollection,
+  hasTemplates,
   initialPaymentLinkUrl,
   initialPaymentLabel,
 }: {
   documentId: string;
   pageCount: number;
   hasPaymentCollection: boolean;
+  hasTemplates: boolean;
   initialPaymentLinkUrl: string | null;
   initialPaymentLabel: string | null;
 }) {
@@ -470,16 +472,22 @@ export function FieldEditor({
             <Button variant="outline" onClick={handleSaveDraft} disabled={saving || sending}>
               {saving ? "Saving…" : "Save draft"}
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setTemplateError("");
-                setShowSaveTemplateModal(true);
-              }}
-              disabled={saving || sending || fields.length === 0}
-            >
-              Save as template
-            </Button>
+            {hasTemplates ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setTemplateError("");
+                  setShowSaveTemplateModal(true);
+                }}
+                disabled={saving || sending || fields.length === 0}
+              >
+                Save as template
+              </Button>
+            ) : (
+              <a href="/pricing" className="text-xs text-slate-400 hover:text-slate-600">
+                Save as template (Starter+)
+              </a>
+            )}
             <Button onClick={handleSend} disabled={saving || sending}>
               {sending ? "Sending…" : "Send for signature"}
             </Button>

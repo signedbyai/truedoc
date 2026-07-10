@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserAndOrg } from "@/lib/org";
+import { planHasFeature } from "@/lib/plan";
 
 const bodySchema = z.object({ title: z.string().trim().max(200).optional() });
 
@@ -38,26 +39,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Template not found" }, { status: 404 });
   }
 
-  // Same free-tier monthly document cap as a fresh upload — using a template
-  // still creates a document, so it shouldn't be a way around the paywall.
+  // Templates require at least the Starter plan. Since Free orgs are blocked
+  // here, the old "free plan monthly document cap" check below them is now
+  // unreachable and was removed.
   const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
-  if (!org || org.plan === "free") {
-    const startOfMonth = new Date();
-    startOfMonth.setUTCDate(1);
-    startOfMonth.setUTCHours(0, 0, 0, 0);
-
-    const { count } = await supabase
-      .from("documents")
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", orgId)
-      .gte("created_at", startOfMonth.toISOString());
-
-    if ((count ?? 0) >= 3) {
-      return NextResponse.json(
-        { error: "You've hit the Free plan's 3 documents/month limit. Upgrade to keep going.", upgrade: true },
-        { status: 402 }
-      );
-    }
+  if (!planHasFeature(org?.plan, "templates")) {
+    return NextResponse.json(
+      { error: "Templates are a Starter plan feature. Upgrade to use templates.", upgrade: true },
+      { status: 402 }
+    );
   }
 
   const documentId = crypto.randomUUID();

@@ -4,6 +4,10 @@
 export type PlanId = "free" | "starter" | "team" | "business";
 
 const FEATURE_PLANS = {
+  // Starter: "Templates & reminders" — saving/using templates and both
+  // manual + automatic signer reminders.
+  templates: ["starter", "team", "business"],
+  reminders: ["starter", "team", "business"],
   // Team: "Shared templates" — multiple org members, so templates/documents
   // become genuinely shared instead of single-user.
   teamMembers: ["team", "business"],
@@ -28,6 +32,8 @@ export function planHasFeature(plan: string | null | undefined, feature: Feature
 }
 
 export const FEATURE_UPGRADE_PLAN: Record<Feature, PlanId> = {
+  templates: "starter",
+  reminders: "starter",
   teamMembers: "team",
   bulkSend: "team",
   branding: "team",

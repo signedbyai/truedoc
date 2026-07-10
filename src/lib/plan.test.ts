@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import { planHasFeature } from "./plan";
 
 describe("planHasFeature", () => {
+  it("gates templates/reminders to starter, team, and business", () => {
+    for (const feature of ["templates", "reminders"] as const) {
+      expect(planHasFeature("free", feature)).toBe(false);
+      expect(planHasFeature("starter", feature)).toBe(true);
+      expect(planHasFeature("team", feature)).toBe(true);
+      expect(planHasFeature("business", feature)).toBe(true);
+    }
+  });
+
   it("gates teamMembers/bulkSend/branding to team and business", () => {
     for (const feature of ["teamMembers", "bulkSend", "branding"] as const) {
       expect(planHasFeature("free", feature)).toBe(false);

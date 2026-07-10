@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendReminderEmail } from "@/lib/email";
+import { planHasFeature } from "@/lib/plan";
 
 const REMINDER_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000; // nudge every 3 days until signed, declined, or voided
 const MAX_PER_RUN = 200; // defensive cap so one invocation can't balloon
@@ -13,8 +14,18 @@ type SignerRow = {
   sent_at: string | null;
   last_reminder_at: string | null;
   documents:
-    | { id: string; title: string; status: string; organizations: { name: string | null } | { name: string | null }[] | null }
-    | { id: string; title: string; status: string; organizations: { name: string | null } | { name: string | null }[] | null }[]
+    | {
+        id: string;
+        title: string;
+        status: string;
+        organizations: { name: string | null; plan: string | null } | { name: string | null; plan: string | null }[] | null;
+      }
+    | {
+        id: string;
+        title: string;
+        status: string;
+        organizations: { name: string | null; plan: string | null } | { name: string | null; plan: string | null }[] | null;
+      }[]
     | null;
 };
 
@@ -39,7 +50,7 @@ export async function GET(request: Request) {
   const { data, error } = await admin
     .from("signers")
     .select(
-      "id, name, email, signing_token, sent_at, last_reminder_at, documents(id, title, status, organizations(name))"
+      "id, name, email, signing_token, sent_at, last_reminder_at, documents(id, title, status, organizations(name, plan))"
     )
     .in("status", ["sent", "viewed"])
     .limit(MAX_PER_RUN);
@@ -63,6 +74,7 @@ export async function GET(request: Request) {
     if (now - new Date(lastContact).getTime() < REMINDER_INTERVAL_MS) continue;
 
     const org = firstOf(doc.organizations);
+    if (!planHasFeature(org?.plan, "reminders")) continue; // not entitled to automatic reminders
     const senderName = org?.name || "Someone";
 
     try {

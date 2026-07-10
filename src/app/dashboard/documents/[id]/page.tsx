@@ -36,6 +36,8 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
   const orgData = doc.organizations as unknown as { plan?: string } | { plan?: string }[] | undefined;
   const orgPlan = Array.isArray(orgData) ? orgData[0]?.plan : orgData?.plan;
   const hasPaymentCollection = planHasFeature(orgPlan, "paymentCollection");
+  const hasTemplates = planHasFeature(orgPlan, "templates");
+  const hasReminders = planHasFeature(orgPlan, "reminders");
 
   if (doc.status === "completed") {
     const { data: signers } = await supabase
@@ -109,9 +111,15 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
                 <li key={s.id} className="flex items-center justify-between gap-3">
                   <span>{s.name ? `${s.name} <${s.email}>` : s.email}</span>
                   <span className="flex items-center gap-2">
-                    {doc.status === "sent" && (s.status === "sent" || s.status === "viewed") && (
-                      <RemindSignerButton documentId={id} signerId={s.id} />
-                    )}
+                    {doc.status === "sent" &&
+                      (s.status === "sent" || s.status === "viewed") &&
+                      (hasReminders ? (
+                        <RemindSignerButton documentId={id} signerId={s.id} />
+                      ) : (
+                        <Link href="/pricing" className="text-xs text-slate-400 hover:text-slate-600">
+                          Send reminder (Starter+)
+                        </Link>
+                      ))}
                     <span className="text-xs text-slate-500">
                       {SIGNER_STATUS_LABEL[s.status] ?? s.status}
                       {s.signed_at ? ` · ${new Date(s.signed_at).toLocaleDateString()}` : ""}
@@ -137,6 +145,7 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
       documentId={doc.id}
       pageCount={doc.page_count}
       hasPaymentCollection={hasPaymentCollection}
+      hasTemplates={hasTemplates}
       initialPaymentLinkUrl={doc.payment_link_url}
       initialPaymentLabel={doc.payment_label}
     />
