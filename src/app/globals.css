@@ -18,3 +18,18 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
 }
+
+/* Draws attention to the next field a first-time signer should fill in. */
+@keyframes next-field-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(37, 99, 235, 0);
+  }
+}
+
+.next-field-highlight {
+  animation: next-field-pulse 1.6s ease-out infinite;
+  border-radius: 0.25rem;
+}

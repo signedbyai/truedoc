@@ -87,7 +87,16 @@ export function SigningView({
   const [summary, setSummary] = useState("");
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState("");
+  // One-time first-time-signer guidance. Session-only (no localStorage) —
+  // a signing link is normally opened once per document, so there's little
+  // value in remembering dismissal across visits, and it keeps this from
+  // touching any signer PII.
+  const [showIntro, setShowIntro] = useState(true);
   const padRef = useRef<SignatureCanvas | null>(null);
+
+  const requiredFields = initialFields.filter((f) => f.required);
+  const filledRequiredCount = requiredFields.filter((f) => values[f.id]?.trim()).length;
+  const nextFieldId = requiredFields.find((f) => !values[f.id]?.trim())?.id ?? null;
 
   useEffect(() => {
     let cancelled = false;
@@ -326,6 +335,11 @@ export function SigningView({
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {requiredFields.length > 0 && (
+            <span className="whitespace-nowrap text-xs font-medium text-slate-500">
+              {filledRequiredCount} of {requiredFields.length} field{requiredFields.length === 1 ? "" : "s"} done
+            </span>
+          )}
           {error && <span className="text-sm text-red-600">{error}</span>}
           <button
             onClick={handleOpenSummary}
@@ -349,6 +363,21 @@ export function SigningView({
           </Button>
         </div>
       </div>
+
+      {showIntro && requiredFields.length > 0 && (
+        <div className="flex items-center justify-between gap-3 border-b border-blue-100 bg-blue-50 px-6 py-2.5">
+          <p className="text-xs text-blue-900">
+            Click each highlighted field below to fill it in, then hit <strong>Sign &amp; submit</strong> when
+            you&apos;re done.
+          </p>
+          <button
+            onClick={() => setShowIntro(false)}
+            className="whitespace-nowrap text-xs font-medium text-blue-700 hover:text-blue-900"
+          >
+            Got it
+          </button>
+        </div>
+      )}
 
       <label className="flex items-center gap-2 border-b border-slate-100 bg-white px-6 py-2.5 text-xs text-slate-600">
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="h-3.5 w-3.5" />
@@ -385,7 +414,7 @@ export function SigningView({
                 <div
                   key={f.id}
                   id={`field-${f.id}`}
-                  className="absolute"
+                  className={cn("absolute", f.id === nextFieldId && "next-field-highlight")}
                   style={{
                     left: `${f.x * 100}%`,
                     top: `${f.y * 100}%`,

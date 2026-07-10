@@ -96,6 +96,12 @@ export function FieldEditor({
   const [templateName, setTemplateName] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateError, setTemplateError] = useState("");
+  // First-time-sender guidance — only relevant before any fields exist, so
+  // it naturally disappears for every document after the first one, and
+  // won't flash for a returning document that already has fields once the
+  // initial fetch below resolves.
+  const [fieldsLoaded, setFieldsLoaded] = useState(false);
+  const [showIntro, setShowIntro] = useState(true);
   const pageRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const dragState = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
 
@@ -130,7 +136,8 @@ export function FieldEditor({
           );
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setFieldsLoaded(true));
   }, [documentId]);
 
   // Render PDF pages to images via pdfjs-dist.
@@ -607,6 +614,21 @@ export function FieldEditor({
           )}
         </div>
       </div>
+
+      {showIntro && fieldsLoaded && fields.length === 0 && (
+        <div className="flex items-center justify-between gap-3 border-b border-blue-100 bg-blue-50 px-6 py-2.5">
+          <p className="text-xs text-blue-900">
+            Pick a field type above, then click anywhere on the document to place it. Add recipients below, then
+            send when you&apos;re ready.
+          </p>
+          <button
+            onClick={() => setShowIntro(false)}
+            className="whitespace-nowrap text-xs font-medium text-blue-700 hover:text-blue-900"
+          >
+            Got it
+          </button>
+        </div>
+      )}
 
       {selectedTool && (
         <p className="bg-slate-900 px-6 py-1.5 text-center text-xs text-white">
