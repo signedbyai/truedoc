@@ -39,7 +39,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
   const { data: allFields } = await admin
     .from("document_fields")
-    .select("id, required, signer_id")
+    .select("id, required, signer_id, type")
     .eq("document_id", document.id);
 
   const { count: signerCount } = await admin
@@ -53,7 +53,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
   const missing = myFields.filter((f) => f.required && !parsed.data.values[f.id]?.trim());
   if (missing.length > 0) {
-    return NextResponse.json({ error: "Please fill in all required fields before signing." }, { status: 400 });
+    const labels = Array.from(new Set(missing.map((f) => f.type)));
+    return NextResponse.json(
+      {
+        error: `Please fill in the highlighted field${missing.length > 1 ? "s" : ""} (${labels.join(", ")}) before signing.`,
+        missingFieldIds: missing.map((f) => f.id),
+      },
+      { status: 400 }
+    );
   }
 
   const ip = request.headers.get("x-forwarded-for");

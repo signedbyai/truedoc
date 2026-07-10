@@ -7,6 +7,14 @@ import { cn } from "@/lib/utils";
 
 type FieldType = "signature" | "initials" | "date" | "text" | "checkbox";
 
+const FIELD_LABELS: Record<FieldType, string> = {
+  signature: "Signature",
+  initials: "Initials",
+  date: "Date",
+  text: "Text",
+  checkbox: "Checkbox",
+};
+
 type Field = {
   id: string;
   type: FieldType;
@@ -41,6 +49,7 @@ export function SigningView({
   const [signaturePadFor, setSignaturePadFor] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [missingFieldIds, setMissingFieldIds] = useState<Set<string>>(new Set());
   const [done, setDone] = useState(false);
   const [documentCompleted, setDocumentCompleted] = useState(false);
   const [declined, setDeclined] = useState(false);
@@ -93,6 +102,18 @@ export function SigningView({
 
   function setValue(fieldId: string, value: string) {
     setValues((prev) => ({ ...prev, [fieldId]: value }));
+    if (value.trim()) {
+      setMissingFieldIds((prev) => {
+        if (!prev.has(fieldId)) return prev;
+        const next = new Set(prev);
+        next.delete(fieldId);
+        return next;
+      });
+    }
+  }
+
+  function scrollToField(fieldId: string) {
+    document.getElementById(`field-${fieldId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   function saveSignature() {
@@ -113,12 +134,18 @@ export function SigningView({
     }
     const missing = initialFields.filter((f) => f.required && !values[f.id]?.trim());
     if (missing.length > 0) {
-      setError("Please fill in all required fields.");
+      setMissingFieldIds(new Set(missing.map((f) => f.id)));
+      const labels = Array.from(new Set(missing.map((f) => FIELD_LABELS[f.type])));
+      setError(
+        `Please fill in the highlighted field${missing.length > 1 ? "s" : ""} (${labels.join(", ")}) before signing.`
+      );
+      scrollToField(missing[0].id);
       return;
     }
 
     setSubmitting(true);
     setError("");
+    setMissingFieldIds(new Set());
     try {
       const res = await fetch(`/api/sign/${token}/submit`, {
         method: "POST",
@@ -127,6 +154,10 @@ export function SigningView({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        if (Array.isArray(data.missingFieldIds) && data.missingFieldIds.length > 0) {
+          setMissingFieldIds(new Set(data.missingFieldIds));
+          scrollToField(data.missingFieldIds[0]);
+        }
         throw new Error(data.error || "Something went wrong");
       }
       const data = await res.json().catch(() => ({}));
@@ -261,6 +292,7 @@ export function SigningView({
               .map((f) => (
                 <div
                   key={f.id}
+                  id={`field-${f.id}`}
                   className="absolute"
                   style={{
                     left: `${f.x * 100}%`,
@@ -269,7 +301,13 @@ export function SigningView({
                     height: `${f.height * 100}%`,
                   }}
                 >
-                  <FieldInput field={f} value={values[f.id] || ""} onChange={(v) => setValue(f.id, v)} onOpenPad={() => setSignaturePadFor(f.id)} />
+                  <FieldInput
+                    field={f}
+                    value={values[f.id] || ""}
+                    invalid={missingFieldIds.has(f.id)}
+                    onChange={(v) => setValue(f.id, v)}
+                    onOpenPad={() => setSignaturePadFor(f.id)}
+                  />
                 </div>
               ))}
           </div>
@@ -388,15 +426,20 @@ export function SigningView({
 function FieldInput({
   field,
   value,
+  invalid,
   onChange,
   onOpenPad,
 }: {
   field: Field;
   value: string;
+  invalid: boolean;
   onChange: (v: string) => void;
   onOpenPad: () => void;
 }) {
-  const base = "h-full w-full rounded border-2 text-[10px] font-medium";
+  const base = cn(
+    "h-full w-full rounded border-2 text-[10px] font-medium",
+    invalid && "ring-2 ring-red-500 ring-offset-1"
+  );
 
   if (field.type === "signature" || field.type === "initials") {
     return (

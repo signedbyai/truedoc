@@ -58,6 +58,34 @@ function recipientColor(recipients: Recipient[], signerId: string | null) {
   return RECIPIENT_COLORS[idx % RECIPIENT_COLORS.length] ?? RECIPIENT_COLORS[0];
 }
 
+type Rect = { x: number; y: number; width: number; height: number };
+
+function rectsOverlap(a: Rect, b: Rect) {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+// Two fields silently stacking on top of each other used to be possible —
+// the bottom one becomes invisible and, if required, gives the signer no
+// way to find or fill it. Instead of allowing that, nudge a new/moved field
+// down-and-across in small steps until it no longer overlaps anything else
+// on the same page. Gives up gracefully (keeps the requested spot) if the
+// page is too crowded to find a free spot within a reasonable number of tries.
+function findFreePosition(page: number, x: number, y: number, width: number, height: number, existing: Field[]) {
+  const onSamePage = existing.filter((f) => f.page === page);
+  let candidate = { x, y };
+  const step = 0.03;
+
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const collides = onSamePage.some((f) => rectsOverlap({ ...candidate, width, height }, f));
+    if (!collides) return candidate;
+    candidate = {
+      x: Math.min(Math.max(candidate.x + (attempt % 2 === 0 ? step : 0), 0), 1 - width),
+      y: Math.min(Math.max(candidate.y + step, 0), 1 - height),
+    };
+  }
+  return candidate;
+}
+
 export function FieldEditor({ documentId, pageCount }: { documentId: string; pageCount: number }) {
   const router = useRouter();
   const [selectedTool, setSelectedTool] = useState<FieldType | null>(null);
@@ -193,19 +221,22 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
       const def = fieldDef(selectedTool);
       const x = Math.min(Math.max(clickXFraction - def.width / 2, 0), 1 - def.width);
       const y = Math.min(Math.max(clickYFraction - def.height / 2, 0), 1 - def.height);
-      const newField: Field = {
-        id: `new-${crypto.randomUUID()}`,
-        type: selectedTool,
-        page,
-        x,
-        y,
-        width: def.width,
-        height: def.height,
-        required: true,
-        signerId: activeRecipientId,
-        templateRole: null,
-      };
-      setFields((prev) => [...prev, newField]);
+      setFields((prev) => {
+        const free = findFreePosition(page, x, y, def.width, def.height, prev);
+        const newField: Field = {
+          id: `new-${crypto.randomUUID()}`,
+          type: selectedTool,
+          page,
+          x: free.x,
+          y: free.y,
+          width: def.width,
+          height: def.height,
+          required: true,
+          signerId: activeRecipientId,
+          templateRole: null,
+        };
+        return [...prev, newField];
+      });
     },
     [selectedTool, activeRecipientId]
   );
@@ -218,7 +249,10 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
     placeField(page, xFrac, yFrac);
   }
 
-  function handleFieldMouseDown(e: React.MouseEvent, field: Field) {
+  // Pointer Events (not mouse-only) so this works for touch/iOS drags too,
+  // not just a mouse. touch-none on the field div (below) stops the browser
+  // from treating the drag as a page-scroll gesture.
+  function handleFieldPointerDown(e: React.PointerEvent, field: Field) {
     e.stopPropagation();
     dragState.current = {
       id: field.id,
@@ -228,7 +262,7 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
       origY: field.y,
     };
 
-    function onMove(moveEvent: MouseEvent) {
+    function onMove(moveEvent: PointerEvent) {
       const drag = dragState.current;
       if (!drag) return;
       const container = pageRefs.current[field.page];
@@ -250,13 +284,27 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
     }
 
     function onUp() {
+      const draggedId = dragState.current?.id;
       dragState.current = null;
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      if (!draggedId) return;
+
+      // Snap away from anything it landed on top of, same as new placements.
+      setFields((prev) => {
+        const dragged = prev.find((f) => f.id === draggedId);
+        if (!dragged) return prev;
+        const others = prev.filter((f) => f.id !== draggedId);
+        const free = findFreePosition(dragged.page, dragged.x, dragged.y, dragged.width, dragged.height, others);
+        if (free.x === dragged.x && free.y === dragged.y) return prev;
+        return prev.map((f) => (f.id === draggedId ? { ...f, x: free.x, y: free.y } : f));
+      });
     }
 
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
   }
 
   function removeField(id: string) {
@@ -524,9 +572,9 @@ export function FieldEditor({ documentId, pageCount }: { documentId: string; pag
                 return (
                   <div
                     key={f.id}
-                    onMouseDown={(e) => handleFieldMouseDown(e, f)}
+                    onPointerDown={(e) => handleFieldPointerDown(e, f)}
                     className={cn(
-                      "group absolute flex cursor-move items-center justify-center rounded border-2 text-[10px] font-medium",
+                      "group absolute flex touch-none cursor-move items-center justify-center rounded border-2 text-[10px] font-medium",
                       color.border,
                       color.bg,
                       color.text
