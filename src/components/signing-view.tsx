@@ -47,6 +47,10 @@ export function SigningView({
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
   const [declining, setDeclining] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [summary, setSummary] = useState("");
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState("");
   const padRef = useRef<SignatureCanvas | null>(null);
 
   useEffect(() => {
@@ -157,6 +161,23 @@ export function SigningView({
     }
   }
 
+  async function handleOpenSummary() {
+    setShowSummaryModal(true);
+    if (summary || summaryLoading) return;
+    setSummaryLoading(true);
+    setSummaryError("");
+    try {
+      const res = await fetch(`/api/sign/${token}/summary`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Couldn't generate a summary.");
+      setSummary(data.summary);
+    } catch (err) {
+      setSummaryError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSummaryLoading(false);
+    }
+  }
+
   if (declined) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
@@ -202,6 +223,12 @@ export function SigningView({
         </div>
         <div className="flex items-center gap-3">
           {error && <span className="text-sm text-red-600">{error}</span>}
+          <button
+            onClick={handleOpenSummary}
+            className="rounded-md border border-slate-200 px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          >
+            What am I signing?
+          </button>
           <button
             onClick={() => setShowDeclineModal(true)}
             disabled={submitting}
@@ -282,6 +309,39 @@ export function SigningView({
                 className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
               >
                 {declining ? "Declining…" : "Decline to sign"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSummaryModal && (
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <p className="text-sm font-medium text-slate-900">What am I signing?</p>
+              <button
+                onClick={() => setShowSummaryModal(false)}
+                className="text-sm text-slate-400 hover:text-slate-600"
+              >
+                Close
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              AI-generated summary of &quot;{documentTitle}&quot; — for context only, not legal advice. Read the
+              full document above before signing.
+            </p>
+            <div className="mt-3 min-h-[60px] rounded-md bg-slate-50 p-3 text-sm text-slate-700">
+              {summaryLoading && <span className="text-slate-500">Reading the document…</span>}
+              {!summaryLoading && summaryError && <span className="text-red-600">{summaryError}</span>}
+              {!summaryLoading && !summaryError && summary}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setShowSummaryModal(false)}
+                className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+              >
+                Close
               </button>
             </div>
           </div>
