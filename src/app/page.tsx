@@ -25,7 +25,7 @@ const FEATURES = [
 // placeholders for real ones as they come in (see /logo-source and
 // /starter-proof at the project root).
 const TRUSTED_BY = [
-  { name: "Ironwood Builders", src: "/logos/ironwood-builders.png", height: "h-5" },
+  { name: "Rex Imports", src: "/logos/rex-imports.png", height: "h-5" },
   { name: "ThinQ.ai", src: "/logos/thinq.png", height: "h-5" },
   { name: "Northbridge Capital", src: "/logos/northbridge-capital.png", height: "h-5" },
   { name: "Ashcroft Law Group", src: "/logos/ashcroft-law-group.png", height: "h-5" },
