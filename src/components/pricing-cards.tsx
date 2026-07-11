@@ -110,7 +110,7 @@ export function PricingCards({
                         {isCurrent ? "Current plan" : "Included"}
                       </Button>
                     ) : (
-                      <Link href="/login" className="block">
+                      <Link href="/login?intent=signup" className="block">
                         <Button variant="outline" className="w-full">
                           Get started
                         </Button>
@@ -125,7 +125,7 @@ export function PricingCards({
                       {loadingPlan === p.id ? "Redirecting…" : "Subscribe"}
                     </Button>
                   ) : (
-                    <Link href="/login" className="block">
+                    <Link href="/login?intent=signup" className="block">
                       <Button className="w-full">Sign in to subscribe</Button>
                     </Link>
                   )}

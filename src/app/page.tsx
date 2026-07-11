@@ -49,7 +49,7 @@ export default function LandingPage() {
           SignedBy is a fast, affordable alternative for e-Signatures — built for solo professionals and
           small teams who sign a handful of documents a month, not a whole sales floor.
         </p>
-        <Link href="/login" className={buttonVariants({ size: "lg" })}>
+        <Link href="/login?intent=signup" className={buttonVariants({ size: "lg" })}>
           Sign up free
         </Link>
         <p className="text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
