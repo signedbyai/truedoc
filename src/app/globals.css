@@ -33,3 +33,23 @@ body {
   animation: next-field-pulse 1.6s ease-out infinite;
   border-radius: 0.25rem;
 }
+
+/* Continuous, subtle "trusted by" logo strip on the homepage. Track holds
+   the logo list twice back to back; animating exactly -50% loops seamlessly
+   since the second copy is pixel-identical to the first. */
+@keyframes logo-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-logo-marquee {
+  animation: logo-marquee 32s linear infinite;
+}
+
+.animate-logo-marquee:hover {
+  animation-play-state: paused;
+}

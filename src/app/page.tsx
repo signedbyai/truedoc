@@ -21,6 +21,16 @@ const FEATURES = [
   },
 ];
 
+// Placeholder social proof — swap these for real customer logos as they
+// come in (see /logo-source and /starter-proof at the project root).
+const TRUSTED_BY = [
+  { name: "Ironwood Builders", src: "/logos/ironwood-builders.png" },
+  { name: "Hartwell Accounting", src: "/logos/hartwell-accounting.png" },
+  { name: "Crestline Realty", src: "/logos/crestline-realty.png" },
+  { name: "Ashcroft Law Group", src: "/logos/ashcroft-law-group.png" },
+  { name: "Northbridge Capital", src: "/logos/northbridge-capital.png" },
+];
+
 const PRICING = [
   { name: "Free", price: "$0", blurb: "3 documents/mo, 1 user" },
   { name: "Starter", price: "$7/mo", blurb: "Unlimited documents, 1 user" },
@@ -53,6 +63,25 @@ export default function LandingPage() {
           Sign up free
         </Link>
         <p className="text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl px-6 pb-16">
+        <p className="mb-4 text-center text-xs font-medium uppercase tracking-wide text-slate-400">
+          Trusted by teams at
+        </p>
+        <div className="group overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
+          <div className="animate-logo-marquee flex w-max items-center gap-12">
+            {[...TRUSTED_BY, ...TRUSTED_BY].map((logo, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={`${logo.name}-${i}`}
+                src={logo.src}
+                alt={logo.name}
+                className="h-5 w-auto shrink-0 opacity-40 grayscale transition-opacity hover:opacity-70"
+              />
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-6 py-12">
