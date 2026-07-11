@@ -27,7 +27,7 @@ const FEATURES = [
 const TRUSTED_BY = [
   { name: "Rex Imports", src: "/logos/rex-imports.png", height: "h-5" },
   { name: "ThinQ.ai", src: "/logos/thinq.png", height: "h-5" },
-  { name: "Northbridge Capital", src: "/logos/northbridge-capital.png", height: "h-5" },
+  { name: "Northstar Finance", src: "/logos/northstar-finance.png", height: "h-5" },
   { name: "Ashcroft Law Group", src: "/logos/ashcroft-law-group.png", height: "h-5" },
   { name: "SyncMint", src: "/logos/syncmint.png", height: "h-8" },
 ];
