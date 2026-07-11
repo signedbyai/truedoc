@@ -38,6 +38,54 @@ type Branding = {
 
 type Payment = { url: string; label: string | null } | null;
 
+// System-font stacks for "type to sign" — deliberately not next/font/google
+// webfonts: this keeps the signing page free of any external font fetch
+// (matches the zero-external-font-dependency choice already made for the
+// rest of the app in layout.tsx) while still giving a handful of visually
+// distinct handwriting-style options across platforms.
+const SIGNATURE_STYLES: { id: string; label: string; fontFamily: string; italic?: boolean }[] = [
+  { id: "flowing", label: "Flowing", fontFamily: `"Segoe Script", "Bradley Hand", cursive` },
+  { id: "elegant", label: "Elegant", fontFamily: `"Lucida Handwriting", "Brush Script MT", cursive` },
+  { id: "casual", label: "Casual", fontFamily: `"Segoe Print", "Comic Sans MS", cursive` },
+  { id: "classic", label: "Classic", fontFamily: `Georgia, "Times New Roman", serif`, italic: true },
+];
+
+// Renders typed text in the chosen style to an offscreen canvas and returns
+// a PNG data URL — same output shape the draw pad already produces, so
+// nothing downstream (caching, PDF baking) needs to know which mode was used.
+function renderTypedSignature(text: string, style: { fontFamily: string; italic?: boolean }): string {
+  const canvas = document.createElement("canvas");
+  canvas.width = 440;
+  canvas.height = 160;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const prefix = style.italic ? "italic " : "";
+  const maxWidth = canvas.width - 48;
+  let fontSize = 56;
+  while (fontSize > 18) {
+    ctx.font = `${prefix}${fontSize}px ${style.fontFamily}`;
+    if (ctx.measureText(text).width <= maxWidth) break;
+    fontSize -= 2;
+  }
+  ctx.fillStyle = "#0f172a";
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2 + 4);
+  return canvas.toDataURL("image/png");
+}
+
+function defaultTypedValue(field: Field, signerName: string | null): string {
+  if (!signerName) return "";
+  if (field.type === "initials") {
+    return signerName
+      .trim()
+      .split(/\s+/)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("");
+  }
+  return signerName;
+}
+
 export function SigningView({
   token,
   documentTitle,
@@ -68,6 +116,11 @@ export function SigningView({
   );
   const [consent, setConsent] = useState(false);
   const [signaturePadFor, setSignaturePadFor] = useState<string | null>(null);
+  // "Type" is the default tab (matches SignNow/DocuSign) since it produces a
+  // legible result on the first try; "Draw" remains available as a fallback.
+  const [padMode, setPadMode] = useState<"type" | "draw">("type");
+  const [typedValue, setTypedValue] = useState("");
+  const [typedStyleIndex, setTypedStyleIndex] = useState(0);
   // Remembers the last drawn signature/initials so subsequent fields of the
   // same type in this document are pre-filled instead of forcing a redraw.
   const [savedTypeValues, setSavedTypeValues] = useState<{ signature: string; initials: string }>({
@@ -152,7 +205,7 @@ export function SigningView({
     document.getElementById(`field-${fieldId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
-  function saveSignature() {
+  function saveDrawnSignature() {
     if (!signaturePadFor || !padRef.current) return;
     if (padRef.current.isEmpty()) {
       setSignaturePadFor(null);
@@ -167,10 +220,24 @@ export function SigningView({
     setSignaturePadFor(null);
   }
 
-  // Signature/initials fields open the draw pad the first time, but once a
-  // signature (or initials) has been drawn once, later fields of the same
+  function saveTypedSignature() {
+    if (!signaturePadFor) return;
+    const text = typedValue.trim();
+    if (!text) return;
+    const dataUrl = renderTypedSignature(text, SIGNATURE_STYLES[typedStyleIndex]);
+    setValue(signaturePadFor, dataUrl);
+    const field = initialFields.find((f) => f.id === signaturePadFor);
+    if (field?.type === "signature" || field?.type === "initials") {
+      setSavedTypeValues((prev) => ({ ...prev, [field.type]: dataUrl }));
+    }
+    setSignaturePadFor(null);
+  }
+
+  // Signature/initials fields open the pad the first time, but once a
+  // signature (or initials) has been set once, later fields of the same
   // type in this document are filled instantly instead of asking again.
-  // Clicking an already-filled field still reopens the pad to redraw it.
+  // Clicking an already-filled field still reopens the pad (defaulted back
+  // to "Type") to redo it.
   function handleSignatureFieldClick(field: Field) {
     if (!values[field.id]) {
       const saved = savedTypeValues[field.type as "signature" | "initials"];
@@ -179,6 +246,9 @@ export function SigningView({
         return;
       }
     }
+    setPadMode("type");
+    setTypedStyleIndex(0);
+    setTypedValue(defaultTypedValue(field, signerName));
     setSignaturePadFor(field.id);
   }
 
@@ -511,39 +581,115 @@ export function SigningView({
         </div>
       )}
 
-      {signaturePadFor && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-xl">
-            <p className="mb-2 text-sm font-medium text-slate-700">Draw your signature</p>
-            <div className="rounded border border-slate-300">
-              <SignatureCanvas
-                ref={(ref) => {
-                  padRef.current = ref;
-                }}
-                penColor="#0f172a"
-                canvasProps={{ width: 440, height: 160, className: "rounded" }}
-              />
-            </div>
-            <div className="mt-3 flex justify-between">
-              <button
-                onClick={() => padRef.current?.clear()}
-                className="text-sm text-slate-500 hover:text-slate-700"
-              >
-                Clear
-              </button>
-              <div className="flex gap-2">
+      {signaturePadFor && (() => {
+        const padField = initialFields.find((f) => f.id === signaturePadFor);
+        const isInitials = padField?.type === "initials";
+        const actionLabel = isInitials ? "initials" : "signature";
+        return (
+          <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-4">
+            <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-xl">
+              <p className="mb-3 text-sm font-medium text-slate-700">
+                Add your {actionLabel}
+              </p>
+
+              <div className="mb-3 flex gap-1 rounded-md bg-slate-100 p-1">
                 <button
-                  onClick={() => setSignaturePadFor(null)}
-                  className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+                  onClick={() => setPadMode("type")}
+                  className={cn(
+                    "flex-1 rounded px-3 py-1.5 text-sm font-medium transition-colors",
+                    padMode === "type" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                  )}
                 >
-                  Cancel
+                  Type
                 </button>
-                <Button onClick={saveSignature}>Use this signature</Button>
+                <button
+                  onClick={() => setPadMode("draw")}
+                  className={cn(
+                    "flex-1 rounded px-3 py-1.5 text-sm font-medium transition-colors",
+                    padMode === "draw" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                  )}
+                >
+                  Draw
+                </button>
               </div>
+
+              {padMode === "type" ? (
+                <>
+                  <input
+                    type="text"
+                    value={typedValue}
+                    onChange={(e) => setTypedValue(e.target.value)}
+                    placeholder={isInitials ? "Your initials" : "Your full name"}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400"
+                  />
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {SIGNATURE_STYLES.map((style, i) => (
+                      <button
+                        key={style.id}
+                        onClick={() => setTypedStyleIndex(i)}
+                        className={cn(
+                          "rounded-md border px-2 py-3 text-center",
+                          typedStyleIndex === i
+                            ? "border-slate-900 ring-1 ring-slate-900"
+                            : "border-slate-200 hover:border-slate-300"
+                        )}
+                      >
+                        <span
+                          className="block truncate text-xl text-slate-900"
+                          style={{ fontFamily: style.fontFamily, fontStyle: style.italic ? "italic" : "normal" }}
+                        >
+                          {typedValue.trim() || (isInitials ? "AB" : "Your name")}
+                        </span>
+                        <span className="mt-1 block text-[10px] text-slate-400">{style.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex justify-end gap-2">
+                    <button
+                      onClick={() => setSignaturePadFor(null)}
+                      className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <Button onClick={saveTypedSignature} disabled={!typedValue.trim()}>
+                      Use this {actionLabel}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="rounded border border-slate-300">
+                    <SignatureCanvas
+                      ref={(ref) => {
+                        padRef.current = ref;
+                      }}
+                      penColor="#0f172a"
+                      canvasProps={{ width: 440, height: 160, className: "rounded" }}
+                    />
+                  </div>
+                  <div className="mt-3 flex justify-between">
+                    <button
+                      onClick={() => padRef.current?.clear()}
+                      className="text-sm text-slate-500 hover:text-slate-700"
+                    >
+                      Clear
+                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setSignaturePadFor(null)}
+                        className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+                      >
+                        Cancel
+                      </button>
+                      <Button onClick={saveDrawnSignature}>Use this {actionLabel}</Button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
