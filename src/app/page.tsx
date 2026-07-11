@@ -21,14 +21,15 @@ const FEATURES = [
   },
 ];
 
-// Placeholder social proof — swap these for real customer logos as they
-// come in (see /logo-source and /starter-proof at the project root).
+// Mix of real early customers and placeholder logos — swap the remaining
+// placeholders for real ones as they come in (see /logo-source and
+// /starter-proof at the project root).
 const TRUSTED_BY = [
   { name: "Ironwood Builders", src: "/logos/ironwood-builders.png" },
-  { name: "Hartwell Accounting", src: "/logos/hartwell-accounting.png" },
-  { name: "Crestline Realty", src: "/logos/crestline-realty.png" },
+  { name: "ThinQ.ai", src: "/logos/thinq.png" },
+  { name: "Symposya", src: "/logos/symposya.png" },
   { name: "Ashcroft Law Group", src: "/logos/ashcroft-law-group.png" },
-  { name: "Northbridge Capital", src: "/logos/northbridge-capital.png" },
+  { name: "SyncMint", src: "/logos/syncmint.png" },
 ];
 
 const PRICING = [
@@ -67,7 +68,7 @@ export default function LandingPage() {
 
       <section className="mx-auto w-full max-w-3xl px-6 pb-16">
         <p className="mb-4 text-center text-xs font-medium uppercase tracking-wide text-slate-400">
-          Trusted by teams at
+          Trusted by Solo Professionals and Teams
         </p>
         <div className="group overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
           <div className="animate-logo-marquee flex w-max items-center gap-12">
