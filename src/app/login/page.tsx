@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useTransition } from "react";
+import { Suspense, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,19 @@ export default function LoginPage() {
   );
 }
 
+// OAuth failures (wrong provider config, provider not returning an email,
+// etc.) come back from Supabase as a URL hash fragment on this same page
+// (e.g. #error=server_error&error_description=...), not a query param — and
+// hash fragments are never sent to the server, so our own /auth/callback
+// route can't see or forward them. Without this, a failed Google/Microsoft
+// sign-in silently dumps the user back on this page with zero explanation.
+function readOAuthErrorFromHash(): string | null {
+  if (typeof window === "undefined" || !window.location.hash) return null;
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const description = params.get("error_description");
+  return description ? description.replace(/\+/g, " ") : null;
+}
+
 function LoginPageInner() {
   const searchParams = useSearchParams();
   const isSignup = searchParams.get("intent") === "signup";
@@ -56,9 +69,18 @@ function LoginPageInner() {
   const [view, setView] = useState<AuthView>("email");
   const [passwordMode, setPasswordMode] = useState<PasswordMode>("signin");
   const [isPending, startTransition] = useTransition();
-  const [status, setStatus] = useState<"idle" | "sent" | "error">("idle");
-  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<"idle" | "sent" | "error">(() => (readOAuthErrorFromHash() ? "error" : "idle"));
+  const [message, setMessage] = useState(() => readOAuthErrorFromHash() ?? "");
   const [oauthLoading, setOauthLoading] = useState<"google" | "azure" | null>(null);
+
+  // Strip the error out of the URL once rendered so a refresh doesn't keep
+  // re-showing a stale error. This only touches browser history (an
+  // external system), not component state, so it belongs in an effect.
+  useEffect(() => {
+    if (window.location.hash) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+  }, []);
 
   function resetStatus() {
     setStatus("idle");
