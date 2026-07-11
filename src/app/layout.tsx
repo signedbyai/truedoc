@@ -5,10 +5,27 @@ import "./globals.css";
 // next/font/google — one less external network dependency at build time,
 // and it renders instantly with zero font-loading flash.
 
+const TITLE = "SignedBy — Simple e-signatures without the per-seat tax";
+const DESCRIPTION =
+  "SignedBy is a lean, affordable e-signature tool for solo professionals and small teams. Upload, send, and sign in minutes — legally binding under ESIGN and UETA.";
+
 export const metadata: Metadata = {
-  title: "SignedBy — Simple e-signatures without the per-seat tax",
-  description:
-    "SignedBy is a lean, affordable e-signature tool for solo professionals and small teams. Upload, send, and sign in minutes — legally binding under ESIGN and UETA.",
+  metadataBase: new URL("https://signedby.ai"),
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: "https://signedby.ai",
+    siteName: "SignedBy",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 };
 
 export default function RootLayout({
