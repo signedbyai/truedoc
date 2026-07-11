@@ -36,12 +36,12 @@ export default async function DashboardPage() {
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-10">
       <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">Welcome back</h1>
             <p className="text-sm text-slate-600">Signed in as {user.email}</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link href="/dashboard/documents" className="text-sm font-medium text-slate-500 hover:text-slate-700">
               Documents
             </Link>
@@ -90,12 +90,12 @@ export default async function DashboardPage() {
         </Card>
 
         <Card>
-          <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardHeader className="flex flex-col items-start gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>Recent documents</CardTitle>
               <CardDescription>Upload a PDF and place signature fields.</CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Link href="/dashboard/templates" className={buttonVariants({ variant: "outline", size: "default" })}>
                 From template
               </Link>

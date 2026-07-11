@@ -97,7 +97,7 @@ export default async function DocumentsPage({
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-10">
       <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
               ← Dashboard
