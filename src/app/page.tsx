@@ -21,13 +21,14 @@ const FEATURES = [
   },
 ];
 
-// All real early customers — the last three placeholders were swapped out
-// for actual client logos on 2026-07-12.
+// Mix of real early customers and placeholder logos — swap the remaining
+// placeholders for real ones as they come in (see /logo-source and
+// /starter-proof at the project root).
 const TRUSTED_BY = [
-  { name: "Braak Bouw", src: "/logos/braak-bouw.png", height: "h-5" },
+  { name: "Ironwood Builders", src: "/logos/ironwood-builders.png", height: "h-5" },
   { name: "ThinQ.ai", src: "/logos/thinq.png", height: "h-5" },
-  { name: "Poundwise", src: "/logos/poundwise.png", height: "h-5" },
-  { name: "PocketCFO", src: "/logos/pocketcfo.png", height: "h-5" },
+  { name: "Northbridge Capital", src: "/logos/northbridge-capital.png", height: "h-5" },
+  { name: "Ashcroft Law Group", src: "/logos/ashcroft-law-group.png", height: "h-5" },
   { name: "SyncMint", src: "/logos/syncmint.png", height: "h-8" },
 ];
 
