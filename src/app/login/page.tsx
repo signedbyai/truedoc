@@ -25,6 +25,19 @@ function GoogleIcon() {
   );
 }
 
+// Microsoft's four-color square mark — used at icon size for the social
+// sign-in button, per Microsoft's identity branding guidelines.
+function MicrosoftIcon() {
+  return (
+    <svg viewBox="0 0 21 21" className="h-5 w-5" aria-hidden="true">
+      <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+      <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+      <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+      <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+    </svg>
+  );
+}
+
 // Slim wrapper so useSearchParams (client-only) doesn't block static
 // rendering of the rest of the page — Next requires a Suspense boundary
 // around any component that reads the search string.
@@ -45,7 +58,7 @@ function LoginPageInner() {
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState<"idle" | "sent" | "error">("idle");
   const [message, setMessage] = useState("");
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<"google" | "azure" | null>(null);
 
   function resetStatus() {
     setStatus("idle");
@@ -113,19 +126,19 @@ function LoginPageInner() {
     });
   }
 
-  async function handleGoogle() {
-    setGoogleLoading(true);
+  async function handleOAuth(provider: "google" | "azure") {
+    setOauthLoading(provider);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
+      provider,
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     if (error) {
-      setGoogleLoading(false);
+      setOauthLoading(null);
       setStatus("error");
       setMessage(error.message);
     }
-    // On success the browser navigates away to Google, so no further state change needed.
+    // On success the browser navigates away to the provider, so no further state change needed.
   }
 
   return (
@@ -174,13 +187,23 @@ function LoginPageInner() {
             <div className="flex justify-center gap-3">
               <button
                 type="button"
-                onClick={handleGoogle}
-                disabled={googleLoading}
+                onClick={() => handleOAuth("google")}
+                disabled={oauthLoading !== null}
                 aria-label="Continue with Google"
                 title="Continue with Google"
                 className="flex h-12 w-12 items-center justify-center rounded-md border border-slate-300 bg-white transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50"
               >
                 <GoogleIcon />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOAuth("azure")}
+                disabled={oauthLoading !== null}
+                aria-label="Continue with Microsoft"
+                title="Continue with Microsoft"
+                className="flex h-12 w-12 items-center justify-center rounded-md border border-slate-300 bg-white transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50"
+              >
+                <MicrosoftIcon />
               </button>
             </div>
 
