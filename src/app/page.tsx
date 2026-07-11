@@ -90,7 +90,7 @@ export default function LandingPage() {
 
       <footer className="mt-auto border-t border-slate-100 px-6 py-8 text-center text-xs text-slate-400">
         <p>© {new Date().getFullYear()} SignedBy. signedby.ai</p>
-        <p className="mt-1">A SPRK10 B.V. company, KVK 98888625</p>
+        <p className="mt-1">A trading name of SPRK10 B.V. KVK 98888625</p>
         <p className="mt-2 space-x-4">
           <Link href="/terms" className="hover:text-slate-600">
             Terms
