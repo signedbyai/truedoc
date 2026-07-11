@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { FieldEditor } from "@/components/field-editor";
 import { VoidDocumentButton } from "@/components/void-document-button";
 import { RemindSignerButton } from "@/components/remind-signer-button";
+import { CopySigningLinkButton } from "@/components/copy-signing-link-button";
 import { AuditTrail, type AuditEvent } from "@/components/audit-trail";
 import { planHasFeature } from "@/lib/plan";
 
@@ -96,7 +97,7 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
   if (doc.status === "sent" || doc.status === "declined" || doc.status === "voided") {
     const { data: signers } = await supabase
       .from("signers")
-      .select("id, name, email, status, signed_at")
+      .select("id, name, email, status, signed_at, signing_token")
       .eq("document_id", id)
       .order("order_index", { ascending: true });
 
@@ -131,6 +132,9 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
                 <li key={s.id} className="flex items-center justify-between gap-3">
                   <span>{s.name ? `${s.name} <${s.email}>` : s.email}</span>
                   <span className="flex items-center gap-2">
+                    {doc.status === "sent" && (s.status === "sent" || s.status === "viewed") && (
+                      <CopySigningLinkButton signingToken={s.signing_token} />
+                    )}
                     {doc.status === "sent" &&
                       (s.status === "sent" || s.status === "viewed") &&
                       (hasReminders ? (
