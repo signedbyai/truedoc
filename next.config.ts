@@ -41,6 +41,16 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // pdfjs-dist (server-side PDF text extraction, see src/lib/pdf-text.ts)
+  // ships as a large pre-built .mjs and does its own dynamic requires
+  // internally. Marking it external tells Next to leave it as a plain
+  // node_modules require instead of trying to bundle it, which is what lets
+  // it actually be traced into the API route's serverless function bundle.
+  // (We previously also depended on @napi-rs/canvas here for a native
+  // DOMMatrix polyfill; that native binary wasn't reliably traced into the
+  // Vercel function bundle even with this setting, so it was replaced with
+  // a pure-JS polyfill in pdf-text.ts instead — see the comment there.)
+  serverExternalPackages: ["pdfjs-dist"],
   async headers() {
     return [
       {
