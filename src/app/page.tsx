@@ -25,11 +25,11 @@ const FEATURES = [
 // placeholders for real ones as they come in (see /logo-source and
 // /starter-proof at the project root).
 const TRUSTED_BY = [
-  { name: "Ironwood Builders", src: "/logos/ironwood-builders.png" },
-  { name: "ThinQ.ai", src: "/logos/thinq.png" },
-  { name: "Symposya", src: "/logos/symposya.png" },
-  { name: "Ashcroft Law Group", src: "/logos/ashcroft-law-group.png" },
-  { name: "SyncMint", src: "/logos/syncmint.png" },
+  { name: "Ironwood Builders", src: "/logos/ironwood-builders.png", height: "h-5" },
+  { name: "ThinQ.ai", src: "/logos/thinq.png", height: "h-5" },
+  { name: "Symposya", src: "/logos/symposya.png", height: "h-5" },
+  { name: "Ashcroft Law Group", src: "/logos/ashcroft-law-group.png", height: "h-5" },
+  { name: "SyncMint", src: "/logos/syncmint.png", height: "h-8" },
 ];
 
 const PRICING = [
@@ -68,7 +68,7 @@ export default function LandingPage() {
 
       <section className="mx-auto w-full max-w-3xl px-6 pb-16">
         <p className="mb-4 text-center text-xs font-medium uppercase tracking-wide text-slate-400">
-          Trusted by Solo Professionals and Teams
+          Trusted by
         </p>
         <div className="group overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
           <div className="animate-logo-marquee flex w-max items-center gap-12">
@@ -78,7 +78,7 @@ export default function LandingPage() {
                 key={`${logo.name}-${i}`}
                 src={logo.src}
                 alt={logo.name}
-                className="h-5 w-auto shrink-0 opacity-40 grayscale transition-opacity hover:opacity-70"
+                className={`${logo.height} w-auto shrink-0 opacity-40 grayscale transition-opacity hover:opacity-70`}
               />
             ))}
           </div>
