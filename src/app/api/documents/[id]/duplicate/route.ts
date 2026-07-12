@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUserAndOrg } from "@/lib/org";
 import { copyInR2 } from "@/lib/r2";
+import { checkFreePlanDocCap } from "@/lib/plan";
 
 // Duplicates a document (any status) into a brand-new draft in the same
 // org: same PDF (its own independent R2 copy, not a shared key — see
@@ -29,25 +30,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   // Same free-plan monthly cap as a fresh upload (POST /api/documents) —
   // duplicating still creates a new `documents` row, so without this check
   // a Free org could upload once and duplicate past the limit for free.
-  const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
-  if (!org || org.plan === "free") {
-    const startOfMonth = new Date();
-    startOfMonth.setUTCDate(1);
-    startOfMonth.setUTCHours(0, 0, 0, 0);
-
-    const { count } = await supabase
-      .from("documents")
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", orgId)
-      .gte("created_at", startOfMonth.toISOString());
-
-    if ((count ?? 0) >= 3) {
-      return NextResponse.json(
-        { error: "You've hit the Free plan's 3 documents/month limit. Upgrade to keep going.", upgrade: true },
-        { status: 402 }
-      );
-    }
-  }
+  const capResponse = await checkFreePlanDocCap(supabase, orgId);
+  if (capResponse) return capResponse;
 
   const documentId = crypto.randomUUID();
   const destKey = `${orgId}/${documentId}/${source.original_filename}`;

@@ -3,6 +3,7 @@ import { PDFDocument } from "pdf-lib";
 import { getUserAndOrg } from "@/lib/org";
 import { uploadToR2 } from "@/lib/r2";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { checkFreePlanDocCap } from "@/lib/plan";
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25MB — generous for contracts, keeps R2/function costs predictable
 
@@ -18,25 +19,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Too many uploads. Try again in a few minutes." }, { status: 429 });
   }
 
-  const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
-  if (!org || org.plan === "free") {
-    const startOfMonth = new Date();
-    startOfMonth.setUTCDate(1);
-    startOfMonth.setUTCHours(0, 0, 0, 0);
-
-    const { count } = await supabase
-      .from("documents")
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", orgId)
-      .gte("created_at", startOfMonth.toISOString());
-
-    if ((count ?? 0) >= 3) {
-      return NextResponse.json(
-        { error: "You've hit the Free plan's 3 documents/month limit. Upgrade to keep going.", upgrade: true },
-        { status: 402 }
-      );
-    }
-  }
+  const capResponse = await checkFreePlanDocCap(supabase, orgId);
+  if (capResponse) return capResponse;
 
   const formData = await request.formData();
   const file = formData.get("file");
