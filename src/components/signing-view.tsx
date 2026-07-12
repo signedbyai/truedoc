@@ -75,6 +75,18 @@ function renderTypedSignature(text: string, style: { fontFamily: string; italic?
   return canvas.toDataURL("image/png");
 }
 
+// Tiny tactile-feedback helper for the mobile card/swipe flows. Feature-
+// detected and silently a no-op where unsupported -- notably iOS Safari,
+// which has never implemented the Vibration API, so this only actually
+// fires for Android visitors. Never call this from anything that must
+// behave identically across platforms; it's pure delight, not a signal
+// anything downstream depends on.
+function vibrate(pattern: number | number[]) {
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    navigator.vibrate(pattern);
+  }
+}
+
 function defaultTypedValue(field: Field, signerName: string | null): string {
   if (!signerName) return "";
   if (field.type === "initials") {
@@ -240,6 +252,7 @@ export function SigningView({
   // isn't the current card).
   function advanceCardIfCurrent(fieldId: string) {
     if (viewMode === "card" && currentCardField?.id === fieldId) {
+      vibrate(15);
       goNextCard();
     }
   }
@@ -1129,6 +1142,7 @@ function SwipeToSubmit({
     if (completion >= CONFIRM_THRESHOLD) {
       setDragLeft(maxLeft());
       setConfirmed(true);
+      vibrate(30);
       onConfirm();
     } else {
       setDragLeft(0);
