@@ -21,13 +21,13 @@ const FEATURES = [
   },
 ];
 
-// Mix of real early customers and placeholder logos — swap the remaining
-// placeholders for real ones as they come in (see /logo-source and
-// /starter-proof at the project root).
+// Only SyncMint is a real early customer right now — the other four are
+// placeholder names/logos again (back to the original set from before any
+// real client logos were wired in) until more real logos actually come in.
 const TRUSTED_BY = [
-  { name: "Rex Imports", src: "/logos/rex-imports.png", height: "h-5" },
-  { name: "ThinQ.ai", src: "/logos/thinq.png", height: "h-5" },
-  { name: "Northstar Finance", src: "/logos/northstar-finance.png", height: "h-5" },
+  { name: "Ironwood Builders", src: "/logos/ironwood-builders.png", height: "h-5" },
+  { name: "Hartwell Accounting", src: "/logos/hartwell-accounting.png", height: "h-5" },
+  { name: "Crestline Realty", src: "/logos/crestline-realty.png", height: "h-5" },
   { name: "Ashcroft Law Group", src: "/logos/ashcroft-law-group.png", height: "h-5" },
   { name: "SyncMint", src: "/logos/syncmint.png", height: "h-8" },
 ];
