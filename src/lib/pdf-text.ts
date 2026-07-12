@@ -27,10 +27,20 @@ export async function extractPdfText(bytes: Buffer, maxChars = 12000): Promise<s
   let text = "";
   for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
     if (text.length >= maxChars) break;
-    const page = await pdf.getPage(pageNum);
-    const content = await page.getTextContent();
-    const pageText = content.items.map((item) => ("str" in item ? item.str : "")).join(" ");
-    text += pageText + "\n\n";
+    // One malformed page (a broken embedded font, an unusual content stream
+    // — real-world PDFs, especially complex multi-column academic/technical
+    // papers with figures, occasionally have one) used to fail the entire
+    // extraction and surface as "Could not read this document" even though
+    // every other page was perfectly readable. Skip just the bad page and
+    // keep going instead.
+    try {
+      const page = await pdf.getPage(pageNum);
+      const content = await page.getTextContent();
+      const pageText = content.items.map((item) => ("str" in item ? item.str : "")).join(" ");
+      text += pageText + "\n\n";
+    } catch (err) {
+      console.error(`PDF text extraction failed on page ${pageNum}, skipping`, err);
+    }
   }
 
   return text.slice(0, maxChars).trim();

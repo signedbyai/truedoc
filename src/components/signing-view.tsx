@@ -183,6 +183,17 @@ export function SigningView({
   const requiredFields = initialFields.filter((f) => f.required);
   const filledRequiredCount = requiredFields.filter((f) => values[f.id]?.trim()).length;
   const nextFieldId = requiredFields.find((f) => !values[f.id]?.trim())?.id ?? null;
+  const allRequiredFilled = filledRequiredCount === requiredFields.length;
+  // Gates the mobile swipe-to-confirm bar so it only looks/feels active
+  // once there's actually nothing left to do — mirrors handleSubmit's own
+  // validation, but surfaced as a disabled state rather than only an error
+  // shown after a completed swipe.
+  const readyToSubmit = consent && allRequiredFilled;
+  const swipeLabel = !allRequiredFilled
+    ? "Complete required fields to continue"
+    : !consent
+      ? "Check the box above to continue"
+      : "Slide to sign & submit";
 
   // Every field (required or not) in reading order, for card-mode paging.
   const orderedFields = [...initialFields].sort(
@@ -756,7 +767,12 @@ export function SigningView({
       {/* Mobile-only fixed swipe-to-confirm bar -- the desktop header button
           (hidden here via sm:hidden) covers larger screens. */}
       <div className="fixed inset-x-0 bottom-0 z-10 border-t border-slate-200 bg-white px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] sm:hidden">
-        <SwipeToSubmit onConfirm={handleSubmit} submitting={submitting} label="Slide to sign & submit" />
+        <SwipeToSubmit
+          onConfirm={handleSubmit}
+          submitting={submitting}
+          disabled={!readyToSubmit}
+          label={swipeLabel}
+        />
       </div>
 
       {showDeclineModal && (
@@ -1124,10 +1140,12 @@ function CardFieldInput({
 function SwipeToSubmit({
   onConfirm,
   submitting,
+  disabled,
   label,
 }: {
   onConfirm: () => void;
   submitting: boolean;
+  disabled?: boolean;
   label: string;
 }) {
   const HANDLE_SIZE = 56;
@@ -1161,7 +1179,7 @@ function SwipeToSubmit({
   }
 
   function handlePointerDown(e: React.PointerEvent) {
-    if (submitting || confirmed) return;
+    if (submitting || confirmed || disabled) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     dragStartRef.current = { startX: e.clientX, startLeft: dragLeft };
     setIsDragging(true);
@@ -1190,12 +1208,23 @@ function SwipeToSubmit({
   }
 
   return (
-    <div ref={trackRef} className="relative h-14 w-full select-none overflow-hidden rounded-full bg-slate-200">
+    <div
+      ref={trackRef}
+      className={cn(
+        "relative h-14 w-full select-none overflow-hidden rounded-full",
+        disabled ? "bg-slate-100" : "bg-slate-200"
+      )}
+    >
       <div
-        className="absolute inset-y-0 left-0 rounded-full bg-emerald-500"
+        className={cn("absolute inset-y-0 left-0 rounded-full", disabled ? "bg-slate-300" : "bg-emerald-500")}
         style={{ width: dragLeft + HANDLE_SIZE, transition: isDragging ? "none" : "width 200ms ease" }}
       />
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-medium text-slate-600">
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-medium",
+          disabled ? "text-slate-400" : "text-slate-600"
+        )}
+      >
         {submitting ? "Submitting…" : confirmed ? "Confirmed" : label}
       </div>
       <div
@@ -1211,8 +1240,9 @@ function SwipeToSubmit({
           transition: isDragging ? "none" : "left 200ms ease",
         }}
         className={cn(
-          "absolute top-0 flex items-center justify-center rounded-full bg-slate-900 text-lg text-white shadow-md",
-          submitting || confirmed ? "opacity-60" : "cursor-grab active:cursor-grabbing"
+          "absolute top-0 flex items-center justify-center rounded-full text-lg shadow-md",
+          disabled ? "bg-slate-300 text-slate-500" : "bg-slate-900 text-white",
+          submitting || confirmed || disabled ? "opacity-60" : "cursor-grab active:cursor-grabbing"
         )}
       >
         →

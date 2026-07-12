@@ -454,8 +454,8 @@ export function FieldEditor({
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
       <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-        <div className="flex items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex flex-wrap items-center gap-2">
             {FIELD_TYPES.map((f) => (
               <button
                 key={f.type}
@@ -480,7 +480,7 @@ export function FieldEditor({
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {statusMessage && <span className="text-sm text-slate-500">{statusMessage}</span>}
             <Button variant="outline" onClick={() => router.push("/dashboard")}>
               Back
@@ -510,7 +510,7 @@ export function FieldEditor({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-6 py-2.5">
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-4 py-2.5 sm:px-6">
           <span className="text-xs font-medium text-slate-500">Recipients:</span>
           {recipients.map((r, i) => {
             const color = RECIPIENT_COLORS[i % RECIPIENT_COLORS.length];
