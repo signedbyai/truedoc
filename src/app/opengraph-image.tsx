@@ -26,19 +26,24 @@ export default function OpengraphImage() {
           </span>
           <span style={{ fontSize: 30, fontWeight: 600, color: "#94a3b8" }}>BETA</span>
         </div>
-        <div style={{ marginTop: 28, fontSize: 36, color: "#475569", display: "flex" }}>
+        <div style={{ marginTop: 28, fontSize: 36, fontWeight: 600, color: "#1e293b", display: "flex" }}>
           E-signatures, without the per-seat tax.
         </div>
         <div
           style={{
-            marginTop: 44,
-            width: 140,
-            height: 7,
-            backgroundColor: "#2563eb",
-            borderRadius: 4,
+            marginTop: 48,
             display: "flex",
+            alignItems: "center",
+            backgroundColor: "#facc15",
+            color: "#0f172a",
+            fontSize: 34,
+            fontWeight: 700,
+            padding: "20px 48px",
+            borderRadius: 12,
           }}
-        />
+        >
+          Sign Document →
+        </div>
       </div>
     ),
     { ...size }
