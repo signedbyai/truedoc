@@ -3,18 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { FieldEditor } from "@/components/field-editor";
 import { VoidDocumentButton } from "@/components/void-document-button";
-import { RemindSignerButton } from "@/components/remind-signer-button";
-import { CopySigningLinkButton } from "@/components/copy-signing-link-button";
+import { SignerRow } from "@/components/signer-row";
 import { AuditTrail, type AuditEvent } from "@/components/audit-trail";
 import { planHasFeature } from "@/lib/plan";
-
-const SIGNER_STATUS_LABEL: Record<string, string> = {
-  pending: "Not yet sent",
-  sent: "Sent",
-  viewed: "Viewed",
-  signed: "Signed",
-  declined: "Declined",
-};
 
 export default async function DocumentEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -129,27 +120,7 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
             <h2 className="text-sm font-semibold text-slate-900">Signers</h2>
             <ul className="mt-3 space-y-2 text-sm text-slate-700">
               {(signers || []).map((s) => (
-                <li key={s.id} className="flex items-center justify-between gap-3">
-                  <span>{s.name ? `${s.name} <${s.email}>` : s.email}</span>
-                  <span className="flex items-center gap-2">
-                    {doc.status === "sent" && (s.status === "sent" || s.status === "viewed") && (
-                      <CopySigningLinkButton signingToken={s.signing_token} />
-                    )}
-                    {doc.status === "sent" &&
-                      (s.status === "sent" || s.status === "viewed") &&
-                      (hasReminders ? (
-                        <RemindSignerButton documentId={id} signerId={s.id} />
-                      ) : (
-                        <Link href="/pricing" className="text-xs text-slate-400 hover:text-slate-600">
-                          Send reminder (Starter+)
-                        </Link>
-                      ))}
-                    <span className="text-xs text-slate-500">
-                      {SIGNER_STATUS_LABEL[s.status] ?? s.status}
-                      {s.signed_at ? ` · ${new Date(s.signed_at).toLocaleDateString()}` : ""}
-                    </span>
-                  </span>
-                </li>
+                <SignerRow key={s.id} documentId={id} signer={s} docStatus={doc.status} hasReminders={hasReminders} />
               ))}
             </ul>
 
