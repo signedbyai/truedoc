@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSignerByToken } from "@/lib/signing";
+import { visibleFieldsForSigner } from "@/lib/field-visibility";
 
 export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -23,21 +24,20 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
 
   const { data: fields } = await admin
     .from("document_fields")
-    .select("id, type, page, x, y, width, height, value, required, signer_id")
+    .select("id, type, page, x, y, width, height, value, required, signer_id, template_role")
     .eq("document_id", document.id)
     .order("created_at", { ascending: true });
 
-  // Fields explicitly assigned to this signer, plus any unassigned fields
-  // when this signer is the document's only recipient (covers the common
-  // single-signer case even if a field's recipient tag was left blank).
+  // Fields explicitly assigned to this signer, plus any truly-unassigned
+  // fields (never tagged for a specific party) when this signer is the
+  // document's only recipient — see visibleFieldsForSigner for why a
+  // pending template_role doesn't get the same fallback.
   const { count: signerCount } = await admin
     .from("signers")
     .select("id", { count: "exact", head: true })
     .eq("document_id", document.id);
 
-  const visibleFields = (fields || []).filter(
-    (f) => f.signer_id === signer.id || (f.signer_id === null && signerCount === 1)
-  );
+  const visibleFields = visibleFieldsForSigner(fields || [], signer.id, signerCount ?? 0);
 
   return NextResponse.json({
     signer: { id: signer.id, name: signer.name, email: signer.email, status: signer.status },

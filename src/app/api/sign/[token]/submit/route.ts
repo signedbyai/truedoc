@@ -5,6 +5,7 @@ import { sendSignerInviteEmail, sendCompletionEmail } from "@/lib/email";
 import { generateSignedPdf } from "@/lib/generate-signed-pdf";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { computeSigningOutcome } from "@/lib/signing-routing";
+import { visibleFieldsForSigner } from "@/lib/field-visibility";
 
 export const bodySchema = z.object({
   consent: z.literal(true),
@@ -40,7 +41,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
   const { data: allFields } = await admin
     .from("document_fields")
-    .select("id, required, signer_id, type")
+    .select("id, required, signer_id, type, template_role")
     .eq("document_id", document.id);
 
   const { count: signerCount } = await admin
@@ -48,9 +49,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     .select("id", { count: "exact", head: true })
     .eq("document_id", document.id);
 
-  const myFields = (allFields || []).filter(
-    (f) => f.signer_id === signer.id || (f.signer_id === null && signerCount === 1)
-  );
+  const myFields = visibleFieldsForSigner(allFields || [], signer.id, signerCount ?? 0);
 
   const missing = myFields.filter((f) => f.required && !parsed.data.values[f.id]?.trim());
   if (missing.length > 0) {

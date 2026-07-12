@@ -328,6 +328,23 @@ export function FieldEditor({
     placeField(page, xFrac, yFrac);
   }
 
+  // Confirming a suggestion should mean the same thing everywhere: clear
+  // `suggested`, snapping away from anything it now overlaps. Used by all
+  // three ways to confirm one — tapping it in place, dragging it, and the
+  // explicit ✓ button — so they can never disagree with each other. For a
+  // drag, `current.x/y` is already the live-dragged position (onMove keeps
+  // it updated in state as the pointer moves), so this reads whatever the
+  // field's current position is rather than needing it passed in.
+  const confirmField = useCallback((id: string) => {
+    setFields((prev) => {
+      const current = prev.find((f) => f.id === id);
+      if (!current) return prev;
+      const others = prev.filter((f) => f.id !== id);
+      const free = findFreePosition(current.page, current.x, current.y, current.width, current.height, others);
+      return prev.map((f) => (f.id === id ? { ...f, x: free.x, y: free.y, suggested: false } : f));
+    });
+  }, []);
+
   // Pointer Events (not mouse-only) so this works for touch/iOS drags too,
   // not just a mouse. touch-none on the field div (below) stops the browser
   // from treating the drag as a page-scroll gesture.
@@ -370,18 +387,14 @@ export function FieldEditor({
       window.removeEventListener("pointercancel", onUp);
       if (!draggedId) return;
 
-      // Snap away from anything it landed on top of, same as new placements.
       // Any pointer interaction with a suggested field — a tap-in-place or
       // a drag to nudge it — counts as the sender reviewing and accepting
       // it, so this also clears `suggested` here rather than needing a
-      // separate confirm control.
-      setFields((prev) => {
-        const dragged = prev.find((f) => f.id === draggedId);
-        if (!dragged) return prev;
-        const others = prev.filter((f) => f.id !== draggedId);
-        const free = findFreePosition(dragged.page, dragged.x, dragged.y, dragged.width, dragged.height, others);
-        return prev.map((f) => (f.id === draggedId ? { ...f, x: free.x, y: free.y, suggested: false } : f));
-      });
+      // separate confirm control. Goes through the same confirmField() as
+      // the ✓ button and plain taps (position was already applied live by
+      // onMove for an actual drag), so all three ways to confirm a
+      // suggestion end up in an identical end state.
+      confirmField(draggedId);
     }
 
     window.addEventListener("pointermove", onMove);
@@ -466,6 +479,26 @@ export function FieldEditor({
     }
     if (confirmedFields.length === 0) {
       setStatusMessage("Place at least one field before sending.");
+      return;
+    }
+    // A confirmed field with no signer is only safe to send when there's a
+    // single recipient and the field was never tagged for a specific party
+    // (see visibleFieldsForSigner) — that's the common "didn't bother
+    // selecting the recipient chip" case, and it still reaches that one
+    // recipient fine. Anything else (a "Party 2"-tagged field nobody ever
+    // claimed, or an unassigned field when there's more than one recipient)
+    // would otherwise either vanish for every signer or, worse, bleed onto
+    // the wrong one — block the send and say so instead of shipping that.
+    const orphanedFields = confirmedFields.filter(
+      (f) => f.signerId === null && (f.templateRole !== null || recipients.length > 1)
+    );
+    if (orphanedFields.length > 0) {
+      setStatusMessage(
+        `${orphanedFields.length} field${orphanedFields.length === 1 ? " isn't" : "s aren't"} assigned to a ` +
+          `recipient — remove ${orphanedFields.length === 1 ? "it" : "them"} and re-place ${
+            orphanedFields.length === 1 ? "it" : "them"
+          } with a recipient selected above (or add the missing recipient) before sending.`
+      );
       return;
     }
     setSending(true);
@@ -842,9 +875,18 @@ export function FieldEditor({
                       : def.label}
                     {f.suggested && (
                       <button
+                        // Stops the pointerdown here too, not just the click below —
+                        // otherwise it bubbles up to the field div's own
+                        // onPointerDown first (see handleFieldPointerDown) and starts
+                        // a drag/confirm cycle of its own at the same time as this
+                        // button's click, racing against it. That race was the cause
+                        // of confirming sometimes shifting the field to an unexpected
+                        // spot, and removing sometimes silently only confirming
+                        // instead of deleting.
+                        onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setFields((prev) => prev.map((p) => (p.id === f.id ? { ...p, suggested: false } : p)));
+                          confirmField(f.id);
                         }}
                         aria-label={`Confirm ${def.label.toLowerCase()} field`}
                         className="absolute -left-2.5 -top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-xs text-white shadow-sm"
@@ -853,6 +895,7 @@ export function FieldEditor({
                       </button>
                     )}
                     <button
+                      onPointerDown={(e) => e.stopPropagation()}
                       onClick={(e) => {
                         e.stopPropagation();
                         removeField(f.id);
