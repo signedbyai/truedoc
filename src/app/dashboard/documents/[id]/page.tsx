@@ -66,12 +66,20 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
               ))}
             </ul>
 
-            <a
-              href={`/api/documents/${id}/signed-file`}
-              className="mt-6 inline-block rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-            >
-              {doc.signed_file_path ? "Download signed PDF" : "Signed PDF pending…"}
-            </a>
+            <div className="mt-6 flex items-center gap-4">
+              <a
+                href={`/api/documents/${id}/signed-file`}
+                className="inline-block rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              >
+                {doc.signed_file_path ? "Download signed PDF" : "Signed PDF pending…"}
+              </a>
+              <a
+                href={`/api/documents/${id}/original-file`}
+                className="text-sm font-medium text-slate-600 hover:text-slate-900"
+              >
+                Download original (unsigned)
+              </a>
+            </div>
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-white p-6">
@@ -114,6 +122,12 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
             </Link>
             <h1 className="mt-2 text-2xl font-semibold text-slate-900">{doc.title}</h1>
             <p className={`text-sm ${className}`}>{label}</p>
+            <a
+              href={`/api/documents/${id}/original-file`}
+              className="mt-1 inline-block text-sm font-medium text-slate-600 hover:text-slate-900"
+            >
+              Download original (unsigned)
+            </a>
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-white p-6">

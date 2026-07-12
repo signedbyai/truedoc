@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { findFreePosition } from "@/lib/field-geometry";
+import { DeleteDocumentButton } from "@/components/delete-document-button";
 
 type FieldType = "signature" | "initials" | "date" | "text" | "checkbox";
 
@@ -488,6 +489,7 @@ export function FieldEditor({
             <Button variant="outline" onClick={handleSaveDraft} disabled={saving || sending}>
               {saving ? "Saving…" : "Save draft"}
             </Button>
+            <DeleteDocumentButton documentId={documentId} redirectTo="/dashboard/documents" />
             {hasTemplates ? (
               <Button
                 variant="outline"

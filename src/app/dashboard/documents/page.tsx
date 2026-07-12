@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { DeleteDocumentButton } from "@/components/delete-document-button";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -190,9 +191,12 @@ export default async function DocumentsPage({
                           {new Date(doc.created_at).toLocaleDateString()}
                         </p>
                       </div>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                        {STATUS_LABEL[doc.status] ?? doc.status}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                          {STATUS_LABEL[doc.status] ?? doc.status}
+                        </span>
+                        {doc.status === "draft" && <DeleteDocumentButton documentId={doc.id} />}
+                      </div>
                     </li>
                   ))}
                 </ul>
