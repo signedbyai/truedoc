@@ -61,7 +61,7 @@ export default function LandingPage() {
           small teams who sign a handful of documents a month, not a whole sales floor.
         </p>
         <Link href="/login?intent=signup" className={buttonVariants({ size: "lg" })}>
-          Sign Document
+          Start Signing
         </Link>
         <p className="text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
       </section>
