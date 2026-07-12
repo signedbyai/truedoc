@@ -20,11 +20,43 @@ export default function OpengraphImage() {
           backgroundColor: "#ffffff",
         }}
       >
-        <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-          <span style={{ fontSize: 104, fontWeight: 800, color: "#0f172a", letterSpacing: -2 }}>
+        {/* Centering is based on "SignedBy" alone — BETA is absolutely
+            positioned off the top-right corner so it doesn't pull the
+            wordmark off-center. The default OG font only ships normal/bold
+            weights, so fontWeight above 700 has no effect; the duplicate,
+            1px-offset copy underneath is a faux-bold layering trick to get
+            a visibly heavier wordmark without an embedded font file. */}
+        <div style={{ position: "relative", display: "flex" }}>
+          <span
+            style={{
+              position: "absolute",
+              top: 1,
+              left: 1,
+              fontSize: 104,
+              fontWeight: 700,
+              color: "#0f172a",
+              letterSpacing: -2,
+            }}
+          >
             SignedBy
           </span>
-          <span style={{ fontSize: 30, fontWeight: 600, color: "#94a3b8" }}>BETA</span>
+          <span style={{ fontSize: 104, fontWeight: 700, color: "#0f172a", letterSpacing: -2 }}>
+            SignedBy
+          </span>
+          <span
+            style={{
+              position: "absolute",
+              left: "100%",
+              top: 12,
+              marginLeft: 12,
+              fontSize: 28,
+              fontWeight: 700,
+              color: "#94a3b8",
+              whiteSpace: "nowrap",
+            }}
+          >
+            BETA
+          </span>
         </div>
         <div style={{ marginTop: 30, fontSize: 46, fontWeight: 600, color: "#1e293b", display: "flex" }}>
           E-signatures, without the per-seat tax.
