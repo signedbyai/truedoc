@@ -6,6 +6,7 @@ import { VoidDocumentButton } from "@/components/void-document-button";
 import { SignerRow } from "@/components/signer-row";
 import { AuditTrail, type AuditEvent } from "@/components/audit-trail";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
+import { buttonVariants } from "@/components/ui/button";
 import { planHasFeature } from "@/lib/plan";
 
 export default async function DocumentEditorPage({ params }: { params: Promise<{ id: string }> }) {
@@ -50,7 +51,10 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
       <main className="min-h-screen bg-slate-50 px-6 py-10">
         <div className="mx-auto max-w-2xl space-y-6">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">{doc.title}</h1>
+            <Link href="/dashboard/documents" className="text-sm font-medium text-slate-500 hover:text-slate-700">
+              ← Documents
+            </Link>
+            <h1 className="mt-2 text-2xl font-semibold text-slate-900">{doc.title}</h1>
             <p className="text-sm text-emerald-600">Completed — every signer has signed.</p>
           </div>
 
@@ -67,16 +71,13 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
               ))}
             </ul>
 
-            <div className="mt-6 flex items-center gap-4">
-              <a
-                href={`/api/documents/${id}/signed-file`}
-                className="inline-block rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-              >
+            <div className="mt-6 flex flex-wrap items-center gap-2">
+              <a href={`/api/documents/${id}/signed-file`} className={buttonVariants({ size: "sm" })}>
                 {doc.signed_file_path ? "Download signed PDF" : "Signed PDF pending…"}
               </a>
               <a
                 href={`/api/documents/${id}/original-file`}
-                className="text-sm font-medium text-slate-600 hover:text-slate-900"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
               >
                 Download original (unsigned)
               </a>
@@ -119,15 +120,15 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
       <main className="min-h-screen bg-slate-50 px-6 py-10">
         <div className="mx-auto max-w-2xl space-y-6">
           <div>
-            <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
-              ← Dashboard
+            <Link href="/dashboard/documents" className="text-sm font-medium text-slate-500 hover:text-slate-700">
+              ← Documents
             </Link>
             <h1 className="mt-2 text-2xl font-semibold text-slate-900">{doc.title}</h1>
             <p className={`text-sm ${className}`}>{label}</p>
-            <div className="mt-1 flex items-center gap-4">
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               <a
                 href={`/api/documents/${id}/original-file`}
-                className="inline-block text-sm font-medium text-slate-600 hover:text-slate-900"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
               >
                 Download original (unsigned)
               </a>
