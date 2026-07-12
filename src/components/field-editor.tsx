@@ -464,7 +464,16 @@ export function FieldEditor({
                   "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
                   selectedTool === f.type
                     ? "border-slate-900 bg-slate-900 text-white"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                  // Draws the eye straight to the first thing a brand-new
+                  // document needs, in case the dismissible banner below
+                  // gets skipped past — same pulse the signer side already
+                  // uses for "the next thing you need to do".
+                  f.type === "signature" &&
+                    fieldsLoaded &&
+                    fields.length === 0 &&
+                    !selectedTool &&
+                    "next-field-highlight"
                 )}
               >
                 {f.label}
