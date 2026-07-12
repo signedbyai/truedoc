@@ -58,10 +58,13 @@ export default function LandingPage() {
         </h1>
         <p className="max-w-xl text-lg text-slate-600">
           SignedBy is a fast, affordable alternative for e-Signatures — built for solo professionals and
-          small teams who sign a handful of documents a month, not a whole sales floor.
+          small teams who sign a handful of documents a month, not a whole sales floor.{" "}
+          <span className="inline-block -rotate-1 rounded bg-yellow-300 px-1.5 py-0.5 font-semibold text-slate-900">
+            Sign documents.
+          </span>
         </p>
         <Link href="/login?intent=signup" className={buttonVariants({ size: "lg" })}>
-          Start Signing
+          Start for free
         </Link>
         <p className="text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
       </section>
