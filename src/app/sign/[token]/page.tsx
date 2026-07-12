@@ -9,17 +9,37 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
   if (!result) notFound();
   const { admin, signer, document } = result;
 
+  // Fetched early (not just in the main signing-flow branch below) because
+  // the dead-end status screens (already signed/declined/voided) need it
+  // too, to decide whether to show the "create your own account" growth CTA
+  // — see StatusScreen's comment for why that's conditional on plan. Reused
+  // below for the full signing view's branding object too, so this only
+  // runs once per request either way.
+  const { data: org } = await admin
+    .from("organizations")
+    .select("id, name, plan, logo_url, brand_color")
+    .eq("id", document.org_id)
+    .single();
+  const orgHasBranding = planHasFeature(org?.plan, "branding");
+
   if (signer.status === "signed") {
     return (
       <StatusScreen
         title="Already signed"
         message={`You signed "${document.title}" on ${signer.signed_at ? new Date(signer.signed_at).toLocaleDateString() : "record"}. No further action is needed.`}
+        showGrowthCta={!orgHasBranding}
       />
     );
   }
 
   if (signer.status === "declined") {
-    return <StatusScreen title="Signing declined" message={`You declined to sign "${document.title}".`} />;
+    return (
+      <StatusScreen
+        title="Signing declined"
+        message={`You declined to sign "${document.title}".`}
+        showGrowthCta={!orgHasBranding}
+      />
+    );
   }
 
   if (document.status === "declined") {
@@ -27,12 +47,19 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
       <StatusScreen
         title="Document declined"
         message={`Signing was declined by another party, so "${document.title}" is no longer awaiting your signature.`}
+        showGrowthCta={!orgHasBranding}
       />
     );
   }
 
   if (document.status === "voided") {
-    return <StatusScreen title="No longer available" message="This document has been voided by the sender." />;
+    return (
+      <StatusScreen
+        title="No longer available"
+        message="This document has been voided by the sender."
+        showGrowthCta={!orgHasBranding}
+      />
+    );
   }
 
   // Mark viewed the first time this link is opened.
@@ -60,16 +87,10 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
     (f) => f.signer_id === signer.id || (f.signer_id === null && signerCount === 1)
   );
 
-  const { data: org } = await admin
-    .from("organizations")
-    .select("id, name, plan, logo_url, brand_color")
-    .eq("id", document.org_id)
-    .single();
-
   const branding = {
     orgId: document.org_id,
     orgName: org?.name || "SignedBy",
-    hasBranding: planHasFeature(org?.plan, "branding"),
+    hasBranding: orgHasBranding,
     hasCustomBranding: planHasFeature(org?.plan, "customBranding"),
     hasLogo: Boolean(org?.logo_url),
     brandColor: org?.brand_color || null,
@@ -96,13 +117,45 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
   );
 }
 
-function StatusScreen({ title, message }: { title: string; message: string }) {
+// These "dead end" screens (already signed, declined, voided) previously
+// left most of the viewport blank below the status card — every signer who
+// lands here has just finished interacting with SignedBy, which is exactly
+// the kind of self-serve growth moment worth a small CTA rather than a dead
+// stop. Gated on `showGrowthCta` (false when the sending org has paid for
+// branding removal, i.e. `hasBranding` — showing our own signup pitch to a
+// paying customer's signers would undercut the white-label they bought).
+function StatusScreen({
+  title,
+  message,
+  showGrowthCta = false,
+}: {
+  title: string;
+  message: string;
+  showGrowthCta?: boolean;
+}) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-slate-50 px-4">
       <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
         <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
         <p className="mt-2 text-sm text-slate-600">{message}</p>
       </div>
+
+      {showGrowthCta && (
+        <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 text-center">
+          <p className="text-sm text-slate-600">
+            Need to send or sign documents yourself?{" "}
+            <span className="inline-block -rotate-1 rounded bg-yellow-300 px-1.5 py-0.5 font-semibold text-slate-900">
+              Sign documents.
+            </span>
+          </p>
+          <a
+            href="/login?intent=signup"
+            className="mt-3 inline-block rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            Create your free SignedBy account
+          </a>
+        </div>
+      )}
     </main>
   );
 }
