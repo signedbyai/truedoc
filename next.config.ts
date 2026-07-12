@@ -70,6 +70,9 @@ const nextConfig: NextConfig = {
   // dynamic segment instead.
   outputFileTracingIncludes: {
     "/api/sign/*/summary": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"],
+    // suggest-fields also calls into pdfjs-dist (positioned text extraction
+    // for AI field placement, src/lib/suggest-fields.ts) — same gap, same fix.
+    "/api/documents/*/suggest-fields": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"],
   },
   async headers() {
     return [

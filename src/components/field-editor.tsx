@@ -8,8 +8,7 @@ import { cn } from "@/lib/utils";
 import { findFreePosition } from "@/lib/field-geometry";
 import { DeleteDocumentButton } from "@/components/delete-document-button";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
-
-type FieldType = "signature" | "initials" | "date" | "text" | "checkbox";
+import { FIELD_TYPES, fieldDef, type FieldType } from "@/lib/field-types";
 
 type Field = {
   id: string;
@@ -25,6 +24,12 @@ type Field = {
   // 0-based "recipient slot" — auto-bound to a real signerId as recipients
   // are added, in order. Meaningless once signerId is set.
   templateRole: number | null;
+  // Client-only, never sent to the server: true for an AI-suggested field
+  // the sender hasn't confirmed yet. Cleared (turning it into a normal
+  // field) by clicking or dragging it; removed entirely by its "x" button,
+  // same as any other field. See persist() — suggested fields are filtered
+  // out of every save, so an unconfirmed suggestion can never reach the DB.
+  suggested?: boolean;
 };
 
 type Recipient = {
@@ -34,14 +39,6 @@ type Recipient = {
   order_index: number;
 };
 
-const FIELD_TYPES: { type: FieldType; label: string; width: number; height: number }[] = [
-  { type: "signature", label: "Signature", width: 0.22, height: 0.05 },
-  { type: "initials", label: "Initials", width: 0.08, height: 0.05 },
-  { type: "date", label: "Date", width: 0.14, height: 0.035 },
-  { type: "text", label: "Text", width: 0.2, height: 0.035 },
-  { type: "checkbox", label: "Checkbox", width: 0.03, height: 0.03 },
-];
-
 // Cycled by recipient index so each signer's fields are visually distinct.
 const RECIPIENT_COLORS = [
   { border: "border-blue-500", bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500" },
@@ -50,10 +47,6 @@ const RECIPIENT_COLORS = [
   { border: "border-emerald-500", bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
   { border: "border-rose-500", bg: "bg-rose-50", text: "text-rose-700", dot: "bg-rose-500" },
 ];
-
-function fieldDef(type: FieldType) {
-  return FIELD_TYPES.find((f) => f.type === type)!;
-}
 
 function recipientColor(recipients: Recipient[], signerId: string | null) {
   if (!signerId) return { border: "border-slate-400", bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400" };
@@ -104,8 +97,16 @@ export function FieldEditor({
   // initial fetch below resolves.
   const [fieldsLoaded, setFieldsLoaded] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState("");
   const pageRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const dragState = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
+  // Guards the auto-suggest effect below to a single attempt per mount —
+  // without this, any state change that re-runs the effect (e.g. the
+  // suggestions themselves arriving) would re-trigger it in a loop.
+  const autoSuggestAttempted = useRef(false);
+
+  const confirmedFields = fields.filter((f) => !f.suggested);
 
   // Load existing recipients + fields.
   useEffect(() => {
@@ -181,6 +182,70 @@ export function FieldEditor({
       cancelled = true;
     };
   }, [documentId]);
+
+  // Fetches AI field-placement suggestions and merges them into local
+  // state as unconfirmed ("suggested") fields — never written to the
+  // server until the sender accepts one. `replaceExisting` is used by the
+  // "Re-suggest" action to swap out only the still-unconfirmed suggestions
+  // (leaving anything the sender already confirmed untouched); the initial
+  // auto-run doesn't need it since there's nothing to replace yet.
+  const runSuggestFields = useCallback(
+    async (replaceExisting = false) => {
+      setSuggesting(true);
+      setSuggestError("");
+      try {
+        const res = await fetch(`/api/documents/${documentId}/suggest-fields`, { method: "POST" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Couldn't generate suggestions.");
+
+        const suggestions: { page: number; type: FieldType; x: number; y: number; width: number; height: number; role: number | null }[] =
+          Array.isArray(data.suggestions) ? data.suggestions : [];
+
+        setFields((prev) => {
+          // If the sender started placing fields manually while this
+          // request was in flight, don't clobber their work with stale
+          // suggestions computed against an empty editor.
+          if (!replaceExisting && prev.some((f) => !f.suggested)) return prev;
+
+          const base = replaceExisting ? prev.filter((f) => !f.suggested) : prev;
+          const newSuggested: Field[] = suggestions.map((s) => ({
+            id: `sugg-${crypto.randomUUID()}`,
+            type: s.type,
+            page: s.page,
+            x: s.x,
+            y: s.y,
+            width: s.width,
+            height: s.height,
+            required: true,
+            signerId: null,
+            templateRole: s.role,
+            suggested: true,
+          }));
+          return [...base, ...newSuggested];
+        });
+      } catch (err) {
+        setSuggestError(err instanceof Error ? err.message : "Couldn't generate suggestions.");
+      } finally {
+        setSuggesting(false);
+      }
+    },
+    [documentId]
+  );
+
+  // Auto-run once for a completely untouched, brand-new document — not for
+  // one that already has fields (from a template, a prior session, or an
+  // earlier suggestion run) or recipients (a sender who's already deep into
+  // editing doesn't want fields appearing out from under them).
+  useEffect(() => {
+    if (!fieldsLoaded || autoSuggestAttempted.current) return;
+    if (fields.length > 0 || recipients.length > 0) return;
+    autoSuggestAttempted.current = true;
+    // Deferred a tick — runSuggestFields' first line is a setState call,
+    // and calling that synchronously from within an effect body trips
+    // react-hooks/set-state-in-effect. Same deferral pattern used
+    // elsewhere in this file/signing-view.tsx for the same reason.
+    Promise.resolve().then(() => runSuggestFields());
+  }, [fieldsLoaded, fields.length, recipients.length, runSuggestFields]);
 
   function addRecipient() {
     const email = newEmail.trim();
@@ -293,13 +358,16 @@ export function FieldEditor({
       if (!draggedId) return;
 
       // Snap away from anything it landed on top of, same as new placements.
+      // Any pointer interaction with a suggested field — a tap-in-place or
+      // a drag to nudge it — counts as the sender reviewing and accepting
+      // it, so this also clears `suggested` here rather than needing a
+      // separate confirm control.
       setFields((prev) => {
         const dragged = prev.find((f) => f.id === draggedId);
         if (!dragged) return prev;
         const others = prev.filter((f) => f.id !== draggedId);
         const free = findFreePosition(dragged.page, dragged.x, dragged.y, dragged.width, dragged.height, others);
-        if (free.x === dragged.x && free.y === dragged.y) return prev;
-        return prev.map((f) => (f.id === draggedId ? { ...f, x: free.x, y: free.y } : f));
+        return prev.map((f) => (f.id === draggedId ? { ...f, x: free.x, y: free.y, suggested: false } : f));
       });
     }
 
@@ -343,9 +411,11 @@ export function FieldEditor({
       setFields((prev) => prev.map((f) => (f.signerId ? { ...f, signerId: oldToNew.get(f.signerId) ?? f.signerId } : f)));
     }
 
-    const currentFields = fields.map((f) =>
-      f.signerId && !savedRecipients.some((r) => r.id === f.signerId) ? { ...f, signerId: null } : f
-    );
+    // Unconfirmed AI suggestions are never persisted — "nothing is final
+    // until the sender confirms it" (see the Field.suggested comment).
+    const currentFields = fields
+      .filter((f) => !f.suggested)
+      .map((f) => (f.signerId && !savedRecipients.some((r) => r.id === f.signerId) ? { ...f, signerId: null } : f));
 
     const res = await fetch(`/api/documents/${documentId}/fields`, {
       method: "PUT",
@@ -381,7 +451,7 @@ export function FieldEditor({
       setStatusMessage("Add at least one recipient before sending.");
       return;
     }
-    if (fields.length === 0) {
+    if (confirmedFields.length === 0) {
       setStatusMessage("Place at least one field before sending.");
       return;
     }
@@ -473,7 +543,7 @@ export function FieldEditor({
                   // uses for "the next thing you need to do".
                   f.type === "signature" &&
                     fieldsLoaded &&
-                    fields.length === 0 &&
+                    confirmedFields.length === 0 &&
                     !selectedTool &&
                     "next-field-highlight"
                 )}
@@ -490,6 +560,9 @@ export function FieldEditor({
             <Button variant="outline" onClick={handleSaveDraft} disabled={saving || sending}>
               {saving ? "Saving…" : "Save draft"}
             </Button>
+            <Button variant="outline" onClick={() => runSuggestFields(true)} disabled={suggesting}>
+              {suggesting ? "Suggesting…" : "Suggest fields"}
+            </Button>
             <DuplicateDocumentButton documentId={documentId} />
             <DeleteDocumentButton documentId={documentId} redirectTo="/dashboard/documents" />
             {hasTemplates ? (
@@ -499,7 +572,7 @@ export function FieldEditor({
                   setTemplateError("");
                   setShowSaveTemplateModal(true);
                 }}
-                disabled={saving || sending || fields.length === 0}
+                disabled={saving || sending || confirmedFields.length === 0}
               >
                 Save as template
               </Button>
@@ -628,7 +701,7 @@ export function FieldEditor({
         </div>
       </div>
 
-      {showIntro && fieldsLoaded && fields.length === 0 && (
+      {showIntro && fieldsLoaded && confirmedFields.length === 0 && (
         <div className="flex items-center justify-between gap-3 border-b border-blue-100 bg-blue-50 px-6 py-2.5">
           <p className="text-xs text-blue-900">
             Pick a field type above, then click anywhere on the document to place it. Add recipients below, then
@@ -648,6 +721,49 @@ export function FieldEditor({
           Click anywhere on the document to place a {fieldDef(selectedTool).label.toLowerCase()} field
           {activeRecipientId ? " for the selected recipient." : " (unassigned — select a recipient chip above to assign it)."}
         </p>
+      )}
+
+      {suggesting && (
+        <div className="flex items-center gap-2 border-b border-amber-100 bg-amber-50 px-6 py-2.5">
+          <span className="h-3 w-3 animate-spin rounded-full border-2 border-amber-400 border-t-transparent" />
+          <p className="text-xs text-amber-900">Looking for signature, date, and initials spots in this document…</p>
+        </div>
+      )}
+
+      {!suggesting && suggestError && (
+        <div className="flex items-center justify-between gap-3 border-b border-red-100 bg-red-50 px-6 py-2.5">
+          <p className="text-xs text-red-700">{suggestError}</p>
+          <button
+            onClick={() => runSuggestFields()}
+            className="whitespace-nowrap text-xs font-medium text-red-700 hover:text-red-900"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
+      {!suggesting && fields.some((f) => f.suggested) && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-100 bg-amber-50 px-6 py-2.5">
+          <p className="text-xs text-amber-900">
+            {fields.filter((f) => f.suggested).length} suggested field
+            {fields.filter((f) => f.suggested).length === 1 ? "" : "s"} — dashed outline. Click or drag one to
+            confirm it, or use its × to remove it.
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => runSuggestFields(true)}
+              className="whitespace-nowrap text-xs font-medium text-amber-800 hover:text-amber-950"
+            >
+              Re-suggest
+            </button>
+            <button
+              onClick={() => setFields((prev) => prev.filter((f) => !f.suggested))}
+              className="whitespace-nowrap text-xs font-medium text-amber-800 hover:text-amber-950"
+            >
+              Clear suggestions
+            </button>
+          </div>
+        </div>
       )}
 
       <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-6 py-10">
@@ -677,9 +793,9 @@ export function FieldEditor({
                     onPointerDown={(e) => handleFieldPointerDown(e, f)}
                     className={cn(
                       "group absolute flex touch-none cursor-move items-center justify-center rounded border-2 text-[10px] font-medium",
-                      color.border,
-                      color.bg,
-                      color.text
+                      f.suggested
+                        ? "border-dashed border-amber-500 bg-amber-50/80 text-amber-800"
+                        : cn(color.border, color.bg, color.text)
                     )}
                     style={{
                       left: `${f.x * 100}%`,
@@ -688,9 +804,26 @@ export function FieldEditor({
                       height: `${f.height * 100}%`,
                     }}
                   >
+                    {f.suggested && (
+                      <span className="absolute -top-4 left-0 whitespace-nowrap rounded bg-amber-500 px-1 py-0.5 text-[9px] font-semibold text-white">
+                        Suggested
+                      </span>
+                    )}
                     {f.signerId === null && f.templateRole !== null
-                      ? `${def.label} · Signer ${f.templateRole + 1}`
+                      ? `${def.label} · Party ${f.templateRole + 1}`
                       : def.label}
+                    {f.suggested && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFields((prev) => prev.map((p) => (p.id === f.id ? { ...p, suggested: false } : p)));
+                        }}
+                        aria-label={`Confirm ${def.label.toLowerCase()} field`}
+                        className="absolute -left-2.5 -top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-xs text-white shadow-sm"
+                      >
+                        ✓
+                      </button>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

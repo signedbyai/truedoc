@@ -45,3 +45,57 @@ export async function extractPdfText(bytes: Buffer, maxChars = 12000): Promise<s
 
   return text.slice(0, maxChars).trim();
 }
+
+export type PositionedTextItem = {
+  page: number;
+  str: string;
+  x: number; // 0-1, fraction of page width, left edge, top-left origin
+  y: number; // 0-1, fraction of page height, top edge, top-left origin
+};
+
+// Like extractPdfText, but keeps each text run's position instead of
+// discarding it — used by suggest-fields.ts to give Claude something to
+// reason about ("there's a blank at roughly (x, y) right after the word
+// 'Signature:'"). pdfjs's raw item.transform is in PDF space (origin at the
+// page's bottom-left, y increasing upward); combining it with the page's
+// viewport transform (via pdfjs's own Util.transform) converts it into the
+// same top-left-origin, y-down space the field editor already uses for
+// click coordinates, so a suggested (x, y) lines up with the app's existing
+// normalized field coordinates with no extra conversion needed downstream.
+export async function extractPdfTextPositions(
+  bytes: Buffer,
+  maxPages = 20,
+  maxItems = 2500
+): Promise<PositionedTextItem[]> {
+  const { getDocument, Util } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const loadingTask = getDocument({ data: new Uint8Array(bytes) });
+  const pdf = await loadingTask.promise;
+
+  const items: PositionedTextItem[] = [];
+  const pageLimit = Math.min(pdf.numPages, maxPages);
+
+  for (let pageNum = 1; pageNum <= pageLimit; pageNum++) {
+    if (items.length >= maxItems) break;
+    try {
+      const page = await pdf.getPage(pageNum);
+      const viewport = page.getViewport({ scale: 1 });
+      const content = await page.getTextContent();
+
+      for (const raw of content.items) {
+        if (!("str" in raw) || !raw.str.trim()) continue;
+        const tx = Util.transform(viewport.transform, raw.transform);
+        items.push({
+          page: pageNum,
+          str: raw.str.trim(),
+          x: Math.min(Math.max(tx[4] / viewport.width, 0), 1),
+          y: Math.min(Math.max(tx[5] / viewport.height, 0), 1),
+        });
+        if (items.length >= maxItems) break;
+      }
+    } catch (err) {
+      console.error(`Positioned text extraction failed on page ${pageNum}, skipping`, err);
+    }
+  }
+
+  return items;
+}
