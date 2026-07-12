@@ -589,7 +589,17 @@ export function SigningView({
       <label className="flex items-center gap-2 border-b border-slate-100 bg-white px-6 py-2.5 text-xs text-slate-600">
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="h-3.5 w-3.5" />
         I agree to sign this document electronically and understand it carries the same legal weight as a handwritten
-        signature.
+        signature. Read our{" "}
+        <a
+          href="/privacy"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="underline hover:text-slate-900"
+        >
+          Privacy Policy
+        </a>
+        .
       </label>
 
       {payment && (
