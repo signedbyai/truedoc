@@ -23,26 +23,38 @@ export default function OpengraphImage() {
         {/* Centering is based on "SignedBy" alone — BETA is absolutely
             positioned off the top-right corner so it doesn't pull the
             wordmark off-center. The default OG font only ships normal/bold
-            weights, so fontWeight above 700 has no effect; the duplicate,
-            1px-offset copy underneath is a faux-bold layering trick to get
-            a visibly heavier wordmark without an embedded font file. */}
+            weights, so fontWeight above 700 has no effect. Faux-bold via a
+            2x2 stack of offset duplicates (the classic "poor man's bold"
+            trick) — the website's own header logo is font-semibold (600),
+            but at hero scale for a share card it needs to read heavier than
+            that, so this pushes past what the real font file supports. */}
         <div style={{ position: "relative", display: "flex" }}>
-          <span
-            style={{
-              position: "absolute",
-              top: 1,
-              left: 1,
-              fontSize: 104,
-              fontWeight: 700,
-              color: "#0f172a",
-              letterSpacing: -2,
-            }}
-          >
-            SignedBy
-          </span>
           <span style={{ fontSize: 104, fontWeight: 700, color: "#0f172a", letterSpacing: -2 }}>
             SignedBy
           </span>
+          {[
+            [1, 0],
+            [0, 1],
+            [1, 1],
+            [2, 1],
+            [1, 2],
+            [2, 2],
+          ].map(([left, top]) => (
+            <span
+              key={`${left}-${top}`}
+              style={{
+                position: "absolute",
+                top,
+                left,
+                fontSize: 104,
+                fontWeight: 700,
+                color: "#0f172a",
+                letterSpacing: -2,
+              }}
+            >
+              SignedBy
+            </span>
+          ))}
           <span
             style={{
               position: "absolute",
