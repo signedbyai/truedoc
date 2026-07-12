@@ -27,7 +27,7 @@ const PLANS: {
     name: "Starter",
     price: "$7/mo",
     blurb: "For solo professionals",
-    features: ["Unlimited documents", "1 user", "Templates & reminders"],
+    features: ["Unlimited documents", "1 user", "Templates & reminders", "AI-drafted documents"],
   },
   {
     id: "team",

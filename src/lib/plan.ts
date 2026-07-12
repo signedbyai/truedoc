@@ -11,6 +11,15 @@ const FEATURE_PLANS = {
   // manual + automatic signer reminders.
   templates: ["starter", "team", "business"],
   reminders: ["starter", "team", "business"],
+  // Starter: "AI-drafted documents" — the plain-language-ask drafting
+  // feature. Gated here (unlike document-summary/field-suggestion, which
+  // stay free) because it's the one feature calling the pricier Sonnet
+  // model instead of Haiku, and it's a convenience/productivity feature
+  // layered on top of core send-and-sign, not core functionality itself —
+  // same shape as templates/reminders. Enforced at the draft-generation
+  // call (src/app/api/documents/draft/route.ts), not just finalize, since
+  // that's where the actual Anthropic cost is incurred.
+  aiDraft: ["starter", "team", "business"],
   // Team: "Shared templates" — multiple org members, so templates/documents
   // become genuinely shared instead of single-user.
   teamMembers: ["team", "business"],
@@ -37,6 +46,7 @@ export function planHasFeature(plan: string | null | undefined, feature: Feature
 export const FEATURE_UPGRADE_PLAN: Record<Feature, PlanId> = {
   templates: "starter",
   reminders: "starter",
+  aiDraft: "starter",
   teamMembers: "team",
   bulkSend: "team",
   branding: "team",

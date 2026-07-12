@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getUserAndOrg } from "@/lib/org";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { draftDocument } from "@/lib/draft-document";
+import { planHasFeature } from "@/lib/plan";
 
 const bodySchema = z.object({
   documentType: z.string(),
@@ -20,7 +21,18 @@ const bodySchema = z.object({
 export async function POST(request: Request) {
   const ctx = await getUserAndOrg();
   if (!ctx) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  const { orgId } = ctx;
+  const { supabase, orgId } = ctx;
+
+  // Gated at generation, not just finalize — this call itself is the cost
+  // (Sonnet, not Haiku), so a Free org must not be able to generate drafts
+  // it can never save. See plan.ts's aiDraft comment.
+  const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
+  if (!planHasFeature(org?.plan, "aiDraft")) {
+    return NextResponse.json(
+      { error: "AI-drafted documents are a Starter plan feature. Upgrade to describe and draft documents.", upgrade: true },
+      { status: 402 }
+    );
+  }
 
   const ok = await checkRateLimit(`draft:${orgId}`, 20, 600);
   if (!ok) {

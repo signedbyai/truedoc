@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserAndOrg } from "@/lib/org";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { checkFreePlanDocCap } from "@/lib/plan";
+import { checkFreePlanDocCap, planHasFeature } from "@/lib/plan";
 import { uploadToR2 } from "@/lib/r2";
 import { textToPdf } from "@/lib/text-to-pdf";
 import { DOCUMENT_TYPES } from "@/lib/ai-draft-types";
@@ -28,6 +28,17 @@ export async function POST(request: Request) {
   const ctx = await getUserAndOrg();
   if (!ctx) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   const { supabase, user, orgId } = ctx;
+
+  // Re-checked here too (not just at /draft) — a plan could have been
+  // downgraded between generating and finalizing a draft, or this could be
+  // called directly without going through /draft at all.
+  const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
+  if (!planHasFeature(org?.plan, "aiDraft")) {
+    return NextResponse.json(
+      { error: "AI-drafted documents are a Starter plan feature. Upgrade to create this document.", upgrade: true },
+      { status: 402 }
+    );
+  }
 
   const ok = await checkRateLimit(`draft-finalize:${orgId}`, 20, 600);
   if (!ok) {

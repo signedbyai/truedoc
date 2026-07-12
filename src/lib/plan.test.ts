@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { planHasFeature, teamMemberLimit } from "./plan";
 
 describe("planHasFeature", () => {
-  it("gates templates/reminders to starter, team, and business", () => {
-    for (const feature of ["templates", "reminders"] as const) {
+  it("gates templates/reminders/aiDraft to starter, team, and business", () => {
+    for (const feature of ["templates", "reminders", "aiDraft"] as const) {
       expect(planHasFeature("free", feature)).toBe(false);
       expect(planHasFeature("starter", feature)).toBe(true);
       expect(planHasFeature("team", feature)).toBe(true);
