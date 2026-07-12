@@ -1,5 +1,15 @@
-import { describe, expect, it } from "vitest";
-import { parseCandidates, placeCandidates, fallbackSuggestion, type Candidate } from "./suggest-fields";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { parseCandidates, placeCandidates, fallbackSuggestion, suggestFields, type Candidate } from "./suggest-fields";
+
+// suggestFields() orchestrates extractPdfTextPositions + an Anthropic call;
+// mocked here so the "unreadable" branching (the actual bug-prone part —
+// getting the flag right in each of the four outcomes) can be tested
+// without touching pdfjs or the real API.
+const { mockExtractPdfTextPositions } = vi.hoisted(() => ({ mockExtractPdfTextPositions: vi.fn() }));
+const { mockCreate } = vi.hoisted(() => ({ mockCreate: vi.fn() }));
+
+vi.mock("./pdf-text", () => ({ extractPdfTextPositions: mockExtractPdfTextPositions }));
+vi.mock("./anthropic", () => ({ getAnthropic: () => ({ messages: { create: mockCreate } }) }));
 
 describe("parseCandidates", () => {
   it("parses a well-formed JSON array", () => {
@@ -126,5 +136,51 @@ describe("fallbackSuggestion", () => {
     expect(result.x).toBeGreaterThan(0.5);
     expect(result.x + result.width).toBeLessThanOrEqual(1);
     expect(result.y).toBeLessThan(0.2);
+  });
+});
+
+function anthropicTextResponse(text: string) {
+  return { content: [{ type: "text", text }] };
+}
+
+describe("suggestFields", () => {
+  beforeEach(() => {
+    mockExtractPdfTextPositions.mockReset();
+    mockCreate.mockReset();
+  });
+
+  it("marks the fallback unreadable when there's no extractable text at all (scanned/image PDF)", async () => {
+    mockExtractPdfTextPositions.mockResolvedValue([]);
+    const result = await suggestFields(Buffer.from(""), 1);
+    expect(result.unreadable).toBe(true);
+    expect(result.suggestions).toEqual([fallbackSuggestion()]);
+    expect(mockCreate).not.toHaveBeenCalled(); // no point calling Claude with nothing to show it
+  });
+
+  it("marks the fallback unreadable when the Anthropic call itself fails", async () => {
+    mockExtractPdfTextPositions.mockResolvedValue([{ page: 1, str: "Signature:", x: 0.1, y: 0.8 }]);
+    mockCreate.mockRejectedValue(new Error("network error"));
+    const result = await suggestFields(Buffer.from(""), 1);
+    expect(result.unreadable).toBe(true);
+    expect(result.suggestions).toEqual([fallbackSuggestion()]);
+  });
+
+  it("does NOT mark the fallback unreadable when real text was read but Claude found no candidates", async () => {
+    mockExtractPdfTextPositions.mockResolvedValue([{ page: 1, str: "Just some prose, no fields here.", x: 0.1, y: 0.5 }]);
+    mockCreate.mockResolvedValue(anthropicTextResponse("[]"));
+    const result = await suggestFields(Buffer.from(""), 1);
+    expect(result.unreadable).toBe(false);
+    expect(result.suggestions).toEqual([fallbackSuggestion()]);
+  });
+
+  it("returns real placed suggestions, not unreadable, when Claude finds candidates", async () => {
+    mockExtractPdfTextPositions.mockResolvedValue([{ page: 1, str: "Signature:", x: 0.1, y: 0.8 }]);
+    mockCreate.mockResolvedValue(
+      anthropicTextResponse(JSON.stringify([{ page: 1, x: 0.2, y: 0.8, type: "signature", role: null }]))
+    );
+    const result = await suggestFields(Buffer.from(""), 1);
+    expect(result.unreadable).toBe(false);
+    expect(result.suggestions).toHaveLength(1);
+    expect(result.suggestions[0].type).toBe("signature");
   });
 });

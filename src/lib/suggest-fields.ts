@@ -61,13 +61,13 @@ function formatItemsByPage(items: PositionedTextItem[]): string {
   return lines.join("\n");
 }
 
-// Used whenever nothing else was suggested — either the document had no
-// extractable text at all (a scanned/image PDF pdfjs can't pull anything
-// from), or Claude looked at real text and still found no candidate spots.
-// Rather than leave the sender staring at a completely blank editor either
-// way, seed one initials field in the top-right corner: a common
-// real-world convention (initial-every-page contracts put it there) and a
-// reasonable generic starting point regardless of what the document is.
+// Used whenever nothing else was suggested. Rather than leave the sender
+// staring at a completely blank editor, seed one initials field in the
+// top-right corner: a common real-world convention (initial-every-page
+// contracts put it there) and a reasonable generic starting point
+// regardless of what the document is. See SuggestFieldsResult.unreadable
+// for why this same field is presented differently depending on *why*
+// nothing else was suggested.
 export function fallbackSuggestion(): FieldSuggestion {
   const def = fieldDef("initials");
   const margin = 0.04;
@@ -140,12 +140,31 @@ export function placeCandidates(candidates: Candidate[]): FieldSuggestion[] {
   return placed;
 }
 
+export type SuggestFieldsResult = {
+  suggestions: FieldSuggestion[];
+  // True only when we genuinely have no idea what's in this document —
+  // either it has no extractable text at all (a scanned/image PDF pdfjs
+  // can't pull anything from) or the Claude call itself failed (a network/
+  // API error, not a real analysis result). In both cases the single
+  // fallback field is a pure guess with zero relationship to the
+  // document's actual content.
+  //
+  // False when Claude genuinely read the document's real text and
+  // concluded there were no candidate spots — a real (if inconclusive)
+  // look at the content, not a guess.
+  //
+  // The API route and field editor use this to be honest with the sender
+  // about which kind of "nothing to suggest" happened, rather than
+  // presenting a guess and a real-but-empty analysis identically.
+  unreadable: boolean;
+};
+
 // Generates field-placement suggestions for a freshly uploaded document.
 // Purely a compute-and-return operation — nothing here is written to the
 // database. The caller (the suggest-fields API route, and ultimately the
 // field editor) treats every result as an unconfirmed suggestion until the
 // sender explicitly accepts it, same as any other client-only draft state.
-export async function suggestFields(bytes: Buffer, pageCount: number): Promise<FieldSuggestion[]> {
+export async function suggestFields(bytes: Buffer, pageCount: number): Promise<SuggestFieldsResult> {
   let items: PositionedTextItem[] = [];
   try {
     items = await extractPdfTextPositions(bytes);
@@ -153,7 +172,7 @@ export async function suggestFields(bytes: Buffer, pageCount: number): Promise<F
     console.error("Positioned text extraction failed", err);
   }
 
-  if (items.length === 0) return [fallbackSuggestion()];
+  if (items.length === 0) return { suggestions: [fallbackSuggestion()], unreadable: true };
 
   let raw = "";
   try {
@@ -169,11 +188,11 @@ export async function suggestFields(bytes: Buffer, pageCount: number): Promise<F
       .join("\n");
   } catch (err) {
     console.error("Anthropic field suggestion failed", err);
-    return [fallbackSuggestion()];
+    return { suggestions: [fallbackSuggestion()], unreadable: true };
   }
 
   const candidates = parseCandidates(raw, pageCount);
-  if (candidates.length === 0) return [fallbackSuggestion()];
+  if (candidates.length === 0) return { suggestions: [fallbackSuggestion()], unreadable: false };
 
-  return placeCandidates(candidates);
+  return { suggestions: placeCandidates(candidates), unreadable: false };
 }

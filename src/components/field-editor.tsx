@@ -30,6 +30,14 @@ type Field = {
   // same as any other field. See persist() — suggested fields are filtered
   // out of every save, so an unconfirmed suggestion can never reach the DB.
   suggested?: boolean;
+  // Client-only: true only when this suggested field is the generic
+  // top-right fallback shown because the document couldn't actually be
+  // analyzed (no extractable text, or the AI call itself failed) — not a
+  // real suggestion based on the document's content. Rendered with
+  // different, more honest copy than a real suggestion (see the "Suggested"
+  // vs "Placeholder" tag below) so the sender isn't misled into thinking
+  // this reflects an actual read of the document.
+  placeholder?: boolean;
 };
 
 type Recipient = {
@@ -200,6 +208,10 @@ export function FieldEditor({
 
         const suggestions: { page: number; type: FieldType; x: number; y: number; width: number; height: number; role: number | null }[] =
           Array.isArray(data.suggestions) ? data.suggestions : [];
+        // True only when the document couldn't actually be analyzed (no
+        // extractable text, or the AI call itself failed) — see
+        // Field.placeholder and suggest-fields.ts's SuggestFieldsResult.
+        const unreadable = Boolean(data.unreadable);
 
         setFields((prev) => {
           // If the sender started placing fields manually while this
@@ -220,6 +232,7 @@ export function FieldEditor({
             signerId: null,
             templateRole: s.role,
             suggested: true,
+            placeholder: unreadable,
           }));
           return [...base, ...newSuggested];
         });
@@ -742,12 +755,27 @@ export function FieldEditor({
         </div>
       )}
 
-      {!suggesting && fields.some((f) => f.suggested) && (
+      {!suggesting && fields.some((f) => f.suggested && f.placeholder) && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-100 bg-amber-50 px-6 py-2.5">
           <p className="text-xs text-amber-900">
-            {fields.filter((f) => f.suggested).length} suggested field
-            {fields.filter((f) => f.suggested).length === 1 ? "" : "s"} — dashed outline. Click or drag one to
-            confirm it, or use its × to remove it.
+            This document doesn&apos;t appear to have readable text (it may be a scanned image), so we couldn&apos;t
+            detect field positions automatically. We&apos;ve placed one starting field — move it, or add your own.
+          </p>
+          <button
+            onClick={() => setFields((prev) => prev.filter((f) => !f.suggested))}
+            className="whitespace-nowrap text-xs font-medium text-amber-800 hover:text-amber-950"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {!suggesting && fields.some((f) => f.suggested && !f.placeholder) && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-100 bg-amber-50 px-6 py-2.5">
+          <p className="text-xs text-amber-900">
+            {fields.filter((f) => f.suggested && !f.placeholder).length} suggested field
+            {fields.filter((f) => f.suggested && !f.placeholder).length === 1 ? "" : "s"} — dashed outline. Click or
+            drag one to confirm it, or use its × to remove it.
           </p>
           <div className="flex items-center gap-3">
             <button
@@ -806,7 +834,7 @@ export function FieldEditor({
                   >
                     {f.suggested && (
                       <span className="absolute -top-4 left-0 whitespace-nowrap rounded bg-amber-500 px-1 py-0.5 text-[9px] font-semibold text-white">
-                        Suggested
+                        {f.placeholder ? "Placeholder" : "Suggested"}
                       </span>
                     )}
                     {f.signerId === null && f.templateRole !== null
