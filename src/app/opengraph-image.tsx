@@ -21,28 +21,43 @@ export default function OpengraphImage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-          <span style={{ fontSize: 104, fontWeight: 700, color: "#0f172a", letterSpacing: -2 }}>
+          <span style={{ fontSize: 104, fontWeight: 800, color: "#0f172a", letterSpacing: -2 }}>
             SignedBy
           </span>
           <span style={{ fontSize: 30, fontWeight: 600, color: "#94a3b8" }}>BETA</span>
         </div>
-        <div style={{ marginTop: 28, fontSize: 36, fontWeight: 600, color: "#1e293b", display: "flex" }}>
+        <div style={{ marginTop: 30, fontSize: 46, fontWeight: 600, color: "#1e293b", display: "flex" }}>
           E-signatures, without the per-seat tax.
+        </div>
+        <div style={{ marginTop: 34, display: "flex" }}>
+          <span
+            style={{
+              fontSize: 42,
+              fontWeight: 700,
+              color: "#0f172a",
+              backgroundColor: "#fde047",
+              padding: "6px 20px",
+              borderRadius: 6,
+              transform: "rotate(-1.5deg)",
+            }}
+          >
+            Sign documents.
+          </span>
         </div>
         <div
           style={{
-            marginTop: 48,
+            marginTop: 44,
             display: "flex",
             alignItems: "center",
-            backgroundColor: "#facc15",
-            color: "#0f172a",
-            fontSize: 34,
-            fontWeight: 700,
-            padding: "20px 48px",
-            borderRadius: 12,
+            backgroundColor: "#0f172a",
+            color: "#ffffff",
+            fontSize: 30,
+            fontWeight: 600,
+            padding: "18px 44px",
+            borderRadius: 10,
           }}
         >
-          Sign Document →
+          Start for free
         </div>
       </div>
     ),
