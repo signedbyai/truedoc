@@ -1,4 +1,10 @@
 <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-  <text x="60" y="94" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="100"
-        fill="#000000" text-anchor="middle">S</text>
+  <path d="M100 20
+           C 115 35 115 60 95 78
+           C 78 94 55 96 40 92
+           C 55 88 68 76 78 62
+           C 88 48 92 32 100 20 Z"
+        fill="#0f172a"/>
+  <path d="M78 62 L22 108" stroke="#0f172a" stroke-width="9" stroke-linecap="round"/>
+  <path d="M60 78 L42 83" stroke="#0f172a" stroke-width="7" stroke-linecap="round"/>
 </svg>
