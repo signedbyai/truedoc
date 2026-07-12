@@ -39,10 +39,10 @@ body {
    since the second copy is pixel-identical to the first. */
 @keyframes logo-marquee {
   from {
-    transform: translateX(0);
+    transform: translateX(-50%);
   }
   to {
-    transform: translateX(-50%);
+    transform: translateX(0);
   }
 }
 
