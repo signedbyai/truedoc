@@ -131,6 +131,9 @@ export default function LandingPage() {
           <Link href="/dpa" className="hover:text-slate-600">
             DPA
           </Link>
+          <Link href="/verify" className="hover:text-slate-600">
+            Verify a document
+          </Link>
         </p>
       </footer>
     </main>

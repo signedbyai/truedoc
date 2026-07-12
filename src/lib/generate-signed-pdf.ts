@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getFromR2, uploadToR2 } from "@/lib/r2";
+import { appUrl } from "@/lib/email";
 
 // Stamps every filled-in field value onto the original PDF, appends a
 // certificate-of-completion page summarizing the audit trail, uploads the
@@ -161,7 +162,8 @@ async function addCertificatePage(
   y -= 20;
 
   for (const signer of opts.signers) {
-    if (y < 100) break; // simple MVP guard against overflow on very long signer lists
+    if (y < 140) break; // simple MVP guard against overflow on very long signer lists —
+    // leaves room for the checksum + verify-URL block drawn after this loop
     const ip = opts.ipBySigner.get(signer.id) || "unavailable";
     const label = signer.name ? `${signer.name} <${signer.email}>` : signer.email;
     page.drawText(label, { x: margin, y, size: 10, font: boldFont, color: dark, maxWidth: 612 - margin * 2 });
@@ -185,4 +187,14 @@ async function addCertificatePage(
   page.drawText("SHA-256 checksum of the signed document:", { x: margin, y, size: 8, font: boldFont, color: gray });
   y -= 11;
   page.drawText(opts.hash, { x: margin, y, size: 7, font, color: gray });
+  y -= 18;
+  page.drawText("Anyone can independently verify this document is genuine, with no account needed, at:", {
+    x: margin,
+    y,
+    size: 8,
+    font,
+    color: gray,
+  });
+  y -= 11;
+  page.drawText(`${appUrl()}/verify?hash=${opts.hash}`, { x: margin, y, size: 7, font, color: gray });
 }

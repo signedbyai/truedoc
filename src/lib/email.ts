@@ -16,7 +16,7 @@ function getClient() {
 
 const FROM = "SignedBy <notifications@updates.signedby.ai>";
 
-function appUrl() {
+export function appUrl() {
   return (process.env.NEXT_PUBLIC_APP_URL || "https://signedby.ai").replace(/\/$/, "");
 }
 
