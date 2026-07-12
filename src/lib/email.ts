@@ -20,6 +20,22 @@ export function appUrl() {
   return (process.env.NEXT_PUBLIC_APP_URL || "https://signedby.ai").replace(/\/$/, "");
 }
 
+// A lot of these links get opened by someone who isn't at a desk — a
+// contractor's client opening the "please sign this waiver" email on
+// their phone, standing on a driveway. `text-align:center` on the
+// wrapping block (not flexbox — far better supported across email
+// clients, including Outlook desktop) plus a big `display:inline-block`
+// tap target, rather than a small inline text link.
+function ctaButton(href: string, label: string) {
+  return `
+    <div style="text-align:center; margin: 32px 0;">
+      <a href="${href}" style="display:inline-block; background:#0f172a; color:#ffffff; padding:18px 40px; border-radius:10px; text-decoration:none; font-weight:700; font-size:18px; line-height:1.2;">
+        ${label}
+      </a>
+    </div>
+  `;
+}
+
 export async function sendSignerInviteEmail(opts: {
   to: string;
   signerName: string | null;
@@ -38,9 +54,7 @@ export async function sendSignerInviteEmail(opts: {
       <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
         <p>${greeting}</p>
         <p><strong>${opts.senderName}</strong> has asked you to review and sign <strong>${opts.documentTitle}</strong>.</p>
-        <p style="margin: 32px 0;">
-          <a href="${link}" style="background:#0f172a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Review &amp; sign</a>
-        </p>
+        ${ctaButton(link, "Review &amp; Sign")}
         <p style="color:#64748b;font-size:13px;">No account needed — this link is unique to you. If you weren't expecting this, you can ignore this email.</p>
       </div>
     `,
@@ -66,9 +80,7 @@ export async function sendReminderEmail(opts: {
         <p>${greeting}</p>
         <p>Just a reminder — <strong>${opts.senderName}</strong> is still waiting on your signature for
         <strong>${opts.documentTitle}</strong>.</p>
-        <p style="margin: 32px 0;">
-          <a href="${link}" style="background:#0f172a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Review &amp; sign</a>
-        </p>
+        ${ctaButton(link, "Review &amp; Sign")}
         <p style="color:#64748b;font-size:13px;">No account needed — this link is unique to you. If you weren't expecting this, you can ignore this email.</p>
       </div>
     `,
@@ -94,9 +106,7 @@ export async function sendDeclineNotificationEmail(opts: {
       <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
         <p><strong>${who}</strong> declined to sign <strong>${opts.documentTitle}</strong>.</p>
         ${opts.reason ? `<p style="color:#334155;">Reason given: &ldquo;${opts.reason}&rdquo;</p>` : ""}
-        <p style="margin: 32px 0;">
-          <a href="${link}" style="background:#0f172a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">View document</a>
-        </p>
+        ${ctaButton(link, "View Document")}
       </div>
     `,
   });
@@ -118,9 +128,7 @@ export async function sendTeamInviteEmail(opts: {
       <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
         <p>Hi,</p>
         <p><strong>${opts.inviterEmail}</strong> invited you to join <strong>${opts.orgName}</strong>'s workspace on SignedBy.</p>
-        <p style="margin: 32px 0;">
-          <a href="${link}" style="background:#0f172a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Accept invite</a>
-        </p>
+        ${ctaButton(link, "Accept Invite")}
         <p style="color:#64748b;font-size:13px;">This invite expires in 14 days. If you weren't expecting this, you can ignore this email.</p>
       </div>
     `,
@@ -142,9 +150,7 @@ export async function sendCompletionEmail(opts: {
     html: `
       <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
         <p><strong>${opts.documentTitle}</strong> has been signed by everyone and is now complete.</p>
-        <p style="margin: 32px 0;">
-          <a href="${downloadLink}" style="background:#0f172a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Download signed PDF</a>
-        </p>
+        ${ctaButton(downloadLink, "Download Signed PDF")}
         <p style="color:#64748b;font-size:13px;"><a href="${link}" style="color:#64748b;">View in dashboard</a></p>
       </div>
     `,
