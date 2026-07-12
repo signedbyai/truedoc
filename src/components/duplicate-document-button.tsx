@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 // Non-destructive, so unlike DeleteDocumentButton this has no confirm step —
 // a single click duplicates and lands on the new draft's field editor.
@@ -33,7 +35,7 @@ export function DuplicateDocumentButton({ documentId, className }: { documentId:
       <button
         onClick={handleDuplicate}
         disabled={loading}
-        className="text-sm font-medium text-slate-600 hover:text-slate-900 disabled:opacity-50"
+        className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
       >
         {loading ? "Duplicating…" : "Duplicate"}
       </button>

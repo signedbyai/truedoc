@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function VoidDocumentButton({ documentId }: { documentId: string }) {
   const router = useRouter();
@@ -30,7 +32,7 @@ export function VoidDocumentButton({ documentId }: { documentId: string }) {
       <div>
         <button
           onClick={() => setConfirming(true)}
-          className="text-sm font-medium text-red-600 hover:text-red-700"
+          className={cn(buttonVariants({ variant: "destructive", size: "sm" }))}
         >
           Void this document
         </button>

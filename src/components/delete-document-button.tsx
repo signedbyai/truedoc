@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 // Draft-only per the API route (src/app/api/documents/[id]/route.ts DELETE)
 // — this component doesn't re-check status itself, so only render it where
@@ -52,7 +54,7 @@ export function DeleteDocumentButton({
             e.stopPropagation();
             setConfirming(true);
           }}
-          className="text-sm font-medium text-red-600 hover:text-red-700"
+          className={cn(buttonVariants({ variant: "destructive", size: "sm" }))}
         >
           Delete draft
         </button>
