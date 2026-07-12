@@ -463,7 +463,7 @@ export function SigningView({
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="flex min-h-screen flex-col bg-slate-50 pb-24 sm:pb-0">
       <div
         className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3"
         style={accentColor ? { borderBottomColor: accentColor, borderBottomWidth: 2 } : undefined}
@@ -502,10 +502,14 @@ export function SigningView({
           >
             Decline to sign
           </button>
+          {/* Hidden on narrow screens in favor of the fixed swipe-to-confirm
+              bar at the bottom -- avoids two redundant submit affordances on
+              a small screen where header space is already cramped. */}
           <Button
             onClick={handleSubmit}
             disabled={submitting}
             style={accentColor ? { backgroundColor: accentColor } : undefined}
+            className="hidden sm:inline-flex"
           >
             {submitting ? "Submitting…" : "Sign & submit"}
           </Button>
@@ -712,6 +716,12 @@ export function SigningView({
 
       <div className="border-t border-slate-100 bg-white px-6 py-4 text-center text-xs text-slate-400">
         {branding.hasBranding ? `Sent via ${branding.orgName}` : "Signed with SignedBy"}
+      </div>
+
+      {/* Mobile-only fixed swipe-to-confirm bar -- the desktop header button
+          (hidden here via sm:hidden) covers larger screens. */}
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-slate-200 bg-white px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] sm:hidden">
+        <SwipeToSubmit onConfirm={handleSubmit} submitting={submitting} label="Slide to sign & submit" />
       </div>
 
       {showDeclineModal && (
@@ -1047,5 +1057,112 @@ function CardFieldInput({
       }}
       className="min-h-[52px] w-full rounded-lg border-2 border-slate-500 bg-slate-100 px-3 text-base text-slate-800"
     />
+  );
+}
+
+// Uber/Lyft/iOS-style "slide to confirm" for the final submit action on
+// mobile -- a deliberate drag gesture reads as more intentional than a plain
+// tap, which is a nice affordance for the one action in the whole flow that
+// can't be undone. To be clear about what it isn't: the actual legal weight
+// of the signature comes from the consent checkbox + audit trail (unchanged
+// by this), not from the gesture -- this is a delight/perception upgrade,
+// not a legal one. Uses the Pointer Events API so the same handlers cover
+// touch, mouse, and pen without separate code paths.
+function SwipeToSubmit({
+  onConfirm,
+  submitting,
+  label,
+}: {
+  onConfirm: () => void;
+  submitting: boolean;
+  label: string;
+}) {
+  const HANDLE_SIZE = 56;
+  const CONFIRM_THRESHOLD = 0.8;
+
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const dragStartRef = useRef<{ startX: number; startLeft: number } | null>(null);
+  const [dragLeft, setDragLeft] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+
+  // If a confirmed swipe's submit attempt didn't actually go through (e.g.
+  // consent wasn't checked, or a required field was missing -- handleSubmit
+  // validates and sets an error, but doesn't throw), `submitting` flips back
+  // to false without the page ever unmounting to the "done" screen. Reset
+  // the handle so the signer can try again. Deferred to a microtask so this
+  // doesn't run as a synchronous setState call inside the effect body.
+  useEffect(() => {
+    if (confirmed && !submitting) {
+      Promise.resolve().then(() => {
+        setConfirmed(false);
+        setDragLeft(0);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submitting]);
+
+  function maxLeft() {
+    const trackWidth = trackRef.current?.getBoundingClientRect().width ?? 0;
+    return Math.max(trackWidth - HANDLE_SIZE, 1);
+  }
+
+  function handlePointerDown(e: React.PointerEvent) {
+    if (submitting || confirmed) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragStartRef.current = { startX: e.clientX, startLeft: dragLeft };
+    setIsDragging(true);
+  }
+
+  function handlePointerMove(e: React.PointerEvent) {
+    if (!dragStartRef.current) return;
+    const delta = e.clientX - dragStartRef.current.startX;
+    const next = Math.min(Math.max(dragStartRef.current.startLeft + delta, 0), maxLeft());
+    setDragLeft(next);
+  }
+
+  function handlePointerUp() {
+    if (!dragStartRef.current) return;
+    dragStartRef.current = null;
+    setIsDragging(false);
+    const completion = dragLeft / maxLeft();
+    if (completion >= CONFIRM_THRESHOLD) {
+      setDragLeft(maxLeft());
+      setConfirmed(true);
+      onConfirm();
+    } else {
+      setDragLeft(0);
+    }
+  }
+
+  return (
+    <div ref={trackRef} className="relative h-14 w-full select-none overflow-hidden rounded-full bg-slate-200">
+      <div
+        className="absolute inset-y-0 left-0 rounded-full bg-emerald-500"
+        style={{ width: dragLeft + HANDLE_SIZE, transition: isDragging ? "none" : "width 200ms ease" }}
+      />
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-medium text-slate-600">
+        {submitting ? "Submitting…" : confirmed ? "Confirmed" : label}
+      </div>
+      <div
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        style={{
+          left: dragLeft,
+          width: HANDLE_SIZE,
+          height: HANDLE_SIZE,
+          touchAction: "none",
+          transition: isDragging ? "none" : "left 200ms ease",
+        }}
+        className={cn(
+          "absolute top-0 flex items-center justify-center rounded-full bg-slate-900 text-lg text-white shadow-md",
+          submitting || confirmed ? "opacity-60" : "cursor-grab active:cursor-grabbing"
+        )}
+      >
+        →
+      </div>
+    </div>
   );
 }
