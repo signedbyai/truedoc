@@ -3,8 +3,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getFromR2 } from "@/lib/r2";
 import { extractPdfText } from "@/lib/pdf-text";
 import { getAnthropic } from "@/lib/anthropic";
+import { isSupportedSummaryLang, summaryLanguageLabel } from "@/lib/summary-languages";
 
 type SummaryResult = { summary: string } | { error: string };
+type AdminClient = ReturnType<typeof createAdminClient>;
+type DocRow = { id: string; title: string; file_path: string };
 
 const SUMMARY_PROMPT = (title: string, text: string) => `You are helping someone understand a document before they \
 sign it electronically. Below is the extracted text of a document titled "${title}". Write a short, plain-language \
@@ -18,23 +21,15 @@ unreadable, say so plainly instead of guessing at content.
 Document text:
 ${text}`;
 
-// Generates (or returns the cached) plain-language summary for a document.
-// The source PDF never changes after upload, so once generated the summary
-// is cached on the documents row indefinitely — this keeps Anthropic API
-// cost to one call per document, regardless of how many times signers open
-// the "what am I signing?" panel.
-export async function getOrCreateDocumentSummary(documentId: string): Promise<SummaryResult> {
-  const admin = createAdminClient();
+const TRANSLATE_PROMPT = (languageName: string, englishSummary: string) => `Translate the following plain-language \
+document summary into ${languageName}. Preserve the meaning exactly — do not add information, omit anything, give \
+legal advice, or flag risks that aren't already present. Return only the translated summary text, nothing else \
+(no preamble, no quotes around it).
 
-  const { data: doc } = await admin
-    .from("documents")
-    .select("id, title, file_path, ai_summary")
-    .eq("id", documentId)
-    .single();
+Summary:
+${englishSummary}`;
 
-  if (!doc) return { error: "Document not found." };
-  if (doc.ai_summary) return { summary: doc.ai_summary };
-
+async function generateEnglishSummary(admin: AdminClient, doc: DocRow): Promise<SummaryResult> {
   let bytes: Buffer;
   try {
     const { body } = await getFromR2(doc.file_path);
@@ -77,11 +72,83 @@ export async function getOrCreateDocumentSummary(documentId: string): Promise<Su
     await admin
       .from("documents")
       .update({ ai_summary: summary, ai_summary_generated_at: new Date().toISOString() })
-      .eq("id", documentId);
+      .eq("id", doc.id);
 
     return { summary };
   } catch (err) {
     console.error("Anthropic summary generation failed", err);
     return { error: "Couldn't generate a summary right now — try again later." };
   }
+}
+
+async function translateSummary(
+  admin: AdminClient,
+  documentId: string,
+  englishSummary: string,
+  existingTranslations: Record<string, string>,
+  lang: string
+): Promise<SummaryResult> {
+  if (existingTranslations[lang]) return { summary: existingTranslations[lang] };
+
+  try {
+    const anthropic = getAnthropic();
+    const message = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 400,
+      messages: [{ role: "user", content: TRANSLATE_PROMPT(summaryLanguageLabel(lang), englishSummary) }],
+    });
+
+    const translated = message.content
+      .filter((block): block is Anthropic.TextBlock => block.type === "text")
+      .map((block) => block.text)
+      .join("\n")
+      .trim();
+
+    if (!translated) return { error: "Couldn't translate the summary — try again." };
+
+    await admin
+      .from("documents")
+      .update({ ai_summary_translations: { ...existingTranslations, [lang]: translated } })
+      .eq("id", documentId);
+
+    return { summary: translated };
+  } catch (err) {
+    console.error("Anthropic summary translation failed", err);
+    return { error: "Couldn't translate the summary right now — try again later." };
+  }
+}
+
+// Generates (or returns the cached) plain-language summary for a document,
+// optionally translated into one of the supported languages
+// (summary-languages.ts). The source PDF never changes after upload, so the
+// English summary is cached on the documents row indefinitely
+// (ai_summary) — this keeps Anthropic API cost to one call per document for
+// English, regardless of how many times signers open the "what am I
+// signing?" panel. Translations are a second, much cheaper call (translating
+// the short cached summary, not re-reading the whole document) and are
+// cached per language in ai_summary_translations, so each language is only
+// ever translated once per document too.
+export async function getOrCreateDocumentSummary(documentId: string, lang: string = "en"): Promise<SummaryResult> {
+  const admin = createAdminClient();
+  const targetLang = isSupportedSummaryLang(lang) ? lang : "en";
+
+  const { data: doc } = await admin
+    .from("documents")
+    .select("id, title, file_path, ai_summary, ai_summary_translations")
+    .eq("id", documentId)
+    .single();
+
+  if (!doc) return { error: "Document not found." };
+
+  let englishSummary = doc.ai_summary as string | null;
+  if (!englishSummary) {
+    const generated = await generateEnglishSummary(admin, doc);
+    if ("error" in generated) return generated;
+    englishSummary = generated.summary;
+  }
+
+  if (targetLang === "en") return { summary: englishSummary };
+
+  const existingTranslations = (doc.ai_summary_translations as Record<string, string> | null) || {};
+  return translateSummary(admin, documentId, englishSummary, existingTranslations, targetLang);
 }

@@ -5,6 +5,7 @@ import SignatureCanvas from "react-signature-canvas";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { computeCardCrop } from "@/lib/card-crop";
+import { SUMMARY_LANGUAGES, detectSummaryLang } from "@/lib/summary-languages";
 
 type FieldType = "signature" | "initials" | "date" | "text" | "checkbox";
 
@@ -150,7 +151,18 @@ export function SigningView({
   const [declineReason, setDeclineReason] = useState("");
   const [declining, setDeclining] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
-  const [summary, setSummary] = useState("");
+  // Cached client-side per language so switching back to one already
+  // fetched is instant — the server also caches per document+language
+  // (summarize-document.ts), so even a fresh fetch after this component
+  // remounts is cheap after the first signer to view it in that language.
+  const [summariesByLang, setSummariesByLang] = useState<Record<string, string>>({});
+  // Defaults to the signer's browser language if it's one of the supported
+  // ones, else English — safe to read navigator here (no SSR mismatch risk)
+  // since it only affects a closed-by-default modal's content, never the
+  // initial rendered markup.
+  const [summaryLang, setSummaryLang] = useState<string>(() =>
+    detectSummaryLang(typeof navigator !== "undefined" ? navigator.language : undefined)
+  );
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState("");
   // One-time first-time-signer guidance. Session-only (no localStorage) —
@@ -408,21 +420,31 @@ export function SigningView({
     }
   }
 
-  async function handleOpenSummary() {
-    setShowSummaryModal(true);
-    if (summary || summaryLoading) return;
+  async function fetchSummary(lang: string) {
+    if (summariesByLang[lang]) return;
     setSummaryLoading(true);
     setSummaryError("");
     try {
-      const res = await fetch(`/api/sign/${token}/summary`);
+      const res = await fetch(`/api/sign/${token}/summary?lang=${lang}`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Couldn't generate a summary.");
-      setSummary(data.summary);
+      setSummariesByLang((prev) => ({ ...prev, [lang]: data.summary }));
     } catch (err) {
       setSummaryError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setSummaryLoading(false);
     }
+  }
+
+  function handleOpenSummary() {
+    setShowSummaryModal(true);
+    fetchSummary(summaryLang);
+  }
+
+  function handleSummaryLangChange(lang: string) {
+    setSummaryLang(lang);
+    setSummaryError("");
+    fetchSummary(lang);
   }
 
   if (declined) {
@@ -784,14 +806,32 @@ export function SigningView({
                 Close
               </button>
             </div>
-            <p className="mt-1 text-xs text-slate-500">
-              AI-generated summary of &quot;{documentTitle}&quot; — for context only, not legal advice. Read the
+            <div className="mt-2 flex items-center gap-2">
+              <label htmlFor="summary-lang" className="text-xs text-slate-500">
+                Language
+              </label>
+              <select
+                id="summary-lang"
+                value={summaryLang}
+                onChange={(e) => handleSummaryLangChange(e.target.value)}
+                className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs text-slate-700"
+              >
+                {SUMMARY_LANGUAGES.map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="mt-2 text-xs text-slate-500">
+              AI-generated summary of &quot;{documentTitle}&quot; — for context only, not legal advice.
+              {summaryLang !== "en" && " Translated from the English summary; the document itself is what's legally binding."} Read the
               full document above before signing.
             </p>
             <div className="mt-3 min-h-[60px] rounded-md bg-slate-50 p-3 text-sm text-slate-700">
               {summaryLoading && <span className="text-slate-500">Reading the document…</span>}
               {!summaryLoading && summaryError && <span className="text-red-600">{summaryError}</span>}
-              {!summaryLoading && !summaryError && summary}
+              {!summaryLoading && !summaryError && summariesByLang[summaryLang]}
             </div>
             <div className="mt-4 flex justify-end">
               <button
