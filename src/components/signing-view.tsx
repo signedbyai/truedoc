@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { computeCardCrop } from "@/lib/card-crop";
 
 type FieldType = "signature" | "initials" | "date" | "text" | "checkbox";
 
@@ -145,11 +146,28 @@ export function SigningView({
   // value in remembering dismissal across visits, and it keeps this from
   // touching any signer PII.
   const [showIntro, setShowIntro] = useState(true);
+  // Mobile "card" mode: one field at a time, zoomed to its spot on the page,
+  // instead of pinch-zooming a full letter/A4 page on a small screen.
+  // Defaults to "full" (matches server-rendered markup, avoids a hydration
+  // mismatch) and flips to "card" on mount if the viewport is narrow — see
+  // the mount effect below. Always overridable via the view-mode toggle.
+  const [viewMode, setViewMode] = useState<"card" | "full">("full");
+  const [cardIndex, setCardIndex] = useState(0);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const padRef = useRef<SignatureCanvas | null>(null);
 
   const requiredFields = initialFields.filter((f) => f.required);
   const filledRequiredCount = requiredFields.filter((f) => values[f.id]?.trim()).length;
   const nextFieldId = requiredFields.find((f) => !values[f.id]?.trim())?.id ?? null;
+
+  // Every field (required or not) in reading order, for card-mode paging.
+  const orderedFields = [...initialFields].sort(
+    (a, b) => a.page - b.page || a.y - b.y || a.x - b.x
+  );
+  const pageByNumber = new Map(pageCanvases.map((p) => [p.page, p]));
+  const showCardMode = viewMode === "card" && orderedFields.length > 0 && !loading && pageCanvases.length > 0;
+  const clampedCardIndex = Math.min(cardIndex, Math.max(orderedFields.length - 1, 0));
+  const currentCardField = orderedFields[clampedCardIndex] ?? null;
 
   useEffect(() => {
     let cancelled = false;
@@ -189,6 +207,63 @@ export function SigningView({
     };
   }, [token]);
 
+  // One-time, mount-only viewport check to default into card mode on a
+  // phone-sized screen. Deferred to a microtask (not called synchronously in
+  // the effect body) to satisfy react-hooks/set-state-in-effect, matching
+  // the pattern already used for the verify page's mount-time check.
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      if (typeof window !== "undefined" && window.innerWidth < 640) {
+        setViewMode("card");
+      }
+    });
+  }, []);
+
+  function goToCard(index: number) {
+    setCardIndex((prev) => {
+      if (index < 0 || index >= orderedFields.length) return prev;
+      return index;
+    });
+  }
+
+  function goNextCard() {
+    goToCard(clampedCardIndex + 1);
+  }
+
+  function goPrevCard() {
+    goToCard(clampedCardIndex - 1);
+  }
+
+  // Auto-advances the card after the field currently on screen gets filled —
+  // no-op outside card mode, and no-op if some other field was the one that
+  // just changed (e.g. a saved signature applied instantly to a field that
+  // isn't the current card).
+  function advanceCardIfCurrent(fieldId: string) {
+    if (viewMode === "card" && currentCardField?.id === fieldId) {
+      goNextCard();
+    }
+  }
+
+  function handleCardTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+  }
+
+  function handleCardTouchEnd(e: React.TouchEvent) {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    // Require a clearly horizontal, deliberate swipe so this doesn't fire
+    // from an incidental vertical scroll or tap-with-jitter.
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) goNextCard();
+      else goPrevCard();
+    }
+  }
+
   function setValue(fieldId: string, value: string) {
     setValues((prev) => ({ ...prev, [fieldId]: value }));
     if (value.trim()) {
@@ -213,6 +288,7 @@ export function SigningView({
     }
     const dataUrl = padRef.current.getTrimmedCanvas().toDataURL("image/png");
     setValue(signaturePadFor, dataUrl);
+    advanceCardIfCurrent(signaturePadFor);
     const field = initialFields.find((f) => f.id === signaturePadFor);
     if (field?.type === "signature" || field?.type === "initials") {
       setSavedTypeValues((prev) => ({ ...prev, [field.type]: dataUrl }));
@@ -226,6 +302,7 @@ export function SigningView({
     if (!text) return;
     const dataUrl = renderTypedSignature(text, SIGNATURE_STYLES[typedStyleIndex]);
     setValue(signaturePadFor, dataUrl);
+    advanceCardIfCurrent(signaturePadFor);
     const field = initialFields.find((f) => f.id === signaturePadFor);
     if (field?.type === "signature" || field?.type === "initials") {
       setSavedTypeValues((prev) => ({ ...prev, [field.type]: dataUrl }));
@@ -243,6 +320,7 @@ export function SigningView({
       const saved = savedTypeValues[field.type as "signature" | "initials"];
       if (saved) {
         setValue(field.id, saved);
+        advanceCardIfCurrent(field.id);
         return;
       }
     }
@@ -437,8 +515,17 @@ export function SigningView({
       {showIntro && requiredFields.length > 0 && (
         <div className="flex items-center justify-between gap-3 border-b border-blue-100 bg-blue-50 px-6 py-2.5">
           <p className="text-xs text-blue-900">
-            Click each highlighted field below to fill it in, then hit <strong>Sign &amp; submit</strong> when
-            you&apos;re done.
+            {showCardMode ? (
+              <>
+                Swipe or tap <strong>Next</strong> to move through each field, then hit{" "}
+                <strong>Sign &amp; submit</strong> when you&apos;re done.
+              </>
+            ) : (
+              <>
+                Click each highlighted field below to fill it in, then hit <strong>Sign &amp; submit</strong> when
+                you&apos;re done.
+              </>
+            )}
           </p>
           <button
             onClick={() => setShowIntro(false)}
@@ -473,7 +560,120 @@ export function SigningView({
       <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-6 py-10">
         {loading && <p className="text-sm text-slate-500">Loading document…</p>}
 
-        {pageCanvases.map(({ page, dataUrl, width, height }) => (
+        {!loading && pageCanvases.length > 0 && orderedFields.length > 0 && (
+          <div className="flex w-full max-w-sm justify-end">
+            <button
+              onClick={() => setViewMode(viewMode === "card" ? "full" : "card")}
+              className="text-xs font-medium text-slate-500 underline underline-offset-2 hover:text-slate-700"
+            >
+              {viewMode === "card" ? "View full document" : "Switch to guided view"}
+            </button>
+          </div>
+        )}
+
+        {showCardMode && currentCardField ? (
+          <div className="w-full max-w-sm">
+            <div className="mb-2 flex items-center justify-between text-xs text-slate-500">
+              <span>
+                Field {clampedCardIndex + 1} of {orderedFields.length}
+              </span>
+              {currentCardField.required && <span className="font-medium text-slate-600">Required</span>}
+            </div>
+            <div className="mb-3 flex gap-1">
+              {orderedFields.map((f, i) => (
+                <div
+                  key={f.id}
+                  className={cn(
+                    "h-1 flex-1 rounded-full",
+                    values[f.id]?.trim()
+                      ? "bg-emerald-500"
+                      : i === clampedCardIndex
+                        ? "bg-slate-900"
+                        : "bg-slate-200"
+                  )}
+                />
+              ))}
+            </div>
+
+            <div
+              onTouchStart={handleCardTouchStart}
+              onTouchEnd={handleCardTouchEnd}
+              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+            >
+              {(() => {
+                const pageInfo = pageByNumber.get(currentCardField.page);
+                if (!pageInfo) {
+                  return (
+                    <div className="flex aspect-[3/2] w-full items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-xs text-slate-400">
+                      Preview unavailable — check the full document
+                    </div>
+                  );
+                }
+                const crop = computeCardCrop(currentCardField, pageInfo);
+                return (
+                  <div className="relative w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100 aspect-[3/2]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={pageInfo.dataUrl}
+                      alt=""
+                      className="pointer-events-none absolute max-w-none select-none"
+                      style={{
+                        left: `${crop.imgLeftPct}%`,
+                        top: `${crop.imgTopPct}%`,
+                        width: `${crop.imgWidthPct}%`,
+                        height: `${crop.imgHeightPct}%`,
+                      }}
+                    />
+                    <div
+                      className="pointer-events-none absolute rounded border-2 border-blue-500 bg-blue-500/10"
+                      style={{
+                        left: `${crop.fieldLeftPct}%`,
+                        top: `${crop.fieldTopPct}%`,
+                        width: `${crop.fieldWidthPct}%`,
+                        height: `${crop.fieldHeightPct}%`,
+                      }}
+                    />
+                  </div>
+                );
+              })()}
+
+              <div className="mt-4">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+                  {FIELD_LABELS[currentCardField.type]}
+                  {!currentCardField.required && " (optional)"}
+                </p>
+                <CardFieldInput
+                  field={currentCardField}
+                  value={values[currentCardField.id] || ""}
+                  onChange={(v) => setValue(currentCardField.id, v)}
+                  onCommit={() => advanceCardIfCurrent(currentCardField.id)}
+                  onOpenPad={() => handleSignatureFieldClick(currentCardField)}
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <button
+                onClick={goPrevCard}
+                disabled={clampedCardIndex === 0}
+                className="rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+              >
+                Back
+              </button>
+              {clampedCardIndex === orderedFields.length - 1 ? (
+                <span className="text-xs text-slate-500">Last field — hit Sign &amp; submit above when ready</span>
+              ) : (
+                <button
+                  onClick={goNextCard}
+                  className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                >
+                  Next
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          pageCanvases.map(({ page, dataUrl, width, height }) => (
           <div key={page} className="relative border border-slate-300 bg-white shadow-sm" style={{ width, height, maxWidth: "100%" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={dataUrl} alt={`Page ${page}`} className="pointer-events-none block h-full w-full select-none" />
@@ -502,7 +702,8 @@ export function SigningView({
                 </div>
               ))}
           </div>
-        ))}
+          ))
+        )}
 
         {!loading && pageCanvases.length === 0 && (
           <p className="text-sm text-red-600">Couldn&apos;t load this document ({pageCount} expected pages).</p>
@@ -762,6 +963,89 @@ function FieldInput({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={cn(base, "border-slate-500 bg-slate-100 px-1 text-[11px] text-slate-800")}
+    />
+  );
+}
+
+// Card-mode's field control — full-size, touch-friendly, laid out normally
+// below the zoomed page preview rather than overlaid on top of it (unlike
+// FieldInput above, which sits directly on the full-scale page render).
+// `onCommit` marks the field as "done" for auto-advance purposes; unlike a
+// plain onChange, it deliberately does NOT fire on every keystroke for text
+// fields (that would advance the card after the first character typed) —
+// only on blur, once there's a non-empty value.
+function CardFieldInput({
+  field,
+  value,
+  onChange,
+  onCommit,
+  onOpenPad,
+}: {
+  field: Field;
+  value: string;
+  onChange: (v: string) => void;
+  onCommit: () => void;
+  onOpenPad: () => void;
+}) {
+  if (field.type === "signature" || field.type === "initials") {
+    return (
+      <button
+        onClick={onOpenPad}
+        className={cn(
+          "flex min-h-[96px] w-full items-center justify-center rounded-lg border-2 text-sm font-medium",
+          value ? "border-emerald-500 bg-white p-2" : "border-blue-500 bg-blue-50 text-blue-700"
+        )}
+      >
+        {value ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={value} alt="Signature" className="h-full max-h-20 w-full object-contain" />
+        ) : (
+          <>Tap to {field.type === "initials" ? "add initials" : "sign"}</>
+        )}
+      </button>
+    );
+  }
+
+  if (field.type === "date") {
+    return (
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          if (e.target.value) onCommit();
+        }}
+        className="min-h-[52px] w-full rounded-lg border-2 border-amber-500 bg-amber-50 px-3 text-base text-amber-900"
+      />
+    );
+  }
+
+  if (field.type === "checkbox") {
+    return (
+      <label className="flex min-h-[52px] w-full items-center gap-3 rounded-lg border-2 border-emerald-500 bg-emerald-50 px-3">
+        <input
+          type="checkbox"
+          checked={value === "true"}
+          onChange={(e) => {
+            onChange(e.target.checked ? "true" : "");
+            if (e.target.checked) onCommit();
+          }}
+          className="h-6 w-6 shrink-0"
+        />
+        <span className="text-sm text-emerald-900">Check to confirm</span>
+      </label>
+    );
+  }
+
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onBlur={() => {
+        if (value.trim()) onCommit();
+      }}
+      className="min-h-[52px] w-full rounded-lg border-2 border-slate-500 bg-slate-100 px-3 text-base text-slate-800"
     />
   );
 }
