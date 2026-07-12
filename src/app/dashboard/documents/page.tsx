@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DeleteDocumentButton } from "@/components/delete-document-button";
+import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -195,6 +196,7 @@ export default async function DocumentsPage({
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
                           {STATUS_LABEL[doc.status] ?? doc.status}
                         </span>
+                        <DuplicateDocumentButton documentId={doc.id} />
                         {doc.status === "draft" && <DeleteDocumentButton documentId={doc.id} />}
                       </div>
                     </li>

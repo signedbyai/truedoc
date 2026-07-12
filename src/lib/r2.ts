@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, CopyObjectCommand } from "@aws-sdk/client-s3";
 
 // Cloudflare R2 is S3-API compatible, so the standard AWS SDK v3 client works
 // unmodified — just point it at R2's endpoint instead of AWS.
@@ -58,4 +58,24 @@ export async function deleteFromR2(key: string) {
   } catch (err) {
     console.error("R2 delete failed", key, err);
   }
+}
+
+/**
+ * Copies an object to a new key — used by "Duplicate document" so the copy
+ * gets its own independent R2 object rather than sharing a `file_path` with
+ * the source. Sharing would be cheaper, but the draft-delete route calls
+ * deleteFromR2() on a document's own file_path, and two documents pointing
+ * at the same key would mean deleting either one deletes the file out from
+ * under the other. An extra R2-to-R2 copy (no data through our server) is a
+ * small, one-time cost for keeping documents fully independent.
+ */
+export async function copyInR2(sourceKey: string, destKey: string) {
+  await getClient().send(
+    new CopyObjectCommand({
+      Bucket: bucket(),
+      Key: destKey,
+      CopySource: `${bucket()}/${encodeURIComponent(sourceKey)}`,
+    })
+  );
+  return destKey;
 }

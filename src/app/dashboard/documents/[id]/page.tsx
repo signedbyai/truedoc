@@ -5,6 +5,7 @@ import { FieldEditor } from "@/components/field-editor";
 import { VoidDocumentButton } from "@/components/void-document-button";
 import { SignerRow } from "@/components/signer-row";
 import { AuditTrail, type AuditEvent } from "@/components/audit-trail";
+import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
 import { planHasFeature } from "@/lib/plan";
 
 export default async function DocumentEditorPage({ params }: { params: Promise<{ id: string }> }) {
@@ -79,6 +80,7 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
               >
                 Download original (unsigned)
               </a>
+              <DuplicateDocumentButton documentId={id} />
             </div>
           </div>
 
@@ -122,12 +124,15 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
             </Link>
             <h1 className="mt-2 text-2xl font-semibold text-slate-900">{doc.title}</h1>
             <p className={`text-sm ${className}`}>{label}</p>
-            <a
-              href={`/api/documents/${id}/original-file`}
-              className="mt-1 inline-block text-sm font-medium text-slate-600 hover:text-slate-900"
-            >
-              Download original (unsigned)
-            </a>
+            <div className="mt-1 flex items-center gap-4">
+              <a
+                href={`/api/documents/${id}/original-file`}
+                className="inline-block text-sm font-medium text-slate-600 hover:text-slate-900"
+              >
+                Download original (unsigned)
+              </a>
+              <DuplicateDocumentButton documentId={id} />
+            </div>
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-white p-6">
