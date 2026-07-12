@@ -51,6 +51,26 @@ const nextConfig: NextConfig = {
   // Vercel function bundle even with this setting, so it was replaced with
   // a pure-JS polyfill in pdf-text.ts instead — see the comment there.)
   serverExternalPackages: ["pdfjs-dist"],
+  // pdfjs-dist's Node code path falls back to a same-process "fake worker"
+  // by dynamically `import()`-ing a *runtime-computed* path
+  // (GlobalWorkerOptions.workerSrc, defaulted internally to
+  // "./pdf.worker.mjs" relative to pdf.mjs). Vercel's build-time file
+  // tracer (@vercel/nft) only follows statically-analyzable import
+  // specifiers, so it never discovers this dynamic import and leaves
+  // pdf.worker.mjs out of the deployed function bundle. That's the actual
+  // cause of "Could not read this document" recurring on unrelated PDFs —
+  // confirmed via production logs: "Setting up fake worker failed: Cannot
+  // find module '/var/task/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs'".
+  // (The Path2D/@napi-rs/canvas warnings logged alongside it are harmless —
+  // pdfjs only needs those for actual canvas rendering, which text
+  // extraction never does.) Force-including the file here is the fix.
+  // Key must be a glob, not a literal route: `[token]` in a literal string
+  // gets parsed as a picomatch character class ("one of t/o/k/e/n"), which
+  // never matches, so the include silently doesn't apply. `*` matches the
+  // dynamic segment instead.
+  outputFileTracingIncludes: {
+    "/api/sign/*/summary": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"],
+  },
   async headers() {
     return [
       {
