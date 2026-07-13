@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { computeCardCrop } from "@/lib/card-crop";
 import { SUMMARY_LANGUAGES, detectSummaryLang } from "@/lib/summary-languages";
+import { draftStorageKey, serializeDraft, parseDraft, mergeRestoredValues, hasAnyValue } from "@/lib/sign-draft";
 
 type FieldType = "signature" | "initials" | "date" | "text" | "checkbox";
 
@@ -85,6 +86,19 @@ function renderTypedSignature(text: string, style: { fontFamily: string; italic?
 function vibrate(pattern: number | number[]) {
   if (typeof navigator !== "undefined" && "vibrate" in navigator) {
     navigator.vibrate(pattern);
+  }
+}
+
+// Removes the local autosave draft once it's no longer needed — after a
+// successful submit or decline, so a signer who somehow reopens the same
+// link afterward doesn't get old field values silently restored into a
+// document that's already resolved.
+function clearDraft(token: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(draftStorageKey(token));
+  } catch {
+    // ignore -- same reasoning as the save effect in the component below
   }
 }
 
@@ -179,6 +193,10 @@ export function SigningView({
   const [cardIndex, setCardIndex] = useState(0);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const padRef = useRef<SignatureCanvas | null>(null);
+  // Tracks which field the full-mode auto-scroll effect below has already
+  // jumped to, so it fires once per distinct next-field rather than on
+  // every re-render.
+  const lastAutoScrolledFieldRef = useRef<string | null>(null);
 
   const requiredFields = initialFields.filter((f) => f.required);
   const filledRequiredCount = requiredFields.filter((f) => values[f.id]?.trim()).length;
@@ -260,6 +278,70 @@ export function SigningView({
       }
     });
   }, []);
+
+  // Restores an in-progress draft from localStorage on mount, if one
+  // exists for this signing token — recovers a signer's already-entered
+  // field values after an accidental refresh or tab close, which
+  // previously lost everything (all state was plain React state, nothing
+  // persisted until final submit). Deliberately restores field *values*
+  // only, never `consent` — the signer must still actively re-check "I
+  // agree" every time, even right after restoring a draft (see
+  // sign-draft.ts's doc comment for why). Deferred a tick, same
+  // react-hooks/set-state-in-effect reasoning as the viewport-check effect
+  // above.
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      if (typeof window === "undefined") return;
+      let raw: string | null = null;
+      try {
+        raw = window.localStorage.getItem(draftStorageKey(token));
+      } catch {
+        return; // storage disabled/unavailable (e.g. some private-browsing modes) -- just start blank
+      }
+      const restored = parseDraft(raw, Date.now());
+      if (!restored) return;
+      setValues((prev) => mergeRestoredValues(prev, restored, initialFields.map((f) => f.id)));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  // Persists field values to localStorage as the signer works, so the
+  // restore effect above has something to recover after an accidental
+  // refresh/close. Skips writing anything until at least one field has a
+  // real value, so opening the link and leaving immediately doesn't create
+  // a meaningless entry. Never persists `consent` (see above). Wrapped in
+  // try/catch since a full or disabled storage quota must never block
+  // signing -- autosave is a nice-to-have, not a requirement.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!hasAnyValue(values)) return;
+    try {
+      window.localStorage.setItem(draftStorageKey(token), serializeDraft(values, Date.now()));
+    } catch {
+      // ignore -- see comment above
+    }
+  }, [token, values]);
+
+  // Full mode's answer to card mode's auto-advance (goNextCard/
+  // advanceCardIfCurrent above): jump to the next unfilled required field
+  // automatically — on first load, right after switching into full mode,
+  // and again each time the current "next" field gets filled — instead of
+  // leaving a desktop signer to hunt for it via the highlight color alone.
+  // Guarded by lastAutoScrolledFieldRef so it only fires once per distinct
+  // nextFieldId, not on every render (otherwise it'd fight a signer's own
+  // manual scrolling). Re-checks whenever pageCanvases changes because with
+  // progressive rendering (see the render effect above) the field's page —
+  // and therefore its `field-${id}` DOM node — may not exist yet the first
+  // time nextFieldId points to it; the next page to finish rendering will
+  // re-trigger this effect and succeed then.
+  useEffect(() => {
+    if (viewMode !== "full") return;
+    if (!nextFieldId || lastAutoScrolledFieldRef.current === nextFieldId) return;
+    const el = document.getElementById(`field-${nextFieldId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    lastAutoScrolledFieldRef.current = nextFieldId;
+  }, [viewMode, nextFieldId, pageCanvases]);
 
   function goToCard(index: number) {
     setCardIndex((prev) => {
@@ -409,6 +491,7 @@ export function SigningView({
       const data = await res.json().catch(() => ({}));
       setDocumentCompleted(Boolean(data.completed));
       setDone(true);
+      clearDraft(token);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
     } finally {
@@ -431,6 +514,7 @@ export function SigningView({
       }
       setShowDeclineModal(false);
       setDeclined(true);
+      clearDraft(token);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
     } finally {
