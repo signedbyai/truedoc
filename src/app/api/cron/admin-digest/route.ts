@@ -62,6 +62,27 @@ export async function GET(request: Request) {
   const paidOrgs = (orgs || []).filter((o) => o.plan !== "free").length;
   const freeOrgs = (orgs || []).length - paidOrgs;
 
+  // count: "exact", head: true -- ask Postgres for the row count without
+  // actually fetching any rows, since these totals only grow over time and
+  // could be large.
+  const { count: totalSignings, error: signingsError } = await admin
+    .from("signers")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "signed");
+  if (signingsError) {
+    console.error("Admin digest cron: signers count failed", signingsError);
+    return NextResponse.json({ error: signingsError.message }, { status: 500 });
+  }
+
+  const { count: totalDocumentsSigned, error: documentsError } = await admin
+    .from("documents")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "completed");
+  if (documentsError) {
+    console.error("Admin digest cron: documents count failed", documentsError);
+    return NextResponse.json({ error: documentsError.message }, { status: 500 });
+  }
+
   const dateLabel = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -81,6 +102,8 @@ export async function GET(request: Request) {
       totalUsers,
       freeOrgs,
       paidOrgs,
+      totalSignings: totalSignings ?? 0,
+      totalDocumentsSigned: totalDocumentsSigned ?? 0,
     });
   } catch (err) {
     console.error("Admin digest cron: send failed", err);
@@ -95,5 +118,7 @@ export async function GET(request: Request) {
     totalUsers,
     freeOrgs,
     paidOrgs,
+    totalSignings: totalSignings ?? 0,
+    totalDocumentsSigned: totalDocumentsSigned ?? 0,
   });
 }

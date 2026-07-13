@@ -146,6 +146,8 @@ export async function sendAdminDigestEmail(opts: {
   totalUsers: number;
   freeOrgs: number;
   paidOrgs: number;
+  totalSignings: number;
+  totalDocumentsSigned: number;
 }) {
   const totalOrgs = opts.freeOrgs + opts.paidOrgs;
   const row = (label: string, value: string | number) => `
@@ -153,6 +155,12 @@ export async function sendAdminDigestEmail(opts: {
       <td style="padding:6px 0;color:#64748b;font-size:14px;">${label}</td>
       <td style="padding:6px 0;color:#0f172a;font-size:14px;font-weight:700;text-align:right;">${value}</td>
     </tr>
+  `;
+  const bigStat = (label: string, value: string | number) => `
+    <td style="padding:14px 16px;background:#f8fafc;border-radius:10px;text-align:center;">
+      <div style="color:#0f172a;font-size:28px;font-weight:800;">${value}</div>
+      <div style="color:#64748b;font-size:12px;margin-top:2px;">${label}</div>
+    </td>
   `;
 
   await getClient().emails.send({
@@ -164,6 +172,13 @@ export async function sendAdminDigestEmail(opts: {
       <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
         <h2 style="margin:0 0 4px;color:#0f172a;">SignedBy — ${opts.dateLabel}</h2>
         <p style="color:#64748b;font-size:13px;margin:0 0 20px;">Automated daily digest.</p>
+
+        <table style="width:100%;border-collapse:separate;border-spacing:8px 0;margin:0 0 20px -8px;">
+          <tr>
+            ${bigStat("Documents signed, ever", opts.totalDocumentsSigned)}
+            ${bigStat("Signings, ever", opts.totalSignings)}
+          </tr>
+        </table>
 
         <h3 style="margin:0 0 4px;color:#0f172a;font-size:15px;">Logged in (unique users)</h3>
         <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
