@@ -190,11 +190,12 @@ export function FieldEditor({
   // Fetches AI field-placement suggestions and merges them into local
   // state as unconfirmed ("suggested") fields — never written to the
   // server until the sender accepts one. Only ever runs when the sender
-  // explicitly asks for it (the toolbar's "Auto" button, or "Re-suggest"/
-  // "Try again" in the banners below) — deliberately not run automatically
-  // on a fresh upload, since jumping straight into AI-suggested fields
-  // made some senders uncomfortable before they'd even seen the document.
-  // `replaceExisting` is used by "Auto" and "Re-suggest" to swap out only
+  // explicitly asks for it (the toolbar's "Suggest fields" button, or
+  // "Re-suggest"/"Try again" in the banners below) — deliberately not run
+  // automatically on a fresh upload, since jumping straight into
+  // AI-suggested fields made some senders uncomfortable before they'd even
+  // seen the document. `replaceExisting` is used by "Suggest fields" and
+  // "Re-suggest" to swap out only
   // the still-unconfirmed suggestions (leaving anything the sender already
   // confirmed untouched); "Try again" after an error doesn't need it since
   // there's nothing to replace yet.
@@ -593,7 +594,7 @@ export function FieldEditor({
               {saving ? "Saving…" : "Save draft"}
             </Button>
             <Button variant="outline" onClick={() => runSuggestFields(true)} disabled={suggesting}>
-              {suggesting ? "Scanning…" : "Auto"}
+              {suggesting ? "Suggesting…" : "Suggest fields"}
             </Button>
             <DuplicateDocumentButton documentId={documentId} />
             <DeleteDocumentButton documentId={documentId} redirectTo="/dashboard/documents" />
@@ -737,7 +738,7 @@ export function FieldEditor({
         <div className="flex items-center justify-between gap-3 border-b border-blue-100 bg-blue-50 px-6 py-2.5">
           <p className="text-xs text-blue-900">
             Pick a field type above and click anywhere on the document to place it yourself, or press{" "}
-            <strong>Auto</strong> to scan the document and suggest field placements for you to review. Add
+            <strong>Suggest fields</strong> to scan the document and suggest field placements for you to review. Add
             recipients below, then send when you&apos;re ready.
           </p>
           <button
