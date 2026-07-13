@@ -6,6 +6,7 @@ import { generateSignedPdf } from "@/lib/generate-signed-pdf";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { computeSigningOutcome } from "@/lib/signing-routing";
 import { visibleFieldsForSigner } from "@/lib/field-visibility";
+import { buildSpeedStat } from "@/lib/speed-stat";
 
 export const bodySchema = z.object({
   consent: z.literal(true),
@@ -74,6 +75,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   }
 
   await admin.from("signers").update({ status: "signed", signed_at: new Date().toISOString() }).eq("id", signer.id);
+
+  // Personal "you signed this in X seconds" stat for the completion screen
+  // -- see supabase/migrations/0018_signer_speed_stat.sql for why this
+  // works regardless of the sending org's plan, and src/lib/speed-stat.ts
+  // for the plausibility/sample-size gating applied here. Best-effort: a
+  // signer's ability to finish signing must never depend on this succeeding.
+  let speedStat = null;
+  try {
+    const { data: speedRows, error: speedError } = await admin.rpc("get_signer_speed_stat", {
+      p_signer_id: signer.id,
+    });
+    if (speedError) throw speedError;
+    const row = speedRows?.[0];
+    speedStat = buildSpeedStat({
+      activeSeconds: row?.active_seconds ?? null,
+      percentile: row?.percentile ?? null,
+      sampleSize: row?.sample_size ?? null,
+    });
+  } catch (err) {
+    console.error("get_signer_speed_stat failed", err);
+  }
 
   await admin.from("audit_events").insert([
     {
@@ -159,5 +181,5 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       );
   }
 
-  return NextResponse.json({ success: true, completed: documentCompleted });
+  return NextResponse.json({ success: true, completed: documentCompleted, speedStat });
 }
