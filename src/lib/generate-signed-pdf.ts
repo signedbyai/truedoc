@@ -28,57 +28,40 @@ export function flattenOriginalForm(pdfDoc: PDFDocument, documentId: string): vo
   }
 }
 
-// Stamps every filled-in field value onto the original PDF, appends a
-// certificate-of-completion page summarizing the audit trail, uploads the
-// result to R2, and records the resulting key on documents.signed_file_path.
+export type StampField = {
+  id: string;
+  type: string;
+  page: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  value: string | null;
+};
+
+// Stamps every filled-in field value onto pdfDoc's existing pages.
 //
 // Coordinates: fields store x/y/width/height as 0-1 fractions of the page,
 // with y measured from the TOP (matching the browser canvas used by both the
 // field editor and the signing view). pdf-lib's page origin is BOTTOM-LEFT,
 // so every box has to be flipped vertically before drawing into it.
-export async function generateSignedPdf(documentId: string): Promise<{ key: string; hash: string }> {
-  const admin = createAdminClient();
-
-  const { data: doc } = await admin
-    .from("documents")
-    .select("id, org_id, title, file_path")
-    .eq("id", documentId)
-    .single();
-  if (!doc) throw new Error("Document not found");
-
-  const { data: fields } = await admin
-    .from("document_fields")
-    .select("id, type, page, x, y, width, height, value")
-    .eq("document_id", documentId);
-
-  const { data: signers } = await admin
-    .from("signers")
-    .select("id, name, email, signed_at, order_index")
-    .eq("document_id", documentId)
-    .order("order_index", { ascending: true });
-
-  const { data: auditEvents } = await admin
-    .from("audit_events")
-    .select("signer_id, event_type, ip_address, created_at")
-    .eq("document_id", documentId)
-    .in("event_type", ["consent_given", "signed"]);
-
-  const ipBySigner = new Map<string, string>();
-  for (const ev of auditEvents || []) {
-    if (ev.signer_id && ev.ip_address && !ipBySigner.has(ev.signer_id)) {
-      ipBySigner.set(ev.signer_id, ev.ip_address);
-    }
-  }
-
-  const { body: originalBytes } = await getFromR2(doc.file_path);
-  const pdfDoc = await PDFDocument.load(originalBytes);
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+//
+// Exported and kept separate from generateSignedPdf — same reasoning as
+// flattenOriginalForm above — so this, the actual "did the signer's input
+// end up in the right place in the final PDF" logic, is unit-testable
+// without the Supabase/R2 plumbing the rest of that function needs. This
+// is the part of the app with the least room for a silent regression: a
+// field that doesn't stamp, stamps the wrong value, or stamps in the wrong
+// place undermines the document's legal validity, not just its looks.
+export async function stampFields(
+  pdfDoc: PDFDocument,
+  fields: StampField[],
+  fonts: { font: Awaited<ReturnType<PDFDocument["embedFont"]>>; boldFont: Awaited<ReturnType<PDFDocument["embedFont"]>> }
+): Promise<void> {
   const pages = pdfDoc.getPages();
+  const { font, boldFont } = fonts;
 
-  flattenOriginalForm(pdfDoc, documentId);
-
-  for (const field of fields || []) {
+  for (const field of fields) {
     if (!field.value) continue;
     const page = pages[field.page - 1];
     if (!page) continue;
@@ -135,6 +118,52 @@ export async function generateSignedPdf(documentId: string): Promise<{ key: stri
       console.error(`Failed to stamp field ${field.id}`, err);
     }
   }
+}
+
+// Stamps every filled-in field value onto the original PDF, appends a
+// certificate-of-completion page summarizing the audit trail, uploads the
+// result to R2, and records the resulting key on documents.signed_file_path.
+export async function generateSignedPdf(documentId: string): Promise<{ key: string; hash: string }> {
+  const admin = createAdminClient();
+
+  const { data: doc } = await admin
+    .from("documents")
+    .select("id, org_id, title, file_path")
+    .eq("id", documentId)
+    .single();
+  if (!doc) throw new Error("Document not found");
+
+  const { data: fields } = await admin
+    .from("document_fields")
+    .select("id, type, page, x, y, width, height, value")
+    .eq("document_id", documentId);
+
+  const { data: signers } = await admin
+    .from("signers")
+    .select("id, name, email, signed_at, order_index")
+    .eq("document_id", documentId)
+    .order("order_index", { ascending: true });
+
+  const { data: auditEvents } = await admin
+    .from("audit_events")
+    .select("signer_id, event_type, ip_address, created_at")
+    .eq("document_id", documentId)
+    .in("event_type", ["consent_given", "signed"]);
+
+  const ipBySigner = new Map<string, string>();
+  for (const ev of auditEvents || []) {
+    if (ev.signer_id && ev.ip_address && !ipBySigner.has(ev.signer_id)) {
+      ipBySigner.set(ev.signer_id, ev.ip_address);
+    }
+  }
+
+  const { body: originalBytes } = await getFromR2(doc.file_path);
+  const pdfDoc = await PDFDocument.load(originalBytes);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  flattenOriginalForm(pdfDoc, documentId);
+  await stampFields(pdfDoc, fields || [], { font, boldFont });
 
   // Hash the stamped content itself (before the certificate page), since
   // that's the part that actually carries legal meaning. SHA-512 (not
