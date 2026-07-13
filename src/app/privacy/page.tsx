@@ -50,6 +50,11 @@ export default function PrivacyPage() {
       <ul>
         <li>Provide the core service — rendering documents, routing them to Signers, and producing signed PDFs;</li>
         <li>Send transactional email, such as signing invitations, reminders, and completion notices;</li>
+        <li>
+          Power optional AI-assisted features — suggesting where to place signature and text fields, drafting a
+          document from your description, and summarizing a document&apos;s contents — by sending the relevant
+          document text to our AI provider, Anthropic, for analysis;
+        </li>
         <li>Maintain the audit trail required for a legally defensible electronic signature;</li>
         <li>Process subscription payments and manage billing;</li>
         <li>Secure the service and prevent abuse; and</li>
@@ -71,6 +76,11 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Resend</strong> — delivers transactional email (invitations, reminders, notices);
+        </li>
+        <li>
+          <strong>Anthropic</strong> — provides the AI models behind optional field-suggestion, document-drafting,
+          and summary features; only document text relevant to a feature you use is sent, and it is not used to
+          train Anthropic&apos;s models;
         </li>
         <li>
           <strong>Stripe</strong> — processes subscription payments;
