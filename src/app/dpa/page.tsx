@@ -38,8 +38,8 @@ export default function DpaPage() {
         addresses, user agent strings, and document hashes) needed for a legally defensible electronic signature;
         generate the final signed PDF and certificate of completion; and, for Customers using optional AI-assisted
         features, send relevant document text to an AI sub-processor for field-suggestion, drafting, or
-        summarization — Mistral AI by default, or Anthropic or DeepSeek if the Customer has selected one of them in
-        workspace settings. Processing lasts for the duration of the
+        summarization — Mistral AI by default, or Anthropic if the Customer has selected it in workspace settings.
+        Processing lasts for the duration of the
         Customer&apos;s use of the service and any applicable retention period described in our{" "}
         <a href="/privacy" className="underline">
           Privacy Policy
@@ -55,7 +55,6 @@ export default function DpaPage() {
         <li>Resend — transactional email delivery</li>
         <li>Mistral AI — default AI processing for optional field-suggestion, document-drafting, and summary features</li>
         <li>Anthropic, PBC — alternative AI processing for the same features, used only for a Customer that selects it in workspace settings instead of Mistral</li>
-        <li>DeepSeek (Hangzhou DeepSeek Artificial Intelligence Co., Ltd.) — a second alternative AI processing option for the same features, used only for a Customer that selects it in workspace settings; located in China (see the transfer note below)</li>
         <li>Stripe, Inc. — payment processing for subscriptions</li>
         <li>Vercel Inc. — application hosting</li>
       </ul>
@@ -64,11 +63,7 @@ export default function DpaPage() {
         data covered by this DPA, so the Customer can object on reasonable grounds. Each sub-processor is bound by
         confidentiality and data-protection obligations at least as protective as this DPA. Where a sub-processor is
         located outside the European Economic Area, SignedBy relies on appropriate transfer safeguards recognized
-        under GDPR, such as the European Commission&apos;s Standard Contractual Clauses. This applies to our
-        US-based and EEA-based sub-processors; DeepSeek is based in China, which does not have a European
-        Commission adequacy decision, and we have not independently confirmed that DeepSeek offers a
-        GDPR-standard transfer mechanism for this processing. A Customer should evaluate that against its own
-        compliance obligations before enabling DeepSeek for its organization.
+        under GDPR, such as the European Commission&apos;s Standard Contractual Clauses.
       </p>
 
       <h2>4. SignedBy&apos;s obligations</h2>

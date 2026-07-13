@@ -48,10 +48,12 @@ default. Get a key at [console.mistral.ai](https://console.mistral.ai) → `MIST
 Only needed if you want the Anthropic option to actually work; Mistral remains the default either way.
 Get a key at [platform.claude.com](https://platform.claude.com) → `ANTHROPIC_API_KEY`.
 
-### DeepSeek (optional, alternative AI provider — org-selectable in dashboard/settings)
-Only needed if you want the DeepSeek option to actually work; Mistral remains the default either way.
-Reached through DeepSeek's Anthropic-compatible API (`https://api.deepseek.com/anthropic`), so no separate
-SDK is needed — the app reuses its Anthropic client, just pointed at DeepSeek's base URL and key. Get a key
+### DeepSeek (optional, alternative AI provider — built but not yet shown in dashboard/settings)
+The backend fully supports it (migration, PUT route, ai-provider.ts), but it's intentionally hidden from the
+Settings UI until we're ready to offer it to customers — see the comment atop ai-provider-settings.tsx. Only
+needed if you want to test the DeepSeek path directly. Mistral remains the default either way. Reached
+through DeepSeek's Anthropic-compatible API (`https://api.deepseek.com/anthropic`), so no separate SDK is
+needed — the app reuses its Anthropic client, just pointed at DeepSeek's base URL and key. Get a key
 at [platform.deepseek.com](https://platform.deepseek.com) → `DEEPSEEK_API_KEY`.
 
 ## 2. Running locally

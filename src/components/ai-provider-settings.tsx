@@ -6,6 +6,14 @@ import { cn } from "@/lib/utils";
 
 type Provider = "anthropic" | "mistral" | "deepseek";
 
+// DeepSeek is intentionally NOT listed here yet, even though the backend
+// (src/lib/ai-provider.ts, the PUT route's schema, migration 0016) fully
+// supports it — it's built and ready, just not shown in the UI until
+// someone actually asks for it. To turn it on, add:
+//   { id: "deepseek", label: "DeepSeek", description: "..." }
+// back to this array, and restore the DeepSeek entries in /privacy and
+// /dpa (removed for the same reason — no point publicly disclosing a
+// sub-processor no one can actually select yet).
 const OPTIONS: { id: Provider; label: string; description: string }[] = [
   {
     id: "mistral",
@@ -17,18 +25,13 @@ const OPTIONS: { id: Provider; label: string; description: string }[] = [
     label: "Anthropic (Claude)",
     description: "An alternative provider for the same features, for anyone who'd rather use Anthropic instead.",
   },
-  {
-    id: "deepseek",
-    label: "DeepSeek",
-    description: "Another alternative provider for the same features, for anyone who'd rather use DeepSeek instead.",
-  },
 ];
 
 // Org-wide preference for which AI provider handles field suggestions,
 // document drafting, and summaries/translation — see
-// src/app/api/org/ai-provider/route.ts and src/lib/ai-provider.ts. All
-// three providers use a key configured on the server (not something typed
-// in here) — this only picks which one your organization's requests go to.
+// src/app/api/org/ai-provider/route.ts and src/lib/ai-provider.ts. Both
+// providers use a key configured on the server (not something typed in
+// here) — this only picks which one your organization's requests go to.
 export function AIProviderSettings({ initialProvider }: { initialProvider: Provider }) {
   const router = useRouter();
   const [provider, setProvider] = useState<Provider>(initialProvider);
