@@ -35,14 +35,12 @@ export default async function SettingsPage() {
           <div>
             <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
               ← Dashboard
-            </Link>
+            </Link>{" "}
+            · <LogoutLink />
             <h1 className="mt-2 text-2xl font-semibold text-slate-900">Settings</h1>
             <p className="text-sm text-slate-600">Workspace branding, AI suggestions, and API access.</p>
           </div>
-          <div className="flex items-center gap-3">
-            <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
-            <LogoutLink />
-          </div>
+          <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
         </div>
 
         <Card>

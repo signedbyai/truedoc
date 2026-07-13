@@ -70,7 +70,9 @@ export default async function DashboardPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">Welcome back</h1>
-            <p className="text-sm text-slate-600">Signed in as {user.email}</p>
+            <p className="text-sm text-slate-600">
+              Signed in as {user.email} · <LogoutLink />
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
@@ -89,7 +91,6 @@ export default async function DashboardPage() {
             <Link href="/dashboard/billing" className="text-sm font-medium text-slate-500 hover:text-slate-700">
               Billing
             </Link>
-            <LogoutLink />
           </div>
         </div>
 
