@@ -21,9 +21,10 @@ const FEATURES = [
   },
 ];
 
-// SyncMint and AlphaIndigo are real early customers — the other four are
-// placeholder names/logos again (back to the original set from before any
-// real client logos were wired in) until more real logos actually come in.
+// SyncMint, AlphaIndigo, and Thinq.AI are real early customers — the other
+// four are placeholder names/logos again (back to the original set from
+// before any real client logos were wired in) until more real logos
+// actually come in.
 const TRUSTED_BY = [
   { name: "Ironwood Builders", src: "/logos/ironwood-builders.png", height: "h-5" },
   { name: "Hartwell Accounting", src: "/logos/hartwell-accounting.png", height: "h-5" },
@@ -31,6 +32,7 @@ const TRUSTED_BY = [
   { name: "Ashcroft Law Group", src: "/logos/ashcroft-law-group.png", height: "h-5" },
   { name: "SyncMint", src: "/logos/syncmint.png", height: "h-8" },
   { name: "AlphaIndigo", src: "/logos/alphaindigo.png", height: "h-5" },
+  { name: "Thinq.AI", src: "/logos/thinq.png", height: "h-5" },
 ];
 
 const PRICING = [
