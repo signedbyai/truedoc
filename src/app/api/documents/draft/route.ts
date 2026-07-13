@@ -9,6 +9,10 @@ import { normalizeAIProvider } from "@/lib/ai-provider";
 const bodySchema = z.object({
   documentType: z.string(),
   description: z.string(),
+  // Optional — draftDocument() itself falls back to English for a missing
+  // or unsupported code (see its isSupportedDraftLang check), so there's no
+  // need to duplicate that validation here.
+  language: z.string().optional(),
   // Required so the disclaimer can't be silently skipped by calling the API
   // directly — the client also gates the "Generate draft" button on this,
   // see AI_DRAFT_DISCLAIMER/AI_DRAFT_CHECKBOX_LABEL in ai-draft-types.ts.
@@ -49,7 +53,8 @@ export async function POST(request: Request) {
   const result = await draftDocument(
     parsed.data.documentType,
     parsed.data.description,
-    normalizeAIProvider(org?.ai_provider)
+    normalizeAIProvider(org?.ai_provider),
+    parsed.data.language
   );
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 422 });

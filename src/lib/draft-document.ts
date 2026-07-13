@@ -1,5 +1,11 @@
 import { generateAIText, type AIProvider } from "@/lib/ai-provider";
-import { DOCUMENT_TYPES, documentTypeLabel, type DraftDocumentType } from "@/lib/ai-draft-types";
+import {
+  DOCUMENT_TYPES,
+  documentTypeLabel,
+  draftLanguageLabel,
+  isSupportedDraftLang,
+  type DraftDocumentType,
+} from "@/lib/ai-draft-types";
 
 export type DraftResult = { title: string; body: string } | { error: string };
 
@@ -28,10 +34,10 @@ const TYPE_GUIDANCE: Record<DraftDocumentType, string> = {
     "any payment or exchange involved, the timeline or duration, and how either party can end the agreement.",
 };
 
-const PROMPT = (documentType: DraftDocumentType, description: string) => `You are drafting a standard-form, \
-plain-English ${documentTypeLabel(documentType)} for a small business or solo professional to review, edit, and \
-send for e-signature. This is a starting draft the user will review and adjust themselves — not final legal \
-advice, and not tailored to any specific jurisdiction's requirements.
+const PROMPT = (documentType: DraftDocumentType, description: string, languageLabel: string) => `You are drafting \
+a standard-form ${documentTypeLabel(documentType)}, written in plain ${languageLabel}, for a small business or \
+solo professional to review, edit, and send for e-signature. This is a starting draft the user will review and \
+adjust themselves — not final legal advice, and not tailored to any specific jurisdiction's requirements.
 
 ${TYPE_GUIDANCE[documentType]}
 
@@ -43,17 +49,22 @@ ${description}
 Instructions:
 - Use what the user described to fill in specifics (names, amounts, dates, scope). For anything they didn't \
 specify, insert a clearly marked blank in square brackets, e.g. [Client Name], [Amount], [Start Date] — never \
-invent a specific fact they didn't give you.
+invent a specific fact they didn't give you. Keep bracketed placeholders themselves in ${languageLabel} too \
+(e.g. the equivalent of "[Client Name]" in ${languageLabel}, not the English word-for-word).
+- Write the entire document — title, section headings, body text, and the closing signature block — in \
+${languageLabel}, regardless of what language the user's description above happens to be written in.
 - Keep the language plain, neutral, and balanced between the parties — not aggressive or one-sided toward either \
 side.
 - Structure it with a title, numbered sections with short headings, and plain paragraphs — no markdown formatting \
 (no #, *, or _ characters), since this becomes a printed document.
-- End with a section titled "SIGNATURES" listing each party by name/role, each with its own "Signature:", "Print \
-Name:", and "Date:" line on separate lines, ready for physical signature placement.
+- End with a signature block (the ${languageLabel} equivalent of a "SIGNATURES" heading) listing each party by \
+name/role, each with its own "Signature:" / "Print Name:" / "Date:" line (translated into ${languageLabel}) on \
+separate lines, ready for physical signature placement.
 - If what's being asked for falls outside a standard ${documentTypeLabel(documentType)} (e.g. it actually needs a \
 different, more specialized kind of document, or involves something that sounds illegal or clearly requires a \
 licensed professional to prepare, like a real estate deed, a will, or a securities offering), do not draft it — \
-instead respond with exactly one line: "CANNOT_DRAFT: " followed by a short, plain explanation of why.
+instead respond with exactly one line starting with the literal, untranslated text "CANNOT_DRAFT: " (so the app \
+can detect it), followed by a short, plain explanation of why, written in ${languageLabel}.
 
 Respond with the title on the first line, then a blank line, then the full document body. Nothing else — no \
 preamble, no notes about what you changed, no markdown fences.`;
@@ -73,7 +84,8 @@ function validateDescription(description: string): string | null {
 export async function draftDocument(
   documentType: string,
   description: string,
-  provider: AIProvider = "mistral"
+  provider: AIProvider = "mistral",
+  language: string = "en"
 ): Promise<DraftResult> {
   if (!DOCUMENT_TYPES.some((t) => t.id === documentType)) {
     return { error: "Choose a document type." };
@@ -81,13 +93,19 @@ export async function draftDocument(
   const descriptionError = validateDescription(description);
   if (descriptionError) return { error: descriptionError };
 
+  // Defensive fallback to English, same precedent as normalizeAIProvider —
+  // a bad/unsupported code (stale client, direct API call) shouldn't error,
+  // it should just draft in English. See ai-draft-types.ts for why this is
+  // a narrower set than the "what am I signing?" summary's language list.
+  const languageCode = isSupportedDraftLang(language) ? language : "en";
+
   let raw = "";
   try {
     raw = (
       await generateAIText({
         provider,
         tier: "quality",
-        prompt: PROMPT(documentType as DraftDocumentType, description.trim()),
+        prompt: PROMPT(documentType as DraftDocumentType, description.trim(), draftLanguageLabel(languageCode)),
         maxTokens: 4000,
       })
     ).trim();

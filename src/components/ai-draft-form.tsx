@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   DOCUMENT_TYPES,
+  DRAFT_LANGUAGES,
   AI_DRAFT_DISCLAIMER,
   AI_DRAFT_CHECKBOX_LABEL,
+  detectDraftLang,
   type DraftDocumentType,
 } from "@/lib/ai-draft-types";
 
@@ -21,6 +23,9 @@ export function AiDraftForm() {
   const router = useRouter();
   const [step, setStep] = useState<"describe" | "review">("describe");
   const [documentType, setDocumentType] = useState<DraftDocumentType>(DOCUMENT_TYPES[0].id);
+  const [language, setLanguage] = useState(() =>
+    detectDraftLang(typeof navigator !== "undefined" ? navigator.language : undefined)
+  );
   const [description, setDescription] = useState("");
   const [disclaimerChecked, setDisclaimerChecked] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -40,7 +45,7 @@ export function AiDraftForm() {
       const res = await fetch("/api/documents/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentType, description, disclaimerAccepted: true }),
+        body: JSON.stringify({ documentType, description, language, disclaimerAccepted: true }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Couldn't generate a draft.");
@@ -145,6 +150,22 @@ export function AiDraftForm() {
           {DOCUMENT_TYPES.map((t) => (
             <option key={t.id} value={t.id}>
               {t.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="draft-language">Document language</Label>
+        <select
+          id="draft-language"
+          value={language}
+          onChange={(e) => setLanguage(e.target.value)}
+          className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+        >
+          {DRAFT_LANGUAGES.map((l) => (
+            <option key={l.code} value={l.code}>
+              {l.label}
             </option>
           ))}
         </select>

@@ -94,4 +94,26 @@ describe("draftDocument", () => {
     expect("error" in result).toBe(false);
     if (!("error" in result)) expect(result.title).toBe("Non-Disclosure Agreement (NDA)");
   });
+
+  it("defaults to drafting in English when no language is given", async () => {
+    mockCreate.mockResolvedValue(anthropicTextResponse("Title\n\nBody."));
+    await draftDocument("general", "a simple agreement", "anthropic");
+    const prompt = mockCreate.mock.calls[0][0].messages[0].content as string;
+    expect(prompt).toContain("plain English");
+  });
+
+  it("passes the requested language's label into the prompt", async () => {
+    mockCreate.mockResolvedValue(anthropicTextResponse("Titre\n\nCorps du texte."));
+    await draftDocument("general", "a simple agreement", "anthropic", "fr");
+    const prompt = mockCreate.mock.calls[0][0].messages[0].content as string;
+    expect(prompt).toContain("plain French");
+    expect(prompt).not.toContain("plain English");
+  });
+
+  it("falls back to English for an unsupported/non-draft-safe language code (e.g. one the summary feature supports but drafting doesn't)", async () => {
+    mockCreate.mockResolvedValue(anthropicTextResponse("Title\n\nBody."));
+    await draftDocument("general", "a simple agreement", "anthropic", "zh");
+    const prompt = mockCreate.mock.calls[0][0].messages[0].content as string;
+    expect(prompt).toContain("plain English");
+  });
 });
