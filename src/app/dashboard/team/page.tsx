@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { buttonVariants } from "@/components/ui/button";
 import { TeamPanel } from "@/components/team-panel";
 import { OrgSwitcher } from "@/components/org-switcher";
+import { LogoutLink } from "@/components/logout-link";
 
 export default async function TeamPage() {
   const ctx = await getUserAndOrg();
@@ -51,7 +52,10 @@ export default async function TeamPage() {
             <h1 className="mt-2 text-2xl font-semibold text-slate-900">Team</h1>
             <p className="text-sm text-slate-600">{org?.name}&apos;s workspace members.</p>
           </div>
-          <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
+          <div className="flex items-center gap-3">
+            <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
+            <LogoutLink />
+          </div>
         </div>
 
         <Card>

@@ -6,6 +6,7 @@ import { PricingCards } from "@/components/pricing-cards";
 import { ManageBillingButton } from "@/components/manage-billing-button";
 import { PLAN_LABEL } from "@/lib/plan";
 import { OrgSwitcher } from "@/components/org-switcher";
+import { LogoutLink } from "@/components/logout-link";
 
 export default async function BillingPage({
   searchParams,
@@ -49,7 +50,10 @@ export default async function BillingPage({
             </Link>
             <h1 className="mt-2 text-2xl font-semibold text-slate-900">Billing</h1>
           </div>
-          <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
+          <div className="flex items-center gap-3">
+            <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
+            <LogoutLink />
+          </div>
         </div>
 
         {success && (

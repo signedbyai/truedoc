@@ -5,6 +5,7 @@ import { seatsOverLimit, PLAN_LABEL } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { OrgSwitcher } from "@/components/org-switcher";
+import { LogoutLink } from "@/components/logout-link";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -88,6 +89,7 @@ export default async function DashboardPage() {
             <Link href="/dashboard/billing" className="text-sm font-medium text-slate-500 hover:text-slate-700">
               Billing
             </Link>
+            <LogoutLink />
           </div>
         </div>
 

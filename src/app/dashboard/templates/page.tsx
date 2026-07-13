@@ -8,6 +8,7 @@ import { UseTemplateButton } from "@/components/use-template-button";
 import { DeleteTemplateButton } from "@/components/delete-template-button";
 import { BulkSendButton } from "@/components/bulk-send-button";
 import { OrgSwitcher } from "@/components/org-switcher";
+import { LogoutLink } from "@/components/logout-link";
 
 export default async function TemplatesPage() {
   const ctx = await getUserAndOrg();
@@ -29,7 +30,10 @@ export default async function TemplatesPage() {
               </Link>
               <h1 className="mt-2 text-2xl font-semibold text-slate-900">Templates</h1>
             </div>
-            <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
+            <div className="flex items-center gap-3">
+              <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
+              <LogoutLink />
+            </div>
           </div>
           <Card>
             <CardHeader>
@@ -72,7 +76,10 @@ export default async function TemplatesPage() {
               Reusable field layouts. Open any draft document and use &quot;Save as template&quot; to create one.
             </p>
           </div>
-          <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
+          <div className="flex items-center gap-3">
+            <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
+            <LogoutLink />
+          </div>
         </div>
 
         <Card>

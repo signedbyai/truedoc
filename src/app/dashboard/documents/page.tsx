@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { DeleteDocumentButton } from "@/components/delete-document-button";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
 import { OrgSwitcher } from "@/components/org-switcher";
+import { LogoutLink } from "@/components/logout-link";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -110,6 +111,7 @@ export default async function DocumentsPage({
           </div>
           <div className="flex items-center gap-2">
             <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
+            <LogoutLink />
             <Link href="/dashboard/documents/new" className={buttonVariants({ size: "default" })}>
               Upload document
             </Link>

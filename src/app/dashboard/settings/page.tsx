@@ -10,6 +10,7 @@ import { AutoSuggestSettings } from "@/components/auto-suggest-settings";
 import { AIProviderSettings } from "@/components/ai-provider-settings";
 import { normalizeAIProvider } from "@/lib/ai-provider";
 import { OrgSwitcher } from "@/components/org-switcher";
+import { LogoutLink } from "@/components/logout-link";
 
 export default async function SettingsPage() {
   const ctx = await getUserAndOrg();
@@ -38,7 +39,10 @@ export default async function SettingsPage() {
             <h1 className="mt-2 text-2xl font-semibold text-slate-900">Settings</h1>
             <p className="text-sm text-slate-600">Workspace branding, AI suggestions, and API access.</p>
           </div>
-          <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
+          <div className="flex items-center gap-3">
+            <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
+            <LogoutLink />
+          </div>
         </div>
 
         <Card>
