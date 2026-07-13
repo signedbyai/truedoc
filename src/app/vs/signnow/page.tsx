@@ -6,12 +6,21 @@ const TITLE = "SignedBy vs SignNow — pricing and feature comparison";
 const DESCRIPTION =
   "How SignedBy compares to SignNow on price, document limits, and AI-assisted features. Flat $7/mo unlimited plan vs SignNow's per-user, per-invite pricing.";
 
+// A page that sets its own metadata.openGraph/twitter -- even without an
+// images field -- stops Next.js from auto-inheriting the root layout's
+// opengraph-image.tsx (unlike a page with no metadata override at all,
+// e.g. the homepage, which gets it for free). So every page overriding
+// title/description here has to explicitly point back at it, or it gets
+// no preview image at all (confirmed via curl -- this page and /quiz were
+// both silently missing an og:image/twitter:image tag before this).
+const SHARED_IMAGE = ["/opengraph-image"];
+
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: "/vs/signnow" },
-  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/vs/signnow" },
-  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/vs/signnow", images: SHARED_IMAGE },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: SHARED_IMAGE },
 };
 
 type Row = { label: string; signedby: string; competitor: string };
