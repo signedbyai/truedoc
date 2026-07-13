@@ -126,6 +126,12 @@ export default function LandingPage() {
         <p>© {new Date().getFullYear()} SignedBy. signedby.ai</p>
         <p className="mt-1">A trading name of SPRK10 B.V. KVK 98888625</p>
         <p className="mt-2 space-x-4">
+          <Link href="/vs/signnow" className="hover:text-slate-600">
+            vs SignNow
+          </Link>
+          <Link href="/vs/docusign" className="hover:text-slate-600">
+            vs DocuSign
+          </Link>
           <Link href="/terms" className="hover:text-slate-600">
             Terms
           </Link>

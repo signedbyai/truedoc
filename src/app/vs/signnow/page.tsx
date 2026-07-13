@@ -1,0 +1,124 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
+
+const TITLE = "SignedBy vs SignNow — pricing and feature comparison";
+const DESCRIPTION =
+  "How SignedBy compares to SignNow on price, document limits, and AI-assisted features. Flat $7/mo unlimited plan vs SignNow's per-user, per-invite pricing.";
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: "/vs/signnow" },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/vs/signnow" },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
+};
+
+type Row = { label: string; signedby: string; competitor: string };
+
+const PRICING_ROWS: Row[] = [
+  { label: "Cheapest paid plan", signedby: "$7/mo flat", competitor: "$8/user/mo (billed annually); $20/mo billed monthly" },
+  { label: "Document/signature limits on that plan", signedby: "Unlimited documents", competitor: "100 signature invites per user, per year" },
+  { label: "Pricing model", signedby: "Flat fee, no per-seat math", competitor: "Per-user, so cost rises with every teammate added" },
+];
+
+const FEATURE_ROWS: Row[] = [
+  { label: "AI-drafted documents from a plain-language description", signedby: "Included (Starter+)", competitor: "Not offered" },
+  { label: "AI-assisted field placement on upload", signedby: "Included, all plans", competitor: "Not offered" },
+  { label: "Per-page signer engagement tracking (dwell time per page)", signedby: "Included (Starter+)", competitor: "Basic status only (sent/viewed/completed)" },
+  { label: "Mobile signing UX", signedby: "Field-by-field guided mode", competitor: "Standard pinch-and-zoom PDF view" },
+  { label: "Public document-hash verification page", signedby: "Included, no login needed", competitor: "Not offered" },
+  { label: "Company / primary AI processing location", signedby: "Netherlands (EU); Mistral AI (France) by default", competitor: "United States" },
+  { label: "Audit trail, ESIGN/UETA compliance", signedby: "Included", competitor: "Included" },
+  { label: "Templates and bulk send", signedby: "Templates on Starter+, bulk send on Team+", competitor: "Included on Business Premium+" },
+  { label: "API access", signedby: "Business ($29/mo)", competitor: "Enterprise tier (~$30/user/mo annual)" },
+];
+
+function CompareTable({ title, rows }: { title: string; rows: Row[] }) {
+  return (
+    <div className="mt-8 overflow-hidden rounded-xl border border-slate-200">
+      <div className="grid grid-cols-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <span>{title}</span>
+        <span className="text-slate-900">SignedBy</span>
+        <span>SignNow</span>
+      </div>
+      {rows.map((r) => (
+        <div key={r.label} className="grid grid-cols-3 gap-2 border-t border-slate-100 px-4 py-3 text-sm">
+          <span className="text-slate-600">{r.label}</span>
+          <span className="font-medium text-slate-900">{r.signedby}</span>
+          <span className="text-slate-500">{r.competitor}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function VsSignNowPage() {
+  return (
+    <main className="flex min-h-screen flex-col bg-white">
+      <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
+        <Link href="/" className="flex items-baseline gap-1.5">
+          <span className="text-lg font-semibold tracking-tight text-slate-900">SignedBy</span>
+          <span className="text-xs font-medium text-slate-400">BETA</span>
+        </Link>
+        <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+          Sign in
+        </Link>
+      </header>
+
+      <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-6 py-16 text-center">
+        <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">SignedBy vs SignNow</h1>
+        <p className="max-w-xl text-lg text-slate-600">
+          Same core job — upload, place fields, send for signature — at a flat $7/mo instead of per-user, per-invite
+          pricing, plus AI-assisted drafting and field placement SignNow doesn&apos;t offer.
+        </p>
+        <Link href="/login?intent=signup" className={buttonVariants({ size: "lg" })}>
+          Start for free
+        </Link>
+        <p className="text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl px-6 pb-8">
+        <h2 className="text-lg font-semibold text-slate-900">Pricing</h2>
+        <CompareTable title="Pricing" rows={PRICING_ROWS} />
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl px-6 pb-16">
+        <h2 className="text-lg font-semibold text-slate-900">Features</h2>
+        <CompareTable title="Feature" rows={FEATURE_ROWS} />
+        <p className="mt-4 text-xs text-slate-400">
+          Pricing and feature details as of July 2026, based on SignNow&apos;s publicly listed plans — always confirm
+          current rates directly with SignNow, since providers change plans without notice. SignNow is a registered
+          trademark of airSlate, Inc.; SignedBy is not affiliated with or endorsed by SignNow.
+        </p>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl px-6 pb-20 text-center">
+        <h2 className="text-2xl font-semibold text-slate-900">Try SignedBy free</h2>
+        <p className="mt-2 text-sm text-slate-600">3 documents a month, no credit card, upgrade only if you need more.</p>
+        <Link href="/login?intent=signup" className={`${buttonVariants({ size: "lg" })} mt-5`}>
+          Start for free
+        </Link>
+      </section>
+
+      <footer className="mt-auto border-t border-slate-100 px-6 py-8 text-center text-xs text-slate-400">
+        <p>© {new Date().getFullYear()} SignedBy. signedby.ai</p>
+        <p className="mt-1">A trading name of SPRK10 B.V. KVK 98888625</p>
+        <p className="mt-2 space-x-4">
+          <Link href="/vs/docusign" className="hover:text-slate-600">
+            SignedBy vs DocuSign
+          </Link>
+          <Link href="/pricing" className="hover:text-slate-600">
+            Pricing
+          </Link>
+          <Link href="/terms" className="hover:text-slate-600">
+            Terms
+          </Link>
+          <Link href="/privacy" className="hover:text-slate-600">
+            Privacy
+          </Link>
+        </p>
+      </footer>
+    </main>
+  );
+}
