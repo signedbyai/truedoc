@@ -71,7 +71,9 @@ export async function GET(request: Request) {
         >
           {cardLine}
         </div>
-        <div style={{ display: "flex", fontSize: 24, color: "#94a3b8", marginTop: 56 }}>signedby.ai</div>
+        <div style={{ display: "flex", fontSize: 24, color: "#94a3b8", marginTop: 56 }}>
+          Start for free at signedby.ai
+        </div>
       </div>
     ),
     { width: 1200, height: 630 }
