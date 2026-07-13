@@ -8,14 +8,14 @@ type Provider = "anthropic" | "mistral";
 
 const OPTIONS: { id: Provider; label: string; description: string }[] = [
   {
-    id: "anthropic",
-    label: "Anthropic (Claude)",
+    id: "mistral",
+    label: "Mistral",
     description: "Default. Powers field suggestions, document drafting, and summaries/translation.",
   },
   {
-    id: "mistral",
-    label: "Mistral",
-    description: "An alternative provider for the same features, for anyone who'd rather use Mistral instead.",
+    id: "anthropic",
+    label: "Anthropic (Claude)",
+    description: "An alternative provider for the same features, for anyone who'd rather use Anthropic instead.",
   },
 ];
 

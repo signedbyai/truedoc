@@ -166,7 +166,7 @@ export type SuggestFieldsResult = {
 export async function suggestFields(
   bytes: Buffer,
   pageCount: number,
-  provider: AIProvider = "anthropic"
+  provider: AIProvider = "mistral"
 ): Promise<SuggestFieldsResult> {
   let items: PositionedTextItem[] = [];
   try {

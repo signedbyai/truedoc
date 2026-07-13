@@ -40,12 +40,13 @@ Nothing to put in `.env.local` — Vercel is where this app deploys to, not a ke
 When you're ready to deploy: push this repo to GitHub, then **Vercel → Add New Project → Import** it,
 and paste every variable from `.env.local` into **Project Settings → Environment Variables** there too.
 
-### Anthropic (optional, for the AI field-detection/summary features — not needed yet)
-Get a key at [platform.claude.com](https://platform.claude.com) → `ANTHROPIC_API_KEY`.
+### Mistral (default AI provider, for the AI field-detection/summary features — not needed yet)
+Every org's AI-assisted features (field suggestions, document drafting, summaries/translation) use this by
+default. Get a key at [console.mistral.ai](https://console.mistral.ai) → `MISTRAL_API_KEY`.
 
-### Mistral (optional, alternative AI provider — org-selectable in dashboard/settings)
-Only needed if you want the Mistral option to actually work; Anthropic remains the default either way.
-Get a key at [console.mistral.ai](https://console.mistral.ai) → `MISTRAL_API_KEY`.
+### Anthropic (optional, alternative AI provider — org-selectable in dashboard/settings)
+Only needed if you want the Anthropic option to actually work; Mistral remains the default either way.
+Get a key at [platform.claude.com](https://platform.claude.com) → `ANTHROPIC_API_KEY`.
 
 ## 2. Running locally
 

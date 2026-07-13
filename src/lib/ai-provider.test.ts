@@ -13,11 +13,11 @@ describe("normalizeAIProvider", () => {
     expect(normalizeAIProvider("anthropic")).toBe("anthropic");
   });
 
-  it("falls back to anthropic for null/undefined/unexpected values", () => {
-    expect(normalizeAIProvider(null)).toBe("anthropic");
-    expect(normalizeAIProvider(undefined)).toBe("anthropic");
-    expect(normalizeAIProvider("something-else")).toBe("anthropic");
-    expect(normalizeAIProvider("")).toBe("anthropic");
+  it("falls back to mistral for null/undefined/unexpected values", () => {
+    expect(normalizeAIProvider(null)).toBe("mistral");
+    expect(normalizeAIProvider(undefined)).toBe("mistral");
+    expect(normalizeAIProvider("something-else")).toBe("mistral");
+    expect(normalizeAIProvider("")).toBe("mistral");
   });
 });
 

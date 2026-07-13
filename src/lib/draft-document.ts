@@ -73,7 +73,7 @@ function validateDescription(description: string): string | null {
 export async function draftDocument(
   documentType: string,
   description: string,
-  provider: AIProvider = "anthropic"
+  provider: AIProvider = "mistral"
 ): Promise<DraftResult> {
   if (!DOCUMENT_TYPES.some((t) => t.id === documentType)) {
     return { error: "Choose a document type." };

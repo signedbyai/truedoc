@@ -151,7 +151,7 @@ describe("suggestFields", () => {
 
   it("marks the fallback unreadable when there's no extractable text at all (scanned/image PDF)", async () => {
     mockExtractPdfTextPositions.mockResolvedValue([]);
-    const result = await suggestFields(Buffer.from(""), 1);
+    const result = await suggestFields(Buffer.from(""), 1, "anthropic");
     expect(result.unreadable).toBe(true);
     expect(result.suggestions).toEqual([fallbackSuggestion()]);
     expect(mockCreate).not.toHaveBeenCalled(); // no point calling Claude with nothing to show it
@@ -160,7 +160,7 @@ describe("suggestFields", () => {
   it("marks the fallback unreadable when the Anthropic call itself fails", async () => {
     mockExtractPdfTextPositions.mockResolvedValue([{ page: 1, str: "Signature:", x: 0.1, y: 0.8 }]);
     mockCreate.mockRejectedValue(new Error("network error"));
-    const result = await suggestFields(Buffer.from(""), 1);
+    const result = await suggestFields(Buffer.from(""), 1, "anthropic");
     expect(result.unreadable).toBe(true);
     expect(result.suggestions).toEqual([fallbackSuggestion()]);
   });
@@ -168,7 +168,7 @@ describe("suggestFields", () => {
   it("does NOT mark the fallback unreadable when real text was read but Claude found no candidates", async () => {
     mockExtractPdfTextPositions.mockResolvedValue([{ page: 1, str: "Just some prose, no fields here.", x: 0.1, y: 0.5 }]);
     mockCreate.mockResolvedValue(anthropicTextResponse("[]"));
-    const result = await suggestFields(Buffer.from(""), 1);
+    const result = await suggestFields(Buffer.from(""), 1, "anthropic");
     expect(result.unreadable).toBe(false);
     expect(result.suggestions).toEqual([fallbackSuggestion()]);
   });
@@ -178,7 +178,7 @@ describe("suggestFields", () => {
     mockCreate.mockResolvedValue(
       anthropicTextResponse(JSON.stringify([{ page: 1, x: 0.2, y: 0.8, type: "signature", role: null }]))
     );
-    const result = await suggestFields(Buffer.from(""), 1);
+    const result = await suggestFields(Buffer.from(""), 1, "anthropic");
     expect(result.unreadable).toBe(false);
     expect(result.suggestions).toHaveLength(1);
     expect(result.suggestions[0].type).toBe("signature");

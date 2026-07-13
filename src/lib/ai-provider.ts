@@ -15,10 +15,10 @@ export type AIProvider = "anthropic" | "mistral";
 /** Defensive normalization for a raw DB value — the migration's CHECK
  *  constraint should already guarantee this, but a null/unexpected value
  *  (e.g. the migration not yet applied, per this project's manual
- *  Supabase-SQL-editor workflow) should fall back to the long-standing
- *  default rather than throw. */
+ *  Supabase-SQL-editor workflow) should fall back to the default rather
+ *  than throw. Default provider is Mistral. */
 export function normalizeAIProvider(value: string | null | undefined): AIProvider {
-  return value === "mistral" ? "mistral" : "anthropic";
+  return value === "anthropic" ? "anthropic" : "mistral";
 }
 
 // "fast" — cheap/quick tasks: field suggestions, summaries, translation.
