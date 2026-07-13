@@ -179,8 +179,8 @@ export default async function DocumentsPage({
               <>
                 <ul className="divide-y divide-slate-100">
                   {documents.map((doc) => (
-                    <li key={doc.id} className="flex items-center justify-between py-3">
-                      <div>
+                    <li key={doc.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
                         <Link
                           href={`/dashboard/documents/${doc.id}`}
                           className="text-sm font-medium text-slate-900 hover:underline"
@@ -192,7 +192,7 @@ export default async function DocumentsPage({
                           {new Date(doc.created_at).toLocaleDateString()}
                         </p>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
                           {STATUS_LABEL[doc.status] ?? doc.status}
                         </span>

@@ -854,8 +854,20 @@ export function FieldEditor({
               pageRefs.current[page] = el;
             }}
             onClick={(e) => handlePageClick(e, page)}
-            className="relative border border-slate-300 bg-white shadow-sm"
-            style={{ width, height, cursor: selectedTool ? "crosshair" : "default", maxWidth: "100%" }}
+            className="relative w-full border border-slate-300 bg-white shadow-sm"
+            // Sized by aspect-ratio (not a fixed height alongside maxWidth:
+            // 100%) so the page scales down correctly on any viewport
+            // narrower than its native rendered width — e.g. a phone screen
+            // — instead of the width shrinking to fit while the height stays
+            // pinned at its full-size pixel value, which visibly squished/
+            // stretched the page (and every field box on it) on narrow
+            // screens. maxWidth caps it at the PDF's native rendered size so
+            // it never upscales past that and looks blurry on a wide screen.
+            style={{
+              aspectRatio: `${width} / ${height}`,
+              maxWidth: `${width}px`,
+              cursor: selectedTool ? "crosshair" : "default",
+            }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={dataUrl} alt={`Page ${page}`} className="pointer-events-none block h-full w-full select-none" />
@@ -906,7 +918,12 @@ export function FieldEditor({
                           confirmField(f.id);
                         }}
                         aria-label={`Confirm ${def.label.toLowerCase()} field`}
-                        className="absolute -left-2.5 -top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-xs text-white shadow-sm"
+                        // Larger than the plain h-5 w-5 icon size on touch-sized
+                        // viewports (still 20px on sm+/mouse) — a 20px target
+                        // next to another 20px target a few pixels away is a
+                        // rough tap on a phone, especially with two fields
+                        // placed close together.
+                        className="absolute -left-3 -top-3 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-xs text-white shadow-sm sm:-left-2.5 sm:-top-2.5 sm:h-5 sm:w-5"
                       >
                         ✓
                       </button>
@@ -918,7 +935,7 @@ export function FieldEditor({
                         removeField(f.id);
                       }}
                       aria-label={`Remove ${def.label.toLowerCase()} field`}
-                      className="absolute -right-2.5 -top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white shadow-sm"
+                      className="absolute -right-3 -top-3 flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-xs text-white shadow-sm sm:-right-2.5 sm:-top-2.5 sm:h-5 sm:w-5"
                     >
                       ×
                     </button>
