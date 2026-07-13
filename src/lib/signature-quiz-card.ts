@@ -29,54 +29,50 @@ export function renderQuizResultCard(opts: { name: string; archetype: Archetype 
 
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
-
-  // Wordmark, top-left.
-  ctx.fillStyle = dark;
-  ctx.font = "700 32px sans-serif";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
-  ctx.fillText("SignedBy", 60, 76);
-
-  // Archetype title, centered.
   ctx.textAlign = "center";
-  ctx.font = "800 52px sans-serif";
-  ctx.fillText(opts.archetype.title, width / 2, 180);
 
-  // The signer's name, rendered in the matched signature style, with the
-  // brand's rotated yellow-highlight treatment behind it (same motif as
-  // opengraph-image.tsx and the speed-card route).
+  // Archetype title gets the rotated yellow-highlight treatment -- same
+  // motif as the homepage headline (src/app/page.tsx), opengraph-image.tsx,
+  // and /api/share/speed-card's "Document signed." -- this is the hook, so
+  // it reads first, bigger and bolder than anything else on the card.
+  const titleFontSize = 60;
+  ctx.font = `800 ${titleFontSize}px sans-serif`;
+  const titleText = opts.archetype.title;
+  const titleWidth = ctx.measureText(titleText).width;
+  const titleY = 150;
+  ctx.save();
+  ctx.translate(width / 2, titleY);
+  ctx.rotate((-2 * Math.PI) / 180);
+  ctx.fillStyle = highlight;
+  const titlePadX = 32;
+  const titleBoxHeight = titleFontSize * 1.3;
+  ctx.fillRect(-titleWidth / 2 - titlePadX, -titleBoxHeight / 2, titleWidth + titlePadX * 2, titleBoxHeight);
+  ctx.fillStyle = dark;
+  ctx.textBaseline = "middle";
+  ctx.fillText(titleText, 0, 0);
+  ctx.restore();
+
+  // The signer's name, rendered in the matched signature style -- the part
+  // that ties this card back to the same font library real signing uses.
   const style = getSignatureStyle(opts.archetype.styleId);
   const prefix = style.italic ? "italic " : "";
   const nameText = opts.name.trim() || "Your Name";
-  let fontSize = 84;
+  let fontSize = 72;
   ctx.font = `${prefix}800 ${fontSize}px ${style.fontFamily}`;
   const maxNameWidth = width - 240;
   while (fontSize > 32 && ctx.measureText(nameText).width > maxNameWidth) {
     fontSize -= 4;
     ctx.font = `${prefix}800 ${fontSize}px ${style.fontFamily}`;
   }
-  const nameWidth = ctx.measureText(nameText).width;
-  const nameY = 340;
-
-  ctx.save();
-  ctx.translate(width / 2, nameY);
-  ctx.rotate((-1 * Math.PI) / 180);
-  ctx.fillStyle = highlight;
-  const padX = 36;
-  const padY = fontSize * 0.42;
-  ctx.fillRect(-nameWidth / 2 - padX, -padY, nameWidth + padX * 2, padY * 2);
-  ctx.restore();
-
   ctx.fillStyle = dark;
-  ctx.font = `${prefix}800 ${fontSize}px ${style.fontFamily}`;
   ctx.textBaseline = "middle";
-  ctx.fillText(nameText, width / 2, nameY);
+  ctx.fillText(nameText, width / 2, 320);
 
   // Tagline.
   ctx.fillStyle = gray;
   ctx.font = "500 28px sans-serif";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText(opts.archetype.tagline, width / 2, 460, width - 160);
+  ctx.fillText(opts.archetype.tagline, width / 2, 450, width - 160);
 
   // Footer.
   ctx.fillStyle = faint;

@@ -3,6 +3,7 @@ import {
   buildSpeedStat,
   formatSpeedSeconds,
   speedStatHeadline,
+  speedStatCardLine,
   MAX_PLAUSIBLE_SECONDS,
   MIN_SAMPLE_SIZE_FOR_PERCENTILE,
 } from "./speed-stat";
@@ -69,5 +70,17 @@ describe("speedStatHeadline", () => {
 
   it("omits the percentile clause when absent", () => {
     expect(speedStatHeadline({ seconds: 38, percentile: null })).toBe("You signed this in 38 seconds.");
+  });
+});
+
+describe("speedStatCardLine", () => {
+  it("includes the percentile clause when present", () => {
+    expect(speedStatCardLine({ seconds: 26, percentile: 77 })).toBe(
+      "In 26 seconds — faster than 77% of signers this month."
+    );
+  });
+
+  it("omits the percentile clause when absent", () => {
+    expect(speedStatCardLine({ seconds: 26, percentile: null })).toBe("In 26 seconds.");
   });
 });

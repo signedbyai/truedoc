@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { formatSpeedSeconds, MAX_PLAUSIBLE_SECONDS } from "@/lib/speed-stat";
+import { speedStatCardLine, MAX_PLAUSIBLE_SECONDS } from "@/lib/speed-stat";
 
 // Renders the shareable "you signed this in X seconds" card shown on the
 // signing-complete screen (src/components/signing-view.tsx). Pure render --
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
       ? Math.round(percentile)
       : null;
 
-  const time = formatSpeedSeconds(Math.round(seconds));
+  const cardLine = speedStatCardLine({ seconds: Math.round(seconds), percentile: validPercentile });
 
   return new ImageResponse(
     (
@@ -37,32 +37,41 @@ export async function GET(request: Request) {
           justifyContent: "center",
           backgroundColor: "#ffffff",
           fontFamily: "sans-serif",
+          padding: "0 90px",
         }}
       >
-        <div style={{ display: "flex", fontSize: 28, fontWeight: 700, color: "#0f172a", marginBottom: 40 }}>
-          SignedBy
+        {/* Same rotated yellow-highlight treatment as the homepage headline
+            (src/app/page.tsx) and opengraph-image.tsx -- the hook, not a
+            small wordmark, is what should read first on this card. */}
+        <div
+          style={{
+            display: "flex",
+            backgroundColor: "#fde047",
+            color: "#0f172a",
+            fontSize: 72,
+            fontWeight: 800,
+            padding: "8px 28px",
+            borderRadius: 8,
+            transform: "rotate(-2deg)",
+          }}
+        >
+          Document signed.
         </div>
-        <div style={{ display: "flex", alignItems: "center", position: "relative" }}>
-          <div
-            style={{
-              display: "flex",
-              position: "absolute",
-              inset: "10px -20px",
-              backgroundColor: "#fde047",
-              transform: "rotate(-1deg)",
-              borderRadius: 8,
-            }}
-          />
-          <div style={{ display: "flex", position: "relative", fontSize: 64, fontWeight: 800, color: "#0f172a", padding: "0 24px" }}>
-            {time}
-          </div>
+        <div
+          style={{
+            display: "flex",
+            color: "#0f172a",
+            fontSize: 44,
+            fontWeight: 800,
+            textAlign: "center",
+            maxWidth: 950,
+            marginTop: 48,
+            lineHeight: 1.3,
+          }}
+        >
+          {cardLine}
         </div>
-        {validPercentile != null && (
-          <div style={{ display: "flex", fontSize: 32, color: "#334155", marginTop: 28 }}>
-            Faster than {validPercentile}% of signers this month
-          </div>
-        )}
-        <div style={{ display: "flex", fontSize: 22, color: "#94a3b8", marginTop: 48 }}>signedby.ai</div>
+        <div style={{ display: "flex", fontSize: 24, color: "#94a3b8", marginTop: 56 }}>signedby.ai</div>
       </div>
     ),
     { width: 1200, height: 630 }
