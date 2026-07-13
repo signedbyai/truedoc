@@ -4,6 +4,30 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getFromR2, uploadToR2 } from "@/lib/r2";
 import { appUrl } from "@/lib/email";
 
+// If the uploaded PDF already had its own interactive form fields (an
+// "AcroForm" — e.g. an existing fillable contract template), they're
+// completely separate from SignedBy's own fields and would otherwise be
+// left empty and still interactive, since everything else in this file
+// only draws flat image/text directly onto the page rather than touching
+// the original form. That's what caused real-world reports of "Adobe
+// still asks me to sign it" and boxes that look doubled — SignedBy was
+// drawing its own value next to/over the original, untouched, still-empty
+// form field. Flattening bakes any existing field appearances into the
+// page and removes the interactive fields entirely, so the original form
+// can no longer prompt Adobe (or any other viewer) to fill or sign it.
+// Exported and kept separate from generateSignedPdf so it's unit-testable
+// without the Supabase/R2 plumbing the rest of that function needs.
+// Never throws — a malformed or exotic AcroForm (rare, but seen with e.g.
+// XFA-based forms) shouldn't block signing; the document is still legally
+// captured via the audit trail either way.
+export function flattenOriginalForm(pdfDoc: PDFDocument, documentId: string): void {
+  try {
+    pdfDoc.getForm().flatten();
+  } catch (err) {
+    console.error(`Failed to flatten original form fields for document ${documentId}`, err);
+  }
+}
+
 // Stamps every filled-in field value onto the original PDF, appends a
 // certificate-of-completion page summarizing the audit trail, uploads the
 // result to R2, and records the resulting key on documents.signed_file_path.
@@ -51,6 +75,8 @@ export async function generateSignedPdf(documentId: string): Promise<{ key: stri
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const pages = pdfDoc.getPages();
+
+  flattenOriginalForm(pdfDoc, documentId);
 
   for (const field of fields || []) {
     if (!field.value) continue;
