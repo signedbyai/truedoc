@@ -57,16 +57,19 @@ function VerifyPageInner() {
 
         <h1 className="mt-4 text-2xl font-semibold text-slate-900">Verify a document</h1>
         <p className="mt-2 text-sm text-slate-600">
-          Every document signed with SignedBy gets a Certificate of Completion page with a SHA-256 checksum. Paste
-          that checksum below to independently confirm it&apos;s genuine — no account needed.
+          Every document signed with SignedBy gets a Certificate of Completion page with a checksum. Paste that
+          checksum below to independently confirm it&apos;s genuine — no account needed.
         </p>
 
         <div className="mt-6 rounded-lg border border-slate-200 bg-white p-5">
-          <label className="text-xs font-medium text-slate-600">Document checksum (SHA-256)</label>
+          {/* Accepts either a 64-char SHA-256 checksum (certificates issued
+              before the SHA-512 switch) or a 128-char SHA-512 checksum
+              (every one since) — see /api/verify/route.ts. */}
+          <label className="text-xs font-medium text-slate-600">Document checksum</label>
           <Input
             value={hash}
             onChange={(e) => setHash(e.target.value)}
-            placeholder="e.g. 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+            placeholder="Paste the checksum from your Certificate of Completion page"
             className="mt-1.5 font-mono text-xs"
           />
           {error && <p className="mt-2 text-sm text-red-600">{error}</p>}

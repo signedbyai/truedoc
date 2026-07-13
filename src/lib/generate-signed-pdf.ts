@@ -137,9 +137,19 @@ export async function generateSignedPdf(documentId: string): Promise<{ key: stri
   }
 
   // Hash the stamped content itself (before the certificate page), since
-  // that's the part that actually carries legal meaning.
+  // that's the part that actually carries legal meaning. SHA-512 (not
+  // SHA-256) — SHA-256 was never actually broken or at meaningful risk
+  // here (Grover's algorithm only gives a quadratic quantum speedup
+  // against hash preimage search, so SHA-256 still lands around 128-bit
+  // security even against a large-scale quantum attacker, which remains
+  // computationally infeasible; the "quantum breaks crypto" concern is
+  // really about asymmetric algorithms like RSA/ECC, not hash functions).
+  // Switched anyway since it's a free upgrade — same SHA-2 family, no
+  // slower on modern 64-bit hardware, larger margin. See
+  // /api/verify/route.ts's hash-length check, which accepts both lengths
+  // so certificates already issued with a SHA-256 hash keep verifying.
   const stampedBytes = await pdfDoc.save();
-  const hash = crypto.createHash("sha256").update(stampedBytes).digest("hex");
+  const hash = crypto.createHash("sha512").update(stampedBytes).digest("hex");
 
   await addCertificatePage(pdfDoc, {
     title: doc.title,
@@ -210,7 +220,7 @@ async function addCertificatePage(
     { x: margin, y, size: 8, font, color: gray }
   );
   y -= 20;
-  page.drawText("SHA-256 checksum of the signed document:", { x: margin, y, size: 8, font: boldFont, color: gray });
+  page.drawText("SHA-512 checksum of the signed document:", { x: margin, y, size: 8, font: boldFont, color: gray });
   y -= 11;
   page.drawText(opts.hash, { x: margin, y, size: 7, font, color: gray });
   y -= 18;
