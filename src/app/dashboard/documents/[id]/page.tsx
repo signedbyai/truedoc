@@ -91,11 +91,19 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
               {(signers || []).map((s) => {
                 const engagement = engagementBySigner.get(s.id);
                 const engagementLabel = engagement ? formatEngagement(engagement.totalSeconds, engagement.pagesViewed) : null;
+                // Every signer here has already signed (doc.status ===
+                // "completed"), so there's always something real to tease --
+                // no status gating needed, unlike the "sent" branch below.
                 return (
                   <li key={s.id} className="flex items-center justify-between">
                     <span>
                       {s.name ? `${s.name} <${s.email}>` : s.email}
                       {engagementLabel && <span className="ml-2 text-xs text-slate-400">· {engagementLabel}</span>}
+                      {!hasPageViewTracking && (
+                        <Link href="/pricing" className="ml-2 text-xs text-slate-400 hover:text-slate-600">
+                          · Engagement tracking (Starter+)
+                        </Link>
+                      )}
                     </span>
                     <span className="text-xs text-slate-500">
                       {s.signed_at ? new Date(s.signed_at).toLocaleString() : "—"}
@@ -180,6 +188,7 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
                   signer={s}
                   docStatus={doc.status}
                   hasReminders={hasReminders}
+                  hasPageViewTracking={hasPageViewTracking}
                   engagement={engagementBySigner.get(s.id) ?? null}
                 />
               ))}

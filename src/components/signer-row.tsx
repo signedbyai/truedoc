@@ -33,12 +33,14 @@ export function SignerRow({
   signer,
   docStatus,
   hasReminders,
+  hasPageViewTracking,
   engagement,
 }: {
   documentId: string;
   signer: Signer;
   docStatus: string;
   hasReminders: boolean;
+  hasPageViewTracking: boolean;
   engagement?: { totalSeconds: number; pagesViewed: number } | null;
 }) {
   const router = useRouter();
@@ -51,6 +53,11 @@ export function SignerRow({
   const isNotifiable = docStatus === "sent" && (signer.status === "sent" || signer.status === "viewed");
   const canEdit = docStatus === "sent" && signer.status !== "signed";
   const engagementLabel = engagement ? formatEngagement(engagement.totalSeconds, engagement.pagesViewed) : null;
+  // Tease the upgrade only once there's actually something to see -- a
+  // signer who hasn't opened the link yet has no engagement to miss out on,
+  // so showing this earlier would just be clutter, not a compelling hook.
+  const showEngagementTease =
+    !hasPageViewTracking && ["viewed", "signed", "declined"].includes(signer.status);
 
   async function handleSave() {
     setSaving(true);
@@ -78,6 +85,11 @@ export function SignerRow({
         <span>
           {signer.name ? `${signer.name} <${signer.email}>` : signer.email}
           {engagementLabel && <span className="ml-2 text-xs text-slate-400">· {engagementLabel}</span>}
+          {showEngagementTease && (
+            <Link href="/pricing" className="ml-2 text-xs text-slate-400 hover:text-slate-600">
+              · Engagement tracking (Starter+)
+            </Link>
+          )}
         </span>
         <span className="flex items-center gap-2">
           {isNotifiable && <CopySigningLinkButton signingToken={signer.signing_token} />}
