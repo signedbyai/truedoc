@@ -1,13 +1,13 @@
 "use client";
 
-import { Suspense, useEffect, useState, useTransition } from "react";
+import { Suspense, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
-import { sendMagicLink, signInWithPassword, signUpWithPassword, sendPasswordReset } from "./actions";
+import { sendMagicLink, signInWithPassword, signUpWithPassword, sendPasswordReset, verifyLoginCode } from "./actions";
 
 type AuthView = "email" | "password";
 type PasswordMode = "signin" | "signup" | "forgot";
@@ -73,6 +73,14 @@ function LoginPageInner() {
   const [message, setMessage] = useState(() => readOAuthErrorFromHash() ?? "");
   const [oauthLoading, setOauthLoading] = useState<"google" | "azure" | null>(null);
 
+  // The email we sent the code/link to -- kept separately from the form so
+  // "Resend code" and the verify call both work without re-reading the
+  // (now-hidden) input.
+  const [sentEmail, setSentEmail] = useState("");
+  const [otpDigits, setOtpDigits] = useState<string[]>(Array(6).fill(""));
+  const [resendNotice, setResendNotice] = useState("");
+  const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
+
   // Strip the error out of the URL once rendered so a refresh doesn't keep
   // re-showing a stale error. This only touches browser history (an
   // external system), not component state, so it belongs in an effect.
@@ -99,15 +107,85 @@ function LoginPageInner() {
   }
 
   function handleMagicLink(formData: FormData) {
+    const email = String(formData.get("email") || "").trim();
     startTransition(async () => {
       const result = await sendMagicLink(formData);
       if (result?.error) {
         setStatus("error");
         setMessage(result.error);
       } else {
+        setSentEmail(email);
+        setOtpDigits(Array(6).fill(""));
+        setResendNotice("");
         setStatus("sent");
       }
     });
+  }
+
+  function handleVerifyCode(token: string) {
+    if (token.length !== 6 || isPending) return;
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("email", sentEmail);
+      fd.set("token", token);
+      const result = await verifyLoginCode(fd);
+      if (result?.error) {
+        setStatus("error");
+        setMessage(result.error);
+        setOtpDigits(Array(6).fill(""));
+        otpRefs.current[0]?.focus();
+      } else {
+        window.location.href = "/dashboard";
+      }
+    });
+  }
+
+  function handleResendCode() {
+    const fd = new FormData();
+    fd.set("email", sentEmail);
+    startTransition(async () => {
+      const result = await sendMagicLink(fd);
+      if (result?.error) {
+        setStatus("error");
+        setMessage(result.error);
+      } else {
+        setOtpDigits(Array(6).fill(""));
+        setResendNotice("Sent — check your inbox.");
+        otpRefs.current[0]?.focus();
+      }
+    });
+  }
+
+  function handleOtpChange(index: number, raw: string) {
+    const digit = raw.replace(/\D/g, "").slice(-1);
+    const next = [...otpDigits];
+    next[index] = digit;
+    setOtpDigits(next);
+    if (digit && index === 5 && next.every((d) => d)) {
+      handleVerifyCode(next.join(""));
+    } else if (digit && index < 5) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  }
+
+  function handleOtpKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  }
+
+  function handleOtpPaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!digits) return;
+    e.preventDefault();
+    const next = Array(6).fill("");
+    for (let i = 0; i < digits.length; i++) next[i] = digits[i];
+    setOtpDigits(next);
+    if (digits.length === 6) {
+      handleVerifyCode(digits);
+    } else {
+      otpRefs.current[Math.min(digits.length, 5)]?.focus();
+    }
   }
 
   function handlePasswordSignIn(formData: FormData) {
@@ -181,10 +259,60 @@ function LoginPageInner() {
 
         {view === "email" ? (
           <div className="space-y-4">
-            {status === "sent" ? (
-              <p className="text-center text-sm text-slate-600">
-                Check your inbox for a sign-in link. You can close this tab.
-              </p>
+            {sentEmail ? (
+              <div className="space-y-4">
+                <p className="text-center text-sm text-slate-600">
+                  We sent a code to <span className="font-medium text-slate-900">{sentEmail}</span>. Enter it below,
+                  or click the sign-in link in that same email.
+                </p>
+                <div className="flex justify-center gap-2">
+                  {otpDigits.map((digit, i) => (
+                    <input
+                      key={i}
+                      ref={(el) => {
+                        otpRefs.current[i] = el;
+                      }}
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      pattern="[0-9]*"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(i, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                      onPaste={handleOtpPaste}
+                      disabled={isPending}
+                      aria-label={`Digit ${i + 1} of 6`}
+                      className="h-12 w-10 rounded-md border border-slate-300 text-center text-lg font-semibold text-slate-900 focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 disabled:opacity-50"
+                    />
+                  ))}
+                </div>
+                {isPending && <p className="text-center text-xs text-slate-400">Verifying…</p>}
+                {status === "error" && <p className="text-center text-sm text-red-600">{message}</p>}
+                {resendNotice && <p className="text-center text-xs text-emerald-600">{resendNotice}</p>}
+                <p className="text-center text-xs text-slate-500">
+                  Didn&apos;t get it?{" "}
+                  <button
+                    type="button"
+                    onClick={handleResendCode}
+                    disabled={isPending}
+                    className="underline underline-offset-2 disabled:opacity-50"
+                  >
+                    Resend code
+                  </button>{" "}
+                  ·{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSentEmail("");
+                      setResendNotice("");
+                      resetStatus();
+                    }}
+                    className="underline underline-offset-2"
+                  >
+                    Use a different email
+                  </button>
+                </p>
+              </div>
             ) : (
               <form action={handleMagicLink} className="space-y-3">
                 <div className="space-y-1.5">

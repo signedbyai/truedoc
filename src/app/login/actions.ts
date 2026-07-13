@@ -37,6 +37,30 @@ export async function sendMagicLink(formData: FormData) {
   return { success: true };
 }
 
+// Verifies the 6-digit code from the same email signInWithOtp() sends
+// (Magic Link and email OTP share one token — see the Magic Link email
+// template comment in the Supabase dashboard). Separate rate-limit buckets
+// from sendMagicLink's, since brute-forcing a 6-digit code is a fundamentally
+// different attack shape (many guesses against one already-sent code)
+// than spamming send requests.
+export async function verifyLoginCode(formData: FormData) {
+  const email = String(formData.get("email") || "").trim();
+  const token = String(formData.get("token") || "").trim();
+  if (!email || !token) return { error: "Enter the 6-digit code." };
+
+  const ip = await clientIp();
+  const emailOk = await checkRateLimit(`login-otp-verify-email:${email.toLowerCase()}`, 10, 600);
+  const ipOk = await checkRateLimit(`login-otp-verify-ip:${ip}`, 30, 600);
+  if (!emailOk || !ipOk) {
+    return { error: "Too many attempts. Try again in a few minutes." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+  if (error) return { error: "That code is incorrect or has expired." };
+  return { success: true };
+}
+
 export async function signInWithPassword(formData: FormData) {
   const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "");
