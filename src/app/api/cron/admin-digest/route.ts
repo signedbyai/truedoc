@@ -31,6 +31,7 @@ export async function GET(request: Request) {
   let loggedInToday = 0;
   let loggedInWeek = 0;
   let loggedInMonth = 0;
+  let loggedInEver = 0;
   let totalUsers = 0;
   let page = 1;
   const perPage = 1000;
@@ -43,6 +44,7 @@ export async function GET(request: Request) {
     for (const u of data.users) {
       totalUsers++;
       if (!u.last_sign_in_at) continue;
+      loggedInEver++; // has signed in at least once, distinct from just having an account
       const t = new Date(u.last_sign_in_at).getTime();
       if (t >= dayAgo) loggedInToday++;
       if (t >= weekAgo) loggedInWeek++;
@@ -75,6 +77,7 @@ export async function GET(request: Request) {
       loggedInToday,
       loggedInWeek,
       loggedInMonth,
+      loggedInEver,
       totalUsers,
       freeOrgs,
       paidOrgs,
@@ -84,5 +87,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Email send failed" }, { status: 500 });
   }
 
-  return NextResponse.json({ loggedInToday, loggedInWeek, loggedInMonth, totalUsers, freeOrgs, paidOrgs });
+  return NextResponse.json({
+    loggedInToday,
+    loggedInWeek,
+    loggedInMonth,
+    loggedInEver,
+    totalUsers,
+    freeOrgs,
+    paidOrgs,
+  });
 }

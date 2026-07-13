@@ -142,6 +142,7 @@ export async function sendAdminDigestEmail(opts: {
   loggedInToday: number;
   loggedInWeek: number;
   loggedInMonth: number;
+  loggedInEver: number;
   totalUsers: number;
   freeOrgs: number;
   paidOrgs: number;
@@ -169,6 +170,7 @@ export async function sendAdminDigestEmail(opts: {
           ${row("Today", opts.loggedInToday)}
           ${row("This week", opts.loggedInWeek)}
           ${row("This month", opts.loggedInMonth)}
+          ${row("Ever", opts.loggedInEver)}
           ${row("Total registered users", opts.totalUsers)}
         </table>
 
