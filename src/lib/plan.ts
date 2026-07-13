@@ -6,6 +6,17 @@ import type { createClient } from "@/lib/supabase/server";
 // see that file for the customer-facing copy these gates enforce.
 export type PlanId = "free" | "starter" | "team" | "business";
 
+// Shared display label for a plan id — was duplicated locally in
+// dashboard/billing/page.tsx; pulled here once dashboard/team/page.tsx and
+// dashboard/page.tsx also needed it (same "extract once a third caller shows
+// up" pattern as checkFreePlanDocCap below).
+export const PLAN_LABEL: Record<string, string> = {
+  free: "Free",
+  starter: "Starter",
+  team: "Team",
+  business: "Business",
+};
+
 const FEATURE_PLANS = {
   // Starter: "Templates & reminders" — saving/using templates and both
   // manual + automatic signer reminders.
@@ -67,6 +78,24 @@ const TEAM_MEMBER_LIMIT: Partial<Record<PlanId, number>> = {
 /** Returns the seat cap for a plan, or null if the plan has no cap. */
 export function teamMemberLimit(plan: string | null | undefined): number | null {
   return TEAM_MEMBER_LIMIT[(plan || "free") as PlanId] ?? null;
+}
+
+// How many members over a plan's seat cap an org currently is (0 if within
+// it, or if the plan has no cap at all). This is deliberately just a
+// visibility signal, not enforcement — the app already never auto-removes
+// members on downgrade (see team/invite/route.ts and
+// team/invite/accept/route.ts, which only block *new* invites/accepts once
+// at/over the cap; existing members keep working regardless of plan). What
+// was missing was surfacing this clearly to an org admin who downgraded via
+// Stripe's own portal (outside this app entirely) instead of letting them
+// discover it only when a later invite silently fails with an upgrade
+// prompt. Used by both dashboard/team/page.tsx (the detailed view) and
+// dashboard/page.tsx (a lightweight heads-up on the home page, so an admin
+// doesn't have to specifically visit Team to notice).
+export function seatsOverLimit(memberCount: number, plan: string | null | undefined): number {
+  const limit = teamMemberLimit(plan);
+  if (limit === null) return 0;
+  return Math.max(0, memberCount - limit);
 }
 
 // Free plan: 3 new documents/month, regardless of how the document was

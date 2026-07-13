@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planHasFeature, teamMemberLimit } from "./plan";
+import { planHasFeature, teamMemberLimit, seatsOverLimit } from "./plan";
 
 describe("planHasFeature", () => {
   it("gates templates/reminders/aiDraft to starter, team, and business", () => {
@@ -49,5 +49,25 @@ describe("teamMemberLimit", () => {
   it("treats a missing/null plan as free (no cap, since it's blocked earlier anyway)", () => {
     expect(teamMemberLimit(null)).toBeNull();
     expect(teamMemberLimit(undefined)).toBeNull();
+  });
+});
+
+describe("seatsOverLimit", () => {
+  it("is 0 when member count is within the plan's cap", () => {
+    expect(seatsOverLimit(2, "team")).toBe(0);
+    expect(seatsOverLimit(3, "team")).toBe(0); // exactly at cap isn't "over"
+    expect(seatsOverLimit(5, "business")).toBe(0);
+  });
+
+  it("returns how many members over the cap an org is, e.g. after a downgrade", () => {
+    expect(seatsOverLimit(4, "team")).toBe(1); // was Business (5), downgraded to Team (3 cap)... plus one
+    expect(seatsOverLimit(7, "team")).toBe(4);
+    expect(seatsOverLimit(6, "business")).toBe(1);
+  });
+
+  it("is always 0 for plans with no seat cap at all", () => {
+    expect(seatsOverLimit(50, "free")).toBe(0);
+    expect(seatsOverLimit(50, "starter")).toBe(0);
+    expect(seatsOverLimit(50, null)).toBe(0);
   });
 });

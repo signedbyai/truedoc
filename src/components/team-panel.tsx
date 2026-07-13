@@ -15,11 +15,15 @@ export function TeamPanel({
   members,
   invites,
   seatLimit,
+  planLabel,
 }: {
   currentUserId: string;
   members: Member[];
   invites: Invite[];
   seatLimit: number | null;
+  // Only needed for the over-limit copy below ("your Team plan allows...") —
+  // optional so existing callers/tests don't need updating just to pass it.
+  planLabel?: string;
 }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -30,6 +34,12 @@ export function TeamPanel({
 
   const seatsUsed = members.length + invites.length;
   const atLimit = seatLimit !== null && seatsUsed >= seatLimit;
+  // Distinct from atLimit: this only happens after a downgrade (e.g.
+  // Business's 5 seats down to Team's 3) leaves more members in place than
+  // the new plan allows. Existing members keep working either way — this is
+  // purely about giving the admin a clear heads-up instead of them finding
+  // out only when a later invite fails. See seatsOverLimit() in plan.ts.
+  const seatsOver = seatLimit !== null ? Math.max(0, seatsUsed - seatLimit) : 0;
 
   async function invite(e: React.FormEvent) {
     e.preventDefault();
@@ -68,6 +78,19 @@ export function TeamPanel({
 
   return (
     <div className="space-y-6">
+      {seatsOver > 0 && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+          <p className="text-sm font-medium text-amber-900">
+            Over your seat limit by {seatsOver} member{seatsOver === 1 ? "" : "s"}
+          </p>
+          <p className="mt-1 text-xs text-amber-800">
+            {planLabel ? `Your ${planLabel} plan allows` : "Your current plan allows"} up to {seatLimit}, but{" "}
+            {seatsUsed} {seatsUsed === 1 ? "is" : "are"} on this workspace right now — this usually happens after a
+            downgrade. Everyone keeps working as normal, but you won&apos;t be able to invite anyone new until you
+            remove {seatsOver === 1 ? "a member" : "members"} or upgrade.
+          </p>
+        </div>
+      )}
       {seatLimit !== null && (
         <p className="text-xs text-slate-500">
           {seatsUsed} of {seatLimit} seats used
@@ -110,8 +133,12 @@ export function TeamPanel({
 
       {atLimit ? (
         <div className="rounded-md border border-dashed border-slate-300 p-4 text-center">
-          <p className="text-sm font-medium text-slate-900">You&apos;ve used all {seatLimit} seats on this plan</p>
-          <p className="mt-1 text-xs text-slate-500">Upgrade to invite more teammates.</p>
+          <p className="text-sm font-medium text-slate-900">
+            {seatsOver > 0 ? `Remove ${seatsOver === 1 ? "a member" : "members"} to invite anyone new` : `You've used all ${seatLimit} seats on this plan`}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {seatsOver > 0 ? "Or upgrade for more seats." : "Upgrade to invite more teammates."}
+          </p>
           <Link href="/pricing" className={buttonVariants({ size: "default", className: "mt-3" })}>
             Upgrade
           </Link>

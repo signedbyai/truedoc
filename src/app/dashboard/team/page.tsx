@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUserAndOrg } from "@/lib/org";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { planHasFeature, teamMemberLimit } from "@/lib/plan";
+import { planHasFeature, teamMemberLimit, PLAN_LABEL } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { TeamPanel } from "@/components/team-panel";
@@ -66,9 +66,28 @@ export default async function TeamPage() {
                 members={members}
                 invites={invites || []}
                 seatLimit={teamMemberLimit(org?.plan)}
+                planLabel={PLAN_LABEL[org?.plan ?? "free"]}
               />
             ) : (
               <div className="space-y-4">
+                {/* Below Team, there's no numeric seat cap at all (teamMembers
+                    is gated as an all-or-nothing feature, not a count) — but
+                    an org that downgraded from Team/Business can still have
+                    more than one member left over from before, with no team
+                    UI at all to explain why invites/removal aren't available
+                    anymore. Existing members keep working regardless. */}
+                {members.length > 1 && (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-sm font-medium text-amber-900">
+                      {members.length} members on a plan without team support
+                    </p>
+                    <p className="mt-1 text-xs text-amber-800">
+                      This usually happens after a downgrade. Everyone listed below keeps working as normal, but
+                      inviting or removing members isn&apos;t available on the {PLAN_LABEL[org?.plan ?? "free"]} plan
+                      — upgrade to Team to manage them again.
+                    </p>
+                  </div>
+                )}
                 <ul className="divide-y divide-slate-100">
                   {members.map((m) => (
                     <li key={m.id} className="flex items-center justify-between py-3">

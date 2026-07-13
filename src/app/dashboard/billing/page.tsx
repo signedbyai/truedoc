@@ -4,13 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PricingCards } from "@/components/pricing-cards";
 import { ManageBillingButton } from "@/components/manage-billing-button";
-
-const PLAN_LABEL: Record<string, string> = {
-  free: "Free",
-  starter: "Starter",
-  team: "Team",
-  business: "Business",
-};
+import { PLAN_LABEL } from "@/lib/plan";
 
 export default async function BillingPage({
   searchParams,
