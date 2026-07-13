@@ -53,7 +53,9 @@ export default function PrivacyPage() {
         <li>
           Power optional AI-assisted features — suggesting where to place signature and text fields, drafting a
           document from your description, and summarizing a document&apos;s contents — by sending the relevant
-          document text to our AI provider, Anthropic, for analysis;
+          document text to an AI provider for analysis. By default this is Anthropic; an organization can instead
+          choose Mistral for these features in its workspace settings, in which case that organization&apos;s
+          document text is sent to Mistral instead;
         </li>
         <li>Maintain the audit trail required for a legally defensible electronic signature;</li>
         <li>Process subscription payments and manage billing;</li>
@@ -78,9 +80,15 @@ export default function PrivacyPage() {
           <strong>Resend</strong> — delivers transactional email (invitations, reminders, notices);
         </li>
         <li>
-          <strong>Anthropic</strong> — provides the AI models behind optional field-suggestion, document-drafting,
+          <strong>Anthropic</strong> — the default AI provider behind optional field-suggestion, document-drafting,
           and summary features; only document text relevant to a feature you use is sent, and it is not used to
           train Anthropic&apos;s models;
+        </li>
+        <li>
+          <strong>Mistral AI</strong> — an alternative AI provider for those same features, used only for an
+          organization that has specifically chosen it in workspace settings instead of Anthropic (never both at
+          once); same handling — only relevant document text is sent, and it is not used to train Mistral&apos;s
+          models;
         </li>
         <li>
           <strong>Stripe</strong> — processes subscription payments;
@@ -130,7 +138,8 @@ export default function PrivacyPage() {
         SignedBy is operated by SPRK10 B.V. from the Netherlands. Several of our sub-processors (see Section 3) are
         based in the United States. Where personal data is transferred outside the European Economic Area, we rely
         on appropriate safeguards recognized under GDPR, such as the European Commission&apos;s Standard Contractual
-        Clauses, to protect that data.
+        Clauses, to protect that data. Mistral AI is based in France, so an organization that chooses Mistral over
+        Anthropic for its AI-assisted features keeps that particular processing within the European Economic Area.
       </p>
 
       <h2>8. Children&apos;s privacy</h2>

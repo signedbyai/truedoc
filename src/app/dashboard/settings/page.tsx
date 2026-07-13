@@ -7,6 +7,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { BrandingSettings } from "@/components/branding-settings";
 import { ApiKeySettings } from "@/components/api-key-settings";
 import { AutoSuggestSettings } from "@/components/auto-suggest-settings";
+import { AIProviderSettings } from "@/components/ai-provider-settings";
+import { normalizeAIProvider } from "@/lib/ai-provider";
 
 export default async function SettingsPage() {
   const ctx = await getUserAndOrg();
@@ -15,7 +17,7 @@ export default async function SettingsPage() {
 
   const { data: org } = await supabase
     .from("organizations")
-    .select("name, plan, logo_url, brand_color, api_key_prefix, auto_suggest_on_upload")
+    .select("name, plan, logo_url, brand_color, api_key_prefix, auto_suggest_on_upload, ai_provider")
     .eq("id", orgId)
     .single();
 
@@ -42,6 +44,18 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <AutoSuggestSettings initialEnabled={org.auto_suggest_on_upload} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>AI provider</CardTitle>
+            <CardDescription>
+              Which AI provider generates field suggestions, drafted documents, and summaries/translation.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AIProviderSettings initialProvider={normalizeAIProvider(org.ai_provider)} />
           </CardContent>
         </Card>
 

@@ -43,6 +43,10 @@ and paste every variable from `.env.local` into **Project Settings → Environme
 ### Anthropic (optional, for the AI field-detection/summary features — not needed yet)
 Get a key at [platform.claude.com](https://platform.claude.com) → `ANTHROPIC_API_KEY`.
 
+### Mistral (optional, alternative AI provider — org-selectable in dashboard/settings)
+Only needed if you want the Mistral option to actually work; Anthropic remains the default either way.
+Get a key at [console.mistral.ai](https://console.mistral.ai) → `MISTRAL_API_KEY`.
+
 ## 2. Running locally
 
 ```bash
