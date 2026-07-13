@@ -212,8 +212,17 @@ export function SigningView({
       pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
       const loadingTask = pdfjsLib.getDocument({ url: `/api/sign/${token}/file` });
       const pdf = await loadingTask.promise;
-      const rendered: { page: number; dataUrl: string; width: number; height: number }[] = [];
 
+      // Append each page to state as soon as it finishes rendering, instead
+      // of collecting them all and calling setPageCanvases once at the very
+      // end. On a multi-page document that meant a signer waited for every
+      // remaining page to render — even in card mode, which only ever shows
+      // one page at a time — before they could interact with anything at
+      // all, including page 1. `loading` now only gates page 1; everything
+      // after that streams in in the background while the signer is already
+      // working. Pages render in order (1, 2, 3…) since each iteration
+      // awaits the previous one, so pageCanvases stays correctly ordered
+      // without needing a sort.
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
         if (cancelled) return;
         const page = await pdf.getPage(pageNum);
@@ -223,11 +232,9 @@ export function SigningView({
         canvas.height = viewport.height;
         const ctx = canvas.getContext("2d")!;
         await page.render({ canvas, canvasContext: ctx, viewport }).promise;
-        rendered.push({ page: pageNum, dataUrl: canvas.toDataURL(), width: viewport.width, height: viewport.height });
-      }
-
-      if (!cancelled) {
-        setPageCanvases(rendered);
+        if (cancelled) return;
+        const rendered = { page: pageNum, dataUrl: canvas.toDataURL(), width: viewport.width, height: viewport.height };
+        setPageCanvases((prev) => [...prev, rendered]);
         setLoading(false);
       }
     }
@@ -673,9 +680,18 @@ export function SigningView({
               {(() => {
                 const pageInfo = pageByNumber.get(currentCardField.page);
                 if (!pageInfo) {
+                  // With pages now streaming in one at a time (see the
+                  // render effect above), this isn't necessarily a failure —
+                  // most of the time it just means this particular page
+                  // hasn't finished rendering yet. Compare against pageCount
+                  // (the server-reported total, independent of rendering
+                  // progress) to tell "still catching up" apart from a
+                  // genuine gap, so the copy doesn't read as an error for
+                  // what's actually a normal, brief, expected state.
+                  const stillRendering = pageCanvases.length < pageCount;
                   return (
                     <div className="flex aspect-[3/2] w-full items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-xs text-slate-400">
-                      Preview unavailable — check the full document
+                      {stillRendering ? "Loading this page…" : "Preview unavailable — check the full document"}
                     </div>
                   );
                 }
