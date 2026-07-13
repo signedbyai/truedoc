@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DeleteDocumentButton } from "@/components/delete-document-button";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
+import { OrgSwitcher } from "@/components/org-switcher";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -43,7 +44,7 @@ export default async function DocumentsPage({
   const { q = "", status = "", sort = "newest", page = "1" } = await searchParams;
   const ctx = await getUserAndOrg();
   if (!ctx) redirect("/login");
-  const { supabase, orgId } = ctx;
+  const { supabase, orgId, orgs } = ctx;
 
   const searchTerm = sanitizeSearchTerm(q);
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
@@ -107,9 +108,12 @@ export default async function DocumentsPage({
             <h1 className="mt-2 text-2xl font-semibold text-slate-900">Documents</h1>
             <p className="text-sm text-slate-600">{count ?? 0} total</p>
           </div>
-          <Link href="/dashboard/documents/new" className={buttonVariants({ size: "default" })}>
-            Upload document
-          </Link>
+          <div className="flex items-center gap-2">
+            <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
+            <Link href="/dashboard/documents/new" className={buttonVariants({ size: "default" })}>
+              Upload document
+            </Link>
+          </div>
         </div>
 
         <Card>

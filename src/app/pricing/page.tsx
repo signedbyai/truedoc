@@ -1,25 +1,16 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getUserAndOrg } from "@/lib/org";
 import { PricingCards } from "@/components/pricing-cards";
 
 export default async function PricingPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Not gated behind login (this page is public) — getUserAndOrg() just
+  // returns null for a signed-out visitor, same as it always has.
+  const ctx = await getUserAndOrg();
 
   let currentPlan: "free" | "starter" | "team" | "business" | null = null;
-  if (user) {
-    const { data: membership } = await supabase
-      .from("organization_members")
-      .select("organizations(plan)")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-    const org = membership?.organizations as unknown as { plan?: string } | { plan?: string }[] | undefined;
-    const plan = Array.isArray(org) ? org[0]?.plan : org?.plan;
-    currentPlan = (plan as "free" | "starter" | "team" | "business" | undefined) ?? "free";
+  if (ctx) {
+    const org = ctx.orgs.find((o) => o.id === ctx.orgId);
+    currentPlan = (org?.plan as "free" | "starter" | "team" | "business" | undefined) ?? "free";
   }
 
   return (
@@ -33,7 +24,7 @@ export default async function PricingPage() {
           <p className="mt-2 text-sm text-slate-600">No per-seat tax. Cancel anytime.</p>
         </div>
 
-        <PricingCards isLoggedIn={Boolean(user)} currentPlan={currentPlan} />
+        <PricingCards isLoggedIn={Boolean(ctx)} currentPlan={currentPlan} />
       </div>
     </main>
   );

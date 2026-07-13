@@ -9,11 +9,12 @@ import { ApiKeySettings } from "@/components/api-key-settings";
 import { AutoSuggestSettings } from "@/components/auto-suggest-settings";
 import { AIProviderSettings } from "@/components/ai-provider-settings";
 import { normalizeAIProvider } from "@/lib/ai-provider";
+import { OrgSwitcher } from "@/components/org-switcher";
 
 export default async function SettingsPage() {
   const ctx = await getUserAndOrg();
   if (!ctx) redirect("/login");
-  const { supabase, orgId } = ctx;
+  const { supabase, orgId, orgs } = ctx;
 
   const { data: org } = await supabase
     .from("organizations")
@@ -29,12 +30,15 @@ export default async function SettingsPage() {
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-10">
       <div className="mx-auto max-w-2xl space-y-6">
-        <div>
-          <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
-            ← Dashboard
-          </Link>
-          <h1 className="mt-2 text-2xl font-semibold text-slate-900">Settings</h1>
-          <p className="text-sm text-slate-600">Workspace branding, AI suggestions, and API access.</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
+              ← Dashboard
+            </Link>
+            <h1 className="mt-2 text-2xl font-semibold text-slate-900">Settings</h1>
+            <p className="text-sm text-slate-600">Workspace branding, AI suggestions, and API access.</p>
+          </div>
+          <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
         </div>
 
         <Card>

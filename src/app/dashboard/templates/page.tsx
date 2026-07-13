@@ -7,10 +7,12 @@ import { buttonVariants } from "@/components/ui/button";
 import { UseTemplateButton } from "@/components/use-template-button";
 import { DeleteTemplateButton } from "@/components/delete-template-button";
 import { BulkSendButton } from "@/components/bulk-send-button";
+import { OrgSwitcher } from "@/components/org-switcher";
 
 export default async function TemplatesPage() {
   const ctx = await getUserAndOrg();
   if (!ctx) redirect("/login");
+  const { orgs, orgId } = ctx;
 
   const { data: org } = await ctx.supabase.from("organizations").select("plan").eq("id", ctx.orgId).single();
   const hasBulkSend = planHasFeature(org?.plan, "bulkSend");
@@ -20,11 +22,14 @@ export default async function TemplatesPage() {
     return (
       <main className="min-h-screen bg-slate-50 px-6 py-10">
         <div className="mx-auto max-w-3xl space-y-6">
-          <div>
-            <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
-              ← Dashboard
-            </Link>
-            <h1 className="mt-2 text-2xl font-semibold text-slate-900">Templates</h1>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
+                ← Dashboard
+              </Link>
+              <h1 className="mt-2 text-2xl font-semibold text-slate-900">Templates</h1>
+            </div>
+            <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
           </div>
           <Card>
             <CardHeader>
@@ -57,14 +62,17 @@ export default async function TemplatesPage() {
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-10">
       <div className="mx-auto max-w-3xl space-y-6">
-        <div>
-          <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
-            ← Dashboard
-          </Link>
-          <h1 className="mt-2 text-2xl font-semibold text-slate-900">Templates</h1>
-          <p className="text-sm text-slate-600">
-            Reusable field layouts. Open any draft document and use &quot;Save as template&quot; to create one.
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
+              ← Dashboard
+            </Link>
+            <h1 className="mt-2 text-2xl font-semibold text-slate-900">Templates</h1>
+            <p className="text-sm text-slate-600">
+              Reusable field layouts. Open any draft document and use &quot;Save as template&quot; to create one.
+            </p>
+          </div>
+          <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
         </div>
 
         <Card>

@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getUserAndOrg } from "@/lib/org";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PricingCards } from "@/components/pricing-cards";
 import { ManageBillingButton } from "@/components/manage-billing-button";
 import { PLAN_LABEL } from "@/lib/plan";
+import { OrgSwitcher } from "@/components/org-switcher";
 
 export default async function BillingPage({
   searchParams,
@@ -12,24 +13,19 @@ export default async function BillingPage({
   searchParams: Promise<{ success?: string; canceled?: string }>;
 }) {
   const { success, canceled } = await searchParams;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const ctx = await getUserAndOrg();
+  if (!ctx) redirect("/login");
+  const { supabase, orgId, orgs } = ctx;
 
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("organizations(id, plan, stripe_customer_id)")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
+  // getUserAndOrg()'s orgs list only carries id/name/plan (enough for the
+  // switcher) — billing needs stripe_customer_id too, so this fetches that
+  // one extra column for the active org specifically, same pattern as
+  // team/page.tsx and settings/page.tsx fetching their own extra columns.
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("id, plan, stripe_customer_id")
+    .eq("id", orgId)
     .single();
-
-  const orgRaw = membership?.organizations as unknown;
-  const org = (Array.isArray(orgRaw) ? orgRaw[0] : orgRaw) as
-    | { id: string; plan: string; stripe_customer_id: string | null }
-    | undefined;
 
   const currentPlan = (org?.plan as "free" | "starter" | "team" | "business" | undefined) ?? "free";
 
@@ -46,11 +42,14 @@ export default async function BillingPage({
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-10">
       <div className="mx-auto max-w-3xl space-y-6">
-        <div>
-          <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
-            ← Dashboard
-          </Link>
-          <h1 className="mt-2 text-2xl font-semibold text-slate-900">Billing</h1>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
+              ← Dashboard
+            </Link>
+            <h1 className="mt-2 text-2xl font-semibold text-slate-900">Billing</h1>
+          </div>
+          <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
         </div>
 
         {success && (

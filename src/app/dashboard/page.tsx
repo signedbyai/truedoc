@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { getUserAndOrg } from "@/lib/org";
 import { seatsOverLimit, PLAN_LABEL } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { OrgSwitcher } from "@/components/org-switcher";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -17,46 +17,39 @@ const STATUS_LABEL: Record<string, string> = {
 // Protected dashboard shell — middleware already redirects unauthenticated
 // requests to /login, this is a second server-side check as defense in depth.
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const ctx = await getUserAndOrg();
+  if (!ctx) redirect("/login");
+  const { supabase, user, orgId, orgs } = ctx;
 
-  if (!user) redirect("/login");
-
-  const { data: memberships } = await supabase
-    .from("organization_members")
-    .select("role, organizations(id, name, plan)")
-    .eq("user_id", user.id);
-
+  // Scoped to the active org specifically — previously this had no org_id
+  // filter at all, which only "worked" by accident when a user belonged to
+  // just one org (RLS still restricted rows to orgs they're a member of,
+  // but a user in 2+ orgs would see the 5 most recent documents across
+  // *both* mixed together). A real bug that only became reachable once
+  // switching between real, distinct orgs was possible.
   const { data: documents } = await supabase
     .from("documents")
     .select("id, title, status, page_count, created_at")
+    .eq("org_id", orgId)
     .order("created_at", { ascending: false })
     .limit(5);
 
-  // Lightweight heads-up if the *active* org (see getUserAndOrg's "most
-  // recently joined" definition) currently has more members than its plan
-  // allows — most commonly right after a downgrade via Stripe's own portal,
-  // which happens entirely outside this app. Shown here too (not just on
-  // the Team page) since an admin might not think to check Team right after
-  // downgrading from Billing. Existing members always keep working either
-  // way — this is purely a heads-up, not an enforcement point (see
-  // seatsOverLimit's doc comment in plan.ts).
+  // Lightweight heads-up if the active org currently has more members than
+  // its plan allows — most commonly right after a downgrade via Stripe's
+  // own portal, which happens entirely outside this app. Shown here too
+  // (not just on the Team page) since an admin might not think to check
+  // Team right after downgrading from Billing. Existing members always
+  // keep working either way — this is purely a heads-up, not an
+  // enforcement point (see seatsOverLimit's doc comment in plan.ts).
   let seatWarning: { over: number; plan: string } | null = null;
-  const activeCtx = await getUserAndOrg();
-  if (activeCtx) {
-    const { data: activeOrg } = await activeCtx.supabase
-      .from("organizations")
-      .select("plan")
-      .eq("id", activeCtx.orgId)
-      .single();
-    const { count: memberCount } = await activeCtx.supabase
+  const activeOrg = orgs.find((o) => o.id === orgId);
+  if (activeOrg) {
+    const { count: memberCount } = await supabase
       .from("organization_members")
       .select("id", { count: "exact", head: true })
-      .eq("org_id", activeCtx.orgId);
-    const over = seatsOverLimit(memberCount ?? 0, activeOrg?.plan);
-    if (over > 0) seatWarning = { over, plan: PLAN_LABEL[activeOrg?.plan ?? "free"] };
+      .eq("org_id", orgId);
+    const over = seatsOverLimit(memberCount ?? 0, activeOrg.plan);
+    if (over > 0) seatWarning = { over, plan: PLAN_LABEL[activeOrg.plan] ?? activeOrg.plan };
   }
 
   return (
@@ -79,6 +72,7 @@ export default async function DashboardPage() {
             <p className="text-sm text-slate-600">Signed in as {user.email}</p>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
             <Link href="/dashboard/documents" className="text-sm font-medium text-slate-500 hover:text-slate-700">
               Documents
             </Link>
@@ -99,30 +93,28 @@ export default async function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Your workspace</CardTitle>
+            <CardTitle>Your workspace{orgs.length > 1 ? "s" : ""}</CardTitle>
             <CardDescription>
-              A personal workspace was created automatically when you signed up.
+              {orgs.length > 1
+                ? "Every organization you belong to. Switch which one is active from the dropdown above."
+                : "A personal workspace was created automatically when you signed up."}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {memberships && memberships.length > 0 ? (
-              <ul className="space-y-2 text-sm text-slate-700">
-                {memberships.map((m, i) => (
-                  <li key={i}>
-                    {/* organizations comes back as an array from the join */}
-                    {Array.isArray(m.organizations)
-                      ? m.organizations.map((o) => (
-                          <span key={o.id}>
-                            {o.name} — plan: <strong>{o.plan}</strong>
-                          </span>
-                        ))
-                      : null}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-slate-500">No workspace found yet.</p>
-            )}
+            <ul className="space-y-2 text-sm text-slate-700">
+              {orgs.map((o) => (
+                <li key={o.id} className="flex items-center gap-2">
+                  <span>
+                    {o.name} — plan: <strong>{o.plan}</strong>
+                  </span>
+                  {o.id === orgId && (
+                    <span className="rounded-full bg-slate-900 px-2 py-0.5 text-xs font-medium text-white">
+                      Active
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
 
