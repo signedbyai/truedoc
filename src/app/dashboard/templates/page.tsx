@@ -76,8 +76,8 @@ export default async function TemplatesPage() {
             {templates && templates.length > 0 ? (
               <ul className="divide-y divide-slate-100">
                 {templates.map((t) => (
-                  <li key={t.id} className="flex items-center justify-between gap-4 py-3">
-                    <div>
+                  <li key={t.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-900">{t.name}</p>
                       <p className="text-xs text-slate-500">
                         {t.page_count} page{t.page_count === 1 ? "" : "s"} ·{" "}
@@ -85,7 +85,7 @@ export default async function TemplatesPage() {
                         {Array.isArray(t.field_map) && t.field_map.length === 1 ? "" : "s"} ·{" "}
                         {new Date(t.created_at).toLocaleDateString()}
                       </p>
-                      <div className="mt-1 flex items-center gap-3">
+                      <div className="mt-1 flex flex-wrap items-center gap-3">
                         <DeleteTemplateButton templateId={t.id} />
                         {hasBulkSend ? (
                           <BulkSendButton templateId={t.id} />
