@@ -109,10 +109,6 @@ export function FieldEditor({
   const [suggestError, setSuggestError] = useState("");
   const pageRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const dragState = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
-  // Guards the auto-suggest effect below to a single attempt per mount —
-  // without this, any state change that re-runs the effect (e.g. the
-  // suggestions themselves arriving) would re-trigger it in a loop.
-  const autoSuggestAttempted = useRef(false);
 
   const confirmedFields = fields.filter((f) => !f.suggested);
 
@@ -193,10 +189,15 @@ export function FieldEditor({
 
   // Fetches AI field-placement suggestions and merges them into local
   // state as unconfirmed ("suggested") fields — never written to the
-  // server until the sender accepts one. `replaceExisting` is used by the
-  // "Re-suggest" action to swap out only the still-unconfirmed suggestions
-  // (leaving anything the sender already confirmed untouched); the initial
-  // auto-run doesn't need it since there's nothing to replace yet.
+  // server until the sender accepts one. Only ever runs when the sender
+  // explicitly asks for it (the toolbar's "Auto" button, or "Re-suggest"/
+  // "Try again" in the banners below) — deliberately not run automatically
+  // on a fresh upload, since jumping straight into AI-suggested fields
+  // made some senders uncomfortable before they'd even seen the document.
+  // `replaceExisting` is used by "Auto" and "Re-suggest" to swap out only
+  // the still-unconfirmed suggestions (leaving anything the sender already
+  // confirmed untouched); "Try again" after an error doesn't need it since
+  // there's nothing to replace yet.
   const runSuggestFields = useCallback(
     async (replaceExisting = false) => {
       setSuggesting(true);
@@ -244,21 +245,6 @@ export function FieldEditor({
     },
     [documentId]
   );
-
-  // Auto-run once for a completely untouched, brand-new document — not for
-  // one that already has fields (from a template, a prior session, or an
-  // earlier suggestion run) or recipients (a sender who's already deep into
-  // editing doesn't want fields appearing out from under them).
-  useEffect(() => {
-    if (!fieldsLoaded || autoSuggestAttempted.current) return;
-    if (fields.length > 0 || recipients.length > 0) return;
-    autoSuggestAttempted.current = true;
-    // Deferred a tick — runSuggestFields' first line is a setState call,
-    // and calling that synchronously from within an effect body trips
-    // react-hooks/set-state-in-effect. Same deferral pattern used
-    // elsewhere in this file/signing-view.tsx for the same reason.
-    Promise.resolve().then(() => runSuggestFields());
-  }, [fieldsLoaded, fields.length, recipients.length, runSuggestFields]);
 
   function addRecipient() {
     const email = newEmail.trim();
@@ -607,7 +593,7 @@ export function FieldEditor({
               {saving ? "Saving…" : "Save draft"}
             </Button>
             <Button variant="outline" onClick={() => runSuggestFields(true)} disabled={suggesting}>
-              {suggesting ? "Suggesting…" : "Suggest fields"}
+              {suggesting ? "Scanning…" : "Auto"}
             </Button>
             <DuplicateDocumentButton documentId={documentId} />
             <DeleteDocumentButton documentId={documentId} redirectTo="/dashboard/documents" />
@@ -750,8 +736,9 @@ export function FieldEditor({
       {showIntro && fieldsLoaded && confirmedFields.length === 0 && (
         <div className="flex items-center justify-between gap-3 border-b border-blue-100 bg-blue-50 px-6 py-2.5">
           <p className="text-xs text-blue-900">
-            Pick a field type above, then click anywhere on the document to place it. Add recipients below, then
-            send when you&apos;re ready.
+            Pick a field type above and click anywhere on the document to place it yourself, or press{" "}
+            <strong>Auto</strong> to scan the document and suggest field placements for you to review. Add
+            recipients below, then send when you&apos;re ready.
           </p>
           <button
             onClick={() => setShowIntro(false)}
