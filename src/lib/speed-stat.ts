@@ -53,23 +53,23 @@ export function formatSpeedSeconds(totalSeconds: number): string {
 }
 
 /**
- * The full headline shown on the completion screen (and used as the share
- * text handed to navigator.share).
- */
-export function speedStatHeadline(stat: SpeedStat): string {
-  const time = formatSpeedSeconds(stat.seconds);
-  if (stat.percentile == null) return `You signed this in ${time}.`;
-  return `You signed this in ${time} — faster than ${stat.percentile}% of signers this month.`;
-}
-
-/**
  * The stat line baked into the share card image itself
- * (/api/share/speed-card) -- shorter and punchier than speedStatHeadline
- * since it sits under a "Document signed." headline rather than standing
- * alone, so it doesn't need to repeat "you signed this."
+ * (/api/share/speed-card) -- sits under a "Document signed." headline
+ * rather than standing alone, so it doesn't need to repeat "you signed
+ * this."
  */
 export function speedStatCardLine(stat: SpeedStat): string {
   const time = formatSpeedSeconds(stat.seconds);
   if (stat.percentile == null) return `In ${time}.`;
   return `In ${time} — faster than ${stat.percentile}% of signers this month.`;
+}
+
+/**
+ * Full text used both as the share-card image's alt text and as the
+ * caption text handed to navigator.share -- kept as one literal sentence
+ * ("Document signed." + the card line) so what a signer's share caption
+ * says always matches what the card image itself shows.
+ */
+export function speedStatShareText(stat: SpeedStat): string {
+  return `Document signed. ${speedStatCardLine(stat)}`;
 }

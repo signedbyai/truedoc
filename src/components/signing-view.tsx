@@ -8,7 +8,7 @@ import { computeCardCrop } from "@/lib/card-crop";
 import { SUMMARY_LANGUAGES, detectSummaryLang } from "@/lib/summary-languages";
 import { draftStorageKey, serializeDraft, parseDraft, mergeRestoredValues, hasAnyValue } from "@/lib/sign-draft";
 import { pickMostVisiblePage, computeDeltas, FLUSH_INTERVAL_SECONDS } from "@/lib/page-view-tracking";
-import { speedStatHeadline, type SpeedStat } from "@/lib/speed-stat";
+import { speedStatShareText, type SpeedStat } from "@/lib/speed-stat";
 import { SIGNATURE_STYLES, renderTypedSignature } from "@/lib/signature-styles";
 
 type FieldType = "signature" | "initials" | "date" | "text" | "checkbox";
@@ -611,7 +611,7 @@ export function SigningView({
 
     if (file && navigator.canShare?.({ files: [file] })) {
       try {
-        await navigator.share({ files: [file], text: speedStatHeadline(speedStat) });
+        await navigator.share({ files: [file], text: speedStatShareText(speedStat) });
         return;
       } catch (err) {
         // AbortError means the signer cancelled the native share sheet --
@@ -705,7 +705,7 @@ export function SigningView({
                   /api/share/speed-card (next/og ImageResponse), not a static asset */}
               <img
                 src={speedCardUrl(speedStat)}
-                alt={speedStatHeadline(speedStat)}
+                alt={speedStatShareText(speedStat)}
                 className="w-full rounded border border-slate-200"
               />
               <button

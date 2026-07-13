@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildSpeedStat,
   formatSpeedSeconds,
-  speedStatHeadline,
   speedStatCardLine,
+  speedStatShareText,
   MAX_PLAUSIBLE_SECONDS,
   MIN_SAMPLE_SIZE_FOR_PERCENTILE,
 } from "./speed-stat";
@@ -61,18 +61,6 @@ describe("formatSpeedSeconds", () => {
   });
 });
 
-describe("speedStatHeadline", () => {
-  it("includes the percentile clause when present", () => {
-    expect(speedStatHeadline({ seconds: 38, percentile: 84 })).toBe(
-      "You signed this in 38 seconds — faster than 84% of signers this month."
-    );
-  });
-
-  it("omits the percentile clause when absent", () => {
-    expect(speedStatHeadline({ seconds: 38, percentile: null })).toBe("You signed this in 38 seconds.");
-  });
-});
-
 describe("speedStatCardLine", () => {
   it("includes the percentile clause when present", () => {
     expect(speedStatCardLine({ seconds: 26, percentile: 77 })).toBe(
@@ -82,5 +70,17 @@ describe("speedStatCardLine", () => {
 
   it("omits the percentile clause when absent", () => {
     expect(speedStatCardLine({ seconds: 26, percentile: null })).toBe("In 26 seconds.");
+  });
+});
+
+describe("speedStatShareText", () => {
+  it("prefixes the card line with 'Document signed.' -- matches what the card image itself shows", () => {
+    expect(speedStatShareText({ seconds: 26, percentile: 77 })).toBe(
+      "Document signed. In 26 seconds — faster than 77% of signers this month."
+    );
+  });
+
+  it("omits the percentile clause when absent", () => {
+    expect(speedStatShareText({ seconds: 26, percentile: null })).toBe("Document signed. In 26 seconds.");
   });
 });
