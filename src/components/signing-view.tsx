@@ -9,6 +9,7 @@ import { SUMMARY_LANGUAGES, detectSummaryLang } from "@/lib/summary-languages";
 import { draftStorageKey, serializeDraft, parseDraft, mergeRestoredValues, hasAnyValue } from "@/lib/sign-draft";
 import { pickMostVisiblePage, computeDeltas, FLUSH_INTERVAL_SECONDS } from "@/lib/page-view-tracking";
 import { speedStatHeadline, type SpeedStat } from "@/lib/speed-stat";
+import { SIGNATURE_STYLES, renderTypedSignature } from "@/lib/signature-styles";
 
 type FieldType = "signature" | "initials" | "date" | "text" | "checkbox";
 
@@ -42,42 +43,6 @@ type Branding = {
 };
 
 type Payment = { url: string; label: string | null } | null;
-
-// System-font stacks for "type to sign" — deliberately not next/font/google
-// webfonts: this keeps the signing page free of any external font fetch
-// (matches the zero-external-font-dependency choice already made for the
-// rest of the app in layout.tsx) while still giving a handful of visually
-// distinct handwriting-style options across platforms.
-const SIGNATURE_STYLES: { id: string; label: string; fontFamily: string; italic?: boolean }[] = [
-  { id: "flowing", label: "Flowing", fontFamily: `"Segoe Script", "Bradley Hand", cursive` },
-  { id: "elegant", label: "Elegant", fontFamily: `"Lucida Handwriting", "Brush Script MT", cursive` },
-  { id: "casual", label: "Casual", fontFamily: `"Segoe Print", "Comic Sans MS", cursive` },
-  { id: "classic", label: "Classic", fontFamily: `Georgia, "Times New Roman", serif`, italic: true },
-];
-
-// Renders typed text in the chosen style to an offscreen canvas and returns
-// a PNG data URL — same output shape the draw pad already produces, so
-// nothing downstream (caching, PDF baking) needs to know which mode was used.
-function renderTypedSignature(text: string, style: { fontFamily: string; italic?: boolean }): string {
-  const canvas = document.createElement("canvas");
-  canvas.width = 440;
-  canvas.height = 160;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return "";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  const prefix = style.italic ? "italic " : "";
-  const maxWidth = canvas.width - 48;
-  let fontSize = 56;
-  while (fontSize > 18) {
-    ctx.font = `${prefix}${fontSize}px ${style.fontFamily}`;
-    if (ctx.measureText(text).width <= maxWidth) break;
-    fontSize -= 2;
-  }
-  ctx.fillStyle = "#0f172a";
-  ctx.fillText(text, canvas.width / 2, canvas.height / 2 + 4);
-  return canvas.toDataURL("image/png");
-}
 
 // Tiny tactile-feedback helper for the mobile card/swipe flows. Feature-
 // detected and silently a no-op where unsupported -- notably iOS Safari,
