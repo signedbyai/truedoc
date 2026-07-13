@@ -10,6 +10,10 @@ describe("ai-provider bodySchema", () => {
     expect(bodySchema.safeParse({ provider: "mistral" }).success).toBe(true);
   });
 
+  it("accepts provider: deepseek", () => {
+    expect(bodySchema.safeParse({ provider: "deepseek" }).success).toBe(true);
+  });
+
   it("rejects an unsupported provider name", () => {
     expect(bodySchema.safeParse({ provider: "openai" }).success).toBe(false);
   });

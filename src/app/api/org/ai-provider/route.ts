@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserAndOrg } from "@/lib/org";
 
-export const bodySchema = z.object({ provider: z.enum(["anthropic", "mistral"]) });
+export const bodySchema = z.object({ provider: z.enum(["anthropic", "mistral", "deepseek"]) });
 
 // Org-wide preference for which AI provider powers field suggestions,
 // document drafting, and summaries/translation (see
-// src/lib/ai-provider.ts and migration 0015). Not a plan-tier gate — any
-// org member can toggle it, same precedent as auto-suggest and the
+// src/lib/ai-provider.ts and migrations 0015/0016). Not a plan-tier gate —
+// any org member can toggle it, same precedent as auto-suggest and the
 // branding settings routes.
 export async function PUT(request: Request) {
   const ctx = await getUserAndOrg();

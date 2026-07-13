@@ -54,8 +54,9 @@ export default function PrivacyPage() {
           Power optional AI-assisted features — suggesting where to place signature and text fields, drafting a
           document from your description, and summarizing a document&apos;s contents — by sending the relevant
           document text to an AI provider for analysis. By default this is Mistral AI; an organization can instead
-          choose Anthropic for these features in its workspace settings, in which case that organization&apos;s
-          document text is sent to Anthropic instead;
+          choose Anthropic or DeepSeek for these features in its workspace settings, in which case that
+          organization&apos;s document text is sent to the chosen provider instead (see Section 7 for
+          DeepSeek-specific considerations);
         </li>
         <li>Maintain the audit trail required for a legally defensible electronic signature;</li>
         <li>Process subscription payments and manage billing;</li>
@@ -89,6 +90,11 @@ export default function PrivacyPage() {
           organization that has specifically chosen it in workspace settings instead of Mistral (never both at
           once); same handling — only relevant document text is sent, and it is not used to train Anthropic&apos;s
           models;
+        </li>
+        <li>
+          <strong>DeepSeek</strong> — a second alternative AI provider for those same features, used only for an
+          organization that has specifically chosen it in workspace settings; only relevant document text is sent.
+          DeepSeek is based in China — see Section 7 for what that means for international data transfers;
         </li>
         <li>
           <strong>Stripe</strong> — processes subscription payments;
@@ -141,6 +147,11 @@ export default function PrivacyPage() {
         Clauses, to protect that data. Mistral AI, the default AI provider for AI-assisted features, is based in
         France, keeping that processing within the European Economic Area by default; an organization that instead
         chooses Anthropic (based in the United States) for those features relies on the safeguards described above.
+        An organization that chooses DeepSeek processes that data in China, which does not have a European
+        Commission adequacy decision; unlike our other AI sub-processors, we have not independently confirmed that
+        DeepSeek offers a GDPR-standard transfer mechanism (such as Standard Contractual Clauses) for this
+        processing, so an organization considering DeepSeek should evaluate that against its own compliance
+        obligations before selecting it.
       </p>
 
       <h2>8. Children&apos;s privacy</h2>

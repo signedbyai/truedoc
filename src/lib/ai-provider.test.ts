@@ -4,6 +4,23 @@ import { normalizeAIProvider, generateAIText } from "./ai-provider";
 const { mockCreate } = vi.hoisted(() => ({ mockCreate: vi.fn() }));
 vi.mock("./anthropic", () => ({ getAnthropic: () => ({ messages: { create: mockCreate } }) }));
 
+// DeepSeek is reached via a *real* @anthropic-ai/sdk client (just pointed at
+// a different base URL/key), so this mocks the SDK's default export itself
+// rather than the app's own ./anthropic wrapper — a separate mock target
+// from mockCreate above, since ai-provider.ts constructs this client
+// directly instead of going through getAnthropic().
+const { mockDeepSeekCreate, MockAnthropicCtor } = vi.hoisted(() => {
+  const mockDeepSeekCreate = vi.fn();
+  // A regular function, not an arrow function — arrow functions have no
+  // [[Construct]] internal method, so `mockImplementation` fails with
+  // "is not a constructor" the moment ai-provider.ts calls `new Anthropic()`.
+  const MockAnthropicCtor = vi.fn().mockImplementation(function MockAnthropic() {
+    return { messages: { create: mockDeepSeekCreate } };
+  });
+  return { mockDeepSeekCreate, MockAnthropicCtor };
+});
+vi.mock("@anthropic-ai/sdk", () => ({ default: MockAnthropicCtor }));
+
 describe("normalizeAIProvider", () => {
   it("passes through a valid 'mistral' value", () => {
     expect(normalizeAIProvider("mistral")).toBe("mistral");
@@ -11,6 +28,10 @@ describe("normalizeAIProvider", () => {
 
   it("passes through a valid 'anthropic' value", () => {
     expect(normalizeAIProvider("anthropic")).toBe("anthropic");
+  });
+
+  it("passes through a valid 'deepseek' value", () => {
+    expect(normalizeAIProvider("deepseek")).toBe("deepseek");
   });
 
   it("falls back to mistral for null/undefined/unexpected values", () => {
@@ -23,15 +44,19 @@ describe("normalizeAIProvider", () => {
 
 describe("generateAIText", () => {
   const originalFetch = global.fetch;
-  const originalKey = process.env.MISTRAL_API_KEY;
+  const originalMistralKey = process.env.MISTRAL_API_KEY;
+  const originalDeepSeekKey = process.env.DEEPSEEK_API_KEY;
 
   beforeEach(() => {
     mockCreate.mockReset();
+    mockDeepSeekCreate.mockReset();
+    MockAnthropicCtor.mockClear();
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
-    process.env.MISTRAL_API_KEY = originalKey;
+    process.env.MISTRAL_API_KEY = originalMistralKey;
+    process.env.DEEPSEEK_API_KEY = originalDeepSeekKey;
   });
 
   it("calls the Anthropic SDK with the fast-tier model and returns joined text blocks", async () => {
@@ -124,5 +149,51 @@ describe("generateAIText", () => {
     await expect(generateAIText({ provider: "mistral", tier: "fast", prompt: "hi", maxTokens: 100 })).rejects.toThrow(
       "Unexpected response shape"
     );
+  });
+
+  it("calls the DeepSeek client (via the Anthropic SDK, pointed at DeepSeek's base URL) with the fast-tier model", async () => {
+    process.env.DEEPSEEK_API_KEY = "test-deepseek-key";
+    mockDeepSeekCreate.mockResolvedValue({ content: [{ type: "text", text: "deepseek says hi" }] });
+
+    const result = await generateAIText({ provider: "deepseek", tier: "fast", prompt: "hi", maxTokens: 100 });
+
+    expect(result).toBe("deepseek says hi");
+    expect(MockAnthropicCtor).toHaveBeenCalledWith({
+      apiKey: "test-deepseek-key",
+      baseURL: "https://api.deepseek.com/anthropic",
+    });
+    expect(mockDeepSeekCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ model: "deepseek-v4-flash", max_tokens: 100 })
+    );
+  });
+
+  it("uses the quality-tier DeepSeek model", async () => {
+    process.env.DEEPSEEK_API_KEY = "test-deepseek-key";
+    mockDeepSeekCreate.mockResolvedValue({ content: [{ type: "text", text: "draft" }] });
+
+    await generateAIText({ provider: "deepseek", tier: "quality", prompt: "hi", maxTokens: 100 });
+
+    expect(mockDeepSeekCreate).toHaveBeenCalledWith(expect.objectContaining({ model: "deepseek-v4-pro" }));
+  });
+
+  it("filters out non-text content blocks from a DeepSeek response, same as Anthropic", async () => {
+    process.env.DEEPSEEK_API_KEY = "test-deepseek-key";
+    mockDeepSeekCreate.mockResolvedValue({
+      content: [
+        { type: "text", text: "kept" },
+        { type: "tool_use", text: "ignored" },
+      ],
+    });
+
+    const result = await generateAIText({ provider: "deepseek", tier: "fast", prompt: "hi", maxTokens: 100 });
+    expect(result).toBe("kept");
+  });
+
+  it("throws a clear error when DEEPSEEK_API_KEY isn't configured", async () => {
+    delete process.env.DEEPSEEK_API_KEY;
+    await expect(
+      generateAIText({ provider: "deepseek", tier: "fast", prompt: "hi", maxTokens: 100 })
+    ).rejects.toThrow("DEEPSEEK_API_KEY");
+    expect(mockDeepSeekCreate).not.toHaveBeenCalled();
   });
 });

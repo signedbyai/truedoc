@@ -1,24 +1,25 @@
-import type Anthropic from "@anthropic-ai/sdk";
+import Anthropic from "@anthropic-ai/sdk";
 import { getAnthropic } from "@/lib/anthropic";
 
 // Single entry point for every AI-assisted text-generation call in the app
 // (field suggestions, document drafting, summaries/translation) — swaps
-// between Anthropic and Mistral based on the calling org's ai_provider
-// setting (organizations.ai_provider, migration 0015), instead of each
-// call site hard-coding Anthropic directly. Both providers here are called
-// with a single user-turn prompt and no system prompt (none of this app's
-// current AI features need multi-turn history), and both return plain
+// between Anthropic, Mistral, and DeepSeek based on the calling org's
+// ai_provider setting (organizations.ai_provider, migration 0015/0016),
+// instead of each call site hard-coding a provider directly. All three are
+// called with a single user-turn prompt and no system prompt (none of this
+// app's current AI features need multi-turn history), and all return plain
 // text — callers don't need to know which provider actually answered.
 
-export type AIProvider = "anthropic" | "mistral";
+export type AIProvider = "anthropic" | "mistral" | "deepseek";
 
 /** Defensive normalization for a raw DB value — the migration's CHECK
  *  constraint should already guarantee this, but a null/unexpected value
- *  (e.g. the migration not yet applied, per this project's manual
+ *  (e.g. a migration not yet applied, per this project's manual
  *  Supabase-SQL-editor workflow) should fall back to the default rather
  *  than throw. Default provider is Mistral. */
 export function normalizeAIProvider(value: string | null | undefined): AIProvider {
-  return value === "anthropic" ? "anthropic" : "mistral";
+  if (value === "anthropic" || value === "deepseek") return value;
+  return "mistral";
 }
 
 // "fast" — cheap/quick tasks: field suggestions, summaries, translation.
@@ -39,6 +40,39 @@ const MISTRAL_MODELS: Record<AITier, string> = {
   quality: "mistral-large-latest",
 };
 
+// DeepSeek's Anthropic-compatible endpoint (api-docs.deepseek.com/guides/
+// anthropic_api) maps Claude-style model names to its own models itself,
+// but we pass its real model names directly rather than relying on that
+// mapping: deepseek-v4-flash is the fast/economical tier, deepseek-v4-pro
+// the more capable one.
+const DEEPSEEK_MODELS: Record<AITier, string> = {
+  fast: "deepseek-v4-flash",
+  quality: "deepseek-v4-pro",
+};
+
+const DEEPSEEK_BASE_URL = "https://api.deepseek.com/anthropic";
+
+// DeepSeek is reached with the same @anthropic-ai/sdk client used for real
+// Anthropic calls — just pointed at DeepSeek's base URL with a DeepSeek key
+// instead, since DeepSeek's Anthropic-compatible endpoint accepts the same
+// request/response shape (x-api-key auth, messages.create, etc.). Built
+// fresh per call rather than cached as a singleton (unlike getAnthropic()),
+// matching generateWithMistral()'s pattern of reading its env var fresh
+// each call — a stale-key read is a bigger risk here than the cost of
+// constructing a lightweight SDK client per request.
+function getDeepSeekClient(): Anthropic {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) throw new Error("DEEPSEEK_API_KEY is not configured.");
+  return new Anthropic({ apiKey, baseURL: DEEPSEEK_BASE_URL });
+}
+
+function extractAnthropicText(message: Anthropic.Message): string {
+  return message.content
+    .filter((block): block is Anthropic.TextBlock => block.type === "text")
+    .map((block) => block.text)
+    .join("\n");
+}
+
 async function generateWithAnthropic(tier: AITier, prompt: string, maxTokens: number): Promise<string> {
   const anthropic = getAnthropic();
   const message = await anthropic.messages.create({
@@ -46,10 +80,17 @@ async function generateWithAnthropic(tier: AITier, prompt: string, maxTokens: nu
     max_tokens: maxTokens,
     messages: [{ role: "user", content: prompt }],
   });
-  return message.content
-    .filter((block): block is Anthropic.TextBlock => block.type === "text")
-    .map((block) => block.text)
-    .join("\n");
+  return extractAnthropicText(message);
+}
+
+async function generateWithDeepSeek(tier: AITier, prompt: string, maxTokens: number): Promise<string> {
+  const deepseek = getDeepSeekClient();
+  const message = await deepseek.messages.create({
+    model: DEEPSEEK_MODELS[tier],
+    max_tokens: maxTokens,
+    messages: [{ role: "user", content: prompt }],
+  });
+  return extractAnthropicText(message);
 }
 
 async function generateWithMistral(tier: AITier, prompt: string, maxTokens: number): Promise<string> {
@@ -87,7 +128,7 @@ export async function generateAIText(opts: {
   maxTokens: number;
 }): Promise<string> {
   const { provider, tier, prompt, maxTokens } = opts;
-  return provider === "mistral"
-    ? generateWithMistral(tier, prompt, maxTokens)
-    : generateWithAnthropic(tier, prompt, maxTokens);
+  if (provider === "mistral") return generateWithMistral(tier, prompt, maxTokens);
+  if (provider === "deepseek") return generateWithDeepSeek(tier, prompt, maxTokens);
+  return generateWithAnthropic(tier, prompt, maxTokens);
 }

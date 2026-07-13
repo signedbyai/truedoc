@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-type Provider = "anthropic" | "mistral";
+type Provider = "anthropic" | "mistral" | "deepseek";
 
 const OPTIONS: { id: Provider; label: string; description: string }[] = [
   {
@@ -17,13 +17,18 @@ const OPTIONS: { id: Provider; label: string; description: string }[] = [
     label: "Anthropic (Claude)",
     description: "An alternative provider for the same features, for anyone who'd rather use Anthropic instead.",
   },
+  {
+    id: "deepseek",
+    label: "DeepSeek",
+    description: "Another alternative provider for the same features, for anyone who'd rather use DeepSeek instead.",
+  },
 ];
 
 // Org-wide preference for which AI provider handles field suggestions,
 // document drafting, and summaries/translation — see
-// src/app/api/org/ai-provider/route.ts and src/lib/ai-provider.ts. Both
-// providers use a key configured on the server (not something typed in
-// here) — this only picks which one your organization's requests go to.
+// src/app/api/org/ai-provider/route.ts and src/lib/ai-provider.ts. All
+// three providers use a key configured on the server (not something typed
+// in here) — this only picks which one your organization's requests go to.
 export function AIProviderSettings({ initialProvider }: { initialProvider: Provider }) {
   const router = useRouter();
   const [provider, setProvider] = useState<Provider>(initialProvider);
