@@ -28,7 +28,10 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const hash = (searchParams.get("hash") || "").trim().toLowerCase();
+  // Strip all whitespace, not just leading/trailing -- see matching
+  // comment in verify/page.tsx. Defense in depth: also protects direct
+  // API callers, not just the paste-into-the-form path.
+  const hash = (searchParams.get("hash") || "").replace(/\s+/g, "").toLowerCase();
 
   if (!isValidDocumentHash(hash)) {
     return NextResponse.json({ error: "That doesn't look like a valid document hash." }, { status: 400 });

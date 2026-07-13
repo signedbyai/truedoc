@@ -253,6 +253,16 @@ async function addCertificatePage(
   y -= 11;
   page.drawText(opts.hash, { x: margin, y, size: 7, font, color: gray });
   y -= 18;
+  // Deliberately does NOT append "?hash=<hash>" to this URL. At 128 hex
+  // chars (since the SHA-512 switch -- see isValidDocumentHash), appending
+  // it made this line ~578pt wide against a 512pt-wide printable area, so
+  // the tail of the hash silently ran off the right edge of the page --
+  // most PDF viewers clip page content at the page boundary, so anyone
+  // who copy-pasted "the whole verify line" instead of the checksum line
+  // above got a truncated hash and a "not a valid document hash" error.
+  // The checksum above is already the thing meant to be pasted into this
+  // page, and at 7pt it fits comfortably (~467pt of 512pt), so this line
+  // is just a short, static, always-safe pointer to where to paste it.
   page.drawText("Anyone can independently verify this document is genuine, with no account needed, at:", {
     x: margin,
     y,
@@ -261,5 +271,5 @@ async function addCertificatePage(
     color: gray,
   });
   y -= 11;
-  page.drawText(`${appUrl()}/verify?hash=${opts.hash}`, { x: margin, y, size: 7, font, color: gray });
+  page.drawText(`${appUrl()}/verify`, { x: margin, y, size: 7, font, color: gray });
 }

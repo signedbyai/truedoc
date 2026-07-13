@@ -19,7 +19,11 @@ function VerifyPageInner() {
   const [result, setResult] = useState<Result>(null);
 
   async function runCheck(value: string) {
-    const trimmed = value.trim().toLowerCase();
+    // Strip ALL whitespace, not just leading/trailing -- copy-pasting from
+    // a PDF viewer can pick up a stray space or line break in the middle
+    // of the string (e.g. selecting across a line wrap), which .trim()
+    // alone wouldn't catch and would otherwise fail validation.
+    const trimmed = value.replace(/\s+/g, "").toLowerCase();
     if (!trimmed) return;
     setLoading(true);
     setError("");
