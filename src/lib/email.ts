@@ -135,6 +135,54 @@ export async function sendTeamInviteEmail(opts: {
   });
 }
 
+export async function sendAdminDigestEmail(opts: {
+  to: string;
+  bcc: string[];
+  dateLabel: string;
+  loggedInToday: number;
+  loggedInWeek: number;
+  loggedInMonth: number;
+  totalUsers: number;
+  freeOrgs: number;
+  paidOrgs: number;
+}) {
+  const totalOrgs = opts.freeOrgs + opts.paidOrgs;
+  const row = (label: string, value: string | number) => `
+    <tr>
+      <td style="padding:6px 0;color:#64748b;font-size:14px;">${label}</td>
+      <td style="padding:6px 0;color:#0f172a;font-size:14px;font-weight:700;text-align:right;">${value}</td>
+    </tr>
+  `;
+
+  await getClient().emails.send({
+    from: FROM,
+    to: opts.to,
+    bcc: opts.bcc,
+    subject: `SignedBy daily stats — ${opts.dateLabel}`,
+    html: `
+      <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <h2 style="margin:0 0 4px;color:#0f172a;">SignedBy — ${opts.dateLabel}</h2>
+        <p style="color:#64748b;font-size:13px;margin:0 0 20px;">Automated daily digest.</p>
+
+        <h3 style="margin:0 0 4px;color:#0f172a;font-size:15px;">Logged in (unique users)</h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+          ${row("Today", opts.loggedInToday)}
+          ${row("This week", opts.loggedInWeek)}
+          ${row("This month", opts.loggedInMonth)}
+          ${row("Total registered users", opts.totalUsers)}
+        </table>
+
+        <h3 style="margin:0 0 4px;color:#0f172a;font-size:15px;">Customers (organizations)</h3>
+        <table style="width:100%;border-collapse:collapse;">
+          ${row("Free", opts.freeOrgs)}
+          ${row("Paid", opts.paidOrgs)}
+          ${row("Total", totalOrgs)}
+        </table>
+      </div>
+    `,
+  });
+}
+
 export async function sendCompletionEmail(opts: {
   to: string;
   documentTitle: string;
