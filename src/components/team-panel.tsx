@@ -98,16 +98,26 @@ export function TeamPanel({
       )}
       <ul className="divide-y divide-slate-100">
         {members.map((m) => (
-          <li key={m.id} className="flex items-center justify-between py-3">
-            <div>
-              <p className="text-sm font-medium text-slate-900">{m.email}</p>
+          <li key={m.id} className="flex items-center justify-between gap-3 py-3">
+            {/* min-w-0 is load-bearing here, not decorative: a flex item
+                defaults to min-width:auto, so without it this div (and the
+                row) refuses to shrink below the email's un-wrapped width. A
+                normal title/name would still visually wrap at a space and
+                mostly get away with it, but an email/token has no spaces to
+                break at, so on a narrow phone screen a long one pushes the
+                Remove button off (or forces the whole page to scroll
+                horizontally) instead of wrapping. break-all lets it actually
+                wrap mid-string as a last resort, matching the break-all
+                already used for API key/curl text in dashboard/settings. */}
+            <div className="min-w-0">
+              <p className="break-all text-sm font-medium text-slate-900">{m.email}</p>
               <p className="text-xs capitalize text-slate-500">{m.role}</p>
             </div>
             {m.role !== "owner" && m.user_id !== currentUserId && (
               <button
                 onClick={() => removeMember(m.id)}
                 disabled={busyId === m.id}
-                className="text-xs font-medium text-slate-500 hover:text-red-600"
+                className="shrink-0 text-xs font-medium text-slate-500 hover:text-red-600"
               >
                 Remove
               </button>
@@ -115,15 +125,15 @@ export function TeamPanel({
           </li>
         ))}
         {invites.map((inv) => (
-          <li key={inv.id} className="flex items-center justify-between py-3">
-            <div>
-              <p className="text-sm font-medium text-slate-900">{inv.email}</p>
+          <li key={inv.id} className="flex items-center justify-between gap-3 py-3">
+            <div className="min-w-0">
+              <p className="break-all text-sm font-medium text-slate-900">{inv.email}</p>
               <p className="text-xs text-slate-500">Invited &middot; {inv.role} &middot; pending</p>
             </div>
             <button
               onClick={() => revokeInvite(inv.id)}
               disabled={busyId === inv.id}
-              className="text-xs font-medium text-slate-500 hover:text-red-600"
+              className="shrink-0 text-xs font-medium text-slate-500 hover:text-red-600"
             >
               Revoke
             </button>

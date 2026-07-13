@@ -91,8 +91,12 @@ export default async function TeamPage() {
                 <ul className="divide-y divide-slate-100">
                   {members.map((m) => (
                     <li key={m.id} className="flex items-center justify-between py-3">
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">{m.email}</p>
+                      {/* min-w-0 + break-all: same reasoning as team-panel.tsx
+                          — an email has no spaces to wrap at, so without
+                          this a long one forces horizontal overflow on a
+                          narrow screen instead of wrapping. */}
+                      <div className="min-w-0">
+                        <p className="break-all text-sm font-medium text-slate-900">{m.email}</p>
                         <p className="text-xs capitalize text-slate-500">{m.role}</p>
                       </div>
                     </li>
