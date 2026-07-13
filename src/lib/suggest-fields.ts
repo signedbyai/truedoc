@@ -1,5 +1,4 @@
-import type Anthropic from "@anthropic-ai/sdk";
-import { getAnthropic } from "@/lib/anthropic";
+import { generateAIText, type AIProvider } from "@/lib/ai-provider";
 import { extractPdfTextPositions, type PositionedTextItem } from "@/lib/pdf-text";
 import { FIELD_TYPES, fieldDef, type FieldType } from "@/lib/field-types";
 import { findFreePosition } from "@/lib/field-geometry";
@@ -164,7 +163,11 @@ export type SuggestFieldsResult = {
 // database. The caller (the suggest-fields API route, and ultimately the
 // field editor) treats every result as an unconfirmed suggestion until the
 // sender explicitly accepts it, same as any other client-only draft state.
-export async function suggestFields(bytes: Buffer, pageCount: number): Promise<SuggestFieldsResult> {
+export async function suggestFields(
+  bytes: Buffer,
+  pageCount: number,
+  provider: AIProvider = "anthropic"
+): Promise<SuggestFieldsResult> {
   let items: PositionedTextItem[] = [];
   try {
     items = await extractPdfTextPositions(bytes);
@@ -176,18 +179,14 @@ export async function suggestFields(bytes: Buffer, pageCount: number): Promise<S
 
   let raw = "";
   try {
-    const anthropic = getAnthropic();
-    const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1500,
-      messages: [{ role: "user", content: PROMPT(pageCount, formatItemsByPage(items)) }],
+    raw = await generateAIText({
+      provider,
+      tier: "fast",
+      prompt: PROMPT(pageCount, formatItemsByPage(items)),
+      maxTokens: 1500,
     });
-    raw = message.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
-      .map((block) => block.text)
-      .join("\n");
   } catch (err) {
-    console.error("Anthropic field suggestion failed", err);
+    console.error("AI field suggestion failed", err);
     return { suggestions: [fallbackSuggestion()], unreadable: true };
   }
 

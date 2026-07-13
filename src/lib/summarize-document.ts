@@ -1,8 +1,7 @@
-import type Anthropic from "@anthropic-ai/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getFromR2 } from "@/lib/r2";
 import { extractPdfText } from "@/lib/pdf-text";
-import { getAnthropic } from "@/lib/anthropic";
+import { generateAIText, normalizeAIProvider, type AIProvider } from "@/lib/ai-provider";
 import { isSupportedSummaryLang, summaryLanguageLabel } from "@/lib/summary-languages";
 
 type SummaryResult = { summary: string } | { error: string };
@@ -29,7 +28,7 @@ legal advice, or flag risks that aren't already present. Return only the transla
 Summary:
 ${englishSummary}`;
 
-async function generateEnglishSummary(admin: AdminClient, doc: DocRow): Promise<SummaryResult> {
+async function generateEnglishSummary(admin: AdminClient, doc: DocRow, provider: AIProvider): Promise<SummaryResult> {
   let bytes: Buffer;
   try {
     const { body } = await getFromR2(doc.file_path);
@@ -54,18 +53,9 @@ async function generateEnglishSummary(admin: AdminClient, doc: DocRow): Promise<
   }
 
   try {
-    const anthropic = getAnthropic();
-    const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 400,
-      messages: [{ role: "user", content: SUMMARY_PROMPT(doc.title, text) }],
-    });
-
-    const summary = message.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
-      .map((block) => block.text)
-      .join("\n")
-      .trim();
+    const summary = (
+      await generateAIText({ provider, tier: "fast", prompt: SUMMARY_PROMPT(doc.title, text), maxTokens: 400 })
+    ).trim();
 
     if (!summary) return { error: "Couldn't generate a summary — try again." };
 
@@ -76,7 +66,7 @@ async function generateEnglishSummary(admin: AdminClient, doc: DocRow): Promise<
 
     return { summary };
   } catch (err) {
-    console.error("Anthropic summary generation failed", err);
+    console.error("AI summary generation failed", err);
     return { error: "Couldn't generate a summary right now — try again later." };
   }
 }
@@ -86,23 +76,20 @@ async function translateSummary(
   documentId: string,
   englishSummary: string,
   existingTranslations: Record<string, string>,
-  lang: string
+  lang: string,
+  provider: AIProvider
 ): Promise<SummaryResult> {
   if (existingTranslations[lang]) return { summary: existingTranslations[lang] };
 
   try {
-    const anthropic = getAnthropic();
-    const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 400,
-      messages: [{ role: "user", content: TRANSLATE_PROMPT(summaryLanguageLabel(lang), englishSummary) }],
-    });
-
-    const translated = message.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
-      .map((block) => block.text)
-      .join("\n")
-      .trim();
+    const translated = (
+      await generateAIText({
+        provider,
+        tier: "fast",
+        prompt: TRANSLATE_PROMPT(summaryLanguageLabel(lang), englishSummary),
+        maxTokens: 400,
+      })
+    ).trim();
 
     if (!translated) return { error: "Couldn't translate the summary — try again." };
 
@@ -113,7 +100,7 @@ async function translateSummary(
 
     return { summary: translated };
   } catch (err) {
-    console.error("Anthropic summary translation failed", err);
+    console.error("AI summary translation failed", err);
     return { error: "Couldn't translate the summary right now — try again later." };
   }
 }
@@ -134,15 +121,23 @@ export async function getOrCreateDocumentSummary(documentId: string, lang: strin
 
   const { data: doc } = await admin
     .from("documents")
-    .select("id, title, file_path, ai_summary, ai_summary_translations")
+    .select("id, org_id, title, file_path, ai_summary, ai_summary_translations")
     .eq("id", documentId)
     .single();
 
   if (!doc) return { error: "Document not found." };
 
+  // Called from the signer-facing summary route, which only has the
+  // signing token — no org/session context of its own like the sender-side
+  // suggest-fields/draft routes have — so the org's AI provider preference
+  // has to be resolved here, from the document's own org_id, rather than
+  // being passed in by the caller.
+  const { data: org } = await admin.from("organizations").select("ai_provider").eq("id", doc.org_id).single();
+  const provider = normalizeAIProvider(org?.ai_provider);
+
   let englishSummary = doc.ai_summary as string | null;
   if (!englishSummary) {
-    const generated = await generateEnglishSummary(admin, doc);
+    const generated = await generateEnglishSummary(admin, doc, provider);
     if ("error" in generated) return generated;
     englishSummary = generated.summary;
   }
@@ -150,5 +145,5 @@ export async function getOrCreateDocumentSummary(documentId: string, lang: strin
   if (targetLang === "en") return { summary: englishSummary };
 
   const existingTranslations = (doc.ai_summary_translations as Record<string, string> | null) || {};
-  return translateSummary(admin, documentId, englishSummary, existingTranslations, targetLang);
+  return translateSummary(admin, documentId, englishSummary, existingTranslations, targetLang, provider);
 }

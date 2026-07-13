@@ -1,5 +1,4 @@
-import type Anthropic from "@anthropic-ai/sdk";
-import { getAnthropic } from "@/lib/anthropic";
+import { generateAIText, type AIProvider } from "@/lib/ai-provider";
 import { DOCUMENT_TYPES, documentTypeLabel, type DraftDocumentType } from "@/lib/ai-draft-types";
 
 export type DraftResult = { title: string; body: string } | { error: string };
@@ -71,7 +70,11 @@ function validateDescription(description: string): string | null {
 // the caller (the draft API route, then ultimately the finalize route)
 // treats this as a proposal the sender reviews/edits before anything is
 // created, same as AI field-placement suggestions elsewhere in this app.
-export async function draftDocument(documentType: string, description: string): Promise<DraftResult> {
+export async function draftDocument(
+  documentType: string,
+  description: string,
+  provider: AIProvider = "anthropic"
+): Promise<DraftResult> {
   if (!DOCUMENT_TYPES.some((t) => t.id === documentType)) {
     return { error: "Choose a document type." };
   }
@@ -80,19 +83,16 @@ export async function draftDocument(documentType: string, description: string): 
 
   let raw = "";
   try {
-    const anthropic = getAnthropic();
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-5",
-      max_tokens: 4000,
-      messages: [{ role: "user", content: PROMPT(documentType as DraftDocumentType, description.trim()) }],
-    });
-    raw = message.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
-      .map((block) => block.text)
-      .join("\n")
-      .trim();
+    raw = (
+      await generateAIText({
+        provider,
+        tier: "quality",
+        prompt: PROMPT(documentType as DraftDocumentType, description.trim()),
+        maxTokens: 4000,
+      })
+    ).trim();
   } catch (err) {
-    console.error("Anthropic document drafting failed", err);
+    console.error("AI document drafting failed", err);
     return { error: "Couldn't generate a draft right now — try again in a moment." };
   }
 

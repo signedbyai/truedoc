@@ -4,6 +4,7 @@ import { getUserAndOrg } from "@/lib/org";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { draftDocument } from "@/lib/draft-document";
 import { planHasFeature } from "@/lib/plan";
+import { normalizeAIProvider } from "@/lib/ai-provider";
 
 const bodySchema = z.object({
   documentType: z.string(),
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
   // Gated at generation, not just finalize — this call itself is the cost
   // (Sonnet, not Haiku), so a Free org must not be able to generate drafts
   // it can never save. See plan.ts's aiDraft comment.
-  const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
+  const { data: org } = await supabase.from("organizations").select("plan, ai_provider").eq("id", orgId).single();
   if (!planHasFeature(org?.plan, "aiDraft")) {
     return NextResponse.json(
       { error: "AI-drafted documents are a Starter plan feature. Upgrade to describe and draft documents.", upgrade: true },
@@ -45,7 +46,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Please accept the disclaimer and describe what you need." }, { status: 400 });
   }
 
-  const result = await draftDocument(parsed.data.documentType, parsed.data.description);
+  const result = await draftDocument(
+    parsed.data.documentType,
+    parsed.data.description,
+    normalizeAIProvider(org?.ai_provider)
+  );
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 422 });
   }
