@@ -21,18 +21,25 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
   const { data: doc } = await supabase
     .from("documents")
     .select(
-      "id, title, page_count, status, signed_file_path, payment_link_url, payment_label, organizations(plan)"
+      "id, title, page_count, status, signed_file_path, payment_link_url, payment_label, organizations(plan, auto_suggest_on_upload)"
     )
     .eq("id", id)
     .single();
 
   if (!doc) notFound();
 
-  const orgData = doc.organizations as unknown as { plan?: string } | { plan?: string }[] | undefined;
-  const orgPlan = Array.isArray(orgData) ? orgData[0]?.plan : orgData?.plan;
+  const orgData = doc.organizations as unknown as
+    | { plan?: string; auto_suggest_on_upload?: boolean }
+    | { plan?: string; auto_suggest_on_upload?: boolean }[]
+    | undefined;
+  const orgRecord = Array.isArray(orgData) ? orgData[0] : orgData;
+  const orgPlan = orgRecord?.plan;
   const hasPaymentCollection = planHasFeature(orgPlan, "paymentCollection");
   const hasTemplates = planHasFeature(orgPlan, "templates");
   const hasReminders = planHasFeature(orgPlan, "reminders");
+  // Column defaults to false; ?? false covers the (should-never-happen)
+  // case of it coming back undefined.
+  const autoSuggestOnUpload = orgRecord?.auto_suggest_on_upload ?? false;
 
   if (doc.status === "completed") {
     const { data: signers } = await supabase
@@ -168,6 +175,7 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
       pageCount={doc.page_count}
       hasPaymentCollection={hasPaymentCollection}
       hasTemplates={hasTemplates}
+      autoSuggestOnUpload={autoSuggestOnUpload}
       initialPaymentLinkUrl={doc.payment_link_url}
       initialPaymentLabel={doc.payment_label}
     />

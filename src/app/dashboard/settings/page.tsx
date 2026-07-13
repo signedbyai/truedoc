@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { buttonVariants } from "@/components/ui/button";
 import { BrandingSettings } from "@/components/branding-settings";
 import { ApiKeySettings } from "@/components/api-key-settings";
+import { AutoSuggestSettings } from "@/components/auto-suggest-settings";
 
 export default async function SettingsPage() {
   const ctx = await getUserAndOrg();
@@ -14,7 +15,7 @@ export default async function SettingsPage() {
 
   const { data: org } = await supabase
     .from("organizations")
-    .select("name, plan, logo_url, brand_color, api_key_prefix")
+    .select("name, plan, logo_url, brand_color, api_key_prefix, auto_suggest_on_upload")
     .eq("id", orgId)
     .single();
 
@@ -31,8 +32,18 @@ export default async function SettingsPage() {
             ← Dashboard
           </Link>
           <h1 className="mt-2 text-2xl font-semibold text-slate-900">Settings</h1>
-          <p className="text-sm text-slate-600">Workspace branding and API access.</p>
+          <p className="text-sm text-slate-600">Workspace branding, AI suggestions, and API access.</p>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>AI field suggestions</CardTitle>
+            <CardDescription>Controls when AI-suggested field placements run for new documents.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AutoSuggestSettings initialEnabled={org.auto_suggest_on_upload} />
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

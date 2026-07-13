@@ -67,6 +67,7 @@ export function FieldEditor({
   pageCount,
   hasPaymentCollection,
   hasTemplates,
+  autoSuggestOnUpload,
   initialPaymentLinkUrl,
   initialPaymentLabel,
 }: {
@@ -74,6 +75,11 @@ export function FieldEditor({
   pageCount: number;
   hasPaymentCollection: boolean;
   hasTemplates: boolean;
+  // Org-wide preference (dashboard/settings), off by default — see
+  // src/app/api/org/auto-suggest/route.ts. Only controls whether
+  // suggestions run automatically on a brand-new document; the manual
+  // "Suggest fields" button below always works regardless.
+  autoSuggestOnUpload: boolean;
   initialPaymentLinkUrl: string | null;
   initialPaymentLabel: string | null;
 }) {
@@ -252,10 +258,14 @@ export function FieldEditor({
   // Auto-run once for a completely untouched, brand-new document — not for
   // one that already has fields (from a template, a prior session, or an
   // earlier suggestion run) or recipients (a sender who's already deep into
-  // editing doesn't want fields appearing out from under them). Turned back
-  // on per user feedback — most senders wanted suggestions to just be there
-  // on upload rather than needing to press "Suggest fields" themselves.
+  // editing doesn't want fields appearing out from under them). Off by
+  // default now (autoSuggestOnUpload, an org-level Settings preference) —
+  // going straight into AI-suggested-field mode before a sender has even
+  // looked at the document made some senders uncomfortable, so this only
+  // runs for orgs that have explicitly opted in. The manual "Suggest
+  // fields" button works regardless of this setting either way.
   useEffect(() => {
+    if (!autoSuggestOnUpload) return;
     if (!fieldsLoaded || autoSuggestAttempted.current) return;
     if (fields.length > 0 || recipients.length > 0) return;
     autoSuggestAttempted.current = true;
@@ -264,7 +274,7 @@ export function FieldEditor({
     // react-hooks/set-state-in-effect. Same deferral pattern used
     // elsewhere in this file/signing-view.tsx for the same reason.
     Promise.resolve().then(() => runSuggestFields());
-  }, [fieldsLoaded, fields.length, recipients.length, runSuggestFields]);
+  }, [autoSuggestOnUpload, fieldsLoaded, fields.length, recipients.length, runSuggestFields]);
 
   function addRecipient() {
     const email = newEmail.trim();
@@ -756,8 +766,9 @@ export function FieldEditor({
       {showIntro && fieldsLoaded && confirmedFields.length === 0 && (
         <div className="flex items-center justify-between gap-3 border-b border-blue-100 bg-blue-50 px-6 py-2.5">
           <p className="text-xs text-blue-900">
-            Pick a field type above, then click anywhere on the document to place it. Add recipients below, then
-            send when you&apos;re ready.
+            Pick a field type above and click anywhere on the document to place it yourself, or press{" "}
+            <strong>Suggest fields</strong> to scan the document and suggest field placements for you to review. Add
+            recipients below, then send when you&apos;re ready.
           </p>
           <button
             onClick={() => setShowIntro(false)}
