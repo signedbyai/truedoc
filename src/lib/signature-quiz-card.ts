@@ -74,10 +74,10 @@ export function renderQuizResultCard(opts: { name: string; archetype: Archetype 
   ctx.textBaseline = "alphabetic";
   ctx.fillText(opts.archetype.tagline, width / 2, 450, width - 160);
 
-  // Footer.
+  // Footer -- matches the speed card's footer copy (/api/share/speed-card).
   ctx.fillStyle = faint;
   ctx.font = "400 22px sans-serif";
-  ctx.fillText("signedby.ai/quiz", width / 2, 560);
+  ctx.fillText("Start for free at signedby.ai", width / 2, 560);
 
   return canvas.toDataURL("image/png");
 }
