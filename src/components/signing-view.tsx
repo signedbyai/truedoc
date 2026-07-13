@@ -510,25 +510,35 @@ export function SigningView({
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 pb-24 sm:pb-0">
+      {/* flex-col on mobile, back to a single row from sm: up. This was
+          previously one unconditional flex row with no wrap at all — on a
+          real phone width the right-hand cluster (progress badge, an
+          optional error, "What am I signing?", "Decline to sign") alone
+          needed ~350px+, well past what's left after the logo/title on the
+          left, so it would crowd or force the sticky header itself to
+          scroll horizontally instead of degrading gracefully. */}
       <div
-        className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3"
+        className="sticky top-0 z-10 flex flex-col gap-2 border-b border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6"
         style={accentColor ? { borderBottomColor: accentColor, borderBottomWidth: 2 } : undefined}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           {branding.hasCustomBranding && branding.hasLogo && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={`/api/org/${branding.orgId}/logo`}
               alt={branding.orgName}
-              className="h-7 w-7 rounded object-contain"
+              className="h-7 w-7 shrink-0 rounded object-contain"
             />
           )}
-          <div>
-            <h1 className="text-sm font-semibold text-slate-900">{documentTitle}</h1>
-            {signerName && <p className="text-xs text-slate-500">Signing as {signerName}</p>}
+          <div className="min-w-0">
+            <h1 className="truncate text-sm font-semibold text-slate-900">{documentTitle}</h1>
+            {signerName && <p className="truncate text-xs text-slate-500">Signing as {signerName}</p>}
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        {/* flex-wrap here (not on the outer row) so this cluster can spill
+            onto its own second line on mobile without disturbing the
+            logo/title row above it. */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           {requiredFields.length > 0 && (
             <span className="whitespace-nowrap text-xs font-medium text-slate-500">
               {filledRequiredCount} of {requiredFields.length} field{requiredFields.length === 1 ? "" : "s"} done
