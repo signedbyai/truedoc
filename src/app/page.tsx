@@ -21,7 +21,7 @@ const FEATURES = [
   },
 ];
 
-// Only SyncMint is a real early customer right now — the other four are
+// SyncMint and AlphaIndigo are real early customers — the other four are
 // placeholder names/logos again (back to the original set from before any
 // real client logos were wired in) until more real logos actually come in.
 const TRUSTED_BY = [
@@ -30,6 +30,7 @@ const TRUSTED_BY = [
   { name: "Crestline Realty", src: "/logos/crestline-realty.png", height: "h-5" },
   { name: "Ashcroft Law Group", src: "/logos/ashcroft-law-group.png", height: "h-5" },
   { name: "SyncMint", src: "/logos/syncmint.png", height: "h-8" },
+  { name: "AlphaIndigo", src: "/logos/alphaindigo.png", height: "h-5" },
 ];
 
 const PRICING = [
