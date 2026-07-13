@@ -36,6 +36,11 @@ export default function PrivacyPage() {
           signing process legally defensible under ESIGN/UETA and is not used for advertising.
         </li>
         <li>
+          <strong>Engagement data:</strong> for Senders on paid plans, we record how long a Signer spends viewing
+          each page of a document before signing (aggregated dwell time per page, not exact scroll position or
+          keystrokes), so the Sender can see whether a document was actually read.
+        </li>
+        <li>
           <strong>Billing information:</strong> if you subscribe to a paid plan, our payment processor, Stripe,
           collects your payment card details directly — SignedBy never sees or stores full card numbers.
         </li>

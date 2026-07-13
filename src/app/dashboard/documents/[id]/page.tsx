@@ -8,6 +8,7 @@ import { AuditTrail, type AuditEvent } from "@/components/audit-trail";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
 import { buttonVariants } from "@/components/ui/button";
 import { planHasFeature } from "@/lib/plan";
+import { formatEngagement } from "@/lib/page-view-tracking";
 
 export default async function DocumentEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -37,9 +38,28 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
   const hasPaymentCollection = planHasFeature(orgPlan, "paymentCollection");
   const hasTemplates = planHasFeature(orgPlan, "templates");
   const hasReminders = planHasFeature(orgPlan, "reminders");
+  const hasPageViewTracking = planHasFeature(orgPlan, "pageViewTracking");
   // Column defaults to false; ?? false covers the (should-never-happen)
   // case of it coming back undefined.
   const autoSuggestOnUpload = orgRecord?.auto_suggest_on_upload ?? false;
+
+  // Per-signer engagement summary (Starter+ only -- see plan.ts). Kept as a
+  // plain signer_id -> summary map so both the "completed" and "sent"
+  // branches below can look a signer up the same way regardless of which
+  // signer-list shape they render.
+  const engagementBySigner = new Map<string, { totalSeconds: number; pagesViewed: number }>();
+  if (hasPageViewTracking) {
+    const { data: pageViews } = await supabase
+      .from("document_page_views")
+      .select("signer_id, seconds_viewed")
+      .eq("document_id", id);
+    for (const row of pageViews || []) {
+      const existing = engagementBySigner.get(row.signer_id) ?? { totalSeconds: 0, pagesViewed: 0 };
+      existing.totalSeconds += row.seconds_viewed;
+      existing.pagesViewed += 1;
+      engagementBySigner.set(row.signer_id, existing);
+    }
+  }
 
   if (doc.status === "completed") {
     const { data: signers } = await supabase
@@ -68,14 +88,21 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
           <div className="rounded-lg border border-slate-200 bg-white p-6">
             <h2 className="text-sm font-semibold text-slate-900">Signers</h2>
             <ul className="mt-3 space-y-2 text-sm text-slate-700">
-              {(signers || []).map((s) => (
-                <li key={s.id} className="flex items-center justify-between">
-                  <span>{s.name ? `${s.name} <${s.email}>` : s.email}</span>
-                  <span className="text-xs text-slate-500">
-                    {s.signed_at ? new Date(s.signed_at).toLocaleString() : "—"}
-                  </span>
-                </li>
-              ))}
+              {(signers || []).map((s) => {
+                const engagement = engagementBySigner.get(s.id);
+                const engagementLabel = engagement ? formatEngagement(engagement.totalSeconds, engagement.pagesViewed) : null;
+                return (
+                  <li key={s.id} className="flex items-center justify-between">
+                    <span>
+                      {s.name ? `${s.name} <${s.email}>` : s.email}
+                      {engagementLabel && <span className="ml-2 text-xs text-slate-400">· {engagementLabel}</span>}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {s.signed_at ? new Date(s.signed_at).toLocaleString() : "—"}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
 
             <div className="mt-6 flex flex-wrap items-center gap-2">
@@ -147,7 +174,14 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
             <h2 className="text-sm font-semibold text-slate-900">Signers</h2>
             <ul className="mt-3 space-y-2 text-sm text-slate-700">
               {(signers || []).map((s) => (
-                <SignerRow key={s.id} documentId={id} signer={s} docStatus={doc.status} hasReminders={hasReminders} />
+                <SignerRow
+                  key={s.id}
+                  documentId={id}
+                  signer={s}
+                  docStatus={doc.status}
+                  hasReminders={hasReminders}
+                  engagement={engagementBySigner.get(s.id) ?? null}
+                />
               ))}
             </ul>
 

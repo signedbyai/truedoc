@@ -31,6 +31,12 @@ const FEATURE_PLANS = {
   // call (src/app/api/documents/draft/route.ts), not just finalize, since
   // that's where the actual Anthropic cost is incurred.
   aiDraft: ["starter", "team", "business"],
+  // Starter: per-page view-time/engagement tracking on a document a signer
+  // is reviewing (see supabase/migrations/0017_document_page_views.sql and
+  // src/app/api/sign/[token]/view/route.ts). Same tier as templates/
+  // aiDraft — a productivity/insight layer on top of core send-and-sign,
+  // not core functionality itself.
+  pageViewTracking: ["starter", "team", "business"],
   // Team: "Shared templates" — multiple org members, so templates/documents
   // become genuinely shared instead of single-user.
   teamMembers: ["team", "business"],
@@ -58,6 +64,7 @@ export const FEATURE_UPGRADE_PLAN: Record<Feature, PlanId> = {
   templates: "starter",
   reminders: "starter",
   aiDraft: "starter",
+  pageViewTracking: "starter",
   teamMembers: "team",
   bulkSend: "team",
   branding: "team",

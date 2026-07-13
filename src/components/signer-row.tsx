@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CopySigningLinkButton } from "@/components/copy-signing-link-button";
 import { RemindSignerButton } from "@/components/remind-signer-button";
+import { formatEngagement } from "@/lib/page-view-tracking";
 
 const SIGNER_STATUS_LABEL: Record<string, string> = {
   pending: "Not yet sent",
@@ -32,11 +33,13 @@ export function SignerRow({
   signer,
   docStatus,
   hasReminders,
+  engagement,
 }: {
   documentId: string;
   signer: Signer;
   docStatus: string;
   hasReminders: boolean;
+  engagement?: { totalSeconds: number; pagesViewed: number } | null;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -47,6 +50,7 @@ export function SignerRow({
 
   const isNotifiable = docStatus === "sent" && (signer.status === "sent" || signer.status === "viewed");
   const canEdit = docStatus === "sent" && signer.status !== "signed";
+  const engagementLabel = engagement ? formatEngagement(engagement.totalSeconds, engagement.pagesViewed) : null;
 
   async function handleSave() {
     setSaving(true);
@@ -71,7 +75,10 @@ export function SignerRow({
   return (
     <li className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
-        <span>{signer.name ? `${signer.name} <${signer.email}>` : signer.email}</span>
+        <span>
+          {signer.name ? `${signer.name} <${signer.email}>` : signer.email}
+          {engagementLabel && <span className="ml-2 text-xs text-slate-400">· {engagementLabel}</span>}
+        </span>
         <span className="flex items-center gap-2">
           {isNotifiable && <CopySigningLinkButton signingToken={signer.signing_token} />}
           {isNotifiable &&

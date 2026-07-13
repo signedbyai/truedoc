@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { computeCardCrop } from "@/lib/card-crop";
 import { SUMMARY_LANGUAGES, detectSummaryLang } from "@/lib/summary-languages";
 import { draftStorageKey, serializeDraft, parseDraft, mergeRestoredValues, hasAnyValue } from "@/lib/sign-draft";
+import { pickMostVisiblePage, computeDeltas, FLUSH_INTERVAL_SECONDS } from "@/lib/page-view-tracking";
 
 type FieldType = "signature" | "initials" | "date" | "text" | "checkbox";
 
@@ -198,6 +199,20 @@ export function SigningView({
   // every re-render.
   const lastAutoScrolledFieldRef = useRef<string | null>(null);
 
+  // Page-view/engagement tracking (see src/lib/page-view-tracking.ts for the
+  // pure delta math, src/app/api/sign/[token]/view/route.ts for where it
+  // lands). All bookkeeping lives in refs, not state -- this runs on a 1s
+  // tick and must never trigger a re-render. pageEls/pageRatios back the
+  // full-mode IntersectionObserver; card mode sets activePageRef directly
+  // from currentCardField.page instead. trackingActiveRef flips off for
+  // good once the signer finishes or declines.
+  const pageElsRef = useRef<Map<number, HTMLDivElement>>(new Map());
+  const pageRatiosRef = useRef<Map<number, number>>(new Map());
+  const activePageRef = useRef<number | null>(null);
+  const pageSecondsRef = useRef<Record<number, number>>({});
+  const lastSentRef = useRef<Record<number, number>>({});
+  const trackingActiveRef = useRef(true);
+
   const requiredFields = initialFields.filter((f) => f.required);
   const filledRequiredCount = requiredFields.filter((f) => values[f.id]?.trim()).length;
   const nextFieldId = requiredFields.find((f) => !values[f.id]?.trim())?.id ?? null;
@@ -321,6 +336,110 @@ export function SigningView({
       // ignore -- see comment above
     }
   }, [token, values]);
+
+  // Sends whatever dwell-time has accumulated since the last successful
+  // flush. Reads/writes only refs (never state), so it's safe to call from
+  // intervals, visibilitychange/pagehide handlers, and the done/declined
+  // effect below without worrying about stale closures. `useBeacon` picks
+  // navigator.sendBeacon (fire-and-forget, survives page teardown) over a
+  // keepalive fetch for the unload-time flushes; the periodic 10s flush uses
+  // the normal fetch path since the page is still fully alive for it.
+  function flushPageViews(useBeacon: boolean) {
+    const deltas = computeDeltas(pageSecondsRef.current, lastSentRef.current);
+    if (deltas.length === 0) return;
+    const body = JSON.stringify({ deltas });
+    const markSent = () => {
+      for (const d of deltas) {
+        lastSentRef.current[d.page] = (lastSentRef.current[d.page] ?? 0) + d.seconds;
+      }
+    };
+    if (useBeacon && typeof navigator !== "undefined" && navigator.sendBeacon) {
+      const sent = navigator.sendBeacon(`/api/sign/${token}/view`, new Blob([body], { type: "application/json" }));
+      if (sent) markSent();
+      return;
+    }
+    fetch(`/api/sign/${token}/view`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      keepalive: true,
+    })
+      .then((res) => {
+        if (res.ok) markSent();
+      })
+      .catch(() => {});
+  }
+
+  // Full mode: an IntersectionObserver over each rendered page div picks
+  // which page is "the one being read" right now (see
+  // pickMostVisiblePage's threshold logic). Re-runs whenever the page list
+  // changes since pages stream in progressively (see the render effect
+  // above) and newly-mounted divs need to be observed too.
+  useEffect(() => {
+    if (viewMode !== "full") return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const page = Number((entry.target as HTMLElement).dataset.page);
+          if (!Number.isNaN(page)) pageRatiosRef.current.set(page, entry.intersectionRatio);
+        }
+        const ratios = Array.from(pageRatiosRef.current.entries()).map(([page, ratio]) => ({ page, ratio }));
+        activePageRef.current = pickMostVisiblePage(ratios);
+      },
+      { threshold: [0, 0.25, 0.5, 0.75, 1] }
+    );
+    for (const el of pageElsRef.current.values()) observer.observe(el);
+    return () => observer.disconnect();
+  }, [viewMode, pageCanvases]);
+
+  // Card mode: no scrolling/visibility to observe, the signer is always
+  // looking at exactly one field's page.
+  useEffect(() => {
+    if (viewMode !== "card") return;
+    activePageRef.current = currentCardField?.page ?? null;
+  }, [viewMode, currentCardField]);
+
+  // The 1s tick that actually accumulates dwell time, gated on the tab
+  // being visible (a backgrounded tab shouldn't rack up "reading time") and
+  // on tracking still being active (see the done/declined effect below).
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!trackingActiveRef.current) return;
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      const page = activePageRef.current;
+      if (page == null) return;
+      pageSecondsRef.current[page] = (pageSecondsRef.current[page] ?? 0) + 1;
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Periodic flush, plus a best-effort flush on tab-hide/unload so a signer
+  // who signs and immediately closes the tab doesn't lose the last few
+  // seconds sitting in pageSecondsRef.
+  useEffect(() => {
+    const interval = setInterval(() => flushPageViews(false), FLUSH_INTERVAL_SECONDS * 1000);
+    function handleHide() {
+      if (document.visibilityState === "hidden") flushPageViews(true);
+    }
+    window.addEventListener("visibilitychange", handleHide);
+    window.addEventListener("pagehide", handleHide);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("visibilitychange", handleHide);
+      window.removeEventListener("pagehide", handleHide);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  // Stops the clock and sends one last flush once the signer has finished
+  // (signed or declined) -- nothing left to track after that.
+  useEffect(() => {
+    if (done || declined) {
+      trackingActiveRef.current = false;
+      flushPageViews(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done, declined]);
 
   // Full mode's answer to card mode's auto-advance (goNextCard/
   // advanceCardIfCurrent above): jump to the next unfilled required field
@@ -844,7 +963,16 @@ export function SigningView({
           </div>
         ) : (
           pageCanvases.map(({ page, dataUrl, width, height }) => (
-          <div key={page} className="relative border border-slate-300 bg-white shadow-sm" style={{ width, height, maxWidth: "100%" }}>
+          <div
+            key={page}
+            ref={(el) => {
+              if (el) pageElsRef.current.set(page, el);
+              else pageElsRef.current.delete(page);
+            }}
+            data-page={page}
+            className="relative border border-slate-300 bg-white shadow-sm"
+            style={{ width, height, maxWidth: "100%" }}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={dataUrl} alt={`Page ${page}`} className="pointer-events-none block h-full w-full select-none" />
 
