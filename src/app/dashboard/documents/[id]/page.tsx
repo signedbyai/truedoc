@@ -71,9 +71,24 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
 
     const { data: auditEvents } = await supabase
       .from("audit_events")
-      .select("id, event_type, created_at, metadata, signers(name, email)")
+      .select("id, event_type, created_at, metadata, signer_id, signers(name, email)")
       .eq("document_id", id)
       .order("created_at", { ascending: true });
+
+    // DocGate summary line (see src/app/g/[code]/route.ts for where
+    // docgate_clicked events are logged): a signer can click their link more
+    // than once, so this counts distinct signers who have clicked at least
+    // once,
+    // not total clicks — "2 of 3 signers have accessed" is the question a
+    // sender actually has, not "there were 5 click events." Shown
+    // unconditionally once a gate link is set, regardless of the org's
+    // *current* plan — this is a read of what already happened, not an
+    // upsell surface, so a later downgrade shouldn't hide real history
+    // (unlike the signer-facing Pay/gate buttons, which do check current
+    // plan — see sign/[token]/page.tsx).
+    const docgateClickedSignerIds = new Set(
+      (auditEvents || []).filter((e) => e.event_type === "docgate_clicked" && e.signer_id).map((e) => e.signer_id)
+    );
 
     return (
       <main className="min-h-screen bg-slate-50 px-6 py-10">
@@ -84,6 +99,13 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
             </Link>
             <h1 className="mt-2 text-2xl font-semibold text-slate-900">{doc.title}</h1>
             <p className="text-sm text-emerald-600">Completed — every signer has signed.</p>
+            {doc.docgate_url && (
+              <p className="mt-1 text-sm text-amber-700">
+                {docgateClickedSignerIds.size} of {(signers || []).length} signer
+                {(signers || []).length === 1 ? "" : "s"} {docgateClickedSignerIds.size === 1 ? "has" : "have"}{" "}
+                accessed the linked file
+              </p>
+            )}
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-white p-6">
