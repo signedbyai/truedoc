@@ -75,21 +75,23 @@ export function SignatureQuizView() {
     setStep("intro");
   }
 
-  // Same one-tap share pattern as the signing-complete speed stat
-  // (src/components/signing-view.tsx's handleShareSpeedStat): native file
-  // share where supported, plain PNG download otherwise. This card is a
-  // client-only `data:` URI (see renderQuizResultCard), not a real hosted
-  // URL like the speed card -- which matters here: a synthetic <a download>
-  // click on a `data:` URI is markedly less reliable on iOS than on a real
-  // https:// URL, and some in-app browsers (Safari's embedded view inside
-  // Messages, for instance) block or silently no-op data: URI navigation
-  // entirely as a security measure. When that happens there's no JS error
-  // to catch -- it just does nothing, which is exactly what got reported.
-  // So: still attempt the download (harmless on platforms where it works),
-  // but also surface a fallback hint that's guaranteed to work everywhere --
-  // the result card is already rendered on the page as a plain <img>, and
-  // long-press-to-save/share is a native OS gesture, not something this
-  // code has to get right.
+  // Native file share where supported. This card is a client-only `data:`
+  // URI (see renderQuizResultCard), not a real hosted URL like the signing-
+  // complete speed card -- which matters here: a synthetic <a download>
+  // click on a `data:` URI turned out to be actively unpredictable across
+  // iOS contexts, not just unreliable. In Messages' embedded browser it
+  // silently did nothing (no JS error, nothing visible). In real mobile
+  // Safari it instead popped Safari's own "Do you want to download
+  // signature-personality.png on signedby.ai?" interstitial -- technically
+  // "working," but it looks nothing like sharing and reads as broken/
+  // suspicious to someone who just tapped a button labeled "Share." Neither
+  // outcome is acceptable, so the auto-download fallback is gone entirely.
+  // If navigator.share (files) isn't available or fails for any reason
+  // other than the user cancelling, we just point at the guaranteed-to-work
+  // manual option: the result card is already rendered on the page as a
+  // plain <img>, and press-and-hold-to-save/share (or right-click-save on
+  // desktop) is a native OS/browser gesture, not something this code has to
+  // get right on every platform.
   async function handleShare() {
     if (!cardUrl) return;
     setShareFallbackHint(false);
@@ -98,20 +100,14 @@ export function SignatureQuizView() {
       const blob = await resp.blob();
       const file = new File([blob], "signature-personality.png", { type: "image/png" });
       if (navigator.canShare?.({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], text: archetype ? archetype.tagline : undefined });
-          return;
-        } catch (err) {
-          if (err instanceof Error && err.name === "AbortError") return;
-        }
+        await navigator.share({ files: [file], text: archetype ? archetype.tagline : undefined });
+        return;
       }
-    } catch {
-      // fall through to download
+    } catch (err) {
+      // AbortError means the person cancelled the native share sheet --
+      // respect that silently, don't show the manual-fallback hint on top.
+      if (err instanceof Error && err.name === "AbortError") return;
     }
-    const a = document.createElement("a");
-    a.href = cardUrl;
-    a.download = "signature-personality.png";
-    a.click();
     setShareFallbackHint(true);
   }
 
@@ -218,8 +214,7 @@ export function SignatureQuizView() {
 
             {shareFallbackHint && (
               <p className="mt-2.5 text-center text-xs text-slate-500">
-                Didn&apos;t open a share sheet or download? Press and hold the image above to save or share it
-                directly.
+                Press and hold the image above (or right-click on desktop) to save or share it directly.
               </p>
             )}
 
