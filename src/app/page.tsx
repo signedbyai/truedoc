@@ -21,17 +21,16 @@ const FEATURES = [
   },
 ];
 
-// SyncMint, AlphaIndigo, and Thinq.AI are real early customers — the other
-// four are placeholder names/logos again (back to the original set from
-// before any real client logos were wired in) until more real logos
-// actually come in.
+// SyncMint and Thinq.AI are real early customers — the other five are
+// placeholder names/logos until more real logos come in. AlphaIndigo was
+// swapped out for the fake Northbridge Capital logo on 2026-07-14.
 const TRUSTED_BY = [
   { name: "Ironwood Builders", src: "/logos/ironwood-builders.png", height: "h-5" },
   { name: "Hartwell Accounting", src: "/logos/hartwell-accounting.png", height: "h-5" },
   { name: "Crestline Realty", src: "/logos/crestline-realty.png", height: "h-5" },
   { name: "Ashcroft Law Group", src: "/logos/ashcroft-law-group.png", height: "h-5" },
   { name: "SyncMint", src: "/logos/syncmint.png", height: "h-8" },
-  { name: "AlphaIndigo", src: "/logos/alphaindigo.png", height: "h-5" },
+  { name: "Northbridge Capital", src: "/logos/northbridge-capital.png", height: "h-5" },
   { name: "Thinq.AI", src: "/logos/thinq.png", height: "h-5" },
 ];
 
