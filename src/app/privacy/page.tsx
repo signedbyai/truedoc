@@ -9,13 +9,6 @@ export default function PrivacyPage() {
         data when you use signedby.ai, whether as an account holder (&ldquo;Sender&rdquo;) or as someone asked to
         sign a document (&ldquo;Signer&rdquo;).
       </p>
-      <p>
-        <em>
-          This document is a first draft prepared for SignedBy&apos;s launch. It has not yet been reviewed by a
-          licensed attorney and should be reviewed before being relied upon as a final, binding policy.
-        </em>
-      </p>
-
       <h2>1. Information we collect</h2>
       <p>We collect the following categories of information:</p>
       <ul>

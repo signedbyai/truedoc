@@ -12,13 +12,6 @@ export default function TermsPage() {
         SignedBy on behalf of an organization, you represent that you have authority to bind that organization, and
         &ldquo;you&rdquo; refers to that organization.
       </p>
-      <p>
-        <em>
-          This document is a first draft prepared for SignedBy&apos;s beta launch. It has not yet been reviewed by a
-          licensed attorney and should be reviewed before being relied upon as a final, binding agreement.
-        </em>
-      </p>
-
       <h2>1. Beta Trial status</h2>
       <p>
         SignedBy is currently offered as a beta trial while we actively develop and refine the service. During the

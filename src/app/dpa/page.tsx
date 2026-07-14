@@ -14,12 +14,8 @@ export default function DpaPage() {
         to sign a document.
       </p>
       <p>
-        <em>
-          This document is a first draft prepared for SignedBy&apos;s launch. It has not yet been reviewed by a
-          licensed attorney and should be reviewed before being relied upon as a final, binding agreement. Because
-          SignedBy is established in the Netherlands, this DPA is intended to meet the requirements of Article 28 of
-          the GDPR.
-        </em>
+        Because SignedBy is established in the Netherlands, this DPA is intended to meet the requirements of Article
+        28 of the GDPR.
       </p>
 
       <h2>1. Roles of the parties</h2>
