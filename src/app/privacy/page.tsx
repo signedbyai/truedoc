@@ -41,13 +41,6 @@ export default function PrivacyPage() {
           keystrokes), so the Sender can see whether a document was actually read.
         </li>
         <li>
-          <strong>DocGate access data:</strong> for Senders on the Business plan who use DocGate to release a linked
-          file (e.g. a Google Drive link) once a document is fully signed, we record when a Signer clicks their
-          access link, their device type (mobile, tablet, or desktop), and an approximate location (country, region,
-          and city derived from IP address, not precise GPS coordinates), so the Sender can see when and from where
-          the linked file was accessed.
-        </li>
-        <li>
           <strong>Billing information:</strong> if you subscribe to a paid plan, our payment processor, Stripe,
           collects your payment card details directly — SignedBy never sees or stores full card numbers.
         </li>

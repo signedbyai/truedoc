@@ -36,12 +36,10 @@ export default function DpaPage() {
         SignedBy processes personal data to: render and store uploaded documents; capture field values and
         signatures entered by Signers; route signing requests by email; record the audit trail (timestamps, IP
         addresses, user agent strings, and document hashes) needed for a legally defensible electronic signature;
-        generate the final signed PDF and certificate of completion; for Customers using optional AI-assisted
+        generate the final signed PDF and certificate of completion; and, for Customers using optional AI-assisted
         features, send relevant document text to an AI sub-processor for field-suggestion, drafting, or
-        summarization — Mistral AI by default, or Anthropic if the Customer has selected it in workspace settings;
-        and, for Customers using the optional DocGate feature, record a Signer&apos;s device type and an approximate,
-        IP-derived location (country, region, city) when they access a Customer-provided linked file after a
-        document is fully signed. Processing lasts for the duration of the
+        summarization — Mistral AI by default, or Anthropic if the Customer has selected it in workspace settings.
+        Processing lasts for the duration of the
         Customer&apos;s use of the service and any applicable retention period described in our{" "}
         <a href="/privacy" className="underline">
           Privacy Policy

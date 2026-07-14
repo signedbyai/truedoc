@@ -44,15 +44,8 @@ function describeEvent(event: AuditEvent): string {
       return "Voided by sender";
     case "payment_link_clicked":
       return who ? `${who} clicked the payment link` : "Payment link clicked";
-    case "docgate_clicked": {
-      const details = ["device_type", "city", "region"]
-        .map((key) => (typeof metadata[key] === "string" ? (metadata[key] as string) : null))
-        .filter(Boolean)
-        .join(", ");
-      return who
-        ? `${who} clicked the document gate link${details ? ` (${details})` : ""}`
-        : `Document gate link clicked${details ? ` (${details})` : ""}`;
-    }
+    case "docgate_clicked":
+      return who ? `${who} clicked the document gate link` : "Document gate link clicked";
     default:
       return event.event_type;
   }
