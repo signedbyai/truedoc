@@ -7,10 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
-import { sendMagicLink, signInWithPassword, signUpWithPassword, sendPasswordReset, verifyLoginCode } from "./actions";
+import { sendMagicLink, signInWithPassword, sendPasswordReset, verifyLoginCode } from "./actions";
 
 type AuthView = "email" | "password";
-type PasswordMode = "signin" | "signup" | "forgot";
+// "signup" was removed 2026-07-14 -- see actions.ts's comment above
+// sendPasswordReset for why. Password sign-in (for pre-existing password
+// accounts) and password reset both remain.
+type PasswordMode = "signin" | "forgot";
 
 // Google's official multi-color "G" mark — used at icon size for the social
 // sign-in button, per Google's branding guidelines for "Sign in with Google".
@@ -200,19 +203,6 @@ function LoginPageInner() {
     });
   }
 
-  function handlePasswordSignUp(formData: FormData) {
-    startTransition(async () => {
-      const result = await signUpWithPassword(formData);
-      if (result?.error) {
-        setStatus("error");
-        setMessage(result.error);
-      } else {
-        setStatus("sent");
-        setMessage("Check your inbox to confirm your account, then sign in.");
-      }
-    });
-  }
-
   function handleForgotPassword(formData: FormData) {
     startTransition(async () => {
       const result = await sendPasswordReset(formData);
@@ -387,51 +377,11 @@ function LoginPageInner() {
                 <Button type="submit" className="w-full" disabled={isPending}>
                   {isPending ? "Signing in…" : "Sign in"}
                 </Button>
-                <div className="flex justify-between text-xs text-slate-500">
-                  <button type="button" onClick={() => switchPasswordMode("signup")} className="underline underline-offset-2">
-                    Create an account
-                  </button>
+                <div className="flex justify-end text-xs text-slate-500">
                   <button type="button" onClick={() => switchPasswordMode("forgot")} className="underline underline-offset-2">
                     Forgot password?
                   </button>
                 </div>
-              </form>
-            )}
-
-            {passwordMode === "signup" && (
-              <form action={handlePasswordSignUp} className="space-y-4">
-                {status === "sent" ? (
-                  <p className="text-sm text-slate-600">{message}</p>
-                ) : (
-                  <>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="su-email">Email</Label>
-                      <Input id="su-email" name="email" type="email" required placeholder="you@company.com" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="su-password">Password</Label>
-                      <Input
-                        id="su-password"
-                        name="password"
-                        type="password"
-                        required
-                        minLength={8}
-                        placeholder="At least 8 characters"
-                      />
-                    </div>
-                    {status === "error" && <p className="text-sm text-red-600">{message}</p>}
-                    <Button type="submit" className="w-full" disabled={isPending}>
-                      {isPending ? "Creating account…" : "Create account"}
-                    </Button>
-                  </>
-                )}
-                <button
-                  type="button"
-                  onClick={() => switchPasswordMode("signin")}
-                  className="text-xs text-slate-500 underline underline-offset-2"
-                >
-                  Already have an account? Sign in
-                </button>
               </form>
             )}
 

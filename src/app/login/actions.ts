@@ -79,35 +79,18 @@ export async function signInWithPassword(formData: FormData) {
   return { success: true };
 }
 
-export async function signUpWithPassword(formData: FormData) {
-  const email = String(formData.get("email") || "").trim();
-  const password = String(formData.get("password") || "");
-  if (!email || !password) return { error: "Enter your email and a password." };
-  if (password.length < 8) return { error: "Password must be at least 8 characters." };
-
-  const ip = await clientIp();
-  const emailOk = await checkRateLimit(`signup-email:${email.toLowerCase()}`, 5, 600);
-  const ipOk = await checkRateLimit(`signup-ip:${ip}`, 15, 600);
-  if (!emailOk || !ipOk) {
-    return { error: "Too many attempts. Try again in a few minutes." };
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
-    },
-  });
-
-  if (error) return { error: error.message };
-  // Supabase silently no-ops (no error, no email) for an email that's
-  // already registered, so this generic message is accurate either way
-  // without leaking whether the account already existed.
-  return { success: true };
-}
-
+// Password-based sign-UP was removed 2026-07-14 -- it sent Supabase's
+// stock, unbranded "Confirm sign up" email (a plain confirmation link, no
+// code), a completely separate template from the "Magic Link or OTP" one
+// the rest of this app's copy and support conversations assume. A user who
+// went through this path got no code and no explanation why, and reported
+// it as "the email with the code never arrived" -- there was never a code
+// to receive. The OTP flow (sendMagicLink, above) already handles a
+// brand-new email address's first sign-in with no separate signup step
+// needed, so this was pure redundant surface area, not a real second use
+// case. Password sign-IN (signInWithPassword, below) and password reset
+// stay, for anyone who still has a password-based account from before OTP
+// existed.
 export async function sendPasswordReset(formData: FormData) {
   const email = String(formData.get("email") || "").trim();
   if (!email) return { error: "Enter your email address." };
