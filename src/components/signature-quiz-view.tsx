@@ -14,6 +14,13 @@ export function SignatureQuizView() {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<ArchetypeId[]>([]);
   const [name, setName] = useState("");
+  // True once we've fallen through to the synthetic-download fallback below
+  // -- see handleShare's comment for why that fallback can silently do
+  // nothing on iOS (especially inside in-app browsers like Messages' link
+  // preview), unlike on desktop where it just works. Surfaces a guaranteed
+  // fallback (long-press the already-rendered <img> below) instead of
+  // leaving the Share button looking broken with no explanation.
+  const [shareFallbackHint, setShareFallbackHint] = useState(false);
 
   const archetype = useMemo(() => {
     if (answers.length === 0) return null;
@@ -70,9 +77,22 @@ export function SignatureQuizView() {
 
   // Same one-tap share pattern as the signing-complete speed stat
   // (src/components/signing-view.tsx's handleShareSpeedStat): native file
-  // share where supported, plain PNG download otherwise.
+  // share where supported, plain PNG download otherwise. This card is a
+  // client-only `data:` URI (see renderQuizResultCard), not a real hosted
+  // URL like the speed card -- which matters here: a synthetic <a download>
+  // click on a `data:` URI is markedly less reliable on iOS than on a real
+  // https:// URL, and some in-app browsers (Safari's embedded view inside
+  // Messages, for instance) block or silently no-op data: URI navigation
+  // entirely as a security measure. When that happens there's no JS error
+  // to catch -- it just does nothing, which is exactly what got reported.
+  // So: still attempt the download (harmless on platforms where it works),
+  // but also surface a fallback hint that's guaranteed to work everywhere --
+  // the result card is already rendered on the page as a plain <img>, and
+  // long-press-to-save/share is a native OS gesture, not something this
+  // code has to get right.
   async function handleShare() {
     if (!cardUrl) return;
+    setShareFallbackHint(false);
     try {
       const resp = await fetch(cardUrl);
       const blob = await resp.blob();
@@ -92,6 +112,7 @@ export function SignatureQuizView() {
     a.href = cardUrl;
     a.download = "signature-personality.png";
     a.click();
+    setShareFallbackHint(true);
   }
 
   return (
@@ -194,6 +215,13 @@ export function SignatureQuizView() {
                 Retake
               </Button>
             </div>
+
+            {shareFallbackHint && (
+              <p className="mt-2.5 text-center text-xs text-slate-500">
+                Didn&apos;t open a share sheet or download? Press and hold the image above to save or share it
+                directly.
+              </p>
+            )}
 
             <div className="mt-4 rounded-xl border border-slate-200 bg-white p-6">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Made for you</p>
