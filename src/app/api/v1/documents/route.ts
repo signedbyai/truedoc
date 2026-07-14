@@ -48,7 +48,9 @@ export async function POST(request: Request) {
   const { data: org } = await admin.from("organizations").select("owner_id").eq("id", orgId).single();
   const { data: template } = await admin
     .from("templates")
-    .select("id, org_id, name, base_file_path, page_count, field_map, payment_link_url, payment_label")
+    .select(
+      "id, org_id, name, base_file_path, page_count, field_map, payment_link_url, payment_label, docgate_url, docgate_label"
+    )
     .eq("id", parsed.data.template_id)
     .single();
 
@@ -74,6 +76,8 @@ export async function POST(request: Request) {
       page_count: template.page_count,
       payment_link_url: template.payment_link_url,
       payment_label: template.payment_label,
+      docgate_url: template.docgate_url,
+      docgate_label: template.docgate_label,
     })
     .select("id, status")
     .single();

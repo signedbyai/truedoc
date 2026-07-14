@@ -9,7 +9,7 @@ export async function getSignerByToken(token: string) {
 
   const { data: signer } = await admin
     .from("signers")
-    .select("id, document_id, name, email, order_index, status, signed_at")
+    .select("id, document_id, name, email, order_index, status, signed_at, docgate_code")
     .eq("signing_token", token)
     .single();
 
@@ -17,7 +17,7 @@ export async function getSignerByToken(token: string) {
 
   const { data: document } = await admin
     .from("documents")
-    .select("id, title, page_count, org_id, status, payment_link_url, payment_label")
+    .select("id, title, page_count, org_id, status, payment_link_url, payment_label, docgate_url, docgate_label")
     .eq("id", signer.document_id)
     .single();
 

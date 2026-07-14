@@ -22,7 +22,7 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
   const { data: doc } = await supabase
     .from("documents")
     .select(
-      "id, title, page_count, status, signed_file_path, payment_link_url, payment_label, organizations(plan, auto_suggest_on_upload)"
+      "id, title, page_count, status, signed_file_path, payment_link_url, payment_label, docgate_url, docgate_label, organizations(plan, auto_suggest_on_upload)"
     )
     .eq("id", id)
     .single();
@@ -36,6 +36,7 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
   const orgRecord = Array.isArray(orgData) ? orgData[0] : orgData;
   const orgPlan = orgRecord?.plan;
   const hasPaymentCollection = planHasFeature(orgPlan, "paymentCollection");
+  const hasDocGate = planHasFeature(orgPlan, "docGate");
   const hasTemplates = planHasFeature(orgPlan, "templates");
   const hasReminders = planHasFeature(orgPlan, "reminders");
   const hasPageViewTracking = planHasFeature(orgPlan, "pageViewTracking");
@@ -217,10 +218,13 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
       documentId={doc.id}
       pageCount={doc.page_count}
       hasPaymentCollection={hasPaymentCollection}
+      hasDocGate={hasDocGate}
       hasTemplates={hasTemplates}
       autoSuggestOnUpload={autoSuggestOnUpload}
       initialPaymentLinkUrl={doc.payment_link_url}
       initialPaymentLabel={doc.payment_label}
+      initialDocgateUrl={doc.docgate_url}
+      initialDocgateLabel={doc.docgate_label}
     />
   );
 }

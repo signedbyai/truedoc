@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSignerByToken } from "@/lib/signing";
-import { sendSignerInviteEmail, sendCompletionEmail } from "@/lib/email";
+import { sendSignerInviteEmail, sendCompletionEmail, sendSignerDocGateEmail, appUrl } from "@/lib/email";
 import { generateSignedPdf } from "@/lib/generate-signed-pdf";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { computeSigningOutcome } from "@/lib/signing-routing";
@@ -117,7 +117,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   // Figure out what's next: advance to the next routing tier, or complete.
   const { data: allSigners } = await admin
     .from("signers")
-    .select("id, name, email, order_index, status, signing_token")
+    .select("id, name, email, order_index, status, signing_token, docgate_code")
     .eq("document_id", document.id)
     .order("order_index", { ascending: true });
 
@@ -151,6 +151,29 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
         await sendCompletionEmail({ to: ownerEmail, documentTitle: doc.title, documentId: document.id }).catch((err) =>
           console.error("Completion email failed", err)
         );
+      }
+    }
+
+    // DocGate (Business tier — see src/lib/plan.ts): only fires if the
+    // sender actually set a gate link on this document. The signer whose
+    // own submission just completed the document (the one currently
+    // running this request) gets the link immediately on their own
+    // confirmation screen instead (signing-view.tsx) — everyone else on
+    // this document finished earlier and never saw it, so this is their
+    // only notification. No plan check here: the setup UI/API already only
+    // let a Business-plan sender set docgate_url in the first place, and a
+    // downgrade after sending shouldn't un-send an email that's about to go
+    // out to someone who already signed.
+    if (document.docgate_url) {
+      const otherSigners = (allSigners || []).filter((s) => s.id !== signer.id);
+      for (const s of otherSigners) {
+        await sendSignerDocGateEmail({
+          to: s.email,
+          signerName: s.name,
+          documentTitle: doc?.title || document.title,
+          gateLink: `${appUrl()}/g/${s.docgate_code}`,
+          docgateLabel: document.docgate_label,
+        }).catch((err) => console.error("DocGate email failed", err));
       }
     }
   } else if (outcome.nextUpSignerIds.length > 0) {

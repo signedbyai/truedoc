@@ -66,14 +66,18 @@ export function FieldEditor({
   documentId,
   pageCount,
   hasPaymentCollection,
+  hasDocGate,
   hasTemplates,
   autoSuggestOnUpload,
   initialPaymentLinkUrl,
   initialPaymentLabel,
+  initialDocgateUrl,
+  initialDocgateLabel,
 }: {
   documentId: string;
   pageCount: number;
   hasPaymentCollection: boolean;
+  hasDocGate: boolean;
   hasTemplates: boolean;
   // Org-wide preference (dashboard/settings), off by default — see
   // src/app/api/org/auto-suggest/route.ts. Only controls whether
@@ -82,6 +86,8 @@ export function FieldEditor({
   autoSuggestOnUpload: boolean;
   initialPaymentLinkUrl: string | null;
   initialPaymentLabel: string | null;
+  initialDocgateUrl: string | null;
+  initialDocgateLabel: string | null;
 }) {
   const router = useRouter();
   const [selectedTool, setSelectedTool] = useState<FieldType | null>(null);
@@ -90,6 +96,11 @@ export function FieldEditor({
   const [showPaymentEditor, setShowPaymentEditor] = useState(false);
   const [savingPayment, setSavingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState("");
+  const [docgateUrl, setDocgateUrl] = useState(initialDocgateUrl || "");
+  const [docgateLabel, setDocgateLabel] = useState(initialDocgateLabel || "");
+  const [showDocgateEditor, setShowDocgateEditor] = useState(false);
+  const [savingDocgate, setSavingDocgate] = useState(false);
+  const [docgateError, setDocgateError] = useState("");
   const [fields, setFields] = useState<Field[]>([]);
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [activeRecipientId, setActiveRecipientId] = useState<string | null>(null);
@@ -585,6 +596,26 @@ export function FieldEditor({
     }
   }
 
+  async function saveDocgate() {
+    setSavingDocgate(true);
+    setDocgateError("");
+    try {
+      const res = await fetch(`/api/documents/${documentId}/docgate`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ docgate_url: docgateUrl.trim(), docgate_label: docgateLabel.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Couldn't save the DocGate link.");
+      setShowDocgateEditor(false);
+      setStatusMessage(docgateUrl.trim() ? "DocGate link saved." : "DocGate link removed.");
+    } catch (err) {
+      setDocgateError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSavingDocgate(false);
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
       <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
@@ -758,6 +789,61 @@ export function FieldEditor({
               className="rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-500 hover:border-slate-400 hover:text-slate-700"
             >
               + Add payment link
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-6 py-2.5">
+          <span className="text-xs font-medium text-slate-500">Document gate:</span>
+          {!hasDocGate ? (
+            <a href="/pricing" className="text-xs text-slate-400 hover:text-slate-600">
+              Gate a linked asset behind signing (Business)
+            </a>
+          ) : showDocgateEditor ? (
+            <div className="flex flex-col gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Input
+                  value={docgateLabel}
+                  onChange={(e) => setDocgateLabel(e.target.value)}
+                  placeholder="Label, e.g. Access your welcome kit"
+                  className="h-7 w-52 text-xs"
+                />
+                <Input
+                  value={docgateUrl}
+                  onChange={(e) => setDocgateUrl(e.target.value)}
+                  placeholder="https://drive.google.com/..."
+                  className="h-7 w-56 text-xs"
+                />
+                <button
+                  onClick={saveDocgate}
+                  disabled={savingDocgate}
+                  className="rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
+                >
+                  {savingDocgate ? "Saving…" : "Save"}
+                </button>
+                <button onClick={() => setShowDocgateEditor(false)} className="text-xs text-slate-400 hover:text-slate-600">
+                  Cancel
+                </button>
+                {docgateError && <span className="text-xs text-red-600">{docgateError}</span>}
+              </div>
+              <p className="text-xs text-slate-400">
+                Released to every signer once everyone has signed. SignedBy doesn&apos;t manage sharing permissions on
+                the linked file — double-check it&apos;s shared correctly before sending.
+              </p>
+            </div>
+          ) : docgateUrl ? (
+            <button
+              onClick={() => setShowDocgateEditor(true)}
+              className="flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+            >
+              {docgateLabel || "Gate link set"}
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowDocgateEditor(true)}
+              className="rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-500 hover:border-slate-400 hover:text-slate-700"
+            >
+              + Add gate link
             </button>
           )}
         </div>

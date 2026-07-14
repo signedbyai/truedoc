@@ -19,7 +19,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
   const { data: source } = await supabase
     .from("documents")
-    .select("id, org_id, title, file_path, original_filename, page_count, payment_link_url, payment_label")
+    .select(
+      "id, org_id, title, file_path, original_filename, page_count, payment_link_url, payment_label, docgate_url, docgate_label"
+    )
     .eq("id", id)
     .single();
 
@@ -56,6 +58,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       page_count: source.page_count,
       payment_link_url: source.payment_link_url,
       payment_label: source.payment_label,
+      docgate_url: source.docgate_url,
+      docgate_label: source.docgate_label,
     })
     .select("id")
     .single();

@@ -34,7 +34,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const { data: doc } = await supabase
     .from("documents")
-    .select("id, org_id, file_path, page_count, payment_link_url, payment_label")
+    .select("id, org_id, file_path, page_count, payment_link_url, payment_label, docgate_url, docgate_label")
     .eq("id", id)
     .single();
   if (!doc || doc.org_id !== orgId) return NextResponse.json({ error: "Document not found" }, { status: 404 });
@@ -79,6 +79,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       field_map: fieldMap,
       payment_link_url: doc.payment_link_url,
       payment_label: doc.payment_label,
+      docgate_url: doc.docgate_url,
+      docgate_label: doc.docgate_label,
     })
     .select("id")
     .single();

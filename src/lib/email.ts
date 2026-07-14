@@ -200,6 +200,43 @@ export async function sendAdminDigestEmail(opts: {
   });
 }
 
+// Signer-facing DocGate notification — sent only to signers who finished
+// *before* the whole document completed (the signer whose own submission
+// completes it sees the gate link immediately on their confirmation screen
+// instead; see signing-view.tsx). This is the only email in the app sent to
+// a signer after they're done signing, so it needs to be unmistakable at a
+// glance in an inbox next to routine "please sign"/"reminder" mail — hence
+// the `[DocGate]` bracket prefix, a pattern no other SignedBy subject line
+// uses (every other subject here is a plain sentence with no prefix at
+// all), rather than relying on wording alone to stand out.
+export async function sendSignerDocGateEmail(opts: {
+  to: string;
+  signerName: string | null;
+  documentTitle: string;
+  // The signer's own tracked /g/[code] redirect link, NOT the raw
+  // sender-supplied URL — clicking it logs an audit_events row before
+  // forwarding on. See src/app/g/[code]/route.ts.
+  gateLink: string;
+  docgateLabel: string | null;
+}) {
+  const greeting = opts.signerName ? `Hi ${opts.signerName},` : "Hi,";
+
+  await getClient().emails.send({
+    from: FROM,
+    to: opts.to,
+    subject: `[DocGate] Your access link for "${opts.documentTitle}"`,
+    html: `
+      <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <p>${greeting}</p>
+        <p>Everyone has now signed <strong>${opts.documentTitle}</strong>.</p>
+        <p style="color:#334155;">${opts.docgateLabel || "Your access link is ready:"}</p>
+        ${ctaButton(opts.gateLink, opts.docgateLabel || "Access link")}
+        <p style="color:#64748b;font-size:13px;">This link is unique to you. If you weren't expecting this, you can ignore this email.</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendCompletionEmail(opts: {
   to: string;
   documentTitle: string;

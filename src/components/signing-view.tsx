@@ -43,6 +43,9 @@ type Branding = {
 };
 
 type Payment = { url: string; label: string | null } | null;
+// `path` is this signer's own /g/[code] redirect link (relative, tracked —
+// see src/app/g/[code]/route.ts), not the sender's raw underlying URL.
+type DocGate = { path: string; label: string | null } | null;
 
 // Tiny tactile-feedback helper for the mobile card/swipe flows. Feature-
 // detected and silently a no-op where unsupported -- notably iOS Safari,
@@ -89,6 +92,7 @@ export function SigningView({
   fields: initialFields,
   branding,
   payment,
+  docgate,
 }: {
   token: string;
   documentTitle: string;
@@ -97,6 +101,7 @@ export function SigningView({
   fields: Field[];
   branding: Branding;
   payment: Payment;
+  docgate: DocGate;
 }) {
   const accentColor = branding.hasCustomBranding ? branding.brandColor : null;
 
@@ -736,6 +741,23 @@ export function SigningView({
                 className="mt-2 inline-block rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
               >
                 Pay now
+              </a>
+            </div>
+          )}
+          {/* Immediate case of the whole-document DocGate gating decision:
+              only ever shown when this signer's own submission is the one
+              that just completed the document (documentCompleted, computed
+              above from the /submit response) — signers who finished
+              earlier get this same link by email + the revisit page
+              instead (see sign/[token]/page.tsx). */}
+          {documentCompleted && docgate && (
+            <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
+              <p className="text-xs text-amber-900">{docgate.label || "Everyone has signed — your access link is ready."}</p>
+              <a
+                href={docgate.path}
+                className="mt-2 inline-block rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
+              >
+                {docgate.label || "Open link"}
               </a>
             </div>
           )}

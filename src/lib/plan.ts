@@ -52,6 +52,12 @@ const FEATURE_PLANS = {
   // Link the org already owns), not a Connect-style in-app charge. See
   // src/app/api/documents/[id]/payment/route.ts for why.
   paymentCollection: ["business"],
+  // Business: "DocGate" — gates an externally-owned link (e.g. Google Drive)
+  // behind whole-document completion, with a per-signer engagement timeline.
+  // Same external-link shape as paymentCollection, same tier: a
+  // distribution/analytics capability on top of core send-and-sign, not core
+  // functionality itself. See src/app/g/[code]/route.ts.
+  docGate: ["business"],
 } as const;
 
 export type Feature = keyof typeof FEATURE_PLANS;
@@ -71,6 +77,7 @@ export const FEATURE_UPGRADE_PLAN: Record<Feature, PlanId> = {
   customBranding: "business",
   apiAccess: "business",
   paymentCollection: "business",
+  docGate: "business",
 };
 
 // Team member seat caps — matches the "Up to N users" pricing-cards.tsx

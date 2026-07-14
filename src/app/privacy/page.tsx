@@ -2,7 +2,7 @@ import { LegalPage } from "@/components/legal-page";
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" effectiveDate="July 10, 2026">
+    <LegalPage title="Privacy Policy" effectiveDate="July 14, 2026">
       <p>
         This Privacy Policy explains how SignedBy, operated by SPRK10 B.V., a company incorporated in the
         Netherlands (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;), collects, uses, and protects personal
@@ -39,6 +39,13 @@ export default function PrivacyPage() {
           <strong>Engagement data:</strong> for Senders on paid plans, we record how long a Signer spends viewing
           each page of a document before signing (aggregated dwell time per page, not exact scroll position or
           keystrokes), so the Sender can see whether a document was actually read.
+        </li>
+        <li>
+          <strong>DocGate access data:</strong> for Senders on the Business plan who use DocGate to release a linked
+          file (e.g. a Google Drive link) once a document is fully signed, we record when a Signer clicks their
+          access link, their device type (mobile, tablet, or desktop), and an approximate location (country, region,
+          and city derived from IP address, not precise GPS coordinates), so the Sender can see when and from where
+          the linked file was accessed.
         </li>
         <li>
           <strong>Billing information:</strong> if you subscribe to a paid plan, our payment processor, Stripe,

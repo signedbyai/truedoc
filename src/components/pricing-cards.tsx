@@ -41,7 +41,7 @@ const PLANS: {
     name: "Business",
     price: "$29/mo",
     blurb: "Up to 5 users",
-    features: ["Everything in Team", "API access", "Custom branding", "Payment collection"],
+    features: ["Everything in Team", "API access", "Custom branding", "Payment collection", "DocGate"],
   },
 ];
 
