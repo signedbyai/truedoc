@@ -7,8 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DeleteDocumentButton } from "@/components/delete-document-button";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
-import { OrgSwitcher } from "@/components/org-switcher";
-import { LogoutLink } from "@/components/logout-link";
+import { formatRelativeTime, latestViewedByDocument } from "@/lib/last-viewed";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -45,7 +44,7 @@ export default async function DocumentsPage({
   const { q = "", status = "", sort = "newest", page = "1" } = await searchParams;
   const ctx = await getUserAndOrg();
   if (!ctx) redirect("/login");
-  const { supabase, orgId, orgs } = ctx;
+  const { supabase, orgId } = ctx;
 
   const searchTerm = sanitizeSearchTerm(q);
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
@@ -88,6 +87,22 @@ export default async function DocumentsPage({
   const { data: documents, count } = await query;
   const totalPages = Math.max(1, Math.ceil((count || 0) / PAGE_SIZE));
 
+  // "Last viewed 2m ago" per row (see src/lib/last-viewed.ts for the
+  // two-source merge rationale). Two IN-list queries for the visible page
+  // of documents, both already covered by RLS org-scoping policies.
+  const docIds = (documents || []).map((d) => d.id);
+  let lastViewedByDoc = new Map<string, string>();
+  if (docIds.length > 0) {
+    const [{ data: viewEvents }, { data: pageViews }] = await Promise.all([
+      supabase.from("audit_events").select("document_id, created_at").in("document_id", docIds).eq("event_type", "viewed"),
+      supabase.from("document_page_views").select("document_id, last_viewed_at").in("document_id", docIds),
+    ]);
+    lastViewedByDoc = latestViewedByDocument([
+      ...(viewEvents || []).map((e) => ({ documentId: e.document_id, at: e.created_at })),
+      ...(pageViews || []).map((p) => ({ documentId: p.document_id, at: p.last_viewed_at })),
+    ]);
+  }
+
   function pageHref(targetPage: number) {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
@@ -99,23 +114,16 @@ export default async function DocumentsPage({
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-10">
-      <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <main className="px-4 py-8 sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-5xl space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
-              ← Dashboard
-            </Link>{" "}
-            · <LogoutLink />
-            <h1 className="mt-2 text-2xl font-semibold text-slate-900">Documents</h1>
+            <h1 className="text-2xl font-semibold text-slate-900">Documents</h1>
             <p className="text-sm text-slate-600">{count ?? 0} total</p>
           </div>
-          <div className="flex items-center gap-2">
-            <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
-            <Link href="/dashboard/documents/new" className={buttonVariants({ size: "default" })}>
-              Upload document
-            </Link>
-          </div>
+          <Link href="/dashboard/documents/new" className={buttonVariants({ size: "default" })}>
+            Upload document
+          </Link>
         </div>
 
         <Card>
@@ -185,23 +193,42 @@ export default async function DocumentsPage({
               <>
                 <ul className="divide-y divide-slate-100">
                   {documents.map((doc) => (
-                    <li key={doc.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <Link
-                          href={`/dashboard/documents/${doc.id}`}
-                          className="text-sm font-medium text-slate-900 hover:underline"
-                        >
-                          {doc.title}
-                        </Link>
-                        <p className="text-xs text-slate-500">
-                          {doc.page_count} page{doc.page_count === 1 ? "" : "s"} &middot;{" "}
-                          {new Date(doc.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                    // Same shape as the dashboard's recent-documents rows
+                    // (title left, status pill top-right) with the action
+                    // buttons on their own right-aligned line — previously
+                    // the pill and buttons wrapped into one left-aligned
+                    // cluster under the title on mobile, which read as
+                    // misaligned clutter.
+                    <li key={doc.id} className="py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <Link
+                            href={`/dashboard/documents/${doc.id}`}
+                            className="text-sm font-medium text-slate-900 hover:underline"
+                          >
+                            {doc.title}
+                          </Link>
+                          <p className="text-xs text-slate-500">
+                            {/* Short doc ID (first 8 of the UUID) — the same
+                                ID the Certificate of Completion prints in
+                                full, so a sender can eyeball-match a cert or
+                                /verify result to the row (V3 item #5). */}
+                            <span className="font-mono text-slate-400">#{doc.id.slice(0, 8)}</span> &middot;{" "}
+                            {doc.page_count} page{doc.page_count === 1 ? "" : "s"} &middot;{" "}
+                            {new Date(doc.created_at).toLocaleDateString()}
+                            {lastViewedByDoc.has(doc.id) && (
+                              <span className="text-slate-400">
+                                {" "}
+                                &middot; Last viewed {formatRelativeTime(lastViewedByDoc.get(doc.id)!)}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <span className="mt-0.5 shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
                           {STATUS_LABEL[doc.status] ?? doc.status}
                         </span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
                         <DuplicateDocumentButton documentId={doc.id} />
                         {doc.status === "draft" && <DeleteDocumentButton documentId={doc.id} />}
                       </div>

@@ -45,8 +45,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   }
 
   try {
-    const { suggestions, unreadable } = await suggestFields(bytes, doc.page_count, provider);
-    return NextResponse.json({ suggestions, unreadable });
+    const { suggestions, unreadable, parties } = await suggestFields(bytes, doc.page_count, provider);
+    return NextResponse.json({ suggestions, unreadable, parties });
   } catch (err) {
     console.error("Field suggestion failed", err);
     return NextResponse.json({ error: "Couldn't generate suggestions right now." }, { status: 500 });

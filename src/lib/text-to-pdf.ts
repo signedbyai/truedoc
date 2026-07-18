@@ -16,8 +16,31 @@ const TITLE_LINE_HEIGHT = 24;
 const BODY_SIZE = 11;
 const BODY_LINE_HEIGHT = 15;
 const PARAGRAPH_GAP = 8;
+// Signature-block label lines ("Signature:", "Print Name:", "Date:", or their
+// translations) advance by this instead of BODY_LINE_HEIGHT, leaving vertical
+// room to drop a signature/date field on the line without it overlapping the
+// next one. The block used to render at the normal 15px line height, packing
+// the lines too tight to place fields between them.
+const SIGNATURE_LINE_HEIGHT = 38;
 
 const DARK = rgb(0.06, 0.09, 0.16);
+
+// A short "label:" line whose value is empty or a bracket placeholder — i.e. a
+// signature-block field line ("Signature:", "Print Name: [Client Name]",
+// "Date:", or a translated equivalent). Deliberately conservative so body
+// sentences and long headings that merely contain a colon don't get the extra
+// spacing: the label must be a couple of words and nothing sentence-like may
+// follow the colon.
+export function isFieldLabelLine(line: string): boolean {
+  const t = line.trim();
+  const idx = t.indexOf(":");
+  if (idx < 1) return false;
+  const label = t.slice(0, idx).trim();
+  const after = t.slice(idx + 1).trim();
+  if (label.length > 24 || label.split(/\s+/).length > 3) return false;
+  if (after.length > 24 || /[.!?]/.test(after)) return false;
+  return true;
+}
 
 // Greedy word-wrap using the font's actual measured width — generic
 // enough to reuse for both the title and body at whatever size is passed.
@@ -84,11 +107,16 @@ export async function textToPdf(title: string, body: string): Promise<GeneratedP
     // "Signature:" / "Print Name:" / "Date:" block) as their own wrapped
     // groups, rather than merging them into one flowing paragraph.
     for (const rawLine of trimmedParagraph.split("\n")) {
+      // Signature-block label lines get extra room below so fields can be
+      // placed on them; only the label's own (last) line takes the bigger
+      // advance in the rare case it wraps.
+      const labelLine = isFieldLabelLine(rawLine);
       const wrapped = wrapText(rawLine.trim(), font, BODY_SIZE, MAX_TEXT_WIDTH);
-      for (const line of wrapped) {
-        ensureSpace(BODY_LINE_HEIGHT);
-        page.drawText(line, { x: MARGIN, y, size: BODY_SIZE, font, color: DARK });
-        y -= BODY_LINE_HEIGHT;
+      for (let i = 0; i < wrapped.length; i++) {
+        const advance = labelLine && i === wrapped.length - 1 ? SIGNATURE_LINE_HEIGHT : BODY_LINE_HEIGHT;
+        ensureSpace(advance);
+        page.drawText(wrapped[i], { x: MARGIN, y, size: BODY_SIZE, font, color: DARK });
+        y -= advance;
       }
     }
     y -= PARAGRAPH_GAP;

@@ -1,4 +1,12 @@
+import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal-page";
+
+// Kept out of the search index — required in-app reading, not a landing page.
+// See the note on the Privacy page for why noindex (not robots.txt disallow).
+export const metadata: Metadata = {
+  title: "Data Processing Addendum — SignedBy",
+  robots: { index: false, follow: true },
+};
 
 export default function DpaPage() {
   return (
@@ -34,8 +42,7 @@ export default function DpaPage() {
         addresses, user agent strings, and document hashes) needed for a legally defensible electronic signature;
         generate the final signed PDF and certificate of completion; and, for Customers using optional AI-assisted
         features, send relevant document text to an AI sub-processor for field-suggestion, drafting, or
-        summarization — Mistral AI by default, or Anthropic if the Customer has selected it in workspace settings.
-        Processing lasts for the duration of the
+        summarization — Mistral AI. Processing lasts for the duration of the
         Customer&apos;s use of the service and any applicable retention period described in our{" "}
         <a href="/privacy" className="underline">
           Privacy Policy
@@ -49,8 +56,7 @@ export default function DpaPage() {
         <li>Supabase — database hosting and authentication</li>
         <li>Cloudflare, Inc. (R2) — document file storage</li>
         <li>Resend — transactional email delivery</li>
-        <li>Mistral AI — default AI processing for optional field-suggestion, document-drafting, and summary features</li>
-        <li>Anthropic, PBC — alternative AI processing for the same features, used only for a Customer that selects it in workspace settings instead of Mistral</li>
+        <li>Mistral AI — AI processing for optional field-suggestion, document-drafting, and summary features</li>
         <li>Stripe, Inc. — payment processing for subscriptions</li>
         <li>Vercel Inc. — application hosting</li>
       </ul>

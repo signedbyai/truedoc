@@ -1,4 +1,14 @@
+import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal-page";
+
+// Keep legal pages out of the search index — they're required reading in-app,
+// not landing pages, and were outranking the homepage for the brand query.
+// `follow: true` still lets link equity flow. Deliberately NOT robots.txt-
+// disallowed: Google must be able to crawl the page to SEE this noindex.
+export const metadata: Metadata = {
+  title: "Privacy Policy — SignedBy",
+  robots: { index: false, follow: true },
+};
 
 export default function PrivacyPage() {
   return (
@@ -51,9 +61,7 @@ export default function PrivacyPage() {
         <li>
           Power optional AI-assisted features — suggesting where to place signature and text fields, drafting a
           document from your description, and summarizing a document&apos;s contents — by sending the relevant
-          document text to an AI provider for analysis. By default this is Mistral AI; an organization can instead
-          choose Anthropic for these features in its workspace settings, in which case that organization&apos;s
-          document text is sent to Anthropic instead;
+          document text to Mistral AI for analysis;
         </li>
         <li>Maintain the audit trail required for a legally defensible electronic signature;</li>
         <li>Process subscription payments and manage billing;</li>
@@ -78,15 +86,9 @@ export default function PrivacyPage() {
           <strong>Resend</strong> — delivers transactional email (invitations, reminders, notices);
         </li>
         <li>
-          <strong>Mistral AI</strong> — the default AI provider behind optional field-suggestion, document-drafting,
-          and summary features; only document text relevant to a feature you use is sent, and it is not used to
-          train Mistral&apos;s models;
-        </li>
-        <li>
-          <strong>Anthropic</strong> — an alternative AI provider for those same features, used only for an
-          organization that has specifically chosen it in workspace settings instead of Mistral (never both at
-          once); same handling — only relevant document text is sent, and it is not used to train Anthropic&apos;s
-          models;
+          <strong>Mistral AI</strong> — the AI provider behind optional field-suggestion, document-drafting, and
+          summary features; only document text relevant to a feature you use is sent, and it is not used to train
+          Mistral&apos;s models;
         </li>
         <li>
           <strong>Stripe</strong> — processes subscription payments;
@@ -136,9 +138,8 @@ export default function PrivacyPage() {
         SignedBy is operated by SPRK10 B.V. from the Netherlands. Several of our sub-processors (see Section 3) are
         based in the United States. Where personal data is transferred outside the European Economic Area, we rely
         on appropriate safeguards recognized under GDPR, such as the European Commission&apos;s Standard Contractual
-        Clauses, to protect that data. Mistral AI, the default AI provider for AI-assisted features, is based in
-        France, keeping that processing within the European Economic Area by default; an organization that instead
-        chooses Anthropic (based in the United States) for those features relies on the safeguards described above.
+        Clauses, to protect that data. Mistral AI, the AI provider for AI-assisted features, is based in France,
+        keeping that processing within the European Economic Area.
       </p>
 
       <h2>8. Children&apos;s privacy</h2>

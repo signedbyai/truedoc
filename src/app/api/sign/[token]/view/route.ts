@@ -1,20 +1,7 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { getSignerByToken } from "@/lib/signing";
 import { planHasFeature } from "@/lib/plan";
-import { MAX_SECONDS_PER_DELTA } from "@/lib/page-view-tracking";
-
-export const bodySchema = z.object({
-  deltas: z
-    .array(
-      z.object({
-        page: z.number().int().positive(),
-        seconds: z.number().int().positive().max(MAX_SECONDS_PER_DELTA),
-      })
-    )
-    .min(1)
-    .max(50),
-});
+import { bodySchema } from "./schema";
 
 // Best-effort, fire-and-forget page-view/dwell-time reporting from the
 // signing-view client (src/lib/page-view-tracking.ts builds the deltas;

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getUserAndOrg } from "@/lib/org";
 import { planHasFeature } from "@/lib/plan";
 
-export const bodySchema = z.object({
+const bodySchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
   brand_color: z
     .string()
@@ -32,7 +32,7 @@ export async function PUT(request: Request) {
   if (parsed.data.brand_color !== undefined) {
     const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
     if (!org || !planHasFeature(org.plan, "customBranding")) {
-      return NextResponse.json({ error: "Custom branding requires the Business plan.", upgrade: true }, { status: 402 });
+      return NextResponse.json({ error: "Custom branding requires the Team plan.", upgrade: true }, { status: 402 });
     }
     updates.brand_color = parsed.data.brand_color;
   }

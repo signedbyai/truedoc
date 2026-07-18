@@ -9,6 +9,34 @@ import { renderQuizResultCard } from "@/lib/signature-quiz-card";
 
 type Step = "intro" | "question" | "name" | "result";
 
+// Decodes a base64 data: URL into a File without going through fetch().
+// This is why the quiz Share button "didn't work" while the signing-
+// complete speed-card share did: next.config.ts's CSP has
+// `connect-src 'self' https://*.supabase.co ...` — no `data:` — and
+// fetch() of a data: URL is governed by connect-src. So fetch(cardUrl)
+// threw a CSP violation every time, the catch swallowed it, and the
+// button only ever showed the long-press fallback hint. The speed card
+// is a real same-origin /api/share/speed-card URL ('self'), which is
+// why that one shared fine. atob() decoding involves no network layer,
+// so the CSP has nothing to say about it — and it's synchronous, which
+// also keeps us safely inside the user-activation window iOS requires
+// for navigator.share.
+function dataUrlToFile(dataUrl: string, filename: string): File | null {
+  const commaIdx = dataUrl.indexOf(",");
+  if (commaIdx === -1) return null;
+  const meta = dataUrl.slice(0, commaIdx);
+  if (!meta.includes("base64")) return null;
+  const mime = /^data:([^;,]+)/.exec(meta)?.[1] || "image/png";
+  try {
+    const binary = atob(dataUrl.slice(commaIdx + 1));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new File([bytes], filename, { type: mime });
+  } catch {
+    return null;
+  }
+}
+
 export function SignatureQuizView() {
   const [step, setStep] = useState<Step>("intro");
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -96,10 +124,9 @@ export function SignatureQuizView() {
     if (!cardUrl) return;
     setShareFallbackHint(false);
     try {
-      const resp = await fetch(cardUrl);
-      const blob = await resp.blob();
-      const file = new File([blob], "signature-personality.png", { type: "image/png" });
-      if (navigator.canShare?.({ files: [file] })) {
+      // Decoded locally, NOT fetch(cardUrl) — see dataUrlToFile's comment.
+      const file = dataUrlToFile(cardUrl, "signature-personality.png");
+      if (file && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], text: archetype ? archetype.tagline : undefined });
         return;
       }

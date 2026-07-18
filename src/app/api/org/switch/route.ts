@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { getUserAndOrg } from "@/lib/org";
-
-export const bodySchema = z.object({ orgId: z.string().uuid() });
+import { bodySchema } from "./schema";
 
 // Switches which org is "active" for this account — see getUserAndOrg()'s
 // doc comment in src/lib/org.ts for the full picture. The preference is

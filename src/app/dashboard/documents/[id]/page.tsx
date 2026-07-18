@@ -9,6 +9,10 @@ import { DuplicateDocumentButton } from "@/components/duplicate-document-button"
 import { buttonVariants } from "@/components/ui/button";
 import { planHasFeature } from "@/lib/plan";
 import { formatEngagement } from "@/lib/page-view-tracking";
+import { latestTimestamp } from "@/lib/last-viewed";
+import { LiveViewedStatus } from "@/components/live-viewed-status";
+import { OpenNotificationsToggle } from "@/components/open-notifications-toggle";
+import { StatusPill, DOCUMENT_STATUS_PILL } from "@/components/status-pill";
 
 export default async function DocumentEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,7 +26,7 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
   const { data: doc } = await supabase
     .from("documents")
     .select(
-      "id, title, page_count, status, signed_file_path, payment_link_url, payment_label, docgate_url, docgate_label, organizations(plan, auto_suggest_on_upload)"
+      "id, title, page_count, status, signed_file_path, payment_link_url, payment_label, docgate_url, docgate_label, open_notifications, organizations(plan, auto_suggest_on_upload)"
     )
     .eq("id", id)
     .single();
@@ -41,7 +45,7 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
   const hasReminders = planHasFeature(orgPlan, "reminders");
   const hasPageViewTracking = planHasFeature(orgPlan, "pageViewTracking");
   // Column defaults to false; ?? false covers the (should-never-happen)
-  // case of it coming back undefined.
+  // case of it coming back undefined. Available on every plan.
   const autoSuggestOnUpload = orgRecord?.auto_suggest_on_upload ?? false;
 
   // Per-signer engagement summary (Starter+ only -- see plan.ts). Kept as a
@@ -49,16 +53,21 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
   // branches below can look a signer up the same way regardless of which
   // signer-list shape they render.
   const engagementBySigner = new Map<string, { totalSeconds: number; pagesViewed: number }>();
+  // Freshest engagement-tracker timestamp across all signers/pages — one
+  // input to the "Last viewed Xm ago" line below (see src/lib/last-viewed.ts
+  // for the two-source merge with audit "viewed" events).
+  let lastPageViewAt: string | null = null;
   if (hasPageViewTracking) {
     const { data: pageViews } = await supabase
       .from("document_page_views")
-      .select("signer_id, seconds_viewed")
+      .select("signer_id, seconds_viewed, last_viewed_at")
       .eq("document_id", id);
     for (const row of pageViews || []) {
       const existing = engagementBySigner.get(row.signer_id) ?? { totalSeconds: 0, pagesViewed: 0 };
       existing.totalSeconds += row.seconds_viewed;
       existing.pagesViewed += 1;
       engagementBySigner.set(row.signer_id, existing);
+      lastPageViewAt = latestTimestamp([lastPageViewAt, row.last_viewed_at]);
     }
   }
 
@@ -90,15 +99,41 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
       (auditEvents || []).filter((e) => e.event_type === "docgate_clicked" && e.signer_id).map((e) => e.signer_id)
     );
 
+    const lastViewedAt = latestTimestamp([
+      lastPageViewAt,
+      ...(auditEvents || []).filter((e) => e.event_type === "viewed").map((e) => e.created_at),
+    ]);
+
     return (
-      <main className="min-h-screen bg-slate-50 px-6 py-10">
+      <main className="px-4 py-8 sm:px-6 sm:py-10">
         <div className="mx-auto max-w-2xl space-y-6">
           <div>
-            <Link href="/dashboard/documents" className="text-sm font-medium text-slate-500 hover:text-slate-700">
-              ← Documents
-            </Link>
+            <nav className="flex items-center gap-1.5 text-sm text-slate-500">
+              <Link href="/dashboard" className="font-medium hover:text-slate-700">
+                Dashboard
+              </Link>
+              <span className="text-slate-300">/</span>
+              <Link href="/dashboard/documents" className="font-medium hover:text-slate-700">
+                Documents
+              </Link>
+            </nav>
             <h1 className="mt-2 text-2xl font-semibold text-slate-900">{doc.title}</h1>
-            <p className="text-sm text-emerald-600">Completed — every signer has signed.</p>
+            <div className="mt-1.5 flex items-center gap-2">
+              <StatusPill tone="green" label="Completed" icon="check" />
+              <span className="text-sm text-slate-500">Every signer has signed.</span>
+            </div>
+            <p className="mt-1">
+              <LiveViewedStatus documentId={id} initialLastViewedAt={lastViewedAt} live={hasPageViewTracking} />
+            </p>
+            {/* Short form of the same Document ID the Certificate of
+                Completion prints in full; /verify is the public hash-lookup
+                that proves the signed copy is genuine (V3 item #5). */}
+            <p className="mt-1 text-xs text-slate-400">
+              <span className="font-mono">#{doc.id.slice(0, 8)}</span> &middot; anyone can verify this document at{" "}
+              <Link href="/verify" className="underline hover:text-slate-600">
+                signedby.ai/verify
+              </Link>
+            </p>
             {doc.docgate_url && (
               <p className="mt-1 text-sm text-amber-700">
                 {docgateClickedSignerIds.size} of {(signers || []).length} signer
@@ -128,8 +163,11 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
                         </Link>
                       )}
                     </span>
-                    <span className="text-xs text-slate-500">
-                      {s.signed_at ? new Date(s.signed_at).toLocaleString() : "—"}
+                    <span className="flex items-center gap-1.5">
+                      <StatusPill tone="green" label="Signed" />
+                      {s.signed_at && (
+                        <span className="text-xs text-slate-400">{new Date(s.signed_at).toLocaleDateString()}</span>
+                      )}
                     </span>
                   </li>
                 );
@@ -174,22 +212,45 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
       .eq("document_id", id)
       .order("created_at", { ascending: true });
 
-    const statusCopy: Record<string, { label: string; className: string }> = {
-      sent: { label: "Out for signature", className: "text-blue-600" },
-      declined: { label: "Declined by a signer", className: "text-red-600" },
-      voided: { label: "Voided", className: "text-slate-500" },
-    };
-    const { label, className } = statusCopy[doc.status];
+    const docPill = DOCUMENT_STATUS_PILL[doc.status];
+
+    const lastViewedAt = latestTimestamp([
+      lastPageViewAt,
+      ...(auditEvents || []).filter((e) => e.event_type === "viewed").map((e) => e.created_at),
+    ]);
 
     return (
-      <main className="min-h-screen bg-slate-50 px-6 py-10">
+      <main className="px-4 py-8 sm:px-6 sm:py-10">
         <div className="mx-auto max-w-2xl space-y-6">
           <div>
-            <Link href="/dashboard/documents" className="text-sm font-medium text-slate-500 hover:text-slate-700">
-              ← Documents
-            </Link>
+            <nav className="flex items-center gap-1.5 text-sm text-slate-500">
+              <Link href="/dashboard" className="font-medium hover:text-slate-700">
+                Dashboard
+              </Link>
+              <span className="text-slate-300">/</span>
+              <Link href="/dashboard/documents" className="font-medium hover:text-slate-700">
+                Documents
+              </Link>
+            </nav>
             <h1 className="mt-2 text-2xl font-semibold text-slate-900">{doc.title}</h1>
-            <p className={`text-sm ${className}`}>{label}</p>
+            <div className="mt-1.5">
+              {docPill ? (
+                <StatusPill tone={docPill.tone} label={docPill.label} pulse={docPill.pulse} />
+              ) : (
+                <span className="text-sm text-slate-500">{doc.status}</span>
+              )}
+            </div>
+            {/* Live pill: on a "sent" doc this is the money moment — the
+                sender watching "Last viewed 2m ago" flip to "Viewing now"
+                while their signer reads. */}
+            <p className="mt-1">
+              <LiveViewedStatus documentId={id} initialLastViewedAt={lastViewedAt} live={hasPageViewTracking} />
+            </p>
+            {/* No /verify link here — verification hashes the SIGNED copy,
+                which doesn't exist until the document completes. */}
+            <p className="mt-1 text-xs text-slate-400">
+              <span className="font-mono">#{doc.id.slice(0, 8)}</span>
+            </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <a
                 href={`/api/documents/${id}/original-file`}
@@ -218,7 +279,8 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
             </ul>
 
             {doc.status === "sent" && (
-              <div className="mt-6 border-t border-slate-100 pt-4">
+              <div className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-4">
+                <OpenNotificationsToggle documentId={id} initialEnabled={doc.open_notifications ?? true} />
                 <VoidDocumentButton documentId={id} />
               </div>
             )}

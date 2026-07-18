@@ -12,6 +12,24 @@ import { getAnthropic } from "@/lib/anthropic";
 
 export type AIProvider = "anthropic" | "mistral" | "deepseek";
 
+// PROVIDER POSTURE (2026-07-16): Mistral is the ONLY AI provider used in the
+// live customer service and the only one disclosed in /privacy + /dpa.
+// Anthropic and DeepSeek (and Gemini, if ever built) exist here for SignedBy's
+// INTERNAL performance testing only — there's no user-facing picker (removed
+// 2026-07-16); provider is admin-only via the organizations.ai_provider column,
+// and the settings page shows a read-only "AI processing" line naming Mistral.
+// The switch is a manual DB change with NO technical guardrail, so only ever
+// point SignedBy's own test/synthetic orgs at a non-Mistral provider — never a
+// real customer org, or that customer's document text goes to an undisclosed
+// processor. If a non-Mistral provider is ever promoted to the live customer
+// service, it must be added to /privacy + /dpa (and the assessment) FIRST.
+//
+// PLANNED (not built): Google Gemini as a further testing provider. Data-
+// residency note (see privacy_assessment/): route via Vertex AI in an EU region
+// (e.g. europe-west1/4), NOT the consumer Gemini API (US default). To wire it up
+// for internal testing: add "gemini" to this union + normalizeAIProvider, the DB
+// CHECK constraint (new migration), and a generateWithGemini() path.
+
 /** Defensive normalization for a raw DB value — the migration's CHECK
  *  constraint should already guarantee this, but a null/unexpected value
  *  (e.g. a migration not yet applied, per this project's manual

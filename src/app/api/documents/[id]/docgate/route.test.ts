@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bodySchema } from "./route";
+import { bodySchema } from "./schema";
 
 describe("docgate bodySchema", () => {
   it("accepts a valid https URL with a label", () => {

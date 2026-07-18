@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { getUserAndOrg } from "@/lib/org";
-
-export const bodySchema = z.object({ enabled: z.boolean() });
+import { bodySchema } from "./schema";
 
 // Org-wide preference for whether AI field-placement suggestions
 // (src/lib/suggest-fields.ts) run automatically on a brand-new document's

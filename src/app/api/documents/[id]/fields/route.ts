@@ -1,21 +1,6 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-
-export const fieldSchema = z.object({
-  type: z.enum(["signature", "initials", "date", "text", "checkbox"]),
-  page: z.number().int().min(1),
-  x: z.number().min(0).max(1),
-  y: z.number().min(0).max(1),
-  width: z.number().min(0).max(1),
-  height: z.number().min(0).max(1),
-  required: z.boolean().default(true),
-  signer_id: z.string().uuid().nullable().optional(),
-  // Only meaningful while signer_id is null — see field-editor.tsx.
-  template_role: z.number().int().nullable().optional(),
-});
-
-export const bodySchema = z.object({ fields: z.array(fieldSchema) });
+import { bodySchema } from "./schema";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -23,7 +8,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const { data, error } = await supabase
     .from("document_fields")
-    .select("id, type, page, x, y, width, height, required, signer_id, template_role")
+    .select("id, type, page, x, y, width, height, required, signer_id, template_role, purpose")
     .eq("document_id", id)
     .order("created_at", { ascending: true });
 

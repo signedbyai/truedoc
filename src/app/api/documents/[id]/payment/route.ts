@@ -1,15 +1,8 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getUserAndOrg } from "@/lib/org";
 import { planHasFeature } from "@/lib/plan";
-
-// https-only: this is opened directly on the signer's device, so no
-// javascript:/data: schemes etc. An empty string clears the payment link.
-export const bodySchema = z.object({
-  payment_link_url: z.union([z.string().trim().url().startsWith("https://"), z.literal("")]),
-  payment_label: z.string().trim().max(100).optional().nullable(),
-});
+import { bodySchema } from "./schema";
 
 // Sets (or clears) the "pay me" link shown on this document's signing page —
 // Business-tier "payment collection." Deliberately just an external link,

@@ -42,10 +42,15 @@ const FEATURE_PLANS = {
   teamMembers: ["team", "business"],
   // Team: "Bulk send"
   bulkSend: ["team", "business"],
-  // Team: "Basic branding" — org name replaces the default SignedBy footer
-  // on the signing page. Business: "Custom branding" — org logo + color too.
+  // Team: full white-label on the signing page — org name, logo, and brand
+  // colour. Collapsed into ONE promise on 2026-07-17 (customBranding moved
+  // business → team): the old split of name-only at Team vs logo+colour at
+  // Business was a confusing half-measure that undersold Team and made
+  // Business read as "the tier where branding finally works". Both keys are
+  // kept — `branding` gates removing SignedBy's mark, `customBranding` gates
+  // the logo/colour controls — so callers don't all have to change.
   branding: ["team", "business"],
-  customBranding: ["business"],
+  customBranding: ["team", "business"],
   // Business: "API access"
   apiAccess: ["business"],
   // Business: "Payment collection" — an external link (e.g. a Stripe Payment
@@ -74,7 +79,7 @@ export const FEATURE_UPGRADE_PLAN: Record<Feature, PlanId> = {
   teamMembers: "team",
   bulkSend: "team",
   branding: "team",
-  customBranding: "business",
+  customBranding: "team",
   apiAccess: "business",
   paymentCollection: "business",
   docGate: "business",

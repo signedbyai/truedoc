@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bodySchema } from "./route";
+import { bodySchema } from "./schema";
 
 describe("auto-suggest bodySchema", () => {
   it("accepts enabled: true", () => {

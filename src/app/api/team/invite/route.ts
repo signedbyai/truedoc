@@ -6,7 +6,7 @@ import { planHasFeature, teamMemberLimit } from "@/lib/plan";
 import { sendTeamInviteEmail } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
 
-export const bodySchema = z.object({
+const bodySchema = z.object({
   email: z.string().trim().toLowerCase().email(),
   role: z.enum(["admin", "member"]).default("member"),
 });

@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, CopyObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // Cloudflare R2 is S3-API compatible, so the standard AWS SDK v3 client works
 // unmodified — just point it at R2's endpoint instead of AWS.
@@ -31,6 +32,21 @@ export async function uploadToR2(key: string, body: Buffer, contentType: string)
     })
   );
   return key;
+}
+
+/**
+ * A short-lived presigned PUT URL so the browser can upload a file straight to
+ * R2, bypassing the Vercel serverless request-body cap (4.5 MB). The client
+ * MUST send the same `Content-Type` on its PUT, since it's part of the signed
+ * request. Expiry is deliberately short — the URL is used immediately after
+ * it's issued.
+ */
+export async function getSignedUploadUrl(key: string, contentType: string, expiresIn = 300) {
+  return getSignedUrl(
+    getClient(),
+    new PutObjectCommand({ Bucket: bucket(), Key: key, ContentType: contentType }),
+    { expiresIn }
+  );
 }
 
 /** Returns the raw bytes for an object — used by the file proxy route. */

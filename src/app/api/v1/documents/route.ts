@@ -5,7 +5,7 @@ import { authenticateApiRequest } from "@/lib/api-auth";
 import { sendSignerInviteEmail } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
 
-export const bodySchema = z.object({
+const bodySchema = z.object({
   template_id: z.string().uuid(),
   signer: z.object({
     name: z.string().trim().max(200).optional().nullable(),

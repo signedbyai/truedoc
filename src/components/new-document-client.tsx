@@ -21,10 +21,17 @@ export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
   const [errorMessage, setErrorMessage] = useState("");
   const [showUpgrade, setShowUpgrade] = useState(false);
 
+  const MAX_FILE_BYTES = 25 * 1024 * 1024;
+
   function handleFileChosen(f: File) {
     if (f.type !== "application/pdf") {
       setStatus("error");
       setErrorMessage("Only PDF files are supported right now.");
+      return;
+    }
+    if (f.size > MAX_FILE_BYTES) {
+      setStatus("error");
+      setErrorMessage("File is larger than 25MB.");
       return;
     }
     setStatus("idle");
@@ -32,26 +39,60 @@ export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
     if (!title) setTitle(f.name.replace(/\.pdf$/i, ""));
   }
 
+  // Direct-to-R2 upload in three steps so the file never passes through a
+  // Vercel serverless function (whose request body is capped at 4.5 MB):
+  //   1. ask our API for a presigned PUT URL (also enforces auth/rate-limit/cap)
+  //   2. PUT the file straight to R2
+  //   3. finalize — our API validates the PDF and creates the record
   async function handleUpload() {
     if (!file) return;
     setStatus("uploading");
     setErrorMessage("");
     setShowUpgrade(false);
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("title", title);
-
     try {
-      const res = await fetch("/api/documents", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) {
+      const urlRes = await fetch("/api/documents/upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, size: file.size }),
+      });
+      const urlData = await urlRes.json();
+      if (!urlRes.ok) {
         setStatus("error");
-        setErrorMessage(data.error ?? "Upload failed.");
-        setShowUpgrade(Boolean(data.upgrade));
+        setErrorMessage(urlData.error ?? "Upload failed.");
+        setShowUpgrade(Boolean(urlData.upgrade));
         return;
       }
-      router.push(`/dashboard/documents/${data.id}`);
+
+      const putRes = await fetch(urlData.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/pdf" },
+        body: file,
+      });
+      if (!putRes.ok) {
+        setStatus("error");
+        setErrorMessage("Upload failed. Please try again.");
+        return;
+      }
+
+      const finRes = await fetch("/api/documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentId: urlData.documentId,
+          key: urlData.key,
+          title,
+          filename: file.name,
+        }),
+      });
+      const finData = await finRes.json();
+      if (!finRes.ok) {
+        setStatus("error");
+        setErrorMessage(finData.error ?? "Upload failed.");
+        setShowUpgrade(Boolean(finData.upgrade));
+        return;
+      }
+      router.push(`/dashboard/documents/${finData.id}`);
     } catch {
       setStatus("error");
       setErrorMessage("Upload failed. Check your connection and try again.");
@@ -59,7 +100,7 @@ export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-10">
+    <main className="px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-xl">
         <h1 className="mb-6 text-2xl font-semibold text-slate-900">New document</h1>
 
@@ -80,6 +121,9 @@ export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
               onClick={() => setMode("draft")}
               className={cn(
                 "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
+                // Comet lives on this button until AI-draft mode is chosen — then
+                // it hops to the "Describe what you need" box (see ai-draft-form).
+                mode !== "draft" && "ai-comet",
                 mode === "draft"
                   ? "border-slate-900 bg-slate-900 text-white"
                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -153,7 +197,9 @@ export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
                   <p className="text-sm font-medium text-slate-900">{file.name}</p>
                 ) : (
                   <>
-                    <p className="text-sm font-medium text-slate-900">Click to choose a PDF, or drag one here</p>
+                    <p className="text-sm font-medium text-slate-900">
+                      <span className="next-step-highlight">Click to choose a PDF, or drag one here</span>
+                    </p>
                     <p className="mt-1 text-xs text-slate-500">Up to 25MB</p>
                   </>
                 )}

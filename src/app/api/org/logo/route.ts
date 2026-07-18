@@ -16,7 +16,7 @@ export async function POST(request: Request) {
 
   const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
   if (!org || !planHasFeature(org.plan, "customBranding")) {
-    return NextResponse.json({ error: "Custom branding requires the Business plan.", upgrade: true }, { status: 402 });
+    return NextResponse.json({ error: "Custom branding requires the Team plan.", upgrade: true }, { status: 402 });
   }
 
   const formData = await request.formData();
@@ -40,6 +40,21 @@ export async function POST(request: Request) {
   }
 
   const { error } = await supabase.from("organizations").update({ logo_url: key }).eq("id", orgId);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ success: true });
+}
+
+// Removes the org's logo — previously the only way to get rid of an
+// uploaded logo was to replace it with a different one. Just clears the DB
+// pointer; the R2 object is left behind (it's a single small file per org
+// and gets overwritten by any future upload anyway).
+export async function DELETE() {
+  const ctx = await getUserAndOrg();
+  if (!ctx) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  const { supabase, orgId } = ctx;
+
+  const { error } = await supabase.from("organizations").update({ logo_url: null }).eq("id", orgId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ success: true });

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { Logo } from "@/components/logo";
 import { sendMagicLink, signInWithPassword, sendPasswordReset, verifyLoginCode } from "./actions";
 
 type AuthView = "email" | "password";
@@ -233,9 +234,12 @@ function LoginPageInner() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-12">
-      <Link href="/" className="mb-8 text-lg font-semibold tracking-tight text-slate-900">
-        SignedBy
+      <Link href="/" className="mb-3">
+        <Logo withBeta={false} />
       </Link>
+      <span className="mb-8 inline-block -rotate-1 rounded bg-yellow-300 px-1.5 py-0.5 text-sm font-semibold text-slate-900">
+        Documents. Signed.
+      </span>
 
       <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="mb-6 text-center">

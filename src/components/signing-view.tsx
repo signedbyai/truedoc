@@ -10,6 +10,7 @@ import { draftStorageKey, serializeDraft, parseDraft, mergeRestoredValues, hasAn
 import { pickMostVisiblePage, computeDeltas, FLUSH_INTERVAL_SECONDS } from "@/lib/page-view-tracking";
 import { speedStatShareText, type SpeedStat } from "@/lib/speed-stat";
 import { SIGNATURE_STYLES, renderTypedSignature } from "@/lib/signature-styles";
+import { SummaryMarkdown } from "@/lib/summary-markdown";
 
 type FieldType = "signature" | "initials" | "date" | "text" | "checkbox";
 
@@ -31,7 +32,21 @@ type Field = {
   height: number;
   required: boolean;
   value: string | null;
+  purpose?: string | null;
 };
+
+// A hint placeholder for an empty text field, from the AI-detected purpose
+// (e.g. "Print Name") — so the signer knows what a plain text box is for.
+// Deliberately NOT a pre-filled value: nothing is entered for them, the field
+// stays empty and required, and the signer types their own value. Returns ""
+// for non-text fields and text fields with no detected purpose.
+function placeholderFor(field: Field): string {
+  if (field.type !== "text") return "";
+  if (field.purpose === "name") return "Print Name";
+  if (field.purpose === "title") return "Title";
+  if (field.purpose === "company") return "Company";
+  return "";
+}
 
 type Branding = {
   orgId: string;
@@ -111,6 +126,14 @@ export function SigningView({
   }
   const [pageCanvases, setPageCanvases] = useState<{ page: number; dataUrl: string; width: number; height: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  // PDF-load resilience: a single transient failure (a network/R2 blip, or the
+  // pdf worker failing to load once) used to strand the signer on a dead-end
+  // "couldn't load" message with no recovery but a manual page refresh. Now we
+  // silently retry once, then surface a "Try again" button. reloadKey re-runs
+  // the render effect.
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const autoRetriedRef = useRef(false);
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(initialFields.map((f) => [f.id, f.value || ""]))
   );
@@ -214,6 +237,12 @@ export function SigningView({
 
     async function render() {
       const pdfjsLib = await import("pdfjs-dist");
+      // After the first await so these don't count as synchronous setState in
+      // an effect body — resets any partial state from a prior (failed) attempt.
+      if (cancelled) return;
+      setPageCanvases([]);
+      setLoadError(false);
+      setLoading(true);
       pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
       const loadingTask = pdfjsLib.getDocument({ url: `/api/sign/${token}/file` });
       const pdf = await loadingTask.promise;
@@ -246,13 +275,30 @@ export function SigningView({
 
     render().catch((err) => {
       console.error("Failed to render PDF", err);
-      if (!cancelled) setLoading(false);
+      if (cancelled) return;
+      if (!autoRetriedRef.current) {
+        // One silent retry for a transient blip — keep the skeleton showing.
+        autoRetriedRef.current = true;
+        window.setTimeout(() => {
+          if (!cancelled) setReloadKey((k) => k + 1);
+        }, 1200);
+      } else {
+        setLoading(false);
+        setLoadError(true);
+      }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, reloadKey]);
+
+  function retryLoad() {
+    autoRetriedRef.current = false;
+    setLoadError(false);
+    setLoading(true);
+    setReloadKey((k) => k + 1);
+  }
 
   // One-time, mount-only viewport check to default into card mode on a
   // phone-sized screen. Deferred to a microtask (not called synchronously in
@@ -441,23 +487,60 @@ export function SigningView({
     });
   }
 
+  // A text field commits on BLUR, so tapping "Next" right after typing fires
+  // two advances — the input's blur AND the button's click — as separate native
+  // events with a re-render between them. The second one reads the
+  // already-advanced index and jumps a card too far, skipping a field (the
+  // reported "it skipped the second text field straight to the date" bug).
+  // This lets only one advance land per short window. Sequential fills are
+  // always slower than this, so it only ever catches the double-fire.
+  const lastAdvanceRef = useRef(0);
+  /* eslint-disable react-hooks/purity -- tryAdvance runs only from onBlur/
+     onClick handlers, never during render; the debounce legitimately needs the
+     wall clock and a ref write, both of which the React Compiler flags. */
+  function tryAdvance(run: () => void) {
+    const now = Date.now();
+    if (now - lastAdvanceRef.current < 450) return;
+    lastAdvanceRef.current = now;
+    run();
+  }
+  /* eslint-enable react-hooks/purity */
+
+  function nextIncompleteFrom(index: number) {
+    for (let j = index + 1; j < orderedFields.length; j++) {
+      if (!values[orderedFields[j].id]?.trim()) return j;
+    }
+    return orderedFields.length - 1; // all done ahead — go to the last card for submit
+  }
+
   function goNextCard() {
-    goToCard(clampedCardIndex + 1);
+    tryAdvance(() => setCardIndex((prev) => Math.min(prev + 1, orderedFields.length - 1)));
   }
 
   function goPrevCard() {
     goToCard(clampedCardIndex - 1);
   }
 
-  // Auto-advances the card after the field currently on screen gets filled —
-  // no-op outside card mode, and no-op if some other field was the one that
-  // just changed (e.g. a saved signature applied instantly to a field that
-  // isn't the current card).
+  // Auto-advance after the on-screen field is filled: jump to the next field
+  // that still needs input (not the next index — that would skip an earlier
+  // empty field or dump the signer back onto a done one). Shares the debounce
+  // so a blur+Next double-fire can't over-advance.
   function advanceCardIfCurrent(fieldId: string) {
-    if (viewMode === "card" && currentCardField?.id === fieldId) {
+    if (viewMode !== "card" || currentCardField?.id !== fieldId) return;
+    tryAdvance(() => {
       vibrate(15);
-      goNextCard();
-    }
+      goToCard(nextIncompleteFrom(clampedCardIndex));
+    });
+  }
+
+  // Takes the signer straight to the first required field they still need to
+  // fill — used by the "you missed a field" prompt on the submit bar so a
+  // skipped field is a one-tap fix instead of a hunt back through the cards.
+  function goToFirstIncomplete() {
+    if (!nextFieldId) return;
+    setViewMode("card");
+    const idx = orderedFields.findIndex((f) => f.id === nextFieldId);
+    if (idx >= 0) setCardIndex(idx);
   }
 
   function handleCardTouchStart(e: React.TouchEvent) {
@@ -566,11 +649,24 @@ export function SigningView({
     setError("");
     setMissingFieldIds(new Set());
     try {
-      const res = await fetch(`/api/sign/${token}/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ consent: true, values }),
-      });
+      let res: Response;
+      try {
+        res = await fetch(`/api/sign/${token}/submit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ consent: true, values }),
+        });
+      } catch {
+        // Network-level failure — we never got a response, so we don't know
+        // whether the signature actually landed. This is the worst moment to
+        // show a scary error: the submit may have succeeded and only the
+        // response was lost. Check our status before giving up; if we're now
+        // signed, show the Signed screen instead. (The server also treats a
+        // fresh retry idempotently, so retrying is safe either way.)
+        const recovered = await recoverAfterLostSubmit();
+        if (recovered) return;
+        throw new Error("Couldn't reach the server. Check your connection and try again.");
+      }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         if (Array.isArray(data.missingFieldIds) && data.missingFieldIds.length > 0) {
@@ -580,15 +676,42 @@ export function SigningView({
         throw new Error(data.error || "Something went wrong");
       }
       const data = await res.json().catch(() => ({}));
-      setDocumentCompleted(Boolean(data.completed));
-      setSpeedStat(data.speedStat ?? null);
-      setDone(true);
-      clearDraft(token);
+      showSignedScreen({ completed: Boolean(data.completed), speedStat: data.speedStat ?? null });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // Shared "you're signed" transition. Used by a normal successful submit and
+  // by the lost-response recovery path below.
+  function showSignedScreen({ completed, speedStat: stat }: { completed: boolean; speedStat: SpeedStat | null }) {
+    setDocumentCompleted(completed);
+    setSpeedStat(stat);
+    setDone(true);
+    clearDraft(token);
+  }
+
+  // Poll the read-only status endpoint a couple of times after a lost submit
+  // response. If our signature actually landed, resolve into the Signed
+  // screen and return true so the caller suppresses the error.
+  async function recoverAfterLostSubmit(): Promise<boolean> {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await new Promise((r) => window.setTimeout(r, attempt === 0 ? 800 : 1500));
+      try {
+        const res = await fetch(`/api/sign/${token}/status`);
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (data.status === "signed") {
+          showSignedScreen({ completed: Boolean(data.completed), speedStat: data.speedStat ?? null });
+          return true;
+        }
+      } catch {
+        // Still offline — keep trying the remaining attempts.
+      }
+    }
+    return false;
   }
 
   function speedCardUrl(stat: SpeedStat) {
@@ -681,15 +804,49 @@ export function SigningView({
     fetchSummary(lang);
   }
 
+  // The end screens are the last thing a signer sees — for branding-tier
+  // orgs that's the moment their counterparty most associates with the
+  // customer's brand (the same white-label logic that hides the growth CTA
+  // on the dead-end screens in sign/[token]/page.tsx), so the org logo tops
+  // the Signed/Declined cards. Reuses the header's logo route, so the
+  // 5-min-cache + ?v= busting behavior is identical.
+  const endScreenLogo = branding.hasCustomBranding && branding.hasLogo && (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`/api/org/${branding.orgId}/logo`}
+      alt={branding.orgName}
+      className="mx-auto mb-4 h-10 w-auto max-w-[180px] rounded object-contain"
+    />
+  );
+
   if (declined) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-slate-50 px-4">
         <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
+          {endScreenLogo}
           <h1 className="text-lg font-semibold text-slate-900">Declined</h1>
           <p className="mt-2 text-sm text-slate-600">
             You declined to sign{signerName ? `, ${signerName}` : ""}. The sender has been notified.
           </p>
         </div>
+
+        {/* Soft sender-side growth teaser — a signer who declined is engaged
+            with agreements and may want to send their own. Kept secondary
+            (below the status card) so it never reads as pushy at an awkward
+            moment. Gated off for branding-tier orgs' signers, same white-label
+            logic as sign/[token]/page.tsx's StatusScreen growth CTA. Link is
+            tagged so these signups are attributable (see attribution capture). */}
+        {!branding.hasCustomBranding && (
+          <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 text-center">
+            <p className="text-sm text-slate-600">Prefer to send your own agreement?</p>
+            <a
+              href="/login?intent=signup&utm_source=signer_decline&utm_medium=growth_cta&utm_campaign=signer_to_sender"
+              className="mt-3 inline-block rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              Sign up free
+            </a>
+          </div>
+        )}
       </main>
     );
   }
@@ -698,6 +855,7 @@ export function SigningView({
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
         <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
+          {endScreenLogo}
           <h1 className="text-lg font-semibold text-slate-900">Signed</h1>
           <p className="mt-2 text-sm text-slate-600">
             {documentCompleted
@@ -752,12 +910,17 @@ export function SigningView({
               instead (see sign/[token]/page.tsx). */}
           {documentCompleted && docgate && (
             <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
-              <p className="text-xs text-amber-900">{docgate.label || "Everyone has signed — your access link is ready."}</p>
+              {/* Fixed sentence up top, custom label only on the button —
+                  see the matching comment in sign/[token]/page.tsx. */}
+              <p className="text-xs text-amber-900">Everyone has signed — your access link is ready.</p>
+              {/* Same yellow-highlighter treatment as the field editor's
+                  Signature button (.next-step-highlight in globals.css) —
+                  see the matching comment in sign/[token]/page.tsx. */}
               <a
                 href={docgate.path}
-                className="mt-2 inline-block rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
+                className="mt-2 inline-block rounded-md border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50"
               >
-                {docgate.label || "Open link"}
+                <span className="next-step-highlight">{docgate.label || "Open link"}</span>
               </a>
             </div>
           )}
@@ -781,11 +944,16 @@ export function SigningView({
       >
         <div className="flex min-w-0 items-center gap-3">
           {branding.hasCustomBranding && branding.hasLogo && (
+            // Height-capped but natural width (up to 150px) — wide wordmark
+            // logos were previously squeezed into a 28×28 square by h-7 w-7,
+            // rendering them illegibly small. max-w + the sibling min-w-0/
+            // truncate keeps narrow-phone headers from re-crowding (see the
+            // 2026-07-13 mobile header fix above).
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={`/api/org/${branding.orgId}/logo`}
               alt={branding.orgName}
-              className="h-7 w-7 shrink-0 rounded object-contain"
+              className="h-8 w-auto max-w-[150px] shrink-0 rounded object-contain sm:h-9"
             />
           )}
           <div className="min-w-0">
@@ -805,7 +973,7 @@ export function SigningView({
           {error && <span className="text-sm text-red-600">{error}</span>}
           <button
             onClick={handleOpenSummary}
-            className="rounded-md border border-slate-200 px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            className="ai-comet rounded-md border border-slate-200 px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-50"
           >
             What am I signing?
           </button>
@@ -912,11 +1080,15 @@ export function SigningView({
                 <div
                   key={f.id}
                   className={cn(
+                    // Done = navy ink, current = yellow highlighter ("act
+                    // here"), upcoming = blank paper — the brand's
+                    // ink-and-highlighter palette instead of the previous
+                    // off-palette emerald.
                     "h-1 flex-1 rounded-full",
                     values[f.id]?.trim()
-                      ? "bg-emerald-500"
+                      ? "bg-slate-900"
                       : i === clampedCardIndex
-                        ? "bg-slate-900"
+                        ? "bg-yellow-300"
                         : "bg-slate-200"
                   )}
                 />
@@ -998,7 +1170,7 @@ export function SigningView({
                 Back
               </button>
               {clampedCardIndex === orderedFields.length - 1 ? (
-                <span className="text-xs text-slate-500">Last field — hit Sign &amp; submit above when ready</span>
+                <span className="text-xs text-slate-500">Last field — slide to sign &amp; submit below when ready</span>
               ) : (
                 <button
                   onClick={goNextCard}
@@ -1051,8 +1223,17 @@ export function SigningView({
           ))
         )}
 
-        {!loading && pageCanvases.length === 0 && (
-          <p className="text-sm text-red-600">Couldn&apos;t load this document ({pageCount} expected pages).</p>
+        {loadError && pageCanvases.length === 0 && (
+          <div className="py-6 text-center">
+            <p className="text-sm text-red-600">Couldn&apos;t load this document ({pageCount} expected pages).</p>
+            <button
+              type="button"
+              onClick={retryLoad}
+              className="mt-3 rounded-md border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Try again
+            </button>
+          </div>
         )}
       </div>
 
@@ -1063,6 +1244,17 @@ export function SigningView({
       {/* Mobile-only fixed swipe-to-confirm bar -- the desktop header button
           (hidden here via sm:hidden) covers larger screens. */}
       <div className="fixed inset-x-0 bottom-0 z-10 border-t border-slate-200 bg-white px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] sm:hidden">
+        {!allRequiredFilled && nextFieldId && (
+          <button
+            type="button"
+            onClick={goToFirstIncomplete}
+            className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-md bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900"
+          >
+            {requiredFields.length - filledRequiredCount} required field
+            {requiredFields.length - filledRequiredCount === 1 ? "" : "s"} left — tap to go to{" "}
+            {requiredFields.length - filledRequiredCount === 1 ? "it" : "the next one"}
+          </button>
+        )}
         <SwipeToSubmit
           onConfirm={handleSubmit}
           submitting={submitting}
@@ -1143,7 +1335,9 @@ export function SigningView({
             <div className="mt-3 min-h-[60px] rounded-md bg-slate-50 p-3 text-sm text-slate-700">
               {summaryLoading && <span className="text-slate-500">Reading the document…</span>}
               {!summaryLoading && summaryError && <span className="text-red-600">{summaryError}</span>}
-              {!summaryLoading && !summaryError && summariesByLang[summaryLang]}
+              {!summaryLoading && !summaryError && summariesByLang[summaryLang] && (
+                <SummaryMarkdown text={summariesByLang[summaryLang]} />
+              )}
             </div>
             <div className="mt-4 flex justify-end">
               <button
@@ -1295,7 +1489,7 @@ function FieldInput({
         className={cn(
           base,
           "flex items-center justify-center",
-          value ? "border-emerald-500 bg-white p-0.5" : "border-blue-500 bg-blue-50 text-blue-700"
+          value ? "border-slate-900 bg-white p-0.5" : "border-blue-500 bg-blue-50 text-blue-700"
         )}
       >
         {value ? (
@@ -1321,7 +1515,7 @@ function FieldInput({
 
   if (field.type === "checkbox") {
     return (
-      <div className={cn(base, "flex items-center justify-center border-emerald-500 bg-emerald-50")}>
+      <div className={cn(base, "flex items-center justify-center border-slate-900 bg-white")}>
         <input
           type="checkbox"
           checked={value === "true"}
@@ -1337,7 +1531,8 @@ function FieldInput({
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={cn(base, "border-slate-500 bg-slate-100 px-1 text-[11px] text-slate-800")}
+      placeholder={placeholderFor(field)}
+      className={cn(base, "border-slate-500 bg-slate-100 px-1 text-[11px] text-slate-800 placeholder:text-slate-400")}
     />
   );
 }
@@ -1368,7 +1563,7 @@ function CardFieldInput({
         onClick={onOpenPad}
         className={cn(
           "flex min-h-[96px] w-full items-center justify-center rounded-lg border-2 text-sm font-medium",
-          value ? "border-emerald-500 bg-white p-2" : "border-blue-500 bg-blue-50 text-blue-700"
+          value ? "border-slate-900 bg-white p-2" : "border-blue-500 bg-blue-50 text-blue-700"
         )}
       >
         {value ? (
@@ -1397,7 +1592,7 @@ function CardFieldInput({
 
   if (field.type === "checkbox") {
     return (
-      <label className="flex min-h-[52px] w-full items-center gap-3 rounded-lg border-2 border-emerald-500 bg-emerald-50 px-3">
+      <label className="flex min-h-[52px] w-full items-center gap-3 rounded-lg border-2 border-slate-900 bg-white px-3">
         <input
           type="checkbox"
           checked={value === "true"}
@@ -1407,7 +1602,7 @@ function CardFieldInput({
           }}
           className="h-6 w-6 shrink-0"
         />
-        <span className="text-sm text-emerald-900">Check to confirm</span>
+        <span className="text-sm text-slate-900">Check to confirm</span>
       </label>
     );
   }
@@ -1420,7 +1615,8 @@ function CardFieldInput({
       onBlur={() => {
         if (value.trim()) onCommit();
       }}
-      className="min-h-[52px] w-full rounded-lg border-2 border-slate-500 bg-slate-100 px-3 text-base text-slate-800"
+      placeholder={placeholderFor(field)}
+      className="min-h-[52px] w-full rounded-lg border-2 border-slate-500 bg-slate-100 px-3 text-base text-slate-800 placeholder:text-slate-400"
     />
   );
 }
@@ -1504,21 +1700,22 @@ function SwipeToSubmit({
   }
 
   return (
+    // Rounded-square track (not a pill) matching the brand's yellow-highlighter
+    // rectangle motif (favicon, hero highlight). Once it's ready to swipe the
+    // whole bar goes yellow — that's the "act here" signal — with a navy thumb
+    // (the favicon mark) sliding across it. Stays grey until required fields +
+    // consent are done.
     <div
       ref={trackRef}
       className={cn(
-        "relative h-14 w-full select-none overflow-hidden rounded-full",
-        disabled ? "bg-slate-100" : "bg-slate-200"
+        "relative h-14 w-full select-none overflow-hidden rounded-xl transition-colors duration-200",
+        disabled ? "bg-slate-100" : "bg-yellow-300"
       )}
     >
       <div
-        className={cn("absolute inset-y-0 left-0 rounded-full", disabled ? "bg-slate-300" : "bg-emerald-500")}
-        style={{ width: dragLeft + HANDLE_SIZE, transition: isDragging ? "none" : "width 200ms ease" }}
-      />
-      <div
         className={cn(
           "pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-medium",
-          disabled ? "text-slate-400" : "text-slate-600"
+          disabled ? "text-slate-400" : "text-slate-900"
         )}
       >
         {submitting ? "Submitting…" : confirmed ? "Confirmed" : label}
@@ -1536,8 +1733,10 @@ function SwipeToSubmit({
           transition: isDragging ? "none" : "left 200ms ease",
         }}
         className={cn(
-          "absolute top-0 flex items-center justify-center rounded-full text-lg shadow-md",
-          disabled ? "bg-slate-300 text-slate-500" : "bg-slate-900 text-white",
+          // Navy thumb with a yellow arrow — the favicon motif inverted so the
+          // handle stays visible against the fully-yellow ready track.
+          "absolute top-0 flex items-center justify-center rounded-xl text-lg shadow-md",
+          disabled ? "bg-slate-300 text-slate-500" : "bg-slate-900 text-yellow-300",
           submitting || confirmed || disabled ? "opacity-60" : "cursor-grab active:cursor-grabbing"
         )}
       >

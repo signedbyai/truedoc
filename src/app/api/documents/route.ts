@@ -1,59 +1,61 @@
 import { NextResponse } from "next/server";
 import { PDFDocument } from "pdf-lib";
 import { getUserAndOrg } from "@/lib/org";
-import { uploadToR2 } from "@/lib/r2";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { getFromR2, deleteFromR2 } from "@/lib/r2";
 import { checkFreePlanDocCap } from "@/lib/plan";
+import { keyBelongsTo } from "@/lib/upload-key";
+import { MAX_FILE_BYTES } from "./upload-url/schema";
+import { bodySchema } from "./schema";
 
-const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25MB — generous for contracts, keeps R2/function costs predictable
-
+// Step 2 of the direct-to-R2 upload: finalize. The browser has already PUT the
+// PDF straight to R2 (see /api/documents/upload-url); this validates what
+// actually landed and creates the document record. The file never transits
+// this function's request body, so it isn't bound by Vercel's 4.5 MB cap —
+// only the object is pulled back from R2 (free egress) to validate it and
+// count pages. Any validation failure deletes the orphaned object.
 export async function POST(request: Request) {
   const ctx = await getUserAndOrg();
   if (!ctx) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   const { supabase, user, orgId } = ctx;
 
-  // Authenticated, but still worth capping — an uncapped upload endpoint is
-  // a cost/abuse vector (R2 storage + PDF parsing) even behind a login.
-  const uploadOk = await checkRateLimit(`upload:${orgId}`, 30, 600);
-  if (!uploadOk) {
-    return NextResponse.json({ error: "Too many uploads. Try again in a few minutes." }, { status: 429 });
+  const json = await request.json().catch(() => null);
+  const parsed = bodySchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+  }
+  const { documentId, key, title, filename } = parsed.data;
+
+  // The key came back from the client — it must be one this org + document was
+  // actually issued a presigned URL for, never another org's prefix.
+  if (!keyBelongsTo(orgId, documentId, key)) {
+    return NextResponse.json({ error: "Invalid upload reference." }, { status: 400 });
   }
 
+  // Re-check the plan cap right before the insert (upload-url checked it too,
+  // but a burst could slip between the two calls).
   const capResponse = await checkFreePlanDocCap(supabase, orgId);
   if (capResponse) return capResponse;
 
-  const formData = await request.formData();
-  const file = formData.get("file");
-  const title = String(formData.get("title") || "");
+  // Pull the uploaded object back to validate it.
+  let bytes: Buffer;
+  try {
+    ({ body: bytes } = await getFromR2(key));
+  } catch {
+    return NextResponse.json({ error: "Upload not found — please try again." }, { status: 400 });
+  }
 
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: "No file provided" }, { status: 400 });
-  }
-  if (file.type !== "application/pdf") {
-    return NextResponse.json({ error: "Only PDF files are supported" }, { status: 400 });
-  }
-  if (file.size > MAX_FILE_BYTES) {
+  if (bytes.length > MAX_FILE_BYTES) {
+    await deleteFromR2(key);
     return NextResponse.json({ error: "File is larger than 25MB" }, { status: 400 });
   }
-
-  const bytes = Buffer.from(await file.arrayBuffer());
 
   let pageCount = 1;
   try {
     const pdf = await PDFDocument.load(bytes);
     pageCount = pdf.getPageCount();
   } catch {
+    await deleteFromR2(key);
     return NextResponse.json({ error: "That file doesn't look like a valid PDF" }, { status: 400 });
-  }
-
-  const documentId = crypto.randomUUID();
-  const key = `${orgId}/${documentId}/${file.name}`;
-
-  try {
-    await uploadToR2(key, bytes, "application/pdf");
-  } catch (err) {
-    console.error("R2 upload failed", err);
-    return NextResponse.json({ error: "Upload failed. Check R2 credentials." }, { status: 500 });
   }
 
   const { data, error } = await supabase
@@ -62,10 +64,10 @@ export async function POST(request: Request) {
       id: documentId,
       org_id: orgId,
       owner_id: user.id,
-      title: title || file.name.replace(/\.pdf$/i, ""),
+      title: title || filename.replace(/\.pdf$/i, ""),
       status: "draft",
       file_path: key,
-      original_filename: file.name,
+      original_filename: filename,
       page_count: pageCount,
     })
     .select("id")
@@ -73,6 +75,7 @@ export async function POST(request: Request) {
 
   if (error) {
     console.error("Insert document failed", error);
+    await deleteFromR2(key); // don't leave the uploaded PDF orphaned in R2
     return NextResponse.json({ error: "Could not save the document record" }, { status: 500 });
   }
 

@@ -1,17 +1,11 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
-import { getSignerByToken } from "@/lib/signing";
+import { getSignerByToken, fetchSignerSpeedStat } from "@/lib/signing";
 import { sendSignerInviteEmail, sendCompletionEmail, sendSignerDocGateEmail, appUrl } from "@/lib/email";
 import { generateSignedPdf } from "@/lib/generate-signed-pdf";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { computeSigningOutcome } from "@/lib/signing-routing";
 import { visibleFieldsForSigner } from "@/lib/field-visibility";
-import { buildSpeedStat } from "@/lib/speed-stat";
-
-export const bodySchema = z.object({
-  consent: z.literal(true),
-  values: z.record(z.string().uuid(), z.string()),
-});
+import { bodySchema } from "./schema";
 
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -28,7 +22,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   const { admin, signer, document } = result;
 
   if (signer.status === "signed") {
-    return NextResponse.json({ error: "You've already signed this document." }, { status: 400 });
+    // Idempotent replay. A signer whose submit succeeded server-side but
+    // lost the response on the way back (flaky connection) will retry — and
+    // previously got a scary "You've already signed this document" error at
+    // the single worst moment in the product. Instead, return the same
+    // success outcome their original submission would have: they're signed,
+    // so show them the Signed screen. `document.status` is re-read on every
+    // request, so it reflects completion caused by that earlier submit.
+    const speedStat = await fetchSignerSpeedStat(admin, signer.id);
+    return NextResponse.json({
+      success: true,
+      completed: document.status === "completed",
+      speedStat,
+      alreadySigned: true,
+    });
   }
   if (signer.status === "declined") {
     return NextResponse.json({ error: "This signing request was declined." }, { status: 400 });
@@ -81,21 +88,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   // works regardless of the sending org's plan, and src/lib/speed-stat.ts
   // for the plausibility/sample-size gating applied here. Best-effort: a
   // signer's ability to finish signing must never depend on this succeeding.
-  let speedStat = null;
-  try {
-    const { data: speedRows, error: speedError } = await admin.rpc("get_signer_speed_stat", {
-      p_signer_id: signer.id,
-    });
-    if (speedError) throw speedError;
-    const row = speedRows?.[0];
-    speedStat = buildSpeedStat({
-      activeSeconds: row?.active_seconds ?? null,
-      percentile: row?.percentile ?? null,
-      sampleSize: row?.sample_size ?? null,
-    });
-  } catch (err) {
-    console.error("get_signer_speed_stat failed", err);
-  }
+  const speedStat = await fetchSignerSpeedStat(admin, signer.id);
 
   await admin.from("audit_events").insert([
     {

@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { findFreePosition } from "@/lib/field-geometry";
+import { resizeField } from "@/lib/field-resize";
+import { remapFieldSignerIds } from "@/lib/field-persist";
+import { signerForArrivingSuggestion, signerForConfirmedSuggestion } from "@/lib/suggestion-binding";
 import { DeleteDocumentButton } from "@/components/delete-document-button";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
 import { FIELD_TYPES, fieldDef, type FieldType } from "@/lib/field-types";
@@ -24,6 +27,9 @@ type Field = {
   // 0-based "recipient slot" — auto-bound to a real signerId as recipients
   // are added, in order. Meaningless once signerId is set.
   templateRole: number | null;
+  // AI-detected purpose of a text field ("name"/"title"/"company"), or null.
+  // Persisted; the signing view uses "name" to pre-fill the signer's name.
+  purpose: string | null;
   // Client-only, never sent to the server: true for an AI-suggested field
   // the sender hasn't confirmed yet. Cleared (turning it into a normal
   // field) by clicking or dragging it; removed entirely by its "x" button,
@@ -113,6 +119,9 @@ export function FieldEditor({
   const [sending, setSending] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  // Pre-send "who signs where" sanity check — surfaced only when a recipient
+  // has no fields to sign (the tell of a mis-placed or forgotten field).
+  const [showSendReview, setShowSendReview] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateError, setTemplateError] = useState("");
@@ -122,16 +131,70 @@ export function FieldEditor({
   // initial fetch below resolves.
   const [fieldsLoaded, setFieldsLoaded] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
+  // Mobile-only overflow menu for secondary actions — on a phone the full
+  // desktop button row (Back / Save / Suggest / Duplicate / Delete /
+  // Template / Send) wrapped into 3-4 lines inside the *sticky* header,
+  // which could swallow most of the viewport before the document even
+  // started. Primary actions live in a fixed bottom bar instead (see the
+  // end of the JSX), mirroring the signer side's thumb-reachable bar.
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
   const [suggestError, setSuggestError] = useState("");
+
+  // "We detected N signers" guided setup: the suggest-fields pass returns the
+  // distinct signing parties it found (with human labels). When a fresh
+  // document turns out to be multi-party, we surface those so the sender can
+  // drop in an email per party and we create the recipients in role order —
+  // which auto-binds the role-tagged field suggestions (see addDetectedSigners
+  // + lib/suggestion-binding.ts).
+  const [detectedParties, setDetectedParties] = useState<{ role: number; label: string }[]>([]);
+  const [signerInputs, setSignerInputs] = useState<{ role: number; label: string; name: string; email: string }[]>([]);
   const pageRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const dragState = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
   // Guards the auto-suggest effect below to a single attempt per mount —
   // without this, any state change that re-runs the effect (e.g. the
   // suggestions themselves arriving) would re-trigger it in a loop.
   const autoSuggestAttempted = useRef(false);
+  // Set right after any pointer interaction that started on an existing field
+  // (a tap or a drag to move it), so the click the browser fires next doesn't
+  // bubble to the page and drop a brand-new field on top — the "clicking a
+  // placed field spawns a duplicate" bug. Checked and cleared in
+  // handlePageClick.
+  const suppressNextPageClick = useRef(false);
+  // Mirrors "are there any confirmed fields" for runSuggestFields, which is a
+  // useCallback that can't read the live `fields` without going stale — used
+  // to decide whether suggestions were actually applied (and thus whether to
+  // auto-scroll to them).
+  const hasConfirmedRef = useRef(false);
 
   const confirmedFields = fields.filter((f) => !f.suggested);
+
+  // Effective owner of a confirmed field: its assigned signer, or the sole
+  // recipient when there's exactly one (an unassigned field still reaches that
+  // single signer — see the send-time orphan guard). Used for the pre-send
+  // "who signs where" check + review modal.
+  const effectiveOwner = (f: Field) => f.signerId ?? (recipients.length === 1 ? recipients[0].id : null);
+  const recipientsWithoutFields = recipients.filter((r) => !confirmedFields.some((f) => effectiveOwner(f) === r.id));
+
+  // The recipient a newly-placed field will belong to — surfaced next to the
+  // field tools ("Fields go to: ● Name") so it's obvious that picking a
+  // recipient sets the context for the field chooser.
+  const activeRecipientIndex = recipients.findIndex((r) => r.id === activeRecipientId);
+  const activeRecipient = activeRecipientIndex >= 0 ? recipients[activeRecipientIndex] : null;
+  const activeRecipientColor = activeRecipient ? RECIPIENT_COLORS[activeRecipientIndex % RECIPIENT_COLORS.length] : null;
+
+  // Immersive editing mode: the field editor is a focused full-screen surface
+  // with its own top toolbar and fixed bottom Save/Send bar. Flag the body so
+  // the shared dashboard nav (sticky top bar + fixed bottom pill) hides while
+  // it's mounted — otherwise the bottom pill covers "Send for signature" and
+  // the top bars double up. Only the draft editor mounts this component; the
+  // completed/sent detail views share the route but keep their nav.
+  useEffect(() => {
+    document.body.dataset.immersive = "1";
+    return () => {
+      delete document.body.dataset.immersive;
+    };
+  }, []);
 
   // Load existing recipients + fields.
   useEffect(() => {
@@ -167,6 +230,83 @@ export function FieldEditor({
       .catch(() => {})
       .finally(() => setFieldsLoaded(true));
   }, [documentId]);
+
+  useEffect(() => {
+    hasConfirmedRef.current = confirmedFields.length > 0;
+  }, [confirmedFields.length]);
+
+  // Bring a freshly-suggested field into view: the sender presses "Suggest
+  // fields" from the top of the document, but suggestions almost always land
+  // in the signature block near the bottom — without this they'd have to
+  // hunt for them. Scrolls the topmost suggestion just below the sticky
+  // toolbar. Scrolls to page-container + y offset, so it works whether or not
+  // the field's own DOM node has painted yet.
+  const scrollToDocPosition = useCallback((page: number, y: number) => {
+    const container = pageRefs.current[page];
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const target = window.scrollY + rect.top + y * rect.height - 180;
+    window.scrollTo({ top: Math.max(target, 0), behavior: "smooth" });
+  }, []);
+
+  // --- Draft autosave ---------------------------------------------------
+  // Confirmed fields and recipients used to live only in client state until
+  // the sender hit Save or Send — so a failed send + reload (or just closing
+  // the tab) silently discarded the work and could leave a stray duplicate
+  // draft. This debounced autosave keeps the draft in the DB as the sender
+  // edits. persist() remaps signer IDs on each save, which would otherwise
+  // re-trigger this effect forever, so we compare on stable *content* (never
+  // IDs) and skip when nothing meaningful changed since the last save.
+  const lastSavedSigRef = useRef<string | null>(null);
+  const autosaveInFlight = useRef(false);
+
+  const draftSignature = useCallback(() => {
+    const recips = [...recipients]
+      .sort((a, b) => a.order_index - b.order_index)
+      .map((r) => `${r.order_index}|${r.email.trim().toLowerCase()}|${(r.name || "").trim()}`)
+      .join(";");
+    const flds = confirmedFields
+      .map((f) => {
+        const recip = recipients.find((r) => r.id === f.signerId);
+        const who = recip ? recip.email.trim().toLowerCase() : f.templateRole !== null ? `role${f.templateRole}` : "none";
+        return `${f.type}|${f.page}|${f.x.toFixed(4)}|${f.y.toFixed(4)}|${f.width.toFixed(4)}|${f.height.toFixed(4)}|${f.required}|${who}`;
+      })
+      .join(";");
+    return `${recips}~${flds}`;
+  }, [recipients, confirmedFields]);
+
+  useEffect(() => {
+    if (!fieldsLoaded) return;
+    // Don't fight an in-progress manual save/send/template save.
+    if (saving || sending || savingTemplate) return;
+    // Nothing worth persisting yet — avoid creating empty churn on a
+    // brand-new blank document.
+    const hasContent = confirmedFields.length > 0 || recipients.some((r) => r.email.trim());
+    if (!hasContent) return;
+    // The signers PUT requires every recipient to have a valid email; while
+    // one is mid-typed it would 400 and fail the whole persist. Just wait.
+    const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+    if (recipients.length > 0 && !recipients.every((r) => emailOk.test(r.email.trim()))) return;
+
+    const sig = draftSignature();
+    if (sig === lastSavedSigRef.current) return;
+
+    const t = window.setTimeout(async () => {
+      if (autosaveInFlight.current || saving || sending || savingTemplate) return;
+      if (draftSignature() === lastSavedSigRef.current) return;
+      autosaveInFlight.current = true;
+      try {
+        const ok = await persist();
+        if (ok) lastSavedSigRef.current = sig;
+      } finally {
+        autosaveInFlight.current = false;
+      }
+    }, 1500);
+    return () => window.clearTimeout(t);
+    // persist is a stable-enough closure; depending on it would re-run every
+    // render. The content deps below are what actually should trigger a save.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fieldsLoaded, saving, sending, savingTemplate, recipients, confirmedFields, draftSignature]);
 
   // Render PDF pages to images via pdfjs-dist.
   useEffect(() => {
@@ -227,12 +367,23 @@ export function FieldEditor({
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Couldn't generate suggestions.");
 
-        const suggestions: { page: number; type: FieldType; x: number; y: number; width: number; height: number; role: number | null }[] =
+        const suggestions: { page: number; type: FieldType; x: number; y: number; width: number; height: number; role: number | null; purpose: string | null }[] =
           Array.isArray(data.suggestions) ? data.suggestions : [];
         // True only when the document couldn't actually be analyzed (no
         // extractable text, or the AI call itself failed) — see
         // Field.placeholder and suggest-fields.ts's SuggestFieldsResult.
         const unreadable = Boolean(data.unreadable);
+
+        // Topmost suggestion (first page, then highest up) — where we'll
+        // scroll the sender once the batch lands.
+        const topmost = suggestions.reduce<{ page: number; y: number } | null>(
+          (best, s) => (!best || s.page < best.page || (s.page === best.page && s.y < best.y) ? { page: s.page, y: s.y } : best),
+          null
+        );
+        // Suggestions are dropped only when this is a first run over a
+        // document the sender has already placed fields on (guard below) —
+        // mirror that here to decide whether to scroll.
+        const willApply = replaceExisting || !hasConfirmedRef.current;
 
         setFields((prev) => {
           // If the sender started placing fields manually while this
@@ -241,29 +392,54 @@ export function FieldEditor({
           if (!replaceExisting && prev.some((f) => !f.suggested)) return prev;
 
           const base = replaceExisting ? prev.filter((f) => !f.suggested) : prev;
-          const newSuggested: Field[] = suggestions.map((s) => ({
-            id: `sugg-${crypto.randomUUID()}`,
-            type: s.type,
-            page: s.page,
-            x: s.x,
-            y: s.y,
-            width: s.width,
-            height: s.height,
-            required: true,
-            signerId: null,
-            templateRole: s.role,
-            suggested: true,
-            placeholder: unreadable,
-          }));
+          const newSuggested: Field[] = suggestions.map((s) => {
+            // Bind role-tagged suggestions to recipients that ALREADY exist
+            // (recipients-then-suggest order). addRecipient covers the
+            // reverse order; without this, a "Party 1" suggestion stayed
+            // orphaned forever when the recipient was added first — the
+            // customer-reported "can't assign them to recipient" dead end
+            // (2026-07-14, see lib/suggestion-binding.ts).
+            const signerId = signerForArrivingSuggestion(s.role, recipients);
+            return {
+              id: `sugg-${crypto.randomUUID()}`,
+              type: s.type,
+              page: s.page,
+              x: s.x,
+              y: s.y,
+              width: s.width,
+              height: s.height,
+              required: true,
+              signerId,
+              templateRole: signerId ? null : s.role,
+              purpose: s.purpose,
+              suggested: true,
+              placeholder: unreadable,
+            };
+          });
           return [...base, ...newSuggested];
         });
+
+        // Capture the distinct signing parties the model found, for the
+        // "we detected N signers" guided setup (rendered only when the
+        // document is multi-party and no recipients exist yet).
+        const parties: { role: number; label: string }[] = Array.isArray(data.parties) ? data.parties : [];
+        setDetectedParties(parties);
+        setSignerInputs(parties.map((p) => ({ role: p.role, label: p.label, name: "", email: "" })));
+
+        // Scroll the sender to where the suggestions landed (usually the
+        // signature block, off-screen below). Two rAFs so the new fields have
+        // laid out first. Skipped when nothing was applied or there's nothing
+        // meaningful to scroll to (e.g. a single top-of-page placeholder).
+        if (willApply && topmost && !unreadable) {
+          requestAnimationFrame(() => requestAnimationFrame(() => scrollToDocPosition(topmost.page, topmost.y)));
+        }
       } catch (err) {
         setSuggestError(err instanceof Error ? err.message : "Couldn't generate suggestions.");
       } finally {
         setSuggesting(false);
       }
     },
-    [documentId]
+    [documentId, recipients, scrollToDocPosition]
   );
 
   // Auto-run once for a completely untouched, brand-new document — not for
@@ -321,6 +497,39 @@ export function FieldEditor({
     setActiveRecipientId((prev) => (prev === id ? null : prev));
   }
 
+  function updateSignerInput(role: number, field: "name" | "email", value: string) {
+    setSignerInputs((prev) => prev.map((s) => (s.role === role ? { ...s, [field]: value } : s)));
+  }
+
+  // Creates a recipient for each detected party the sender gave an email to,
+  // in role order so order_index === role — which is exactly how role-tagged
+  // suggestions bind (signerForArrivingSuggestion). Only offered from a clean
+  // slate (recipients.length === 0), so this replaces the empty list; the
+  // field-claim pass then routes each "Party N" suggestion to its recipient.
+  function addDetectedSigners() {
+    const toAdd = signerInputs.filter((s) => s.email.trim()).sort((a, b) => a.role - b.role);
+    if (toAdd.length === 0) return;
+    const created: Recipient[] = toAdd.map((s) => ({
+      id: `new-${crypto.randomUUID()}`,
+      name: s.name.trim(),
+      email: s.email.trim(),
+      order_index: s.role,
+    }));
+    setRecipients(created);
+    setActiveRecipientId(created[0].id);
+    setFields((prev) =>
+      prev.map((f) => {
+        if (f.signerId === null && f.templateRole !== null) {
+          const match = created.find((r) => r.order_index === f.templateRole);
+          if (match) return { ...f, signerId: match.id, templateRole: null };
+        }
+        return f;
+      })
+    );
+    setDetectedParties([]);
+    setSignerInputs([]);
+  }
+
   const placeField = useCallback(
     (page: number, clickXFraction: number, clickYFraction: number) => {
       if (!selectedTool) return;
@@ -340,6 +549,7 @@ export function FieldEditor({
           required: true,
           signerId: activeRecipientId,
           templateRole: null,
+          purpose: null,
         };
         return [...prev, newField];
       });
@@ -349,6 +559,12 @@ export function FieldEditor({
 
   function handlePageClick(e: React.MouseEvent<HTMLDivElement>, page: number) {
     if (!selectedTool) return;
+    // A click that came from interacting with an existing field (drag/tap)
+    // shouldn't drop a new one — see suppressNextPageClick.
+    if (suppressNextPageClick.current) {
+      suppressNextPageClick.current = false;
+      return;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     const xFrac = (e.clientX - rect.left) / rect.width;
     const yFrac = (e.clientY - rect.top) / rect.height;
@@ -362,15 +578,35 @@ export function FieldEditor({
   // drag, `current.x/y` is already the live-dragged position (onMove keeps
   // it updated in state as the pointer moves), so this reads whatever the
   // field's current position is rather than needing it passed in.
-  const confirmField = useCallback((id: string) => {
-    setFields((prev) => {
-      const current = prev.find((f) => f.id === id);
-      if (!current) return prev;
-      const others = prev.filter((f) => f.id !== id);
-      const free = findFreePosition(current.page, current.x, current.y, current.width, current.height, others);
-      return prev.map((f) => (f.id === id ? { ...f, x: free.x, y: free.y, suggested: false } : f));
-    });
-  }, []);
+  const confirmField = useCallback(
+    (id: string) => {
+      setFields((prev) => {
+        const current = prev.find((f) => f.id === id);
+        if (!current) return prev;
+        const others = prev.filter((f) => f.id !== id);
+        const free = findFreePosition(current.page, current.x, current.y, current.width, current.height, others);
+        // Confirming also resolves ownership for a still-unassigned
+        // suggestion — selected chip first (same semantics as manual
+        // placement), then role match, then sole recipient. Previously this
+        // kept signerId null + templateRole set, which walked straight into
+        // the send-time orphan block with no way to fix it besides deleting
+        // the field (see lib/suggestion-binding.ts).
+        const signerId =
+          current.signerId ??
+          signerForConfirmedSuggestion({
+            templateRole: current.templateRole,
+            activeRecipientId,
+            recipients,
+          });
+        return prev.map((f) =>
+          f.id === id
+            ? { ...f, x: free.x, y: free.y, suggested: false, signerId, templateRole: signerId ? null : f.templateRole }
+            : f
+        );
+      });
+    },
+    [activeRecipientId, recipients]
+  );
 
   // Pointer Events (not mouse-only) so this works for touch/iOS drags too,
   // not just a mouse. touch-none on the field div (below) stops the browser
@@ -412,6 +648,12 @@ export function FieldEditor({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
+      // This interaction started on a field, so the click the browser fires
+      // next (e.g. when a drag ends over empty space with a tool armed) must
+      // not reach the page and place a duplicate field. The field div also
+      // stops its own click, so this only matters for a drag that releases
+      // off the field.
+      suppressNextPageClick.current = true;
       if (!draggedId) return;
 
       // Any pointer interaction with a suggested field — a tap-in-place or
@@ -429,72 +671,131 @@ export function FieldEditor({
     window.addEventListener("pointercancel", onUp);
   }
 
+  // Drag a corner handle to resize a field — the opposite corner stays put.
+  // Separate from handleFieldPointerDown (which moves the whole field);
+  // stopPropagation keeps a handle grab from also starting a move. Math lives
+  // in lib/field-resize.ts (unit tested).
+  function handleResizePointerDown(e: React.PointerEvent, field: Field, corner: { left: boolean; top: boolean }) {
+    e.stopPropagation();
+    const start = { x: e.clientX, y: e.clientY };
+    const orig = { x: field.x, y: field.y, width: field.width, height: field.height };
+    // Grab the page container off the DOM (the handle lives inside it) rather
+    // than pageRefs — keeps this handler ref-free so react-hooks/refs doesn't
+    // flag it when it's wired up from inside the nested handles map.
+    const container = (e.currentTarget as HTMLElement).closest("[data-page-canvas]");
+
+    function onMove(moveEvent: PointerEvent) {
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const dx = (moveEvent.clientX - start.x) / rect.width;
+      const dy = (moveEvent.clientY - start.y) / rect.height;
+      const next = resizeField({ corner, orig, dx, dy });
+      setFields((prev) => prev.map((f) => (f.id === field.id ? { ...f, ...next } : f)));
+    }
+
+    function onUp() {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      // Don't let the trailing click drop a new field when a tool is armed.
+      suppressNextPageClick.current = true;
+    }
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  }
+
   function removeField(id: string) {
     setFields((prev) => prev.filter((f) => f.id !== id));
   }
 
   // Saves recipients first (so we have real signer ids), remaps fields to
-  // point at those ids, then saves fields. Returns false on failure.
+  // point at those ids, then saves fields. Returns false on failure —
+  // including a network-level throw, so callers never leave a spinner stuck
+  // (see handleSend) and autosave can quietly retry on the next change.
   async function persist(): Promise<boolean> {
-    let savedRecipients = recipients;
+    try {
+      let savedRecipients = recipients;
+      // old recipient id -> new (server-assigned) id. Declared out here so the
+      // fields payload below can be remapped too — NOT just the React state.
+      // Missing that remap silently nulled every field's signer_id on save
+      // (the saved fields still had old ids, which never match the freshly
+      // re-inserted recipients), so multi-recipient docs went out with the
+      // fields assigned to nobody and each signer saw an empty document.
+      const oldToNew = new Map<string, string>();
 
-    if (recipients.length > 0) {
-      const res = await fetch(`/api/documents/${documentId}/signers`, {
+      if (recipients.length > 0) {
+        const res = await fetch(`/api/documents/${documentId}/signers`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            signers: recipients.map((r) => ({ name: r.name || null, email: r.email, order_index: r.order_index })),
+          }),
+        });
+        if (!res.ok) return false;
+        const data = await res.json();
+        const returned: { id: string; email: string }[] = data.signers ?? [];
+
+        // Match by array position (single batch insert preserves order); fall
+        // back to email match if that ever isn't true.
+        recipients.forEach((r, i) => {
+          const match = returned[i]?.email === r.email ? returned[i] : returned.find((x) => x.email === r.email);
+          if (match) oldToNew.set(r.id, match.id);
+        });
+
+        savedRecipients = recipients.map((r) => ({ ...r, id: oldToNew.get(r.id) ?? r.id }));
+        setRecipients(savedRecipients);
+        setActiveRecipientId((prev) => (prev ? oldToNew.get(prev) ?? prev : prev));
+        setFields((prev) =>
+          prev.map((f) => (f.signerId ? { ...f, signerId: oldToNew.get(f.signerId) ?? f.signerId } : f))
+        );
+      }
+
+      // Unconfirmed AI suggestions are never persisted — "nothing is final
+      // until the sender confirms it" (see the Field.suggested comment).
+      // Remap each field's signer to its new recipient id (see field-persist.ts
+      // — skipping this nulled every assignment on multi-recipient docs).
+      const validRecipientIds = new Set(savedRecipients.map((r) => r.id));
+      const currentFields = remapFieldSignerIds(
+        fields.filter((f) => !f.suggested),
+        oldToNew,
+        validRecipientIds
+      );
+
+      const res = await fetch(`/api/documents/${documentId}/fields`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          signers: recipients.map((r) => ({ name: r.name || null, email: r.email, order_index: r.order_index })),
+          fields: currentFields.map(({ type, page, x, y, width, height, required, signerId, templateRole, purpose }) => ({
+            type,
+            page,
+            x,
+            y,
+            width,
+            height,
+            required,
+            signer_id: signerId,
+            template_role: templateRole,
+            purpose,
+          })),
         }),
       });
-      if (!res.ok) return false;
-      const data = await res.json();
-      const returned: { id: string; email: string }[] = data.signers ?? [];
 
-      // Match by array position (single batch insert preserves order); fall
-      // back to email match if that ever isn't true.
-      const oldToNew = new Map<string, string>();
-      recipients.forEach((r, i) => {
-        const match = returned[i]?.email === r.email ? returned[i] : returned.find((x) => x.email === r.email);
-        if (match) oldToNew.set(r.id, match.id);
-      });
-
-      savedRecipients = recipients.map((r) => ({ ...r, id: oldToNew.get(r.id) ?? r.id }));
-      setRecipients(savedRecipients);
-      setActiveRecipientId((prev) => (prev ? oldToNew.get(prev) ?? prev : prev));
-      setFields((prev) => prev.map((f) => (f.signerId ? { ...f, signerId: oldToNew.get(f.signerId) ?? f.signerId } : f)));
+      return res.ok;
+    } catch {
+      // Network-level failure (e.g. a transient "Failed to fetch"). Treat as
+      // a save failure so the caller can surface it and re-enable its button.
+      return false;
     }
-
-    // Unconfirmed AI suggestions are never persisted — "nothing is final
-    // until the sender confirms it" (see the Field.suggested comment).
-    const currentFields = fields
-      .filter((f) => !f.suggested)
-      .map((f) => (f.signerId && !savedRecipients.some((r) => r.id === f.signerId) ? { ...f, signerId: null } : f));
-
-    const res = await fetch(`/api/documents/${documentId}/fields`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fields: currentFields.map(({ type, page, x, y, width, height, required, signerId, templateRole }) => ({
-          type,
-          page,
-          x,
-          y,
-          width,
-          height,
-          required,
-          signer_id: signerId,
-          template_role: templateRole,
-        })),
-      }),
-    });
-
-    return res.ok;
   }
 
   async function handleSaveDraft() {
     setSaving(true);
     setStatusMessage("");
+    const sig = draftSignature();
     const ok = await persist();
+    if (ok) lastSavedSigRef.current = sig; // keep autosave from re-firing
     setStatusMessage(ok ? "Saved." : "Couldn't save — try again.");
     setSaving(false);
   }
@@ -528,20 +829,36 @@ export function FieldEditor({
       );
       return;
     }
+    // Every recipient must have a field to sign — a signer with none would just
+    // consent to an empty document, which can quietly complete the whole thing
+    // without them actually signing (the reported bug). Show the who-signs-where
+    // review as a HARD block, not an override. The send route enforces the same.
+    if (recipientsWithoutFields.length > 0) {
+      setShowSendReview(true);
+      return;
+    }
     setSending(true);
     setStatusMessage("");
     const ok = await persist();
     if (!ok) {
-      setStatusMessage("Couldn't save — try again.");
+      setStatusMessage("Couldn't save — check your connection and try again.");
       setSending(false);
       return;
     }
-    const res = await fetch(`/api/documents/${documentId}/send`, { method: "POST" });
-    if (res.ok) {
-      router.push("/dashboard");
-    } else {
+    try {
+      const res = await fetch(`/api/documents/${documentId}/send`, { method: "POST" });
+      if (res.ok) {
+        router.push("/dashboard");
+        return; // keep the button disabled through navigation
+      }
       const data = await res.json().catch(() => ({}));
       setStatusMessage(data.error || "Couldn't send — try again.");
+      setSending(false);
+    } catch {
+      // A transient network failure previously left the button stuck on
+      // "Sending…" with no error and no retry — only a reload recovered.
+      // Surface it and re-enable so the sender can just tap Send again.
+      setStatusMessage("Couldn't send — check your connection and try again.");
       setSending(false);
     }
   }
@@ -620,32 +937,77 @@ export function FieldEditor({
     <div className="flex min-h-screen flex-col bg-slate-50">
       <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
         <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div className="flex flex-wrap items-center gap-2">
-            {FIELD_TYPES.map((f) => (
-              <button
-                key={f.type}
-                onClick={() => setSelectedTool(selectedTool === f.type ? null : f.type)}
-                className={cn(
-                  "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
-                  selectedTool === f.type
-                    ? "border-slate-900 bg-slate-900 text-white"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
-                  // Draws the eye straight to the first thing a brand-new
-                  // document needs, in case the dismissible banner below
-                  // gets skipped past — same pulse the signer side already
-                  // uses for "the next thing you need to do".
-                  f.type === "signature" &&
-                    fieldsLoaded &&
-                    confirmedFields.length === 0 &&
-                    !selectedTool &&
-                    "next-field-highlight"
+          {/* One horizontally-swipeable row on mobile (no wrapping — every
+              wrapped line here is document space lost to the sticky
+              header); wraps normally from sm: up. */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-0.5 sm:flex-wrap sm:overflow-visible sm:pb-0">
+            {FIELD_TYPES.map((f) => {
+              // Draws the eye straight to the first thing a brand-new
+              // document needs, in case the dismissible banner below gets
+              // skipped past. Was the signer side's subtle blue pulse
+              // (too easy to miss here), briefly a red pulse + orbiting
+              // orange trail (too alarm-like) — now an on-brand yellow
+              // highlighter sweep across the label, echoing both the
+              // favicon (black S on yellow highlight) and how people mark
+              // "sign here" on paper. See .next-step-highlight in
+              // globals.css.
+              // Only glow the field tools once there's a recipient to assign a
+              // field to — the guided order is "add who signs" first (that
+              // button glows when there are none), THEN "pick a field".
+              const isNextStep =
+                f.type === "signature" &&
+                fieldsLoaded &&
+                confirmedFields.length === 0 &&
+                recipients.length > 0 &&
+                !selectedTool;
+              return (
+                <button
+                  key={f.type}
+                  onClick={() => setSelectedTool(selectedTool === f.type ? null : f.type)}
+                  className={cn(
+                    "shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
+                    selectedTool === f.type
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  )}
+                >
+                  {isNextStep ? <span className="next-step-highlight">{f.label}</span> : f.label}
+                </button>
+              );
+            })}
+
+            {/* Persistent context: which recipient a placed field belongs to.
+                Makes "select a recipient to set the field context" visible
+                instead of implicit. Colored to match that recipient's chip +
+                field boxes. */}
+            {recipients.length > 0 && (
+              <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap pl-1 text-xs text-slate-400">
+                <span aria-hidden>→</span>
+                {activeRecipient && activeRecipientColor ? (
+                  <>
+                    Fields go to:
+                    <span
+                      className={cn(
+                        "flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium",
+                        activeRecipientColor.border,
+                        activeRecipientColor.bg,
+                        activeRecipientColor.text
+                      )}
+                    >
+                      <span className={cn("h-1.5 w-1.5 rounded-full", activeRecipientColor.dot)} />
+                      {activeRecipient.name || activeRecipient.email}
+                    </span>
+                  </>
+                ) : (
+                  <span className="italic">Select a recipient below to place their fields</span>
                 )}
-              >
-                {f.label}
-              </button>
-            ))}
+              </span>
+            )}
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {/* Full action row — desktop/tablet only. On mobile these split
+              into the fixed bottom bar (Save/Send) and the "More" menu
+              below (everything else). */}
+          <div className="hidden flex-wrap items-center gap-2 sm:flex sm:gap-3">
             {statusMessage && <span className="text-sm text-slate-500">{statusMessage}</span>}
             <Button variant="outline" onClick={() => router.push("/dashboard")}>
               Back
@@ -653,7 +1015,12 @@ export function FieldEditor({
             <Button variant="outline" onClick={handleSaveDraft} disabled={saving || sending}>
               {saving ? "Saving…" : "Save draft"}
             </Button>
-            <Button variant="outline" onClick={() => runSuggestFields(true)} disabled={suggesting}>
+            <Button
+              variant="outline"
+              className="ai-comet"
+              onClick={() => runSuggestFields(true)}
+              disabled={suggesting}
+            >
               {suggesting ? "Suggesting…" : "Suggest fields"}
             </Button>
             <DuplicateDocumentButton documentId={documentId} />
@@ -674,11 +1041,60 @@ export function FieldEditor({
                 Save as template (Starter+)
               </a>
             )}
-            <Button onClick={handleSend} disabled={saving || sending}>
+            <Button onClick={() => handleSend()} disabled={saving || sending}>
               {sending ? "Sending…" : "Send for signature"}
             </Button>
           </div>
+
+          {/* Mobile-only compact action strip. */}
+          <div className="flex items-center justify-between gap-2 sm:hidden">
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="shrink-0 text-sm font-medium text-slate-500"
+            >
+              ← Back
+            </button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="ai-comet"
+                onClick={() => runSuggestFields(true)}
+                disabled={suggesting}
+              >
+                {suggesting ? "Suggesting…" : "Suggest fields"}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowMoreMenu((v) => !v)}>
+                {showMoreMenu ? "Close" : "More ⋯"}
+              </Button>
+            </div>
+          </div>
         </div>
+
+        {showMoreMenu && (
+          <div className="grid grid-cols-2 items-start gap-2 border-t border-slate-100 px-4 py-2.5 sm:hidden">
+            <DuplicateDocumentButton documentId={documentId} />
+            <DeleteDocumentButton documentId={documentId} redirectTo="/dashboard/documents" />
+            {hasTemplates ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setTemplateError("");
+                  setShowSaveTemplateModal(true);
+                  setShowMoreMenu(false);
+                }}
+                disabled={saving || sending || confirmedFields.length === 0}
+              >
+                Save as template
+              </Button>
+            ) : (
+              <a href="/pricing" className="self-center text-xs text-slate-400">
+                Save as template (Starter+)
+              </a>
+            )}
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-4 py-2.5 sm:px-6">
           <span className="text-xs font-medium text-slate-500">Recipients:</span>
@@ -703,7 +1119,11 @@ export function FieldEditor({
                     e.stopPropagation();
                     removeRecipient(r.id);
                   }}
-                  className="ml-1 hidden text-slate-400 hover:text-red-500 group-hover:inline"
+                  // Always visible — this was `hidden group-hover:inline`,
+                  // which made removing a recipient literally impossible on
+                  // touch devices (no hover state to reveal it). px-1 pads
+                  // the tap target a little without changing the look.
+                  className="ml-0.5 inline px-1 text-slate-400 hover:text-red-500"
                 >
                   ×
                 </span>
@@ -712,19 +1132,21 @@ export function FieldEditor({
           })}
 
           {showAddRecipient ? (
-            <div className="flex items-center gap-1.5">
+            // flex-wrap + flexible input widths so this fits a phone-width
+            // row instead of the fixed w-32/w-44 pair overflowing it.
+            <div className="flex flex-1 flex-wrap items-center gap-1.5">
               <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="Name (optional)"
-                className="h-7 w-32 text-xs"
+                className="h-7 w-28 min-w-0 flex-1 text-xs sm:w-32 sm:flex-none"
               />
               <Input
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
                 placeholder="email@example.com"
                 type="email"
-                className="h-7 w-44 text-xs"
+                className="h-7 w-40 min-w-0 flex-1 text-xs sm:w-44 sm:flex-none"
                 onKeyDown={(e) => e.key === "Enter" && addRecipient()}
               />
               <button onClick={addRecipient} className="rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-white">
@@ -739,13 +1161,89 @@ export function FieldEditor({
               onClick={() => setShowAddRecipient(true)}
               className="rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-500 hover:border-slate-400 hover:text-slate-700"
             >
-              + Add recipient
+              {/* First step of the guided flow: glow "add a recipient" before
+                  the field tools, so the sender picks WHO signs first. */}
+              {fieldsLoaded && confirmedFields.length === 0 && recipients.length === 0 ? (
+                <span className="next-step-highlight">+ Add recipient</span>
+              ) : (
+                "+ Add recipient"
+              )}
             </button>
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-6 py-2.5">
-          <span className="text-xs font-medium text-slate-500">Payment:</span>
+        {/* "We detected N signers" — guided multi-party setup. Only from a
+            clean slate (no recipients yet) and only when the document is
+            multi-party; adding them here creates recipients in role order so
+            the role-tagged suggestions auto-bind. */}
+        {recipients.length === 0 && detectedParties.length >= 2 && (
+          <div className="border-t border-slate-100 bg-amber-50/50 px-4 py-3 sm:px-6">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-sm font-medium text-slate-900">
+                  This looks like it needs {detectedParties.length} signers
+                </p>
+                <p className="text-xs text-slate-500">
+                  Add an email for each — we&apos;ll route their fields automatically.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetectedParties([])}
+                aria-label="Dismiss detected signers"
+                className="shrink-0 text-slate-400 hover:text-slate-600"
+              >
+                ×
+              </button>
+            </div>
+            <div className="mt-2.5 flex flex-col gap-2">
+              {signerInputs.map((s, i) => {
+                const color = RECIPIENT_COLORS[i % RECIPIENT_COLORS.length];
+                return (
+                  <div key={s.role} className="flex flex-wrap items-center gap-1.5">
+                    <span
+                      className={cn(
+                        "flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
+                        color.border,
+                        color.bg,
+                        color.text
+                      )}
+                    >
+                      <span className={cn("h-1.5 w-1.5 rounded-full", color.dot)} />
+                      {s.label}
+                    </span>
+                    <Input
+                      value={s.name}
+                      onChange={(e) => updateSignerInput(s.role, "name", e.target.value)}
+                      placeholder="Name (optional)"
+                      className="h-7 w-28 min-w-0 flex-1 text-xs sm:w-32 sm:flex-none"
+                    />
+                    <Input
+                      value={s.email}
+                      onChange={(e) => updateSignerInput(s.role, "email", e.target.value)}
+                      type="email"
+                      placeholder="email@example.com"
+                      className="h-7 w-40 min-w-0 flex-1 text-xs sm:w-44 sm:flex-none"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-2.5">
+              {(() => {
+                const filled = signerInputs.filter((s) => s.email.trim()).length;
+                return (
+                  <Button size="sm" onClick={addDetectedSigners} disabled={filled === 0}>
+                    {filled > 0 ? `Add ${filled} ${filled === 1 ? "signer" : "signers"}` : "Add signers"}
+                  </Button>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-4 py-2.5 sm:px-6">
+          <span className="text-xs font-medium text-slate-500">Payment link:</span>
           {!hasPaymentCollection ? (
             <a href="/pricing" className="text-xs text-slate-400 hover:text-slate-600">
               Request payment on signing (Business)
@@ -793,7 +1291,7 @@ export function FieldEditor({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-6 py-2.5">
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-4 py-2.5 sm:px-6">
           <span className="text-xs font-medium text-slate-500">Document gate:</span>
           {!hasDocGate ? (
             <a href="/pricing" className="text-xs text-slate-400 hover:text-slate-600">
@@ -850,11 +1348,15 @@ export function FieldEditor({
       </div>
 
       {showIntro && fieldsLoaded && confirmedFields.length === 0 && (
-        <div className="flex items-center justify-between gap-3 border-b border-blue-100 bg-blue-50 px-6 py-2.5">
+        <div className="flex items-center justify-between gap-3 border-b border-blue-100 bg-blue-50 px-4 py-2.5 sm:px-6">
           <p className="text-xs text-blue-900">
-            Pick a field type above and click anywhere on the document to place it yourself, or press{" "}
-            <strong>Suggest fields</strong> to scan the document and suggest field placements for you to review. Add
-            recipients below, then send when you&apos;re ready.
+            <strong>1.</strong> Add who needs to sign (below). <strong>2.</strong> Select a recipient, pick a field
+            type above, and click on the document to place their field — or press{" "}
+            {/* Explicit {" "} — your production screenshot rendered this as
+                "Suggest fieldsto scan", so don't rely on the literal space
+                after the closing tag surviving the build. */}
+            <strong>Suggest fields</strong>
+            {" to place them automatically. Then send when you're ready."}
           </p>
           <button
             onClick={() => setShowIntro(false)}
@@ -873,14 +1375,14 @@ export function FieldEditor({
       )}
 
       {suggesting && (
-        <div className="flex items-center gap-2 border-b border-amber-100 bg-amber-50 px-6 py-2.5">
+        <div className="flex items-center gap-2 border-b border-amber-100 bg-amber-50 px-4 py-2.5 sm:px-6">
           <span className="h-3 w-3 animate-spin rounded-full border-2 border-amber-400 border-t-transparent" />
           <p className="text-xs text-amber-900">Looking for signature, date, and initials spots in this document…</p>
         </div>
       )}
 
       {!suggesting && suggestError && (
-        <div className="flex items-center justify-between gap-3 border-b border-red-100 bg-red-50 px-6 py-2.5">
+        <div className="flex items-center justify-between gap-3 border-b border-red-100 bg-red-50 px-4 py-2.5 sm:px-6">
           <p className="text-xs text-red-700">{suggestError}</p>
           <button
             onClick={() => runSuggestFields()}
@@ -892,7 +1394,7 @@ export function FieldEditor({
       )}
 
       {!suggesting && fields.some((f) => f.suggested && f.placeholder) && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-100 bg-amber-50 px-6 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-100 bg-amber-50 px-4 py-2.5 sm:px-6">
           <p className="text-xs text-amber-900">
             This document doesn&apos;t appear to have readable text (it may be a scanned image), so we couldn&apos;t
             detect field positions automatically. We&apos;ve placed one starting field — move it, or add your own.
@@ -907,11 +1409,12 @@ export function FieldEditor({
       )}
 
       {!suggesting && fields.some((f) => f.suggested && !f.placeholder) && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-100 bg-amber-50 px-6 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-100 bg-amber-50 px-4 py-2.5 sm:px-6">
           <p className="text-xs text-amber-900">
             {fields.filter((f) => f.suggested && !f.placeholder).length} suggested field
             {fields.filter((f) => f.suggested && !f.placeholder).length === 1 ? "" : "s"} — dashed outline. Click or
-            drag one to confirm it, or use its × to remove it.
+            drag one to confirm it, or use its × to remove it. Fields are filled in by your signer after you send —
+            there&apos;s nothing to type into them here.
           </p>
           <div className="flex items-center gap-3">
             <button
@@ -930,15 +1433,25 @@ export function FieldEditor({
         </div>
       )}
 
-      <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-6 py-10">
+      {/* px-3/pb-28 on mobile: near-full-width pages (every horizontal pixel
+          matters when placing fields on a phone) and clearance for the fixed
+          bottom action bar. */}
+      <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-4 px-3 pb-28 pt-6 sm:gap-6 sm:px-6 sm:py-10">
         {loading && <p className="text-sm text-slate-500">Loading document…</p>}
 
+        {/* pageRefs is a DOM-node map written from the callback ref below and
+            read only in callbacks/effects (scrollToDocPosition, drag handlers)
+            — never during render. react-hooks/refs' escape analysis flags the
+            whole map as a render-time ref access anyway; it's a false positive
+            here. */}
+        {/* eslint-disable-next-line react-hooks/refs */}
         {pageCanvases.map(({ page, dataUrl, width, height }) => (
           <div
             key={page}
             ref={(el) => {
               pageRefs.current[page] = el;
             }}
+            data-page-canvas
             onClick={(e) => handlePageClick(e, page)}
             className="relative w-full border border-slate-300 bg-white shadow-sm"
             // Sized by aspect-ratio (not a fixed height alongside maxWidth:
@@ -963,10 +1476,21 @@ export function FieldEditor({
               .map((f) => {
                 const def = fieldDef(f.type);
                 const color = recipientColor(recipients, f.signerId);
+                const recipient = recipients.find((r) => r.id === f.signerId);
+                const recipientName = recipient ? recipient.name.trim() || recipient.email : null;
                 return (
                   <div
                     key={f.id}
                     onPointerDown={(e) => handleFieldPointerDown(e, f)}
+                    // Swallow the click so it never bubbles to the page's
+                    // place-a-field handler — clicking an already-placed field
+                    // (e.g. to reposition it) used to drop a duplicate on top
+                    // when a field tool was still armed.
+                    onClick={(e) => e.stopPropagation()}
+                    // Not an input — senders repeatedly try to type into
+                    // these (customer report 2026-07-14). The value comes
+                    // from the signer after sending.
+                    title={`${recipientName ? `${recipientName} — ` : ""}${fieldDef(f.type).label} — your signer fills this in after you send`}
                     className={cn(
                       "group absolute flex touch-none cursor-move items-center justify-center rounded border-2 text-[10px] font-medium",
                       f.suggested
@@ -985,9 +1509,43 @@ export function FieldEditor({
                         {f.placeholder ? "Placeholder" : "Suggested"}
                       </span>
                     )}
-                    {f.signerId === null && f.templateRole !== null
-                      ? `${def.label} · Party ${f.templateRole + 1}`
-                      : def.label}
+                    {/* Show WHO the field is for, not just its color — a
+                        sender who accidentally places a field in the wrong
+                        party's block sees the counterparty's name sitting in
+                        it (customer report 2026-07-15). Name on top, field type
+                        below; falls back to the party/unassigned label when no
+                        real recipient is bound yet. */}
+                    <span className="pointer-events-none flex max-w-full flex-col items-center px-0.5 leading-tight">
+                      {recipientName ? (
+                        <span className="max-w-full truncate font-semibold">{recipientName}</span>
+                      ) : f.templateRole !== null ? (
+                        <span className="truncate">Party {f.templateRole + 1}</span>
+                      ) : (
+                        <span className="truncate italic opacity-80">Unassigned</span>
+                      )}
+                      <span className="text-[9px] font-normal opacity-80">{def.label}</span>
+                    </span>
+                    {/* Corner resize handles (confirmed fields only; appear on
+                        hover). Three corners — top-right is left for the delete
+                        ×. Match DocuSign/SignNow's drag-to-resize. */}
+                    {!f.suggested &&
+                      [
+                        { left: true, top: true, cls: "-left-1 -top-1 cursor-nwse-resize" },
+                        { left: true, top: false, cls: "-left-1 -bottom-1 cursor-nesw-resize" },
+                        { left: false, top: false, cls: "-right-1 -bottom-1 cursor-nwse-resize" },
+                      ].map((c) => (
+                        <span
+                          key={`${c.left}-${c.top}`}
+                          onPointerDown={(e) => handleResizePointerDown(e, f, { left: c.left, top: c.top })}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-hidden
+                          className={cn(
+                            "absolute z-10 h-2.5 w-2.5 touch-none rounded-sm border border-white opacity-0 shadow-sm group-hover:opacity-100",
+                            color.dot,
+                            c.cls
+                          )}
+                        />
+                      ))}
                     {f.suggested && (
                       <button
                         // Stops the pointerdown here too, not just the click below —
@@ -1035,6 +1593,62 @@ export function FieldEditor({
           <p className="text-sm text-red-600">Couldn&apos;t load this document ({pageCount} expected pages).</p>
         )}
       </div>
+
+      {/* Mobile-only fixed bottom bar — Save/Send belong under the thumb,
+          not buried in a sticky header that's already fighting for space.
+          Matches the signer side's fixed swipe-to-submit bar (same shadow,
+          same safe-area padding) so the two halves of the product feel like
+          one app. Status/validation messages surface here too, next to the
+          button that triggered them. */}
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-slate-200 bg-white px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] sm:hidden">
+        {statusMessage && <p className="mb-2 text-center text-xs text-slate-600">{statusMessage}</p>}
+        <div className="flex gap-2">
+          <Button variant="outline" className="flex-1" onClick={handleSaveDraft} disabled={saving || sending}>
+            {saving ? "Saving…" : "Save draft"}
+          </Button>
+          <Button className="flex-[1.6]" onClick={() => handleSend()} disabled={saving || sending}>
+            {sending ? "Sending…" : "Send for signature"}
+          </Button>
+        </div>
+      </div>
+
+      {showSendReview && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+            <p className="text-sm font-medium text-slate-900">Before you send — who signs where</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Every recipient needs at least one field to sign. The recipients marked below have none — assign them a
+              field or remove them, then send.
+            </p>
+            <ul className="mt-3 divide-y divide-slate-100 rounded-md border border-slate-200">
+              {recipients.map((r, i) => {
+                const count = confirmedFields.filter((f) => effectiveOwner(f) === r.id).length;
+                const color = RECIPIENT_COLORS[i % RECIPIENT_COLORS.length];
+                return (
+                  <li key={r.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className={cn("h-2 w-2 shrink-0 rounded-full", color.dot)} />
+                      <span className="truncate text-slate-700">{r.name?.trim() || r.email}</span>
+                    </span>
+                    <span
+                      className={cn(
+                        "shrink-0 whitespace-nowrap text-xs font-medium",
+                        count === 0 ? "text-red-600" : "text-slate-500"
+                      )}
+                    >
+                      {count} field{count === 1 ? "" : "s"}
+                      {count === 0 ? " — nothing to sign" : ""}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="mt-4 flex justify-end">
+              <Button onClick={() => setShowSendReview(false)}>Go back and fix</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showSaveTemplateModal && (
         <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-4">

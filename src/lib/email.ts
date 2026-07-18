@@ -237,6 +237,36 @@ export async function sendSignerDocGateEmail(opts: {
   });
 }
 
+// "Signer just opened your document" (V3 #8, email flavor — push is the
+// later upgrade when the PWA lands). Fires at most once per signer per
+// document: the caller hooks the first-open `viewed` transition, which only
+// happens while a signer is still pending/sent (see sign/[token]/page.tsx).
+// The dashboard link lands on the doc detail page, where the live
+// "Viewing now" pill is probably still lit if the sender clicks fast.
+export async function sendSignerOpenedEmail(opts: {
+  to: string;
+  signerName: string | null;
+  signerEmail: string;
+  documentTitle: string;
+  documentId: string;
+}) {
+  const who = opts.signerName || opts.signerEmail;
+  const link = `${appUrl()}/dashboard/documents/${opts.documentId}`;
+
+  await getClient().emails.send({
+    from: FROM,
+    to: opts.to,
+    subject: `${who} just opened "${opts.documentTitle}"`,
+    html: `
+      <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <p><strong>${who}</strong> just opened <strong>${opts.documentTitle}</strong> for the first time.</p>
+        ${ctaButton(link, "Watch It Live")}
+        <p style="color:#64748b;font-size:13px;">You get one of these the first time each signer opens a document. Too many? Turn them off for this document from <a href="${link}" style="color:#64748b;">its page</a>.</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendCompletionEmail(opts: {
   to: string;
   documentTitle: string;
@@ -254,6 +284,44 @@ export async function sendCompletionEmail(opts: {
         <p><strong>${opts.documentTitle}</strong> has been signed by everyone and is now complete.</p>
         ${ctaButton(downloadLink, "Download Signed PDF")}
         <p style="color:#64748b;font-size:13px;"><a href="${link}" style="color:#64748b;">View in dashboard</a></p>
+      </div>
+    `,
+  });
+}
+
+// Internal "someone sent feedback" email to the team, from the in-app feedback
+// widget (the nav message-bubble icon). replyTo is the user's address so the
+// team can just hit reply. FEEDBACK_TO_EMAIL overrides the default recipient.
+export async function sendFeedbackEmail(opts: {
+  message: string;
+  fromEmail: string;
+  fromName: string | null;
+  orgName: string | null;
+  plan: string | null;
+  page: string | null;
+}) {
+  const to = process.env.FEEDBACK_TO_EMAIL || "feedback@signedby.ai";
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const who = opts.fromName ? `${esc(opts.fromName)} (${esc(opts.fromEmail)})` : esc(opts.fromEmail);
+  const meta = [
+    opts.orgName ? `Org: ${esc(opts.orgName)}` : null,
+    opts.plan ? `Plan: ${esc(opts.plan)}` : null,
+    opts.page ? `Page: ${esc(opts.page)}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  await getClient().emails.send({
+    from: FROM,
+    to,
+    replyTo: opts.fromEmail || undefined,
+    subject: `Feedback from ${opts.fromName || opts.fromEmail}`,
+    html: `
+      <div style="font-family: -apple-system, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+        <p style="margin:0 0 4px;"><strong>${who}</strong> sent feedback:</p>
+        <blockquote style="margin:12px 0; padding:12px 16px; border-left:3px solid #e2e8f0; background:#f8fafc; white-space:pre-wrap; font-size:15px; color:#0f172a;">${esc(opts.message)}</blockquote>
+        ${meta ? `<p style="color:#64748b;font-size:13px;">${meta}</p>` : ""}
+        <p style="color:#94a3b8;font-size:12px;">Reply to this email to respond directly.</p>
       </div>
     `,
   });

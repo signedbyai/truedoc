@@ -1,4 +1,12 @@
+import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal-page";
+
+// Kept out of the search index — required in-app reading, not a landing page.
+// See the note on the Privacy page for why noindex (not robots.txt disallow).
+export const metadata: Metadata = {
+  title: "Terms of Service — SignedBy",
+  robots: { index: false, follow: true },
+};
 
 export default function TermsPage() {
   return (

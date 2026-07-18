@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bodySchema } from "./route";
+import { bodySchema } from "./schema";
 
 describe("submit route bodySchema", () => {
   const uuid = "123e4567-e89b-12d3-a456-426614174000";

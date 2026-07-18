@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bodySchema } from "./route";
+import { bodySchema } from "./schema";
 
 describe("payment link bodySchema", () => {
   it("accepts a valid https URL with a label", () => {

@@ -19,7 +19,10 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+  // R2 endpoint added for direct-to-R2 presigned uploads: the browser PUTs the
+  // file straight to <account>.r2.cloudflarestorage.com, bypassing the Vercel
+  // 4.5 MB function-body cap (see /api/documents/upload-url).
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.r2.cloudflarestorage.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

@@ -11,8 +11,11 @@ describe("planHasFeature", () => {
     }
   });
 
-  it("gates teamMembers/bulkSend/branding to team and business", () => {
-    for (const feature of ["teamMembers", "bulkSend", "branding"] as const) {
+  // Branding is a single Team-tier promise (name + logo + colour) as of
+  // 2026-07-17 — customBranding moved business → team, so both branding keys
+  // now unlock together.
+  it("gates teamMembers/bulkSend/branding/customBranding to team and business", () => {
+    for (const feature of ["teamMembers", "bulkSend", "branding", "customBranding"] as const) {
       expect(planHasFeature("free", feature)).toBe(false);
       expect(planHasFeature("starter", feature)).toBe(false);
       expect(planHasFeature("team", feature)).toBe(true);
@@ -20,8 +23,8 @@ describe("planHasFeature", () => {
     }
   });
 
-  it("gates customBranding, apiAccess, and paymentCollection to business only", () => {
-    for (const feature of ["customBranding", "apiAccess", "paymentCollection"] as const) {
+  it("gates apiAccess and paymentCollection to business only", () => {
+    for (const feature of ["apiAccess", "paymentCollection"] as const) {
       expect(planHasFeature("free", feature)).toBe(false);
       expect(planHasFeature("starter", feature)).toBe(false);
       expect(planHasFeature("team", feature)).toBe(false);

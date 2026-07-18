@@ -173,14 +173,20 @@ export function AiDraftForm() {
 
       <div className="space-y-1.5">
         <Label htmlFor="description">Describe what you need</Label>
-        <textarea
-          id="description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder={selectedType.placeholder}
-          rows={4}
-          className="w-full rounded-md border border-slate-300 p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
-        />
+        {/* Wrapper carries the orbiting comet — it hops here from the
+            "Describe it (AI draft)" tab once this mode is open. Textareas
+            don't render ::after, so the ring lives on this div; `block` on the
+            textarea removes the inline baseline gap so the ring hugs it. */}
+        <div className="ai-comet rounded-md">
+          <textarea
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder={selectedType.placeholder}
+            rows={4}
+            className="block w-full rounded-md border border-slate-300 p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+          />
+        </div>
       </div>
 
       <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">

@@ -12,7 +12,7 @@ const recipientSchema = z.object({
 
 // Capped well above any realistic small-business batch — keeps a single
 // request from fanning out into hundreds of emails/R2 writes/DB rows.
-export const bodySchema = z.object({ recipients: z.array(recipientSchema).min(1).max(200) });
+const bodySchema = z.object({ recipients: z.array(recipientSchema).min(1).max(200) });
 
 type TemplateFieldMapEntry = {
   type: "signature" | "initials" | "date" | "text" | "checkbox";

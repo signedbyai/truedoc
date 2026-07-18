@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { teamMemberLimit } from "@/lib/plan";
 
-export const bodySchema = z.object({ token: z.string().uuid() });
+const bodySchema = z.object({ token: z.string().uuid() });
 
 // Accepting an invite adds a brand-new organization_members row for a user
 // who isn't yet an org admin — RLS has no policy letting a non-member

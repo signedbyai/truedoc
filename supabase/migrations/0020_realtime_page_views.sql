@@ -1,0 +1,12 @@
+-- Live "Viewing now" pill on the sender's document detail page (V3 #7):
+-- streams document_page_views inserts/updates to the dashboard over
+-- Supabase Realtime, so a sender literally watches "Last viewed 2m ago"
+-- flip to a pulsing "Viewing now" while their signer reads.
+--
+-- postgres_changes subscriptions respect the table's existing RLS select
+-- policy (org members only — see 0017_document_page_views.sql), so no new
+-- access surface: a subscriber only ever receives events for documents in
+-- orgs they belong to. Writes are unchanged (still Starter+ only via the
+-- pageViewTracking gate in the view route) — this exposes no new data,
+-- just pushes what the dashboard could already read.
+alter publication supabase_realtime add table document_page_views;

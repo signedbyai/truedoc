@@ -17,7 +17,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return new NextResponse(body, {
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "public, max-age=300",
+        // Short-lived: this URL is stable across uploads (same path, no
+        // version segment), so a long max-age meant a replaced logo kept
+        // showing stale for minutes everywhere, including the settings
+        // preview right after uploading. The settings page also appends a
+        // ?v= cache-buster after each upload for an instant refresh; this
+        // 60s window only affects signer-facing pages mid-rollover.
+        "Cache-Control": "public, max-age=60",
       },
     });
   } catch (err) {

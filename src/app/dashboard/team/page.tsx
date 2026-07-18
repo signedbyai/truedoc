@@ -6,13 +6,11 @@ import { planHasFeature, teamMemberLimit, PLAN_LABEL } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { TeamPanel } from "@/components/team-panel";
-import { OrgSwitcher } from "@/components/org-switcher";
-import { LogoutLink } from "@/components/logout-link";
 
 export default async function TeamPage() {
   const ctx = await getUserAndOrg();
   if (!ctx) redirect("/login");
-  const { supabase, user, orgId, orgs } = ctx;
+  const { supabase, user, orgId } = ctx;
 
   const { data: org } = await supabase.from("organizations").select("name, plan").eq("id", orgId).single();
   const hasTeam = planHasFeature(org?.plan, "teamMembers");
@@ -42,18 +40,11 @@ export default async function TeamPage() {
     : { data: [] };
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-10">
+    <main className="px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-2xl space-y-6">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
-              ← Dashboard
-            </Link>{" "}
-            · <LogoutLink />
-            <h1 className="mt-2 text-2xl font-semibold text-slate-900">Team</h1>
-            <p className="text-sm text-slate-600">{org?.name}&apos;s workspace members.</p>
-          </div>
-          <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Team</h1>
+          <p className="text-sm text-slate-600">{org?.name}&apos;s workspace members.</p>
         </div>
 
         <Card>

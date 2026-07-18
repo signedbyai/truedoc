@@ -53,3 +53,107 @@ body {
 .animate-logo-marquee:hover {
   animation-play-state: paused;
 }
+
+/* Sender-side "start here" cue on the Signature tool button (see
+   field-editor.tsx). An on-brand yellow highlighter sweep across the
+   button label — same yellow-highlight motif as the favicon (black S on
+   yellow), and the real-world way people mark "sign here" on paper. The
+   highlight repeatedly wipes left-to-right behind the text (animated
+   background-size on a no-repeat gradient), holds briefly, then resets.
+   Replaced two earlier attempts: the signer side's blue pulse (too easy
+   to miss on this busy toolbar) and a red pulse + orbiting orange comet
+   (read as an error state). Darker text than the resting slate-600 so
+   it stays sharp on the yellow. */
+@keyframes next-step-sweep {
+  0% {
+    background-size: 0% 100%;
+  }
+  55% {
+    background-size: 100% 100%;
+  }
+  80% {
+    background-size: 100% 100%;
+  }
+  100% {
+    background-size: 0% 100%;
+  }
+}
+
+.next-step-highlight {
+  color: #0f172a;
+  background-image: linear-gradient(#fde047, #fde047);
+  background-repeat: no-repeat;
+  background-position: 0 50%;
+  background-size: 0% 100%;
+  border-radius: 2px;
+  padding: 2px 3px;
+  margin: -2px -3px;
+  animation: next-step-sweep 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .next-step-highlight {
+    animation: none;
+    background-size: 100% 100%;
+  }
+}
+
+/* Immersive mode: the field editor (a focused full-screen surface with its own
+   toolbar + fixed Save/Send bar) flags document.body so the shared dashboard
+   nav gets out of the way — otherwise the fixed bottom nav pill covers the
+   "Send for signature" bar and the top bars double up. Set/cleared by
+   FieldEditor's mount effect. */
+body[data-immersive="1"] [data-dashboard-chrome] {
+  display: none !important;
+}
+body[data-immersive="1"] [data-dashboard-content] {
+  padding-bottom: 0 !important;
+}
+
+/* AI "magic" comet: a yellow comet head with a fading tail that orbits a
+   button's outline, to draw the eye to AI-powered actions (Suggest fields,
+   Describe it / AI draft, What am I signing?). A rotating conic-gradient
+   masked to a thin ring around the element; @property makes the angle
+   animatable so the head glides smoothly instead of stepping. */
+@property --ai-comet-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.ai-comet {
+  position: relative;
+}
+.ai-comet::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--ai-comet-angle),
+    rgba(250, 204, 21, 0) 0deg,
+    rgba(250, 204, 21, 0) 300deg,
+    rgba(250, 204, 21, 0.12) 324deg,
+    rgba(250, 204, 21, 0.55) 348deg,
+    rgba(250, 204, 21, 0.95) 358deg,
+    rgba(250, 204, 21, 0) 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  filter: drop-shadow(0 0 2px rgba(250, 204, 21, 0.6));
+  pointer-events: none;
+  animation: ai-comet-orbit 2.4s linear infinite;
+}
+@keyframes ai-comet-orbit {
+  to {
+    --ai-comet-angle: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-comet::after {
+    animation: none;
+    opacity: 0;
+  }
+}

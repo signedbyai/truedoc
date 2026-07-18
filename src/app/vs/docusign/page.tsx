@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
+import { Logo } from "@/components/logo";
 
 const TITLE = "SignedBy vs DocuSign — pricing and feature comparison";
 const DESCRIPTION =
@@ -66,9 +67,8 @@ export default function VsDocuSignPage() {
   return (
     <main className="flex min-h-screen flex-col bg-white">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
-        <Link href="/" className="flex items-baseline gap-1.5">
-          <span className="text-lg font-semibold tracking-tight text-slate-900">SignedBy</span>
-          <span className="text-xs font-medium text-slate-400">BETA</span>
+        <Link href="/">
+          <Logo />
         </Link>
         <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
           Sign in
@@ -116,6 +116,9 @@ export default function VsDocuSignPage() {
         <p className="mt-2 space-x-4">
           <Link href="/vs/signnow" className="hover:text-slate-600">
             SignedBy vs SignNow
+          </Link>
+          <Link href="/vs/hix" className="hover:text-slate-600">
+            SignedBy vs Hix
           </Link>
           <Link href="/pricing" className="hover:text-slate-600">
             Pricing

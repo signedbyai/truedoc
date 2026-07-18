@@ -1,0 +1,18 @@
+-- Guarantee the org-wide AI provider default is Mistral.
+--
+-- Why this exists even though 0015 already declared `default 'mistral'`:
+-- 0015 uses `add column if not exists`, which no-ops the ENTIRE statement
+-- (default included) if the ai_provider column already existed at apply
+-- time. Under this project's manual "paste into the Supabase SQL editor"
+-- workflow, it's possible prod ended up with a different column default
+-- (e.g. 'anthropic') from an earlier hand-run, while the code/CHECK still
+-- say Mistral — which would make brand-new orgs default to Anthropic
+-- (a new user reported exactly this, 2026-07-15).
+--
+-- This statement is idempotent and re-runnable, and it ONLY changes the
+-- default for future inserts. It deliberately does NOT rewrite existing
+-- rows: any org that deliberately picked Anthropic in Settings keeps its
+-- choice. (If you also want to reset orgs that got 'anthropic' by the old
+-- default rather than by choice, that can't be told apart from a real
+-- choice, so it's left as a manual, case-by-case call — not done here.)
+alter table organizations alter column ai_provider set default 'mistral';

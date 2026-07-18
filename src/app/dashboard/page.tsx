@@ -4,8 +4,9 @@ import { getUserAndOrg } from "@/lib/org";
 import { seatsOverLimit, PLAN_LABEL } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
-import { OrgSwitcher } from "@/components/org-switcher";
-import { LogoutLink } from "@/components/logout-link";
+import { TimeGreeting } from "@/components/time-greeting";
+import { ReferralCard } from "@/components/referral-card";
+import { AttributionClaim } from "@/components/attribution-claim";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -54,8 +55,8 @@ export default async function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-10">
-      <div className="mx-auto max-w-3xl space-y-6">
+    <main className="px-4 py-8 sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-5xl space-y-6">
         {seatWarning && (
           <div className="flex flex-col gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-amber-900">
@@ -67,32 +68,28 @@ export default async function DashboardPage() {
             </Link>
           </div>
         )}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Welcome back</h1>
-            <p className="text-sm text-slate-600">
-              Signed in as {user.email} · <LogoutLink />
+        <div>
+          {/* First name from OAuth metadata when present (Google sign-in
+              sets full_name/name); email-code signups have neither and
+              get the plain greeting. */}
+          <h1 className="text-2xl font-semibold text-slate-900">
+            <TimeGreeting
+              firstName={
+                ((user.user_metadata?.full_name || user.user_metadata?.name || "") as string).split(" ")[0] || null
+              }
+            />
+          </h1>
+          <p className="text-sm text-slate-600">Signed in as {user.email}</p>
+          {user.created_at && (
+            <p className="text-xs text-slate-400">
+              Member since{" "}
+              {new Date(user.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
             </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
-            <Link href="/dashboard/documents" className="text-sm font-medium text-slate-500 hover:text-slate-700">
-              Documents
-            </Link>
-            <Link href="/dashboard/templates" className="text-sm font-medium text-slate-500 hover:text-slate-700">
-              Templates
-            </Link>
-            <Link href="/dashboard/team" className="text-sm font-medium text-slate-500 hover:text-slate-700">
-              Team
-            </Link>
-            <Link href="/dashboard/settings" className="text-sm font-medium text-slate-500 hover:text-slate-700">
-              Settings
-            </Link>
-            <Link href="/dashboard/billing" className="text-sm font-medium text-slate-500 hover:text-slate-700">
-              Billing
-            </Link>
-          </div>
+          )}
         </div>
+
+        <ReferralCard />
+        <AttributionClaim />
 
         <Card>
           <CardHeader>

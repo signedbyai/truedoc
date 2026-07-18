@@ -1,6 +1,17 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { Logo } from "@/components/logo";
+import { ReferralCapture } from "@/components/referral-capture";
+import { getRequestCurrency } from "@/lib/currency.server";
+import { formatPrice, type PlanKey } from "@/lib/currency";
+
+// Self-canonical so the homepage is the one indexed URL for the brand — title
+// and description are inherited from the root layout.
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 const FEATURES = [
   {
@@ -21,40 +32,69 @@ const FEATURES = [
   },
 ];
 
-// SyncMint and Thinq.AI are real early customers — the other five are
-// placeholder names/logos until more real logos come in. AlphaIndigo was
-// swapped out for the fake Northbridge Capital logo on 2026-07-14.
+// All real early customers now — every placeholder logo was removed on
+// 2026-07-15 (Ironwood Builders, Hartwell Accounting, Crestline Realty,
+// Ashcroft Law Group, and the fake Northbridge Capital). Thinq.AI was removed
+// 2026-07-15 too. Only add real clients here from now on.
 const TRUSTED_BY = [
-  { name: "Ironwood Builders", src: "/logos/ironwood-builders.png", height: "h-5" },
-  { name: "Hartwell Accounting", src: "/logos/hartwell-accounting.png", height: "h-5" },
-  { name: "Crestline Realty", src: "/logos/crestline-realty.png", height: "h-5" },
-  { name: "Ashcroft Law Group", src: "/logos/ashcroft-law-group.png", height: "h-5" },
   { name: "SyncMint", src: "/logos/syncmint.png", height: "h-8" },
-  { name: "Northbridge Capital", src: "/logos/northbridge-capital.png", height: "h-5" },
-  { name: "Thinq.AI", src: "/logos/thinq.png", height: "h-5" },
+  { name: "AlphaIndigo", src: "/logos/alphaindigo.png", height: "h-5" },
+  { name: "Studio Vider", src: "/logos/studio-vider.png", height: "h-5" },
 ];
 
-const PRICING = [
-  { name: "Free", price: "$0", blurb: "3 documents/mo, 1 user" },
-  { name: "Starter", price: "$7/mo", blurb: "Unlimited documents, 1 user" },
-  { name: "Team", price: "$14/mo", blurb: "Up to 3 users, bulk send" },
-  { name: "Business", price: "$29/mo", blurb: "Up to 5 users, API access" },
+// Static value row — replaced the rotating <HighlightReel> carousel on
+// 2026-07-18. A cycling hero carousel is one of the strongest "AI-built site"
+// tells (which was exactly the user feedback), only ever showed one phrase at
+// a time, and left only the first phrase in the HTML for crawlers/first paint.
+// Flat, all four are readable at once and the yellow icon tiles extend the
+// same accent as the hero highlight. Single-path stroke icons, inline like the
+// other SVGs in this codebase (see login page / status-pill) — no icon
+// dependency.
+const VALUE_PROPS: { label: string; path: string }[] = [
+  { label: "Send faster", path: "M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" },
+  { label: "Track progress", path: "M3 12h4l3 8 4-16 3 8h4" },
+  { label: "Gate access", path: "M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4" },
+  { label: "Close deals", path: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9 12l2 2 4-4" },
 ];
 
-export default function LandingPage() {
+const PRICING: { name: string; id: PlanKey; blurb: string }[] = [
+  { name: "Free", id: "free", blurb: "3 documents/mo, 1 user" },
+  { name: "Starter", id: "starter", blurb: "Unlimited documents, 1 user" },
+  { name: "Team", id: "team", blurb: "Up to 3 users, custom branding" },
+  { name: "Business", id: "business", blurb: "Up to 5 users, API access" },
+];
+
+export default async function LandingPage() {
+  // EUR for Eurozone visitors, USD for the rest (from geo/cookie) — same
+  // resolution the /pricing page and checkout use, so the figures stay in
+  // sync across the whole funnel. See src/lib/currency.ts.
+  const currency = await getRequestCurrency();
+
   return (
     <main className="flex min-h-screen flex-col bg-white">
+      <ReferralCapture />
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
-        <span className="flex items-baseline gap-1.5">
-          <span className="text-lg font-semibold tracking-tight text-slate-900">SignedBy</span>
-          <span className="text-xs font-medium text-slate-400">BETA</span>
-        </span>
+        <Logo />
         <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
           Sign in
         </Link>
       </header>
 
-      <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-6 py-20 text-center">
+      {/* Asymmetric padding: keeps the generous space above the hero, but
+          tightens the gap below the value row so the trusted-by strip sits
+          closer to it instead of falling off the first screen. */}
+      <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-6 pt-20 pb-8 text-center">
+        {/* Concrete-savings badge (V3_Design_Inspiration.md #2, DocTrack-
+            style): a number, not an adjective, with /vs/docusign as the
+            receipts. "$700+" is the LOW end of the 3-user math already
+            published on that page ($75-195/mo DocuSign Standard vs $14/mo
+            Team) — keep the two in sync if either page's pricing changes. */}
+        <Link
+          href="/vs/docusign"
+          className="inline-flex items-center gap-1.5 rounded-full border border-yellow-300 bg-yellow-50 px-4 py-1.5 text-sm font-medium text-slate-800 hover:bg-yellow-100"
+        >
+          Teams save <span className="font-bold">$700+/year</span> vs DocuSign — see the math →
+        </Link>
         <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
           E-signatures, without the per-seat tax.
         </h1>
@@ -66,9 +106,35 @@ export default function LandingPage() {
           </span>
         </p>
         <Link href="/login?intent=signup" className={buttonVariants({ size: "lg" })}>
-          Start for free
+          Send your first document free →
         </Link>
         <p className="text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
+
+        {/* Four across at every width. A 2x2 grid on phones read as an odd
+            floating square with too much dead space, so the icons/labels/gaps
+            just scale down instead — one compact strip on mobile, full size
+            from sm up. */}
+        <div className="mt-2 grid w-full max-w-xl grid-cols-4 gap-2 border-y border-slate-100 py-4 sm:gap-4 sm:py-5">
+          {VALUE_PROPS.map((v) => (
+            <div key={v.label} className="flex flex-col items-center gap-1.5 text-center sm:gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-yellow-300 text-slate-900 sm:h-8 sm:w-8">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-3.5 w-3.5 sm:h-4 sm:w-4"
+                  aria-hidden
+                >
+                  <path d={v.path} />
+                </svg>
+              </span>
+              <span className="text-[11px] font-medium leading-tight text-slate-700 sm:text-xs">{v.label}</span>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="mx-auto w-full max-w-3xl px-6 pb-16">
@@ -110,7 +176,9 @@ export default function LandingPage() {
             <Card key={p.name} className="text-center">
               <CardContent className="pt-6">
                 <p className="text-sm font-medium text-slate-500">{p.name}</p>
-                <p className="mt-1 text-2xl font-bold text-slate-900">{p.price}</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">
+                  {formatPrice(currency, p.id, { withPeriod: true })}
+                </p>
                 <p className="mt-2 text-xs text-slate-500">{p.blurb}</p>
               </CardContent>
             </Card>

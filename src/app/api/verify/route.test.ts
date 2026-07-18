@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValidDocumentHash } from "./route";
+import { isValidDocumentHash } from "./hash";
 
 const sha256Hash = "a".repeat(64);
 const sha512Hash = "b".repeat(128);

@@ -1,12 +1,10 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUserAndOrg } from "@/lib/org";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PricingCards } from "@/components/pricing-cards";
 import { ManageBillingButton } from "@/components/manage-billing-button";
 import { PLAN_LABEL } from "@/lib/plan";
-import { OrgSwitcher } from "@/components/org-switcher";
-import { LogoutLink } from "@/components/logout-link";
+import { getRequestCurrency } from "@/lib/currency.server";
 
 export default async function BillingPage({
   searchParams,
@@ -16,7 +14,7 @@ export default async function BillingPage({
   const { success, canceled } = await searchParams;
   const ctx = await getUserAndOrg();
   if (!ctx) redirect("/login");
-  const { supabase, orgId, orgs } = ctx;
+  const { supabase, orgId } = ctx;
 
   // getUserAndOrg()'s orgs list only carries id/name/plan (enough for the
   // switcher) — billing needs stripe_customer_id too, so this fetches that
@@ -29,6 +27,7 @@ export default async function BillingPage({
     .single();
 
   const currentPlan = (org?.plan as "free" | "starter" | "team" | "business" | undefined) ?? "free";
+  const currency = await getRequestCurrency();
 
   let subscription: { status: string; current_period_end: string | null } | null = null;
   if (org?.id) {
@@ -41,17 +40,10 @@ export default async function BillingPage({
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-10">
+    <main className="px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
-              ← Dashboard
-            </Link>{" "}
-            · <LogoutLink />
-            <h1 className="mt-2 text-2xl font-semibold text-slate-900">Billing</h1>
-          </div>
-          <OrgSwitcher orgs={orgs} activeOrgId={orgId} />
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Billing</h1>
         </div>
 
         {success && (
@@ -81,7 +73,7 @@ export default async function BillingPage({
 
         <div>
           <h2 className="mb-3 text-sm font-medium text-slate-700">Change plan</h2>
-          <PricingCards isLoggedIn currentPlan={currentPlan} />
+          <PricingCards isLoggedIn currentPlan={currentPlan} initialCurrency={currency} />
         </div>
       </div>
     </main>

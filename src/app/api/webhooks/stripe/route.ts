@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe, planFromPriceId } from "@/lib/stripe";
+import { referralCouponId } from "@/lib/referral";
 
 // Stripe webhooks arrive unauthenticated (verified by signature instead), so
 // this route uses the service-role admin client throughout — same pattern as
@@ -37,6 +38,32 @@ export async function POST(request: Request) {
 
         const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
         await syncSubscription(admin, orgId, subscription);
+
+        // Referral coupon bookkeeping — only on real completion, so an
+        // abandoned checkout never burns the discount (see the checkout route).
+        const referralContext = session.metadata?.referral_context;
+        if (referralContext === "welcome") {
+          await admin
+            .from("referrals")
+            .update({ referred_discount_applied: true })
+            .eq("referred_org_id", orgId);
+        } else if (referralContext === "reward") {
+          await admin.from("organizations").update({ pending_referral_reward: false }).eq("id", orgId);
+        }
+        break;
+      }
+
+      // The referred org's first REAL (non-zero) payment is what unlocks the
+      // referrer's reward — the abuse guard. Fires for the initial paid invoice
+      // when there's no welcome discount, or for the first renewal after a free
+      // month. Needs the "invoice.payment_succeeded" event enabled on the
+      // Stripe webhook (added alongside the referral feature).
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as Stripe.Invoice;
+        if ((invoice.amount_paid ?? 0) <= 0) break;
+        const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
+        if (!customerId) break;
+        await rewardReferrerOnFirstPayment(admin, stripe, customerId);
         break;
       }
 
@@ -72,6 +99,64 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ received: true });
+}
+
+// Grant the referrer their "get a month" once the org they referred makes a
+// real payment. Idempotent by construction: only a still-'pending' referral is
+// acted on, so repeat invoices no-op. If the referrer already pays for a plan,
+// the coupon is applied to their live subscription now; if they're still on
+// free, we stash pending_referral_reward and redeem it at their next checkout.
+async function rewardReferrerOnFirstPayment(
+  admin: ReturnType<typeof createAdminClient>,
+  stripe: Stripe,
+  referredCustomerId: string
+) {
+  const { data: referredOrg } = await admin
+    .from("organizations")
+    .select("id")
+    .eq("stripe_customer_id", referredCustomerId)
+    .single();
+  if (!referredOrg) return;
+
+  const { data: referral } = await admin
+    .from("referrals")
+    .select("id, referrer_org_id, status")
+    .eq("referred_org_id", referredOrg.id)
+    .single();
+  if (!referral || referral.status !== "pending") return;
+
+  await admin
+    .from("referrals")
+    .update({ status: "qualified", qualified_at: new Date().toISOString() })
+    .eq("id", referral.id);
+
+  const coupon = referralCouponId();
+  if (!coupon) return; // nothing to grant without a configured coupon; leave it 'qualified'
+
+  const { data: referrer } = await admin
+    .from("organizations")
+    .select("id, stripe_subscription_id")
+    .eq("id", referral.referrer_org_id)
+    .single();
+  if (!referrer) return;
+
+  if (referrer.stripe_subscription_id) {
+    // Referrer is already paying — discount their live subscription now.
+    try {
+      await stripe.subscriptions.update(referrer.stripe_subscription_id, { discounts: [{ coupon }] });
+    } catch (err) {
+      console.error("Failed to apply referral reward coupon to referrer subscription", err);
+      return; // stays 'qualified' so it can be retried/handled, not silently lost
+    }
+  } else {
+    // Referrer is on free — redeem the free month at their next checkout.
+    await admin.from("organizations").update({ pending_referral_reward: true }).eq("id", referrer.id);
+  }
+
+  await admin
+    .from("referrals")
+    .update({ status: "rewarded", rewarded_at: new Date().toISOString() })
+    .eq("id", referral.id);
 }
 
 async function resolveOrgId(admin: ReturnType<typeof createAdminClient>, subscription: Stripe.Subscription) {

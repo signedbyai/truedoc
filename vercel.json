@@ -1,5 +1,6 @@
 {
-  "crons": [
+    "regions": ["fra1"],
+	"crons": [
     {
       "path": "/api/cron/reminders",
       "schedule": "0 14 * * *"

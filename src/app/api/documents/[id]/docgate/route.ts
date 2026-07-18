@@ -1,16 +1,8 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getUserAndOrg } from "@/lib/org";
 import { planHasFeature } from "@/lib/plan";
-
-// https-only: this URL is only ever released to a signer via a 302 redirect
-// (src/app/g/[code]/route.ts), same reasoning as the payment link. An empty
-// string clears the gate.
-export const bodySchema = z.object({
-  docgate_url: z.union([z.string().trim().url().startsWith("https://"), z.literal("")]),
-  docgate_label: z.string().trim().max(100).optional().nullable(),
-});
+import { bodySchema } from "./schema";
 
 // Sets (or clears) the DocGate link for a document — Business tier "gate an
 // externally-owned asset behind whole-document completion." Deliberately

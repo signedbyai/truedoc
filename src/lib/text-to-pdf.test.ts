@@ -1,6 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { PDFDocument } from "pdf-lib";
-import { textToPdf } from "./text-to-pdf";
+import { textToPdf, isFieldLabelLine } from "./text-to-pdf";
+
+describe("isFieldLabelLine", () => {
+  it("matches signature-block field labels (incl. translations + placeholders)", () => {
+    for (const line of ["Signature:", "Print Name:", "Date:", "Print Name: [Client Name]", "Handtekening:", "Datum:", "Firma:"]) {
+      expect(isFieldLabelLine(line), line).toBe(true);
+    }
+  });
+
+  it("does not match body sentences or long headings that merely contain a colon", () => {
+    for (const line of [
+      "The following terms apply: the parties agree to the schedule below.",
+      "Note: either party may terminate this agreement with thirty days notice.",
+      "This is an ordinary paragraph with no colon at all",
+      "1. Scope of Work and Deliverables to Be Provided:",
+    ]) {
+      expect(isFieldLabelLine(line), line).toBe(false);
+    }
+  });
+});
 
 describe("textToPdf", () => {
   it("produces a valid, loadable single-page PDF for a short document", async () => {

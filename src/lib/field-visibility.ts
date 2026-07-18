@@ -41,3 +41,14 @@ export function visibleFieldsForSigner<T extends VisibilityField>(
     (f) => f.signer_id === signerId || (f.signer_id === null && f.template_role === null && signerCount === 1)
   );
 }
+
+// Which of these signers would open the document to nothing to sign — the
+// exact state behind "I entered two recipients but signed everything from the
+// first email, and it completed": one recipient got all the fields, the other
+// got none, so that second signer only ever consents to an empty document.
+// The send route uses this to BLOCK sending until every signer has a field
+// (mirrored client-side in field-editor.tsx). Uses the same visibility rule as
+// the signing page/submit so the three can't drift.
+export function signersWithoutFields<T extends VisibilityField>(fields: T[], signerIds: string[]): string[] {
+  return signerIds.filter((id) => visibleFieldsForSigner(fields, id, signerIds.length).length === 0);
+}

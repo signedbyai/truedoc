@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { isValidDocumentHash } from "./hash";
 
 // Public, no-login lookup: given the hash printed on a signed document's
 // Certificate of Completion page (lib/generate-signed-pdf.ts), confirm it
@@ -15,11 +16,8 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 // document certificate issued before the SHA-512 switch) or a 128-hex-char
 // SHA-512 hash (every one since) — document_hash is a plain `text` column,
 // so both lengths already coexist fine in the same table; only this
-// length check needed to know about both. Exported so the length/format
-// rule itself is unit-testable without mocking Supabase.
-export function isValidDocumentHash(hash: string): boolean {
-  return /^[a-f0-9]{64}$/.test(hash) || /^[a-f0-9]{128}$/.test(hash);
-}
+// length check needed to know about both. The length/format rule lives in
+// ./hash so it stays unit-testable without importing this route file.
 
 export async function GET(request: Request) {
   const allowed = await checkRateLimit(`verify:${getClientIp(request)}`, 30, 300);

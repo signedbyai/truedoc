@@ -6,14 +6,7 @@ import { useRouter } from "next/navigation";
 import { CopySigningLinkButton } from "@/components/copy-signing-link-button";
 import { RemindSignerButton } from "@/components/remind-signer-button";
 import { formatEngagement } from "@/lib/page-view-tracking";
-
-const SIGNER_STATUS_LABEL: Record<string, string> = {
-  pending: "Not yet sent",
-  sent: "Sent",
-  viewed: "Viewed",
-  signed: "Signed",
-  declined: "Declined",
-};
+import { StatusPill, SIGNER_STATUS_PILL } from "@/components/status-pill";
 
 type Signer = {
   id: string;
@@ -106,9 +99,18 @@ export function SignerRow({
               Edit
             </button>
           )}
-          <span className="text-xs text-slate-500">
-            {SIGNER_STATUS_LABEL[signer.status] ?? signer.status}
-            {signer.signed_at ? ` · ${new Date(signer.signed_at).toLocaleDateString()}` : ""}
+          <span className="flex items-center gap-1.5">
+            {(() => {
+              const pill = SIGNER_STATUS_PILL[signer.status];
+              return pill ? (
+                <StatusPill tone={pill.tone} label={pill.label} pulse={pill.pulse} />
+              ) : (
+                <StatusPill tone="gray" label={signer.status} />
+              );
+            })()}
+            {signer.signed_at && (
+              <span className="text-xs text-slate-400">{new Date(signer.signed_at).toLocaleDateString()}</span>
+            )}
           </span>
         </span>
       </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bodySchema } from "./route";
+import { bodySchema } from "./schema";
 
 describe("sign view bodySchema", () => {
   it("accepts a single valid delta", () => {
