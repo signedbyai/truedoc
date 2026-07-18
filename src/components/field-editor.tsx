@@ -991,7 +991,10 @@ export function FieldEditor({
               ← Documents
             </Link>
             <div className="relative">
-              <Button variant="outline" onClick={() => setShowMoreMenu((v) => !v)}>
+              {/* size="sm" + rounded-lg across the header trio (More / Send /
+                  Suggest) — the default h-10 buttons read heavy next to the
+                  slim header and the segmented control. */}
+              <Button variant="outline" size="sm" className="rounded-lg" onClick={() => setShowMoreMenu((v) => !v)}>
                 More ⌄
               </Button>
               {showMoreMenu && (
@@ -1037,7 +1040,8 @@ export function FieldEditor({
             <Button
               onClick={() => handleSend()}
               disabled={saving || sending}
-              className="bg-yellow-300 text-slate-900 hover:bg-yellow-400"
+              size="sm"
+              className="rounded-lg bg-yellow-300 text-slate-900 hover:bg-yellow-400"
             >
               {sending ? "Sending…" : "Send for signature →"}
             </Button>
@@ -1049,7 +1053,12 @@ export function FieldEditor({
               wrapped line here is document space lost to the sticky
               header); wraps normally from sm: up. */}
           <div className="flex items-center gap-2 overflow-x-auto pb-0.5 sm:flex-wrap sm:overflow-visible sm:pb-0">
-            {FIELD_TYPES.map((f) => {
+            {/* Segmented control rather than five separate pills: these are
+                mutually-exclusive modes, so they should read as one control
+                with a selected segment. Also narrower, which buys back room
+                on mobile where this row scrolls. */}
+            <div className="flex shrink-0 items-center overflow-hidden rounded-lg border border-slate-200">
+            {FIELD_TYPES.map((f, fi) => {
               // Draws the eye straight to the first thing a brand-new
               // document needs, in case the dismissible banner below gets
               // skipped past. Was the signer side's subtle blue pulse
@@ -1073,16 +1082,18 @@ export function FieldEditor({
                   key={f.type}
                   onClick={() => setSelectedTool(selectedTool === f.type ? null : f.type)}
                   className={cn(
-                    "shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
+                    "shrink-0 whitespace-nowrap px-3 py-1.5 text-xs font-medium transition-colors",
+                    fi > 0 && "border-l border-slate-200",
                     selectedTool === f.type
-                      ? "border-slate-900 bg-slate-900 text-white"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                      ? "bg-slate-900 text-white"
+                      : "bg-white text-slate-600 hover:bg-slate-50"
                   )}
                 >
                   {isNextStep ? <span className="next-step-highlight">{f.label}</span> : f.label}
                 </button>
               );
             })}
+            </div>
 
             {/* Persistent context: which recipient a placed field belongs to.
                 Makes "select a recipient to set the field context" visible
@@ -1120,10 +1131,26 @@ export function FieldEditor({
             {statusMessage && <span className="text-sm text-slate-500">{statusMessage}</span>}
             <Button
               variant="outline"
-              className="ai-comet"
+              size="sm"
+              className="ai-comet rounded-lg"
               onClick={() => runSuggestFields(true)}
               disabled={suggesting}
             >
+              {/* Sparkle marks this as the AI action at a glance — it was the
+                  one button whose nature you had to read the label to learn.
+                  Inline SVG, same approach as the rest of the codebase. */}
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-3.5 w-3.5"
+                aria-hidden
+              >
+                <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3zM18 16l.7 1.8L20.5 18.5l-1.8.7L18 21l-.7-1.8L15.5 18.5l1.8-.7L18 16z" />
+              </svg>
               {suggesting ? "Suggesting…" : "Suggest fields"}
             </Button>
           </div>
