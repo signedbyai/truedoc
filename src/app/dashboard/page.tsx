@@ -4,6 +4,7 @@ import { getUserAndOrg } from "@/lib/org";
 import { seatsOverLimit, PLAN_LABEL } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { TimeGreeting } from "@/components/time-greeting";
 import { ReferralCard } from "@/components/referral-card";
 import { AttributionClaim } from "@/components/attribution-claim";
@@ -129,21 +130,30 @@ export default async function DashboardPage() {
                 app-wide version of this restyle was tried and rolled back, so
                 it stays a local override rather than a ui/button.tsx change.
 
-                Both carry the same min-w so they come out equal width instead
-                of each sizing to its own label. They're two alternatives for
+                Equal width, but reached two different ways. From sm up, a
+                shared min-w sized off the longer label ("Upload document →").
+                On mobile, flex-1 instead: a fixed 10.5rem pair needs 344px and
+                the card only offers ~340px even on a 420pt phone, so the min-w
+                wrapped them onto separate lines. Splitting the row equally
+                keeps them side by side and still equal.
+
+                The arrow is also hidden on mobile. With it, the longer label
+                needs 155px a side and only clears on 420pt-and-up devices;
+                without it, 136px, which holds from 375pt up. Dropping the
+                arrow was preferred over shrinking to text-xs — the type stays
+                the same size as the rest of the UI, and the arrow is
+                decoration rather than meaning. They're two alternatives for
                 starting a document, and unequal boxes read as a primary with
-                an afterthought beside it. Sized off the longer of the two
-                labels ("Upload document →"). */}
-            <div className="flex flex-wrap items-center gap-2">
+                an afterthought beside it. */}
+            <div className="flex w-full items-center gap-2 sm:w-auto">
               <Link
                 href="/dashboard/templates"
-                className={buttonVariants({
-                  variant: "outline",
-                  size: "sm",
-                  className: "min-w-[10.5rem] rounded-lg",
-                })}
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "flex-1 rounded-lg px-2.5 sm:min-w-[10.5rem] sm:flex-none sm:px-3"
+                )}
               >
-                From template →
+                From template<span className="hidden sm:inline"> →</span>
               </Link>
               {/* Stays slate-900, not yellow. Yellow was tried and pulled: the
                   dashboard already has a primary CTA above this card, and two
@@ -152,9 +162,12 @@ export default async function DashboardPage() {
                   signature", the irreversible step, and nothing else. */}
               <Link
                 href="/dashboard/documents/new"
-                className={buttonVariants({ size: "sm", className: "min-w-[10.5rem] rounded-lg" })}
+                className={cn(
+                  buttonVariants({ size: "sm" }),
+                  "flex-1 rounded-lg px-2.5 sm:min-w-[10.5rem] sm:flex-none sm:px-3"
+                )}
               >
-                Upload document →
+                Upload document<span className="hidden sm:inline"> →</span>
               </Link>
             </div>
           </CardHeader>

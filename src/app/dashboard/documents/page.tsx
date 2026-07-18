@@ -133,22 +133,24 @@ export default async function DocumentsPage({
               which is the real action. Local override rather than a
               ui/button.tsx change — the app-wide restyle was tried in b0e3748
               and rolled back. */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full items-center gap-2 sm:w-auto">
             <Link
               href="/dashboard/templates"
-              className={buttonVariants({
-                variant: "outline",
-                size: "sm",
-                className: "min-w-[10.5rem] rounded-lg",
-              })}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "flex-1 rounded-lg px-2.5 sm:min-w-[10.5rem] sm:flex-none sm:px-3"
+              )}
             >
-              From template →
+              From template<span className="hidden sm:inline"> →</span>
             </Link>
             <Link
               href="/dashboard/documents/new"
-              className={buttonVariants({ size: "sm", className: "min-w-[10.5rem] rounded-lg" })}
+              className={cn(
+                buttonVariants({ size: "sm" }),
+                "flex-1 rounded-lg px-2.5 sm:min-w-[10.5rem] sm:flex-none sm:px-3"
+              )}
             >
-              Upload document →
+              Upload document<span className="hidden sm:inline"> →</span>
             </Link>
           </div>
         </div>
