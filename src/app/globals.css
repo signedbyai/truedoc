@@ -110,12 +110,8 @@ body[data-immersive="1"] [data-dashboard-content] {
   padding-bottom: 0 !important;
 }
 
-/* AI "magic" comet: a yellow comet head with a fading tail that orbits a
-   button's outline, to draw the eye to AI-powered actions (Suggest fields,
-   Describe it / AI draft, What am I signing?). A rotating conic-gradient
-   masked to a thin ring around the element; @property makes the angle
-   animatable so the head glides smoothly instead of stepping. */
-/* Marks the AI action ("Suggest fields"). Was an orbiting comet — a conic
+/* Marks AI-powered actions (Suggest fields, Describe it / AI draft, What am I
+   signing?, new-document AI tab). Was an orbiting comet — a conic
    gradient rotating a bright dot around the border — which drew the eye but
    read as a loading spinner, and the moving highlight caught the frame at
    random angles in screenshots. Now a slow yellow glow breathing on the
