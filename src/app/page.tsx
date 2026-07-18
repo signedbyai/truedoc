@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
@@ -143,6 +144,27 @@ export default async function LandingPage() {
               <span className="text-[11px] font-medium leading-tight text-slate-700 sm:text-xs">{v.label}</span>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Product shot. Until now the marketing site had no image of the actual
+          product anywhere — a visitor had to take on faith that it exists and
+          looks decent. Deliberately a real screenshot rather than an
+          illustration: it doubles as proof, and it's inherently unique to us
+          (stock art reads as templated). Wider than the max-w-3xl text column
+          so the UI is legible. next/image handles format negotiation and
+          reserves the space via width/height, so it can't shift the layout. */}
+      <section className="mx-auto w-full max-w-5xl px-6 pb-12">
+        <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+          <Image
+            src="/hero-field-editor.png"
+            alt="The SignedBy field editor: a consulting agreement with signature and date fields placed for two recipients, ready to send for signature"
+            width={2060}
+            height={1070}
+            priority
+            sizes="(min-width: 1024px) 64rem, 100vw"
+            className="h-auto w-full"
+          />
         </div>
       </section>
 

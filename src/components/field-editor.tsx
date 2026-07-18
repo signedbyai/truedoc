@@ -1579,7 +1579,17 @@ export function FieldEditor({
                         removeField(f.id);
                       }}
                       aria-label={`Remove ${def.label.toLowerCase()} field`}
-                      className="absolute -right-3 -top-3 flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-xs text-white shadow-sm sm:-right-2.5 sm:-top-2.5 sm:h-5 sm:w-5"
+                      className={cn(
+                        "absolute -right-3 -top-3 flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-xs text-white shadow-sm transition-opacity sm:-right-2.5 sm:-top-2.5 sm:h-5 sm:w-5",
+                        // Mouse/trackpad: reveal on hover (or keyboard focus),
+                        // matching the resize handles above — a document with
+                        // several placed fields was otherwise permanently
+                        // covered in red badges, which reads as errors rather
+                        // than controls. Gated on pointer-fine so TOUCH users
+                        // still always see it: they have no hover, and without
+                        // it there'd be no way to delete a field on a phone.
+                        "pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:focus-visible:opacity-100"
+                      )}
                     >
                       ×
                     </button>
