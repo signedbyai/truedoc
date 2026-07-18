@@ -124,12 +124,30 @@ export default async function DashboardPage() {
               <CardTitle>Recent documents</CardTitle>
               <CardDescription>Upload a PDF and place signature fields.</CardDescription>
             </div>
+            {/* Same slim, rounded shape as the field editor's header trio
+                (size="sm" + rounded-lg), and the same yellow for the primary
+                action. Scoped to this pair on purpose: the app-wide version of
+                this restyle was tried and rolled back, so it stays a local
+                override here rather than a change to ui/button.tsx. */}
             <div className="flex flex-wrap items-center gap-2">
-              <Link href="/dashboard/templates" className={buttonVariants({ variant: "outline", size: "default" })}>
+              <Link
+                href="/dashboard/templates"
+                className={buttonVariants({ variant: "outline", size: "sm", className: "rounded-lg" })}
+              >
                 From template
               </Link>
-              <Link href="/dashboard/documents/new" className={buttonVariants({ size: "default" })}>
-                Upload document
+              <Link
+                href="/dashboard/documents/new"
+                className={buttonVariants({
+                  size: "sm",
+                  // Yellow beats slate-900 here because this is the one thing a
+                  // new user has to do on this page, and it matches "Send for
+                  // signature" — the same yellow now marks the primary step at
+                  // both ends of the flow.
+                  className: "rounded-lg bg-yellow-300 text-slate-900 hover:bg-yellow-400",
+                })}
+              >
+                Upload document →
               </Link>
             </div>
           </CardHeader>
