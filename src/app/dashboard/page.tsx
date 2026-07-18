@@ -136,16 +136,14 @@ export default async function DashboardPage() {
               >
                 From template
               </Link>
+              {/* Stays slate-900, not yellow. Yellow was tried and pulled: the
+                  dashboard already has a primary CTA above this card, and two
+                  competing yellows in one viewport cancel each other out.
+                  Yellow is worth more kept scarce — it marks "Send for
+                  signature", the irreversible step, and nothing else. */}
               <Link
                 href="/dashboard/documents/new"
-                className={buttonVariants({
-                  size: "sm",
-                  // Yellow beats slate-900 here because this is the one thing a
-                  // new user has to do on this page, and it matches "Send for
-                  // signature" — the same yellow now marks the primary step at
-                  // both ends of the flow.
-                  className: "rounded-lg bg-yellow-300 text-slate-900 hover:bg-yellow-400",
-                })}
+                className={buttonVariants({ size: "sm", className: "rounded-lg" })}
               >
                 Upload document →
               </Link>
