@@ -147,7 +147,7 @@ export default async function DocumentsPage({
                   id="status"
                   name="status"
                   defaultValue={status}
-                  className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+                  className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
                 >
                   <option value="">All</option>
                   {STATUS_OPTIONS.map((s) => (
@@ -165,7 +165,7 @@ export default async function DocumentsPage({
                   id="sort"
                   name="sort"
                   defaultValue={sort}
-                  className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+                  className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
                 >
                   <option value="newest">Newest first</option>
                   <option value="oldest">Oldest first</option>
