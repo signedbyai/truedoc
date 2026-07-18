@@ -110,8 +110,8 @@ body[data-immersive="1"] [data-dashboard-content] {
   padding-bottom: 0 !important;
 }
 
-/* Marks AI-powered actions (Suggest fields, Describe it / AI draft, What am I
-   signing?, new-document AI tab). Was an orbiting comet — a conic
+/* Marks AI-powered actions (Suggest fields, AI Drafter, What am I signing?,
+   new-document AI tab). Was an orbiting comet — a conic
    gradient rotating a bright dot around the border — which drew the eye but
    read as a loading spinner, and the moving highlight caught the frame at
    random angles in screenshots. Now a slow yellow glow breathing on the

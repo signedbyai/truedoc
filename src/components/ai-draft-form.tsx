@@ -173,10 +173,10 @@ export function AiDraftForm() {
 
       <div className="space-y-1.5">
         <Label htmlFor="description">Describe what you need</Label>
-        {/* Wrapper carries the orbiting comet — it hops here from the
-            "Describe it (AI draft)" tab once this mode is open. Textareas
-            don't render ::after, so the ring lives on this div; `block` on the
-            textarea removes the inline baseline gap so the ring hugs it. */}
+        {/* Wrapper carries the yellow glow — it hops here from the "AI Drafter"
+            tab once this mode is open. Textareas don't render ::after, so the
+            ring lives on this div; `block` on the textarea removes the inline
+            baseline gap so the ring hugs it. */}
         <div className="ai-comet rounded-md">
           <textarea
             id="description"

@@ -125,16 +125,25 @@ export default async function DashboardPage() {
               <CardDescription>Upload a PDF and place signature fields.</CardDescription>
             </div>
             {/* Same slim, rounded shape as the field editor's header trio
-                (size="sm" + rounded-lg), and the same yellow for the primary
-                action. Scoped to this pair on purpose: the app-wide version of
-                this restyle was tried and rolled back, so it stays a local
-                override here rather than a change to ui/button.tsx. */}
+                (size="sm" + rounded-lg). Scoped to this pair on purpose: the
+                app-wide version of this restyle was tried and rolled back, so
+                it stays a local override rather than a ui/button.tsx change.
+
+                Both carry the same min-w so they come out equal width instead
+                of each sizing to its own label. They're two alternatives for
+                starting a document, and unequal boxes read as a primary with
+                an afterthought beside it. Sized off the longer of the two
+                labels ("Upload document →"). */}
             <div className="flex flex-wrap items-center gap-2">
               <Link
                 href="/dashboard/templates"
-                className={buttonVariants({ variant: "outline", size: "sm", className: "rounded-lg" })}
+                className={buttonVariants({
+                  variant: "outline",
+                  size: "sm",
+                  className: "min-w-[10.5rem] rounded-lg",
+                })}
               >
-                From template
+                From template →
               </Link>
               {/* Stays slate-900, not yellow. Yellow was tried and pulled: the
                   dashboard already has a primary CTA above this card, and two
@@ -143,7 +152,7 @@ export default async function DashboardPage() {
                   signature", the irreversible step, and nothing else. */}
               <Link
                 href="/dashboard/documents/new"
-                className={buttonVariants({ size: "sm", className: "rounded-lg" })}
+                className={buttonVariants({ size: "sm", className: "min-w-[10.5rem] rounded-lg" })}
               >
                 Upload document →
               </Link>

@@ -10,6 +10,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { cn } from "@/lib/utils";
 import { AiDraftForm } from "@/components/ai-draft-form";
 
+// Shared by all three states of the mode pair (upload, AI Drafter, and the
+// locked AI Drafter upsell) so they stay the same size as labels change.
+// min-w is sized off the longest of the two live labels; text-center keeps the
+// shorter one from sitting left in its padded box.
+const MODE_TAB_CLASS =
+  "min-w-[8rem] rounded-md border px-3 py-1.5 text-center text-sm font-medium transition-colors";
+
 export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -104,11 +111,17 @@ export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
       <div className="mx-auto max-w-xl">
         <h1 className="mb-6 text-2xl font-semibold text-slate-900">New document</h1>
 
+        {/* Both tabs share MODE_TAB_CLASS, including a min-width, so they come
+            out the same size instead of each sizing to its own label. They are
+            two halves of one either/or choice — a pair of unequal boxes reads
+            as a primary option with an afterthought beside it, which is not
+            the relationship here. The min-width is set off the longer label
+            ("Upload a file"), so the shorter one pads out to meet it. */}
         <div className="mb-4 flex gap-2">
           <button
             onClick={() => setMode("upload")}
             className={cn(
-              "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
+              MODE_TAB_CLASS,
               mode === "upload"
                 ? "border-slate-900 bg-slate-900 text-white"
                 : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -120,7 +133,7 @@ export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
             <button
               onClick={() => setMode("draft")}
               className={cn(
-                "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
+                MODE_TAB_CLASS,
                 // Comet lives on this button until AI-draft mode is chosen — then
                 // it hops to the "Describe what you need" box (see ai-draft-form).
                 mode !== "draft" && "ai-comet",
@@ -129,7 +142,7 @@ export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
               )}
             >
-              Describe it (AI draft)
+              AI Drafter
             </button>
           ) : (
             // Same shape/position as the real tab so the feature is still
@@ -140,9 +153,12 @@ export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
             // just reject it — see POST /api/documents/draft).
             <a
               href="/pricing"
-              className="rounded-md border border-dashed border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-400 transition-colors hover:border-slate-400 hover:text-slate-600"
+              className={cn(
+                MODE_TAB_CLASS,
+                "border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:text-slate-600"
+              )}
             >
-              Describe it (AI draft) · Starter+
+              AI Drafter · Starter+
             </a>
           )}
         </div>
