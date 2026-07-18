@@ -115,11 +115,19 @@ body[data-immersive="1"] [data-dashboard-content] {
    Describe it / AI draft, What am I signing?). A rotating conic-gradient
    masked to a thin ring around the element; @property makes the angle
    animatable so the head glides smoothly instead of stepping. */
-@property --ai-comet-angle {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
-}
+/* Marks the AI action ("Suggest fields"). Was an orbiting comet — a conic
+   gradient rotating a bright dot around the border — which drew the eye but
+   read as a loading spinner, and the moving highlight caught the frame at
+   random angles in screenshots. Now a slow yellow glow breathing on the
+   button's edge: same "something intelligent lives here" signal, no implied
+   progress, and it photographs consistently. Class name kept so every
+   existing call site stays valid.
+
+   The glow lives on a ::after pseudo-element, NOT on the element's own
+   box-shadow: Tailwind builds focus rings out of box-shadow too, so animating
+   it directly would override the focus-visible ring on these buttons and lose
+   the keyboard focus indicator. Animating the pseudo-element's opacity keeps
+   both. */
 .ai-comet {
   position: relative;
 }
@@ -128,32 +136,23 @@ body[data-immersive="1"] [data-dashboard-content] {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  padding: 2px;
-  background: conic-gradient(
-    from var(--ai-comet-angle),
-    rgba(250, 204, 21, 0) 0deg,
-    rgba(250, 204, 21, 0) 300deg,
-    rgba(250, 204, 21, 0.12) 324deg,
-    rgba(250, 204, 21, 0.55) 348deg,
-    rgba(250, 204, 21, 0.95) 358deg,
-    rgba(250, 204, 21, 0) 360deg
-  );
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  filter: drop-shadow(0 0 2px rgba(250, 204, 21, 0.6));
   pointer-events: none;
-  animation: ai-comet-orbit 2.4s linear infinite;
+  box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.35), 0 0 10px 1px rgba(250, 204, 21, 0.45);
+  opacity: 0;
+  animation: ai-glow-pulse 2.8s ease-in-out infinite;
 }
-@keyframes ai-comet-orbit {
-  to {
-    --ai-comet-angle: 360deg;
+@keyframes ai-glow-pulse {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .ai-comet::after {
     animation: none;
-    opacity: 0;
+    opacity: 0.55;
   }
 }

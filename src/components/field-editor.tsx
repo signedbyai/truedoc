@@ -1138,15 +1138,17 @@ export function FieldEditor({
             >
               {/* Sparkle marks this as the AI action at a glance — it was the
                   one button whose nature you had to read the label to learn.
-                  Inline SVG, same approach as the rest of the codebase. */}
+                  Filled yellow (not currentColor) so it carries the same brand
+                  accent as the glow on the button's edge. Inline SVG, same
+                  approach as the rest of the codebase. */}
               <svg
                 viewBox="0 0 24 24"
-                fill="none"
+                fill="currentColor"
                 stroke="currentColor"
-                strokeWidth={1.8}
+                strokeWidth={1.2}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="h-3.5 w-3.5"
+                className="h-3.5 w-3.5 text-yellow-500"
                 aria-hidden
               >
                 <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3zM18 16l.7 1.8L20.5 18.5l-1.8.7L18 21l-.7-1.8L15.5 18.5l1.8-.7L18 16z" />
