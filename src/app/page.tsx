@@ -154,17 +154,25 @@ export default async function LandingPage() {
           (stock art reads as templated). Wider than the max-w-3xl text column
           so the UI is legible. next/image handles format negotiation and
           reserves the space via width/height, so it can't shift the layout. */}
+      {/* Sized down deliberately: capped at 46rem (~736px) and centred, so it
+          never balloons on a wide monitor — a product shot blown up to full
+          width reads as filler rather than proof. The wrapper is a flex row
+          ready for the planned second shot (mobile signer view) to sit
+          alongside on the right; adding it means dropping a second child in
+          and giving this one a width class. */}
       <section className="mx-auto w-full max-w-5xl px-6 pb-12">
-        <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
-          <Image
-            src="/hero-field-editor.png"
-            alt="The SignedBy field editor: a consulting agreement with signature fields placed for two recipients, showing the draft auto-saved and ready to send"
-            width={1557}
-            height={1058}
-            priority
-            sizes="(min-width: 1024px) 64rem, 100vw"
-            className="h-auto w-full"
-          />
+        <div className="mx-auto flex max-w-[46rem] justify-center">
+          <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+            <Image
+              src="/hero-field-editor.png"
+              alt="The SignedBy field editor: a consulting agreement with signature fields placed for two recipients, showing the draft auto-saved and ready to send"
+              width={1557}
+              height={1058}
+              priority
+              sizes="(min-width: 768px) 46rem, 100vw"
+              className="h-auto w-full"
+            />
+          </div>
         </div>
       </section>
 
