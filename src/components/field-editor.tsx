@@ -992,10 +992,13 @@ export function FieldEditor({
               ← Documents
             </Link>
             <div className="relative">
-              {/* size="sm" + rounded-lg across the header trio (More / Send /
-                  Suggest) — the default h-10 buttons read heavy next to the
-                  slim header and the segmented control. */}
-              <Button variant="outline" size="sm" className="rounded-lg" onClick={() => setShowMoreMenu((v) => !v)}>
+              {/* The header trio (More / Send / Suggest) needed slimmer,
+                  rounder buttons than the old h-10 rounded-md default, which
+                  read heavy beside the slim header and the segmented control.
+                  That's now the shared default in ui/button.tsx, so the
+                  per-button rounded-lg overrides that used to sit here are
+                  gone. */}
+              <Button variant="outline" size="sm" onClick={() => setShowMoreMenu((v) => !v)}>
                 More ⌄
               </Button>
               {/* Menu rows, not a stack of outline buttons. The buttons had no
@@ -1065,7 +1068,7 @@ export function FieldEditor({
               onClick={() => handleSend()}
               disabled={saving || sending}
               size="sm"
-              className="rounded-lg bg-yellow-300 text-slate-900 hover:bg-yellow-400"
+              className="bg-yellow-300 text-slate-900 hover:bg-yellow-400"
             >
               {sending ? "Sending…" : "Send for signature →"}
             </Button>
@@ -1201,7 +1204,7 @@ export function FieldEditor({
             <Button
               variant="outline"
               size="sm"
-              className="ai-comet rounded-lg"
+              className="ai-comet"
               onClick={() => runSuggestFields(true)}
               disabled={suggesting}
             >

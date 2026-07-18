@@ -145,7 +145,7 @@ export function AiDraftForm() {
           id="document-type"
           value={documentType}
           onChange={(e) => setDocumentType(e.target.value as DraftDocumentType)}
-          className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+          className="h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
         >
           {DOCUMENT_TYPES.map((t) => (
             <option key={t.id} value={t.id}>
@@ -161,7 +161,7 @@ export function AiDraftForm() {
           id="draft-language"
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
-          className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+          className="h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
         >
           {DRAFT_LANGUAGES.map((l) => (
             <option key={l.code} value={l.code}>
