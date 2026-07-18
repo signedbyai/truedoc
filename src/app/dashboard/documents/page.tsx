@@ -161,12 +161,24 @@ export default async function DocumentsPage({
             <CardDescription>Search by title or recipient name/email, filter by status, or sort.</CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Search, Status, Sort and Apply all sit at h-9 rounded-lg to match
+                the Upload document button above. They share a row, so a control
+                that is 4px taller or squarer than its neighbour is visible
+                immediately. Overridden here rather than in ui/input.tsx: the
+                app-wide version of this change was tried in b0e3748 and rolled
+                back, so every other form keeps the current height. */}
             <form method="get" className="flex flex-wrap items-end gap-3">
               <div className="min-w-[200px] flex-1">
                 <label htmlFor="q" className="mb-1 block text-xs font-medium text-slate-600">
                   Search
                 </label>
-                <Input id="q" name="q" defaultValue={q} placeholder="Title, recipient name, or email" />
+                <Input
+                  id="q"
+                  name="q"
+                  defaultValue={q}
+                  placeholder="Title, recipient name, or email"
+                  className="h-9 rounded-lg"
+                />
               </div>
               <div>
                 <label htmlFor="status" className="mb-1 block text-xs font-medium text-slate-600">
@@ -176,7 +188,7 @@ export default async function DocumentsPage({
                   id="status"
                   name="status"
                   defaultValue={status}
-                  className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+                  className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
                 >
                   <option value="">All</option>
                   {STATUS_OPTIONS.map((s) => (
@@ -194,14 +206,17 @@ export default async function DocumentsPage({
                   id="sort"
                   name="sort"
                   defaultValue={sort}
-                  className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+                  className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
                 >
                   <option value="newest">Newest first</option>
                   <option value="oldest">Oldest first</option>
                   <option value="title">Title (A–Z)</option>
                 </select>
               </div>
-              <button type="submit" className={buttonVariants({ size: "default" })}>
+              <button
+                type="submit"
+                className={cn(buttonVariants({ size: "sm" }), "rounded-lg")}
+              >
                 Apply
               </button>
               {(q || status || (sort && sort !== "newest")) && (
