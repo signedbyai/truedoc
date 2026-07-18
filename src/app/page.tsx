@@ -176,14 +176,14 @@ export default async function LandingPage() {
           bigger of the two on mobile is the phone, proportionally. */}
       <section className="mx-auto w-full max-w-5xl px-6 pb-12 sm:pr-12">
         <div className="relative mx-auto max-w-[40rem]">
-          <div className="w-[78%] overflow-hidden rounded-xl border border-slate-200 shadow-sm sm:w-full">
+          <div className="w-[82%] overflow-hidden rounded-xl border border-slate-200 shadow-sm sm:w-full">
             <Image
               src="/hero-field-editor.png"
               alt="The SignedBy field editor: a consulting agreement with signature fields placed for two recipients, showing the draft auto-saved and ready to send"
               width={1562}
               height={1070}
               priority
-              sizes="(min-width: 768px) 40rem, 78vw"
+              sizes="(min-width: 768px) 40rem, 82vw"
               className="h-auto w-full"
             />
           </div>
@@ -191,8 +191,14 @@ export default async function LandingPage() {
               far taller per unit width (2370/1236) than the editor is (1070/1562),
               and it's anchored to the container's bottom, so past ~32% its top
               edge climbs out of the container and collides with the CTA above.
-              30% keeps it inside at every mobile width down to 320px. */}
-          <div className="absolute -bottom-6 -right-1 w-[30%] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:-right-6 sm:w-[28%] lg:-right-10 lg:w-[30%]">
+              30% keeps it inside at every mobile width down to 320px.
+
+              No overhang on mobile (right-0, vs the negative insets from sm up).
+              At phone width the container is only a few hundred px, so even a
+              4px overhang parked the phone in the right gutter with barely any
+              overlap -- it read as a second, unrelated image floating off the
+              edge rather than as one composition. */}
+          <div className="absolute -bottom-6 right-0 w-[30%] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:-right-6 sm:w-[28%] lg:-right-10 lg:w-[30%]">
             <Image
               src="/hero-signer-mobile.png"
               alt="A signer signing the same document on their phone: a handwritten signature drawn in the signature pad, with a yellow slide-to-sign bar ready to submit"
