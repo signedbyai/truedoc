@@ -5,6 +5,8 @@ import { seatsOverLimit, PLAN_LABEL } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { LIST_STATUS_PILL, StatusPill } from "@/components/status-pill";
+import { BadgeIcon, FirstStepIcon } from "@/components/badge-icon";
+import { tallyStatuses, workspaceStats } from "@/lib/workspace-stats";
 import { cn } from "@/lib/utils";
 import { TimeGreeting } from "@/components/time-greeting";
 import { ReferralCard } from "@/components/referral-card";
@@ -29,6 +31,23 @@ export default async function DashboardPage() {
     .eq("org_id", orgId)
     .order("created_at", { ascending: false })
     .limit(5);
+
+  // Status tally for the workspace card's stats + badge. Counting rows rather
+  // than reading a maintained counter — at these volumes a status-only select
+  // over one org is cheap, and there's no counter to drift out of sync.
+  //
+  // PER-USER SCOPE (future settings toggle): this is the only place that would
+  // change — add `.eq("created_by", user.id)` here and the maths in
+  // lib/workspace-stats.ts works unaltered. It needs a migration first though:
+  // documents has no created_by column, and audit_events records signer_id
+  // (the recipient) not the sender, so nothing currently records who created a
+  // document. Historical rows therefore can't be backfilled — every user's
+  // personal count would start at zero the day it ships.
+  const { data: allStatuses } = await supabase
+    .from("documents")
+    .select("status")
+    .eq("org_id", orgId);
+  const stats = workspaceStats(tallyStatuses((allStatuses ?? []).map((d) => d.status)));
 
   // Lightweight heads-up if the active org currently has more members than
   // its plan allows — most commonly right after a downgrade via Stripe's
@@ -121,6 +140,62 @@ export default async function DashboardPage() {
                 </li>
               ))}
             </ul>
+
+            {/* Badge + stats. Two rules shape this block:
+
+                Nothing is ever a rebuke. A brand new workspace gets a prompt,
+                not a row of zeroes under a greyed-out hat — most accounts here
+                are new, and "0 sent · 0 signed · 0%" is worse than showing
+                nothing at all. Badges are volume-based so they can only ever be
+                gained, never lost.
+
+                No "declined" stat card. Three cards reading Sent / Signed /
+                Declined turns this into a scoreboard whose third column is your
+                failures, and a decline is often not the sender's doing. The
+                count is on the documents list for anyone who wants it. */}
+            {stats.earned ? (
+              <div className="mt-5 space-y-3">
+                <div className="flex items-center gap-3 rounded-lg bg-amber-50 px-3.5 py-3 text-amber-900">
+                  <BadgeIcon id={stats.earned.id} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{stats.earned.label}</p>
+                    <p className="text-xs text-amber-800">
+                      {stats.sent} document{stats.sent === 1 ? "" : "s"} sent
+                      {stats.next && ` · next badge at ${stats.next.threshold}`}
+                    </p>
+                  </div>
+                </div>
+                <dl className="grid grid-cols-3 gap-2">
+                  <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+                    <dt className="text-xs text-slate-500">Sent</dt>
+                    <dd className="text-xl font-medium text-slate-900">{stats.sent}</dd>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+                    <dt className="text-xs text-slate-500">Signed</dt>
+                    <dd className="text-xl font-medium text-slate-900">{stats.signed}</dd>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+                    <dt className="text-xs text-slate-500">Completion</dt>
+                    {/* Hidden below 3 resolved documents — 1 of 1 is "100%",
+                        which says nothing and would look broken the moment a
+                        second document declines. */}
+                    <dd className="text-xl font-medium text-slate-900">
+                      {stats.completionRate === null ? "—" : `${stats.completionRate}%`}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            ) : (
+              <div className="mt-5 flex items-center gap-3 rounded-lg bg-slate-50 px-3.5 py-3">
+                <span className="text-slate-400">
+                  <FirstStepIcon />
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-slate-900">Send your first document</p>
+                  <p className="text-xs text-slate-500">Earn your first badge</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
