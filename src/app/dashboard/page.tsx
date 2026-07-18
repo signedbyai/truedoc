@@ -96,17 +96,28 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <ul className="space-y-2 text-sm text-slate-700">
+              {/* Name on its own line, plan and status on a second. The old
+                  single line — "{name} — plan: {plan}" plus the pill — wrapped
+                  on mobile, and where it wrapped depended on how long the
+                  person's name happened to be, so it looked fine for some
+                  accounts and broken for others. Stacking removes the
+                  dependency entirely rather than buying back a few pixels.
+                  Costs one line of height; worth it for a line that can't
+                  break. */}
               {orgs.map((o) => (
-                <li key={o.id} className="flex items-center gap-2">
-                  <span>
-                    {o.name} — plan: <strong>{o.plan}</strong>
-                  </span>
-                  {/* Was solid slate-900 with white text — the heaviest
-                      treatment in the app, spent on a label that only
-                      passively confirms state. Now the same grammar as the
-                      document list pills: grey background because it needs
-                      nothing from you, green dot because the state is good. */}
-                  {o.id === orgId && <StatusPill tone="gray" dotTone="green" label="Active" />}
+                <li key={o.id}>
+                  <p className="truncate">{o.name}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-slate-500">
+                      Plan: <strong className="font-medium text-slate-700">{PLAN_LABEL[o.plan] ?? o.plan}</strong>
+                    </span>
+                    {/* Was solid slate-900 with white text — the heaviest
+                        treatment in the app, spent on a label that only
+                        passively confirms state. Now the same grammar as the
+                        document list pills: grey background because it needs
+                        nothing from you, green dot because the state is good. */}
+                    {o.id === orgId && <StatusPill tone="gray" dotTone="green" label="Active" />}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -179,36 +190,22 @@ export default async function DashboardPage() {
                       >
                         {doc.title}
                       </Link>
-                      {/* On mobile the pill rides on this line, so the title
-                          gets the full row width. The old layout had the pill
-                          shrink-0 beside the title, which meant a longer
-                          status ate the filename — backwards, since the
-                          filename is how you identify the row. */}
-                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
-                        {pill && (
-                          <StatusPill
-                            tone={pill.tone}
-                            dotTone={pill.dotTone}
-                            label={pill.label}
-                            className="sm:hidden"
-                          />
-                        )}
-                        <span>
-                          {doc.page_count} page{doc.page_count === 1 ? "" : "s"} &middot;{" "}
-                          {new Date(doc.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {doc.page_count} page{doc.page_count === 1 ? "" : "s"} &middot;{" "}
+                        {new Date(doc.created_at).toLocaleDateString()}
+                      </p>
                     </div>
-                    {/* Desktop keeps the pill right-aligned: it forms a column
-                        you can run your eye down, which is the whole point on
-                        a wide screen. That alignment doesn't survive
-                        truncation on a phone, hence the swap above. */}
+                    {/* One pill, right-aligned at every width. A second copy
+                        on the meta line for mobile was tried and dropped —
+                        two pills per row read as a duplicate, not a
+                        responsive swap. The title truncates instead, which is
+                        the trade: short labels here keep that rare. */}
                     {pill && (
                       <StatusPill
                         tone={pill.tone}
                         dotTone={pill.dotTone}
                         label={pill.label}
-                        className="hidden shrink-0 sm:inline-flex"
+                        className="shrink-0"
                       />
                     )}
                   </li>

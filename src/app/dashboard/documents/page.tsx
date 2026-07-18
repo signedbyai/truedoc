@@ -255,14 +255,6 @@ export default async function DocumentsPage({
                           >
                             {doc.title}
                           </Link>
-                          {pill && (
-                            <StatusPill
-                              tone={pill.tone}
-                              dotTone={pill.dotTone}
-                              label={pill.label}
-                              className="mt-1 sm:hidden"
-                            />
-                          )}
                           <p className="text-xs text-slate-500">
                             {/* Short doc ID (first 8 of the UUID) — the same
                                 ID the Certificate of Completion prints in
@@ -279,16 +271,16 @@ export default async function DocumentsPage({
                             )}
                           </p>
                         </div>
-                        {/* Desktop keeps the pill right-aligned: it forms a
-                            column you can run your eye down. On mobile it
-                            moves onto the meta line below, so a longer status
-                            can't eat the filename. */}
+                        {/* One pill, right-aligned at every width. A mobile
+                            copy on the meta line was tried and dropped — two
+                            pills per row read as a duplicate rather than a
+                            responsive swap. */}
                         {pill && (
                           <StatusPill
                             tone={pill.tone}
                             dotTone={pill.dotTone}
                             label={pill.label}
-                            className="mt-0.5 hidden shrink-0 sm:inline-flex"
+                            className="mt-0.5 shrink-0"
                           />
                         )}
                       </div>
