@@ -25,12 +25,21 @@ export type StatusTone = keyof typeof TONES;
 
 export function StatusPill({
   tone,
+  dotTone,
   label,
   pulse = false,
   icon,
   className = "",
 }: {
   tone: StatusTone;
+  // Lets the dot carry a different colour from the background. Used by the
+  // list pills: background answers "does this need me" (only Declined and
+  // Sent are coloured), the dot answers "what state is it". Completed is the
+  // case that needs the split — over time it becomes most of the list, so a
+  // full green pill would spend the loudest colour on the rows that need
+  // nothing, while a green dot on grey still reads as done at a glance.
+  // Defaults to `tone`, so the detail page is unaffected.
+  dotTone?: StatusTone;
   label: string;
   pulse?: boolean;
   // A check mark instead of the status dot — reads as more final than a
@@ -39,6 +48,7 @@ export function StatusPill({
   className?: string;
 }) {
   const t = TONES[tone];
+  const d = TONES[dotTone ?? tone];
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${t.pill} ${className}`}
@@ -50,13 +60,13 @@ export function StatusPill({
       ) : pulse ? (
         <span className="relative flex h-1.5 w-1.5">
           <span
-            className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 motion-reduce:animate-none ${t.dot}`}
+            className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 motion-reduce:animate-none ${d.dot}`}
             aria-hidden
           />
-          <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${t.dot}`} aria-hidden />
+          <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${d.dot}`} aria-hidden />
         </span>
       ) : (
-        <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} aria-hidden />
+        <span className={`h-1.5 w-1.5 rounded-full ${d.dot}`} aria-hidden />
       )}
       {label}
     </span>
@@ -86,5 +96,34 @@ export const DOCUMENT_STATUS_PILL: Record<
   // final, settled state rather than just another signer-level "Signed".
   completed: { tone: "green", label: "Completed", icon: "check" },
   declined: { tone: "red", label: "Declined by a signer" },
+  voided: { tone: "gray", label: "Voided" },
+};
+
+// List rows (dashboard home + /dashboard/documents) — deliberately NOT
+// DOCUMENT_STATUS_PILL. A list is scanned, not read, so it answers a different
+// question: "what needs me?" rather than "what state is this document in".
+// Three differences follow from that:
+//
+//  1. Background is coloured only for the two states you'd want to spot —
+//     Declined (act now) and Sent (waiting on someone else). Draft, Completed
+//     and Voided sit on grey, with the dot carrying the state. Completed is
+//     the important one: it ends up being most of a mature list, and a full
+//     green pill would make the rows that need nothing the loudest on screen.
+//  2. Short labels. "Out for signature" and "Declined by a signer" belong on
+//     the detail page, where there is one document and room to say it
+//     properly; in a row they push the filename out.
+//  3. No pulse. Motion only works while it's rare — twenty pinging dots is
+//     noise, and twenty simultaneous animations for something non-urgent.
+//
+// Includes `draft`, which DOCUMENT_STATUS_PILL omits (the detail page shows a
+// draft differently) but which is the most common state in any list.
+export const LIST_STATUS_PILL: Record<
+  string,
+  { tone: StatusTone; dotTone?: StatusTone; label: string }
+> = {
+  draft: { tone: "gray", label: "Draft" },
+  sent: { tone: "amber", label: "Sent" },
+  completed: { tone: "gray", dotTone: "green", label: "Completed" },
+  declined: { tone: "red", label: "Declined" },
   voided: { tone: "gray", label: "Voided" },
 };

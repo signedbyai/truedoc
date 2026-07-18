@@ -4,18 +4,11 @@ import { getUserAndOrg } from "@/lib/org";
 import { seatsOverLimit, PLAN_LABEL } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { LIST_STATUS_PILL, StatusPill } from "@/components/status-pill";
 import { cn } from "@/lib/utils";
 import { TimeGreeting } from "@/components/time-greeting";
 import { ReferralCard } from "@/components/referral-card";
 import { AttributionClaim } from "@/components/attribution-claim";
-
-const STATUS_LABEL: Record<string, string> = {
-  draft: "Draft",
-  sent: "Sent",
-  completed: "Completed",
-  declined: "Declined",
-  voided: "Voided",
-};
 
 // Protected dashboard shell — middleware already redirects unauthenticated
 // requests to /login, this is a second server-side check as defense in depth.
@@ -174,25 +167,52 @@ export default async function DashboardPage() {
           <CardContent>
             {documents && documents.length > 0 ? (
               <ul className="divide-y divide-slate-100">
-                {documents.map((doc) => (
-                  <li key={doc.id} className="flex items-center justify-between py-3">
-                    <div>
+                {documents.map((doc) => {
+                  const pill = LIST_STATUS_PILL[doc.status];
+                  return (
+                  <li key={doc.id} className="flex items-center justify-between gap-3 py-3">
+                    <div className="min-w-0">
                       <Link
                         href={`/dashboard/documents/${doc.id}`}
-                        className="text-sm font-medium text-slate-900 hover:underline"
+                        className="block truncate text-sm font-medium text-slate-900 hover:underline"
                       >
                         {doc.title}
                       </Link>
-                      <p className="text-xs text-slate-500">
-                        {doc.page_count} page{doc.page_count === 1 ? "" : "s"} &middot;{" "}
-                        {new Date(doc.created_at).toLocaleDateString()}
-                      </p>
+                      {/* On mobile the pill rides on this line, so the title
+                          gets the full row width. The old layout had the pill
+                          shrink-0 beside the title, which meant a longer
+                          status ate the filename — backwards, since the
+                          filename is how you identify the row. */}
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                        {pill && (
+                          <StatusPill
+                            tone={pill.tone}
+                            dotTone={pill.dotTone}
+                            label={pill.label}
+                            className="sm:hidden"
+                          />
+                        )}
+                        <span>
+                          {doc.page_count} page{doc.page_count === 1 ? "" : "s"} &middot;{" "}
+                          {new Date(doc.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
                     </div>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                      {STATUS_LABEL[doc.status] ?? doc.status}
-                    </span>
+                    {/* Desktop keeps the pill right-aligned: it forms a column
+                        you can run your eye down, which is the whole point on
+                        a wide screen. That alignment doesn't survive
+                        truncation on a phone, hence the swap above. */}
+                    {pill && (
+                      <StatusPill
+                        tone={pill.tone}
+                        dotTone={pill.dotTone}
+                        label={pill.label}
+                        className="hidden shrink-0 sm:inline-flex"
+                      />
+                    )}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             ) : (
               <p className="text-sm text-slate-500">No documents yet — upload your first PDF to get started.</p>

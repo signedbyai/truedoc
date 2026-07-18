@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DeleteDocumentButton } from "@/components/delete-document-button";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
+import { LIST_STATUS_PILL, StatusPill } from "@/components/status-pill";
 import { formatRelativeTime, latestViewedByDocument } from "@/lib/last-viewed";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -236,7 +237,9 @@ export default async function DocumentsPage({
             {documents && documents.length > 0 ? (
               <>
                 <ul className="divide-y divide-slate-100">
-                  {documents.map((doc) => (
+                  {documents.map((doc) => {
+                    const pill = LIST_STATUS_PILL[doc.status];
+                    return (
                     // Same shape as the dashboard's recent-documents rows
                     // (title left, status pill top-right) with the action
                     // buttons on their own right-aligned line — previously
@@ -252,6 +255,14 @@ export default async function DocumentsPage({
                           >
                             {doc.title}
                           </Link>
+                          {pill && (
+                            <StatusPill
+                              tone={pill.tone}
+                              dotTone={pill.dotTone}
+                              label={pill.label}
+                              className="mt-1 sm:hidden"
+                            />
+                          )}
                           <p className="text-xs text-slate-500">
                             {/* Short doc ID (first 8 of the UUID) — the same
                                 ID the Certificate of Completion prints in
@@ -268,16 +279,26 @@ export default async function DocumentsPage({
                             )}
                           </p>
                         </div>
-                        <span className="mt-0.5 shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                          {STATUS_LABEL[doc.status] ?? doc.status}
-                        </span>
+                        {/* Desktop keeps the pill right-aligned: it forms a
+                            column you can run your eye down. On mobile it
+                            moves onto the meta line below, so a longer status
+                            can't eat the filename. */}
+                        {pill && (
+                          <StatusPill
+                            tone={pill.tone}
+                            dotTone={pill.dotTone}
+                            label={pill.label}
+                            className="mt-0.5 hidden shrink-0 sm:inline-flex"
+                          />
+                        )}
                       </div>
                       <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
                         <DuplicateDocumentButton documentId={doc.id} />
                         {doc.status === "draft" && <DeleteDocumentButton documentId={doc.id} />}
                       </div>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
 
                 {totalPages > 1 && (
