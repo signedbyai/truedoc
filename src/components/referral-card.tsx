@@ -174,7 +174,15 @@ export function ReferralCard() {
               </button>
             </div>
 
-            <a href="/terms" className="mt-3 inline-block text-xs font-medium text-slate-500 hover:text-slate-700">
+            {/* Points at the referral programme's own terms, not the general
+                ToS. It used to link /terms, which says nothing about referrals
+                — so anyone following it to check a rule about their reward
+                landed on a document about liability and governing law and left
+                none the wiser. */}
+            <a
+              href="/referral-terms"
+              className="mt-3 inline-block text-xs font-medium text-slate-500 hover:text-slate-700"
+            >
               Terms and conditions
             </a>
 

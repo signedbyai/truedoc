@@ -134,6 +134,15 @@ export function ReferralGiftButton({ variant = "icon" }: { variant?: "icon" | "l
                 {copied ? "Copied" : "Copy"}
               </button>
             </div>
+            {/* The popover is the entry point most people actually use — it's
+                in the nav on every page, where the dashboard card only appears
+                on home. It needs the terms link just as much. */}
+            <a
+              href="/referral-terms"
+              className="mt-3 inline-block text-xs font-medium text-slate-500 hover:text-slate-700"
+            >
+              Terms and conditions
+            </a>
           </div>
         </>
       )}

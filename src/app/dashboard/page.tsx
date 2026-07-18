@@ -5,9 +5,10 @@ import { seatsOverLimit, PLAN_LABEL } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { LIST_STATUS_PILL, StatusPill } from "@/components/status-pill";
-import { BadgeIcon, FirstStepIcon, GiftIcon } from "@/components/badge-icon";
+import { BadgeIcon, FirstStepIcon } from "@/components/badge-icon";
+import { PrizeDrawPill } from "@/components/prize-draw-pill";
 import { tallyStatuses, workspaceStats } from "@/lib/workspace-stats";
-import { monthStart, prizeProgress, PRIZE_LABEL } from "@/lib/prize-draw";
+import { monthStart, prizeProgress, PRIZE_ENABLED } from "@/lib/prize-draw";
 import { cn } from "@/lib/utils";
 import { TimeGreeting } from "@/components/time-greeting";
 import { ReferralCard } from "@/components/referral-card";
@@ -49,11 +50,11 @@ export default async function DashboardPage() {
     .eq("org_id", orgId);
   const stats = workspaceStats(tallyStatuses((allStatuses ?? []).map((d) => d.status)));
 
-  // Monthly prize draw progress. Deliberately a different number from the
+  // Monthly gift-card draw progress. Deliberately a different number from the
   // badge: the badge counts documents sent, which is fine for a badge, but
-  // with $100 attached "sent" is trivially gamed by mailing yourself a hundred
-  // documents. This counts distinct recipients who actually signed, minus the
-  // org's own members — every point needs a real person to open a link and act.
+  // with a prize attached "sent" is trivially gamed by mailing yourself a
+  // hundred documents. This counts distinct recipients who actually signed —
+  // every point needs a real person to open a link and act.
   //
   // Read from signers.signed_at rather than documents, because documents has
   // no completed_at; signed_at is the only timestamp that says when signing
@@ -223,27 +224,21 @@ export default async function DashboardPage() {
               </div>
             )}
 
-            {/* Monthly draw. Shows real progress rather than a bare pitch, so
-                it reads as something you're already partway into. The number
-                differs from the badge's on purpose — see the prizeProgress
-                query above for why a cash prize can't count "sent". */}
-            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-slate-200 px-3.5 py-2">
-              <GiftIcon />
-              {prize.qualified ? (
-                <p className="text-xs text-slate-600">
-                  <span className="font-medium text-slate-900">You&apos;re in this month&apos;s draw</span>{" "}
-                  for a {PRIZE_LABEL}
-                </p>
-              ) : (
-                <p className="text-xs text-slate-600">
-                  <span className="font-medium text-slate-900">
-                    {prize.count} of {prize.threshold}
-                  </span>{" "}
-                  signatures this month — reach {prize.threshold} to enter the draw for a{" "}
-                  {PRIZE_LABEL}
-                </p>
-              )}
-            </div>
+            {/* Dark until legal sign-off — PRIZE_ENABLED gates the whole
+                block so nothing about the prize is in the tree at all, rather
+                than shipped and hidden with CSS where it could be found in the
+                markup. The maths above still runs; it's cheap and keeps the
+                code exercised so it doesn't rot while it waits.
+
+                The number shown differs from the badge's on purpose — see the
+                prizeProgress query above for why a prize can't count "sent". */}
+            {PRIZE_ENABLED && (
+              <PrizeDrawPill
+                count={prize.count}
+                threshold={prize.threshold}
+                qualified={prize.qualified}
+              />
+            )}
           </CardContent>
         </Card>
 

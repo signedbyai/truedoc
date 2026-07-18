@@ -22,7 +22,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE_URL}/security`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE_URL}/quiz`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE_URL}/verify`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
-    // /privacy, /terms, /dpa are intentionally excluded — they're noindexed
+    // /privacy, /terms, /dpa, /referral-terms are intentionally excluded — noindexed
     // (see each page's metadata). Listing a noindexed page in the sitemap
     // sends Google mixed signals, so they're left out entirely.
   ];

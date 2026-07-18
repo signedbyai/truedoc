@@ -94,3 +94,52 @@ describe("monthStart", () => {
     expect(p.count).toBe(1);
   });
 });
+
+describe("qualifiedAt — audit record of qualifying", () => {
+  it("is null until the threshold is crossed", () => {
+    const p = prizeProgress({ signed: [signed("a@acme.com")], now: NOW, threshold: 3 });
+    expect(p.qualifiedAt).toBeNull();
+  });
+
+  it("records the moment of the Nth distinct signature, not the latest one", () => {
+    // Evidences that the workspace qualified inside the month. Taking the most
+    // recent signature instead would record when it last did anything, not
+    // when it became eligible.
+    const p = prizeProgress({
+      signed: [
+        signed("a@acme.com", new Date("2026-07-02T10:00:00Z")),
+        signed("b@acme.com", new Date("2026-07-04T10:00:00Z")),
+        signed("c@acme.com", new Date("2026-07-06T10:00:00Z")),
+        signed("d@acme.com", new Date("2026-07-20T10:00:00Z")),
+      ],
+      now: NOW,
+      threshold: 3,
+    });
+    expect(p.qualifiedAt?.toISOString()).toBe("2026-07-06T10:00:00.000Z");
+  });
+
+  it("is unaffected by the order the rows arrive in", () => {
+    // Supabase returns rows in no guaranteed order; sorting inside the function
+    // is what makes the answer stable.
+    const rows = [
+      signed("c@acme.com", new Date("2026-07-06T10:00:00Z")),
+      signed("a@acme.com", new Date("2026-07-02T10:00:00Z")),
+      signed("b@acme.com", new Date("2026-07-04T10:00:00Z")),
+    ];
+    const p = prizeProgress({ signed: rows, now: NOW, threshold: 3 });
+    expect(p.qualifiedAt?.toISOString()).toBe("2026-07-06T10:00:00.000Z");
+  });
+
+  it("does not let a repeat signature from an existing recipient advance the crossing", () => {
+    const p = prizeProgress({
+      signed: [
+        signed("a@acme.com", new Date("2026-07-02T10:00:00Z")),
+        signed("a@acme.com", new Date("2026-07-03T10:00:00Z")),
+        signed("b@acme.com", new Date("2026-07-09T10:00:00Z")),
+      ],
+      now: NOW,
+      threshold: 2,
+    });
+    expect(p.qualifiedAt?.toISOString()).toBe("2026-07-09T10:00:00.000Z");
+  });
+});
