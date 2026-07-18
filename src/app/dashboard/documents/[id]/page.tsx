@@ -300,6 +300,7 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
   return (
     <FieldEditor
       documentId={doc.id}
+      documentTitle={doc.title}
       pageCount={doc.page_count}
       hasPaymentCollection={hasPaymentCollection}
       hasDocGate={hasDocGate}

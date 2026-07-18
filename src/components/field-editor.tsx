@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -70,6 +72,7 @@ function recipientColor(recipients: Recipient[], signerId: string | null) {
 
 export function FieldEditor({
   documentId,
+  documentTitle,
   pageCount,
   hasPaymentCollection,
   hasDocGate,
@@ -81,6 +84,10 @@ export function FieldEditor({
   initialDocgateLabel,
 }: {
   documentId: string;
+  // Shown in the editor's own header — the immersive editor hides the shared
+  // dashboard nav, so without this there's nothing on screen saying which
+  // document you're editing.
+  documentTitle: string;
   pageCount: number;
   hasPaymentCollection: boolean;
   hasDocGate: boolean;
@@ -138,6 +145,9 @@ export function FieldEditor({
   // started. Primary actions live in a fixed bottom bar instead (see the
   // end of the JSX), mirroring the signer side's thumb-reachable bar.
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  // "saved" is sticky until the next edit dirties the draft again — a pill
+  // that flickers back to nothing reads as "it stopped saving".
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [suggesting, setSuggesting] = useState(false);
   const [suggestError, setSuggestError] = useState("");
 
@@ -295,9 +305,18 @@ export function FieldEditor({
       if (autosaveInFlight.current || saving || sending || savingTemplate) return;
       if (draftSignature() === lastSavedSigRef.current) return;
       autosaveInFlight.current = true;
+      // Surface the autosave in the header. This ran silently before: the
+      // draft WAS being saved as you edited, but nothing on screen said so,
+      // so the only reassurance was pressing "Save draft" yourself.
+      setSaveState("saving");
       try {
         const ok = await persist();
-        if (ok) lastSavedSigRef.current = sig;
+        if (ok) {
+          lastSavedSigRef.current = sig;
+          setSaveState("saved");
+        } else {
+          setSaveState("idle");
+        }
       } finally {
         autosaveInFlight.current = false;
       }
@@ -936,6 +955,95 @@ export function FieldEditor({
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
       <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
+        {/* Editor header — desktop only. The immersive editor hides the shared
+            dashboard nav (see the data-immersive effect above), which left the
+            sender with no branding, no document name and no way out. This
+            restores all three without bringing the full nav back, which is
+            what caused the doubled bars and the bottom pill covering "Send".
+            Not rendered on mobile: there the document is the scarce resource,
+            and the compact strip below already carries Back + Send. */}
+        <div className="hidden items-center gap-3 px-6 py-2 sm:flex">
+          <Link href="/dashboard" className="shrink-0 hover:opacity-80">
+            <Logo withBeta={false} />
+          </Link>
+          <span aria-hidden className="text-slate-300">
+            |
+          </span>
+          <span className="min-w-0 truncate text-sm text-slate-600" title={documentTitle}>
+            {documentTitle}
+          </span>
+          {saveState !== "idle" && (
+            <span
+              className={cn(
+                "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium",
+                saveState === "saving" ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-700"
+              )}
+            >
+              {saveState === "saving" ? "Saving…" : <>✓ Saved</>}
+            </span>
+          )}
+
+          <div className="ml-auto flex shrink-0 items-center gap-3">
+            <Link
+              href="/dashboard/documents"
+              className="text-sm font-medium text-slate-500 hover:text-slate-800"
+            >
+              ← Documents
+            </Link>
+            <div className="relative">
+              <Button variant="outline" onClick={() => setShowMoreMenu((v) => !v)}>
+                More ⌄
+              </Button>
+              {showMoreMenu && (
+                <div className="absolute right-0 top-full z-30 mt-1 flex w-56 flex-col items-stretch gap-2 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      handleSaveDraft();
+                      setShowMoreMenu(false);
+                    }}
+                    disabled={saving || sending}
+                  >
+                    {saving ? "Saving…" : "Save draft"}
+                  </Button>
+                  <DuplicateDocumentButton documentId={documentId} />
+                  {hasTemplates ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setTemplateError("");
+                        setShowSaveTemplateModal(true);
+                        setShowMoreMenu(false);
+                      }}
+                      disabled={saving || sending || confirmedFields.length === 0}
+                    >
+                      Save as template
+                    </Button>
+                  ) : (
+                    <a href="/pricing" className="px-1 py-1 text-xs text-slate-400 hover:text-slate-600">
+                      Save as template (Starter+)
+                    </a>
+                  )}
+                  {/* Destructive action last, inside the menu — it previously
+                      sat one slip away from Send in the flat row. */}
+                  <div className="border-t border-slate-100 pt-2">
+                    <DeleteDocumentButton documentId={documentId} redirectTo="/dashboard/documents" />
+                  </div>
+                </div>
+              )}
+            </div>
+            <Button
+              onClick={() => handleSend()}
+              disabled={saving || sending}
+              className="bg-yellow-300 text-slate-900 hover:bg-yellow-400"
+            >
+              {sending ? "Sending…" : "Send for signature →"}
+            </Button>
+          </div>
+        </div>
+
         <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           {/* One horizontally-swipeable row on mobile (no wrapping — every
               wrapped line here is document space lost to the sticky
@@ -1004,17 +1112,12 @@ export function FieldEditor({
               </span>
             )}
           </div>
-          {/* Full action row — desktop/tablet only. On mobile these split
-              into the fixed bottom bar (Save/Send) and the "More" menu
-              below (everything else). */}
+          {/* Second row keeps only the AI action (plus any transient status).
+              Back / Save draft / Duplicate / Save as template / Delete / Send
+              all moved up into the header above — seven equal-weight outline
+              buttons became one primary, one AI action and a "More" menu. */}
           <div className="hidden flex-wrap items-center gap-2 sm:flex sm:gap-3">
             {statusMessage && <span className="text-sm text-slate-500">{statusMessage}</span>}
-            <Button variant="outline" onClick={() => router.push("/dashboard")}>
-              Back
-            </Button>
-            <Button variant="outline" onClick={handleSaveDraft} disabled={saving || sending}>
-              {saving ? "Saving…" : "Save draft"}
-            </Button>
             <Button
               variant="outline"
               className="ai-comet"
@@ -1023,30 +1126,13 @@ export function FieldEditor({
             >
               {suggesting ? "Suggesting…" : "Suggest fields"}
             </Button>
-            <DuplicateDocumentButton documentId={documentId} />
-            <DeleteDocumentButton documentId={documentId} redirectTo="/dashboard/documents" />
-            {hasTemplates ? (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setTemplateError("");
-                  setShowSaveTemplateModal(true);
-                }}
-                disabled={saving || sending || confirmedFields.length === 0}
-              >
-                Save as template
-              </Button>
-            ) : (
-              <a href="/pricing" className="text-xs text-slate-400 hover:text-slate-600">
-                Save as template (Starter+)
-              </a>
-            )}
-            <Button onClick={() => handleSend()} disabled={saving || sending}>
-              {sending ? "Sending…" : "Send for signature"}
-            </Button>
           </div>
 
-          {/* Mobile-only compact action strip. */}
+          {/* Mobile-only compact action strip. No logo/title bar here — at
+              this width the document is the scarce resource — but the autosave
+              pill rides along in the space that already exists, so mobile
+              still gets the same reassurance desktop does without a new row.
+              "Suggest" is shortened so it fits beside More without wrapping. */}
           <div className="flex items-center justify-between gap-2 sm:hidden">
             <button
               onClick={() => router.push("/dashboard")}
@@ -1054,6 +1140,16 @@ export function FieldEditor({
             >
               ← Back
             </button>
+            {saveState !== "idle" && (
+              <span
+                className={cn(
+                  "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
+                  saveState === "saving" ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-700"
+                )}
+              >
+                {saveState === "saving" ? "Saving…" : "✓ Saved"}
+              </span>
+            )}
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -1062,7 +1158,7 @@ export function FieldEditor({
                 onClick={() => runSuggestFields(true)}
                 disabled={suggesting}
               >
-                {suggesting ? "Suggesting…" : "Suggest fields"}
+                {suggesting ? "Suggesting…" : "Suggest"}
               </Button>
               <Button variant="outline" size="sm" onClick={() => setShowMoreMenu((v) => !v)}>
                 {showMoreMenu ? "Close" : "More ⋯"}
@@ -1073,6 +1169,21 @@ export function FieldEditor({
 
         {showMoreMenu && (
           <div className="grid grid-cols-2 items-start gap-2 border-t border-slate-100 px-4 py-2.5 sm:hidden">
+            {/* Save draft lives here now rather than in the bottom bar, so the
+                bottom bar can give its full width to Send. Safe to demote
+                because the autosave pill above says the draft is already
+                saved — but kept first in the menu for anyone who goes looking. */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                handleSaveDraft();
+                setShowMoreMenu(false);
+              }}
+              disabled={saving || sending}
+            >
+              {saving ? "Saving…" : "Save draft"}
+            </Button>
             <DuplicateDocumentButton documentId={documentId} />
             <DeleteDocumentButton documentId={documentId} redirectTo="/dashboard/documents" />
             {hasTemplates ? (
@@ -1612,14 +1723,19 @@ export function FieldEditor({
           button that triggered them. */}
       <div className="fixed inset-x-0 bottom-0 z-10 border-t border-slate-200 bg-white px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] sm:hidden">
         {statusMessage && <p className="mb-2 text-center text-xs text-slate-600">{statusMessage}</p>}
-        <div className="flex gap-2">
-          <Button variant="outline" className="flex-1" onClick={handleSaveDraft} disabled={saving || sending}>
-            {saving ? "Saving…" : "Save draft"}
-          </Button>
-          <Button className="flex-[1.6]" onClick={() => handleSend()} disabled={saving || sending}>
-            {sending ? "Sending…" : "Send for signature"}
-          </Button>
-        </div>
+        {/* One full-width action. Save draft used to sit alongside and take a
+            third of the thumb zone; it's in the More menu now, and the
+            autosave pill in the header strip already says the draft is safe —
+            so the only committing action gets the whole width. Yellow with a
+            forward arrow, matching the homepage CTA and the signer side's
+            swipe-to-sign bar, so both ends of the flow finish the same way. */}
+        <Button
+          className="w-full bg-yellow-300 text-slate-900 hover:bg-yellow-400"
+          onClick={() => handleSend()}
+          disabled={saving || sending}
+        >
+          {sending ? "Sending…" : "Send for signature →"}
+        </Button>
       </div>
 
       {showSendReview && (
