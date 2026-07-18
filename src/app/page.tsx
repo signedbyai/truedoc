@@ -154,14 +154,19 @@ export default async function LandingPage() {
           (stock art reads as templated). Wider than the max-w-3xl text column
           so the UI is legible. next/image handles format negotiation and
           reserves the space via width/height, so it can't shift the layout. */}
-      {/* Sized down deliberately: capped at 46rem (~736px) and centred, so it
-          never balloons on a wide monitor — a product shot blown up to full
-          width reads as filler rather than proof. The wrapper is a flex row
-          ready for the planned second shot (mobile signer view) to sit
-          alongside on the right; adding it means dropping a second child in
-          and giving this one a width class. */}
-      <section className="mx-auto w-full max-w-5xl px-6 pb-12">
-        <div className="mx-auto flex max-w-[46rem] justify-center">
+      {/* Both halves of the product in one image: the sender placing fields on
+          desktop, and the signer finishing on a phone. Capped at 46rem and
+          centred so it never balloons on a wide monitor — a product shot blown
+          up full-width reads as filler rather than proof.
+
+          The phone is absolutely positioned so it overlaps the editor's
+          bottom-right (which is mostly whitespace, so nothing meaningful is
+          covered) and hangs slightly past the edge for depth. Extra right
+          padding on the section reserves room for that overhang. Below sm it's
+          hidden entirely rather than shrunk — at phone width the two would
+          just crowd each other. */}
+      <section className="mx-auto w-full max-w-5xl px-6 pb-12 sm:pr-12">
+        <div className="relative mx-auto max-w-[46rem]">
           <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
             <Image
               src="/hero-field-editor.png"
@@ -170,6 +175,16 @@ export default async function LandingPage() {
               height={1058}
               priority
               sizes="(min-width: 768px) 46rem, 100vw"
+              className="h-auto w-full"
+            />
+          </div>
+          <div className="absolute -bottom-6 -right-6 hidden w-[24%] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:block lg:-right-10 lg:w-[26%]">
+            <Image
+              src="/hero-signer-mobile.png"
+              alt="A signer completing the same document on their phone: the date field filled and a yellow slide-to-sign bar ready to submit"
+              width={1260}
+              height={2568}
+              sizes="(min-width: 1024px) 12rem, 10rem"
               className="h-auto w-full"
             />
           </div>
