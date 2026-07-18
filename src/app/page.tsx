@@ -162,29 +162,40 @@ export default async function LandingPage() {
           The phone is absolutely positioned so it overlaps the editor's
           bottom-right (which is mostly whitespace, so nothing meaningful is
           covered) and hangs slightly past the edge for depth. Extra right
-          padding on the section reserves room for that overhang. Below sm it's
-          hidden entirely rather than shrunk — at phone width the two would
-          just crowd each other. */}
+          padding on the section reserves room for that overhang.
+
+          On mobile the editor shot is pulled in to 78% and left-aligned so the
+          phone has somewhere to sit. It was previously hidden below sm, which
+          was backwards: at phone width the editor screenshot is too small to
+          read anyway and works only as texture, while the phone shot is the
+          one a visitor on a phone can actually parse — and it's the frame that
+          answers "what will this be like for the person I send it to". So the
+          bigger of the two on mobile is the phone, proportionally. */}
       <section className="mx-auto w-full max-w-5xl px-6 pb-12 sm:pr-12">
         <div className="relative mx-auto max-w-[46rem]">
-          <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+          <div className="w-[78%] overflow-hidden rounded-xl border border-slate-200 shadow-sm sm:w-full">
             <Image
               src="/hero-field-editor.png"
               alt="The SignedBy field editor: a consulting agreement with signature fields placed for two recipients, showing the draft auto-saved and ready to send"
               width={1562}
               height={1070}
               priority
-              sizes="(min-width: 768px) 46rem, 100vw"
+              sizes="(min-width: 768px) 46rem, 78vw"
               className="h-auto w-full"
             />
           </div>
-          <div className="absolute -bottom-6 -right-6 hidden w-[24%] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:block lg:-right-10 lg:w-[26%]">
+          {/* 30% is the ceiling on mobile, not a look-right guess. The phone is
+              far taller per unit width (2370/1236) than the editor is (1070/1562),
+              and it's anchored to the container's bottom, so past ~32% its top
+              edge climbs out of the container and collides with the CTA above.
+              30% keeps it inside at every mobile width down to 320px. */}
+          <div className="absolute -bottom-6 -right-1 w-[30%] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:-right-6 sm:w-[24%] lg:-right-10 lg:w-[26%]">
             <Image
               src="/hero-signer-mobile.png"
               alt="A signer signing the same document on their phone: a handwritten signature drawn in the signature pad, with a yellow slide-to-sign bar ready to submit"
               width={1236}
               height={2370}
-              sizes="(min-width: 1024px) 12rem, 10rem"
+              sizes="(min-width: 1024px) 12rem, (min-width: 640px) 10rem, 30vw"
               className="h-auto w-full"
             />
           </div>
