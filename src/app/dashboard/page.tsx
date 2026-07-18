@@ -101,11 +101,12 @@ export default async function DashboardPage() {
                   <span>
                     {o.name} — plan: <strong>{o.plan}</strong>
                   </span>
-                  {o.id === orgId && (
-                    <span className="rounded-full bg-slate-900 px-2 py-0.5 text-xs font-medium text-white">
-                      Active
-                    </span>
-                  )}
+                  {/* Was solid slate-900 with white text — the heaviest
+                      treatment in the app, spent on a label that only
+                      passively confirms state. Now the same grammar as the
+                      document list pills: grey background because it needs
+                      nothing from you, green dot because the state is good. */}
+                  {o.id === orgId && <StatusPill tone="gray" dotTone="green" label="Active" />}
                 </li>
               ))}
             </ul>

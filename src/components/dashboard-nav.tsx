@@ -119,10 +119,34 @@ export function DashboardNav({
                         : "font-medium text-slate-500 hover:text-slate-900")
                     }
                   >
-                    {s.label}
+                    {/* Highlighter stroke, not a border. Four things together
+                        make it read as drawn rather than generated, and it
+                        needs all four — any one alone still looks like a rule:
+                        it overhangs the word at both ends, the corner radii are
+                        deliberately unequal, it's rotated half a degree, and it
+                        sits behind the baseline overlapping the descenders
+                        instead of floating below the text.
+
+                        Same yellow-highlight motif as the favicon (black S on
+                        yellow) and the login page's sweep, so the brand finally
+                        shows up in the chrome — the nav was otherwise entirely
+                        slate. This marks state, not an action, which is why it
+                        doesn't dilute yellow's job as "Send for signature":
+                        that rule is about actions. Keep the mobile nav pill
+                        slate for the same reason — a persistent yellow surface
+                        on every screen would spend the colour.
+
+                        Rendered before the label, with the label in its own
+                        relative span, so the text stacks above the stroke
+                        without needing a negative z-index that would drop it
+                        behind the header background. */}
                     {active && (
-                      <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-slate-900" />
+                      <span
+                        aria-hidden
+                        className="absolute -left-1 -right-1.5 bottom-3 h-[7px] -rotate-[0.5deg] rounded-[3px_5px_4px_6px] bg-yellow-300"
+                      />
                     )}
+                    <span className="relative">{s.label}</span>
                   </Link>
                 );
               })}
