@@ -13,6 +13,7 @@ import { remapFieldSignerIds } from "@/lib/field-persist";
 import { signerForArrivingSuggestion, signerForConfirmedSuggestion } from "@/lib/suggestion-binding";
 import { DeleteDocumentButton } from "@/components/delete-document-button";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
+import { BookmarkIcon, MENU_ITEM_CLASS, SaveIcon } from "@/components/ui/menu-item";
 import { FIELD_TYPES, fieldDef, type FieldType } from "@/lib/field-types";
 
 type Field = {
@@ -997,43 +998,66 @@ export function FieldEditor({
               <Button variant="outline" size="sm" className="rounded-lg" onClick={() => setShowMoreMenu((v) => !v)}>
                 More ⌄
               </Button>
+              {/* Menu rows, not a stack of outline buttons. The buttons had no
+                  common width — the two self-contained components sized to
+                  their own text while the inline ones stretched — so the menu
+                  read as four unrelated controls with a ragged right edge.
+                  Shared MENU_ITEM_CLASS is what keeps them identical. */}
               {showMoreMenu && (
-                <div className="absolute right-0 top-full z-30 mt-1 flex w-56 flex-col items-stretch gap-2 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
-                  <Button
-                    variant="outline"
-                    size="sm"
+                <div className="absolute right-0 top-full z-30 mt-1 w-56 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg">
+                  <button
                     onClick={() => {
                       handleSaveDraft();
                       setShowMoreMenu(false);
                     }}
                     disabled={saving || sending}
+                    className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
                   >
+                    <SaveIcon />
                     {saving ? "Saving…" : "Save draft"}
-                  </Button>
-                  <DuplicateDocumentButton documentId={documentId} />
+                  </button>
+                  <DuplicateDocumentButton
+                    documentId={documentId}
+                    asMenuItem
+                    onSelect={() => setShowMoreMenu(false)}
+                  />
                   {hasTemplates ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
+                    <button
                       onClick={() => {
                         setTemplateError("");
                         setShowSaveTemplateModal(true);
                         setShowMoreMenu(false);
                       }}
                       disabled={saving || sending || confirmedFields.length === 0}
+                      className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
                     >
+                      <BookmarkIcon />
                       Save as template
-                    </Button>
+                    </button>
                   ) : (
-                    <a href="/pricing" className="px-1 py-1 text-xs text-slate-400 hover:text-slate-600">
-                      Save as template (Starter+)
+                    // Was a bare <a> in 12px grey, which looked like a broken
+                    // row rather than a locked feature. Same row shape as the
+                    // rest, with the tier as a badge.
+                    <a
+                      href="/pricing"
+                      className={cn(MENU_ITEM_CLASS, "text-slate-400 hover:bg-slate-50")}
+                    >
+                      <BookmarkIcon />
+                      Save as template
+                      <span className="ml-auto rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">
+                        Starter+
+                      </span>
                     </a>
                   )}
-                  {/* Destructive action last, inside the menu — it previously
-                      sat one slip away from Send in the flat row. */}
-                  <div className="border-t border-slate-100 pt-2">
-                    <DeleteDocumentButton documentId={documentId} redirectTo="/dashboard/documents" />
-                  </div>
+                  {/* Destructive action last, below a rule — it previously sat
+                      one slip away from Send in the flat row. */}
+                  <div className="my-1 border-t border-slate-100" />
+                  <DeleteDocumentButton
+                    documentId={documentId}
+                    redirectTo="/dashboard/documents"
+                    asMenuItem
+                    onSelect={() => setShowMoreMenu(false)}
+                  />
                 </div>
               )}
             </div>
@@ -1212,46 +1236,55 @@ export function FieldEditor({
             apart. Two menus for the same feature disagreeing on where Delete
             lives is how people delete the wrong thing. */}
         {showMoreMenu && (
-          <div className="border-t border-slate-100 px-4 py-2.5 sm:hidden">
-            <div className="grid grid-cols-2 items-start gap-2">
-              {/* Save draft lives here now rather than in the bottom bar, so the
-                  bottom bar can give its full width to Send. Safe to demote
-                  because the autosave pill above says the draft is already
-                  saved — but kept first in the menu for anyone who goes looking. */}
-              <Button
-                variant="outline"
-                size="sm"
+          <div className="border-t border-slate-100 px-2 py-1.5 sm:hidden">
+            {/* Same rows as desktop, one column. The two-column button grid it
+                replaces cost roughly twice the height for the same four
+                actions — on a phone that came straight out of the document. */}
+            <button
+              onClick={() => {
+                handleSaveDraft();
+                setShowMoreMenu(false);
+              }}
+              disabled={saving || sending}
+              className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
+            >
+              <SaveIcon />
+              {saving ? "Saving…" : "Save draft"}
+            </button>
+            <DuplicateDocumentButton
+              documentId={documentId}
+              asMenuItem
+              onSelect={() => setShowMoreMenu(false)}
+            />
+            {hasTemplates ? (
+              <button
                 onClick={() => {
-                  handleSaveDraft();
+                  setTemplateError("");
+                  setShowSaveTemplateModal(true);
                   setShowMoreMenu(false);
                 }}
-                disabled={saving || sending}
+                disabled={saving || sending || confirmedFields.length === 0}
+                className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
               >
-                {saving ? "Saving…" : "Save draft"}
-              </Button>
-              <DuplicateDocumentButton documentId={documentId} />
-              {hasTemplates ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setTemplateError("");
-                    setShowSaveTemplateModal(true);
-                    setShowMoreMenu(false);
-                  }}
-                  disabled={saving || sending || confirmedFields.length === 0}
-                >
-                  Save as template
-                </Button>
-              ) : (
-                <a href="/pricing" className="self-center text-xs text-slate-400">
-                  Save as template (Starter+)
-                </a>
-              )}
-            </div>
-            <div className="mt-2 border-t border-slate-100 pt-2">
-              <DeleteDocumentButton documentId={documentId} redirectTo="/dashboard/documents" />
-            </div>
+                <BookmarkIcon />
+                Save as template
+              </button>
+            ) : (
+              <a href="/pricing" className={cn(MENU_ITEM_CLASS, "text-slate-400 hover:bg-slate-50")}>
+                <BookmarkIcon />
+                Save as template
+                <span className="ml-auto rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">
+                  Starter+
+                </span>
+              </a>
+            )}
+            <div className="my-1 border-t border-slate-100" />
+            <DeleteDocumentButton
+              documentId={documentId}
+              redirectTo="/dashboard/documents"
+              asMenuItem
+              onSelect={() => setShowMoreMenu(false)}
+            />
           </div>
         )}
 
