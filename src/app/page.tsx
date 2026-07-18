@@ -171,8 +171,8 @@ export default async function LandingPage() {
             <Image
               src="/hero-field-editor.png"
               alt="The SignedBy field editor: a consulting agreement with signature fields placed for two recipients, showing the draft auto-saved and ready to send"
-              width={1557}
-              height={1058}
+              width={1564}
+              height={1044}
               priority
               sizes="(min-width: 768px) 46rem, 100vw"
               className="h-auto w-full"
