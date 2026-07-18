@@ -2,20 +2,17 @@
 // card. Pure functions over a status tally, so the rules are testable without
 // a database and the page stays a thin caller.
 //
-// SCOPE — org-level today, per-user later.
+// SCOPE — org-level today, per-user is ready whenever you want it.
 // The maths here doesn't care whose documents it counted; it takes a tally.
-// Swapping to per-user is therefore a change to the *query*, not to this file:
-// see getStatusCountsQuery's comment in the dashboard page.
+// Swapping to per-user is a change to the *query* only: documents.owner_id
+// already references auth.users (0001_init.sql), so it's `.eq("owner_id",
+// user.id)` and nothing here changes. No migration, and history stays
+// attributable — existing documents already carry their owner, so a user's
+// personal count would be correct from day one rather than starting at zero.
 //
-// But it isn't only a toggle, and it's worth knowing before it's promised:
-// `documents` has no created_by column, and `audit_events` records signer_id
-// (the recipient) rather than the sender, so nothing in the schema records who
-// created a document. Per-user stats need a migration adding
-// documents.created_by, and historical rows can't be backfilled from any
-// existing data — every user's personal count would necessarily start at zero
-// on the day that ships. That's a product decision, not just a plumbing one:
-// an org with 200 signed documents would show its owner "0 sent" the morning
-// after the toggle appears.
+// The one product question left is what per-user should mean on a team plan:
+// owner_id is whoever uploaded the document, so a workspace where one admin
+// uploads and colleagues send would attribute everything to the admin.
 
 export type DocumentStatus = "draft" | "sent" | "completed" | "declined" | "voided";
 

@@ -5,8 +5,9 @@ import { seatsOverLimit, PLAN_LABEL } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { LIST_STATUS_PILL, StatusPill } from "@/components/status-pill";
-import { BadgeIcon, FirstStepIcon } from "@/components/badge-icon";
+import { BadgeIcon, FirstStepIcon, GiftIcon } from "@/components/badge-icon";
 import { tallyStatuses, workspaceStats } from "@/lib/workspace-stats";
+import { monthStart, prizeProgress, PRIZE_LABEL } from "@/lib/prize-draw";
 import { cn } from "@/lib/utils";
 import { TimeGreeting } from "@/components/time-greeting";
 import { ReferralCard } from "@/components/referral-card";
@@ -37,17 +38,55 @@ export default async function DashboardPage() {
   // over one org is cheap, and there's no counter to drift out of sync.
   //
   // PER-USER SCOPE (future settings toggle): this is the only place that would
-  // change — add `.eq("created_by", user.id)` here and the maths in
-  // lib/workspace-stats.ts works unaltered. It needs a migration first though:
-  // documents has no created_by column, and audit_events records signer_id
-  // (the recipient) not the sender, so nothing currently records who created a
-  // document. Historical rows therefore can't be backfilled — every user's
-  // personal count would start at zero the day it ships.
+  // change — add `.eq("owner_id", user.id)` here and the maths in
+  // lib/workspace-stats.ts works unaltered. documents.owner_id already exists
+  // and references auth.users (0001_init.sql), so no migration is needed and
+  // history stays attributable: a user's personal count is correct from day
+  // one rather than starting at zero.
   const { data: allStatuses } = await supabase
     .from("documents")
     .select("status")
     .eq("org_id", orgId);
   const stats = workspaceStats(tallyStatuses((allStatuses ?? []).map((d) => d.status)));
+
+  // Monthly prize draw progress. Deliberately a different number from the
+  // badge: the badge counts documents sent, which is fine for a badge, but
+  // with $100 attached "sent" is trivially gamed by mailing yourself a hundred
+  // documents. This counts distinct recipients who actually signed, minus the
+  // org's own members — every point needs a real person to open a link and act.
+  //
+  // Read from signers.signed_at rather than documents, because documents has
+  // no completed_at; signed_at is the only timestamp that says when signing
+  // actually happened.
+  const now = new Date();
+  const { data: monthSignatures } = await supabase
+    .from("signers")
+    .select("email, signed_at, documents!inner(org_id)")
+    .eq("documents.org_id", orgId)
+    .eq("status", "signed")
+    .gte("signed_at", monthStart(now).toISOString());
+
+  // No member-email exclusion here, deliberately. Two reasons:
+  //
+  // It can't be done cheaply or consistently. There is no public users table —
+  // organization_members holds user_id, and the team page resolves each email
+  // through the admin client one call at a time. Doing that on every dashboard
+  // load would be wasteful, and excluding only the *viewing* user's address
+  // would be worse: the same workspace would show a different number depending
+  // on who was looking at it.
+  //
+  // And distinctness already does the work. Mailing yourself a hundred
+  // documents scores one point, not a hundred. Reaching the threshold needs
+  // that many separate people to each open a link and sign, so the cheap
+  // gaming route is closed without needing the exclusion at all. The lib still
+  // supports excludeEmails if a specific abuse case ever shows up.
+  const prize = prizeProgress({
+    signed: (monthSignatures ?? []).map((s) => ({
+      email: s.email,
+      signedAt: new Date(s.signed_at as string),
+    })),
+    now,
+  });
 
   // Lightweight heads-up if the active org currently has more members than
   // its plan allows — most commonly right after a downgrade via Stripe's
@@ -141,53 +180,40 @@ export default async function DashboardPage() {
               ))}
             </ul>
 
-            {/* Badge + stats. Two rules shape this block:
+            {/* Badge only. The Sent / Signed / Completion cards were built and
+                pulled — three number tiles cost a lot of vertical space on a
+                card whose job is to tell you which workspace you're in, and
+                the badge line already carries the count. workspaceStats still
+                computes them (and they're tested), so restoring the row is a
+                paste, not a rebuild.
 
-                Nothing is ever a rebuke. A brand new workspace gets a prompt,
-                not a row of zeroes under a greyed-out hat — most accounts here
-                are new, and "0 sent · 0 signed · 0%" is worse than showing
-                nothing at all. Badges are volume-based so they can only ever be
-                gained, never lost.
-
-                No "declined" stat card. Three cards reading Sent / Signed /
-                Declined turns this into a scoreboard whose third column is your
-                failures, and a decline is often not the sender's doing. The
-                count is on the documents list for anyone who wants it. */}
+                Nothing here is ever a rebuke. A brand new workspace gets a
+                prompt, not a row of zeroes under a greyed-out hat — most
+                accounts are new. Badges are volume-based so they can only ever
+                be gained, never lost. */}
+            {/* The icon sits in a filled circle rather than loose on the
+                panel. A badge needs an enclosing shape — a bare line icon next
+                to text reads as a list item, not something earned. Dark
+                medallion with a yellow glyph over a plain white panel, rather
+                than the large amber field first tried: that block of colour sat
+                right under the yellow nav underline and spent the accent on a
+                passive achievement. */}
             {stats.earned ? (
-              <div className="mt-5 space-y-3">
-                <div className="flex items-center gap-3 rounded-lg bg-amber-50 px-3.5 py-3 text-amber-900">
+              <div className="mt-5 flex items-center gap-3 rounded-lg border border-slate-200 px-3.5 py-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-yellow-300">
                   <BadgeIcon id={stats.earned.id} />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">{stats.earned.label}</p>
-                    <p className="text-xs text-amber-800">
-                      {stats.sent} document{stats.sent === 1 ? "" : "s"} sent
-                      {stats.next && ` · next badge at ${stats.next.threshold}`}
-                    </p>
-                  </div>
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-900">{stats.earned.label}</p>
+                  <p className="text-xs text-slate-500">
+                    {stats.sent} document{stats.sent === 1 ? "" : "s"} sent
+                    {stats.next && ` · next badge at ${stats.next.threshold}`}
+                  </p>
                 </div>
-                <dl className="grid grid-cols-3 gap-2">
-                  <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-                    <dt className="text-xs text-slate-500">Sent</dt>
-                    <dd className="text-xl font-medium text-slate-900">{stats.sent}</dd>
-                  </div>
-                  <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-                    <dt className="text-xs text-slate-500">Signed</dt>
-                    <dd className="text-xl font-medium text-slate-900">{stats.signed}</dd>
-                  </div>
-                  <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-                    <dt className="text-xs text-slate-500">Completion</dt>
-                    {/* Hidden below 3 resolved documents — 1 of 1 is "100%",
-                        which says nothing and would look broken the moment a
-                        second document declines. */}
-                    <dd className="text-xl font-medium text-slate-900">
-                      {stats.completionRate === null ? "—" : `${stats.completionRate}%`}
-                    </dd>
-                  </div>
-                </dl>
               </div>
             ) : (
-              <div className="mt-5 flex items-center gap-3 rounded-lg bg-slate-50 px-3.5 py-3">
-                <span className="text-slate-400">
+              <div className="mt-5 flex items-center gap-3 rounded-lg border border-slate-200 px-3.5 py-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400">
                   <FirstStepIcon />
                 </span>
                 <div>
@@ -196,6 +222,28 @@ export default async function DashboardPage() {
                 </div>
               </div>
             )}
+
+            {/* Monthly draw. Shows real progress rather than a bare pitch, so
+                it reads as something you're already partway into. The number
+                differs from the badge's on purpose — see the prizeProgress
+                query above for why a cash prize can't count "sent". */}
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-slate-200 px-3.5 py-2">
+              <GiftIcon />
+              {prize.qualified ? (
+                <p className="text-xs text-slate-600">
+                  <span className="font-medium text-slate-900">You&apos;re in this month&apos;s draw</span>{" "}
+                  for a {PRIZE_LABEL}
+                </p>
+              ) : (
+                <p className="text-xs text-slate-600">
+                  <span className="font-medium text-slate-900">
+                    {prize.count} of {prize.threshold}
+                  </span>{" "}
+                  signatures this month — reach {prize.threshold} to enter the draw for a{" "}
+                  {PRIZE_LABEL}
+                </p>
+              )}
+            </div>
           </CardContent>
         </Card>
 

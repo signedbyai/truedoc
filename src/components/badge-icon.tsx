@@ -88,3 +88,15 @@ export function BadgeIcon({ id }: { id: BadgeId }) {
 }
 
 export { FirstStepIcon };
+
+// Gift — the monthly prize draw. Matches the referral gift icon's language so
+// the two "there's something in this for you" moments look related.
+export function GiftIcon() {
+  return (
+    <svg {...COMMON} className="h-4 w-4 shrink-0 text-slate-400">
+      <path d="M20 12v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-7" />
+      <path d="M3 8h18v4H3zM12 8v12" />
+      <path d="M12 8S10.5 4 8.5 4a2 2 0 0 0 0 4M12 8s1.5-4 3.5-4a2 2 0 0 1 0 4" />
+    </svg>
+  );
+}
