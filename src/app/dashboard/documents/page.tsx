@@ -121,8 +121,16 @@ export default async function DocumentsPage({
             <h1 className="text-2xl font-semibold text-slate-900">Documents</h1>
             <p className="text-sm text-slate-600">{count ?? 0} total</p>
           </div>
-          <Link href="/dashboard/documents/new" className={buttonVariants({ size: "default" })}>
-            Upload document
+          {/* Matches the same-named button on the dashboard home: slim and
+              rounded (size="sm" + rounded-lg) with a right arrow. Same label
+              and same destination, so it should look the same in both places.
+              Local override rather than a ui/button.tsx change — the app-wide
+              restyle was tried in b0e3748 and rolled back. */}
+          <Link
+            href="/dashboard/documents/new"
+            className={buttonVariants({ size: "sm", className: "rounded-lg" })}
+          >
+            Upload document →
           </Link>
         </div>
 
