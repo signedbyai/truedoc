@@ -89,11 +89,20 @@ export default async function LandingPage() {
             receipts. "$700+" is the LOW end of the 3-user math already
             published on that page ($75-195/mo DocuSign Standard vs $14/mo
             Team) — keep the two in sync if either page's pricing changes. */}
+        {/* A rounded-full pill only reads right on ONE line — wrapped, it
+            became a tall slab with big gaps between the fragments on mobile.
+            So the copy shortens on small screens ("$700+/year vs DocuSign →")
+            rather than the box shrinking, and whitespace-nowrap guarantees it
+            can never wrap into a slab again. Full sentence returns at sm. */}
         <Link
           href="/vs/docusign"
-          className="inline-flex items-center gap-1.5 rounded-full border border-yellow-300 bg-yellow-50 px-4 py-1.5 text-sm font-medium text-slate-800 hover:bg-yellow-100"
+          className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-yellow-300 bg-yellow-50 px-3 py-1 text-xs font-medium text-slate-800 hover:bg-yellow-100 sm:px-4 sm:py-1.5 sm:text-sm"
         >
-          Teams save <span className="font-bold">$700+/year</span> vs DocuSign — see the math →
+          <span className="hidden sm:inline">Teams save</span>
+          <span className="font-bold">$700+/year</span>
+          <span>vs DocuSign</span>
+          <span className="hidden sm:inline">— see the math</span>
+          <span aria-hidden>→</span>
         </Link>
         <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
           E-signatures, without the per-seat tax.

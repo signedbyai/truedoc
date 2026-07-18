@@ -6,6 +6,8 @@ import {
   speedStatShareText,
   MAX_PLAUSIBLE_SECONDS,
   MIN_SAMPLE_SIZE_FOR_PERCENTILE,
+  MIN_PERCENTILE_TO_SHOW,
+  MAX_PERCENTILE_TO_SHOW,
 } from "./speed-stat";
 
 describe("buildSpeedStat", () => {
@@ -26,6 +28,30 @@ describe("buildSpeedStat", () => {
   it("keeps the percentile right at the sample-size threshold", () => {
     const stat = buildSpeedStat({ activeSeconds: 38, percentile: 60, sampleSize: MIN_SAMPLE_SIZE_FOR_PERCENTILE });
     expect(stat?.percentile).toBe(60);
+  });
+
+  // "faster than 13% of signers" means slower than 87% of them -- an insult
+  // dressed as a brag. Below the bar we keep the time and drop the comparison.
+  it("drops an unflattering percentile even with a large sample", () => {
+    const stat = buildSpeedStat({ activeSeconds: 124, percentile: 13, sampleSize: 40 });
+    expect(stat).toEqual({ seconds: 124, percentile: null });
+  });
+
+  it("keeps the percentile right at the flattering threshold", () => {
+    const stat = buildSpeedStat({ activeSeconds: 38, percentile: MIN_PERCENTILE_TO_SHOW, sampleSize: 40 });
+    expect(stat?.percentile).toBe(MIN_PERCENTILE_TO_SHOW);
+  });
+
+  it("drops a percentile just below the flattering threshold", () => {
+    const stat = buildSpeedStat({ activeSeconds: 38, percentile: MIN_PERCENTILE_TO_SHOW - 1, sampleSize: 40 });
+    expect(stat?.percentile).toBeNull();
+  });
+
+  // "faster than 100% of signers" reads as broken -- you can't beat yourself.
+  it("caps a 100th-percentile result so it never claims 100%", () => {
+    const stat = buildSpeedStat({ activeSeconds: 19, percentile: 100, sampleSize: 40 });
+    expect(stat).toEqual({ seconds: 19, percentile: MAX_PERCENTILE_TO_SHOW });
+    expect(speedStatCardLine(stat!)).toBe("In 19 seconds — faster than 99% of signers this month.");
   });
 
   it("returns null for implausibly long timings (e.g. free-plan wall-clock fallback after a long idle gap)", () => {

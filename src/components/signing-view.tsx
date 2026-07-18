@@ -957,8 +957,16 @@ export function SigningView({
             />
           )}
           <div className="min-w-0">
+            {/* Sender attribution: a signer arrives from an email with no
+                prior relationship to SignedBy, and "who sent me this?" is the
+                first trust question they ask. Kept on ONE line with "Signing
+                as" so the sticky header doesn't grow a third row on mobile
+                (see the 2026-07-13 crowding fix above). */}
+            <p className="truncate text-xs text-slate-500">
+              Sent by {branding.orgName}
+              {signerName ? ` · Signing as ${signerName}` : ""}
+            </p>
             <h1 className="truncate text-sm font-semibold text-slate-900">{documentTitle}</h1>
-            {signerName && <p className="truncate text-xs text-slate-500">Signing as {signerName}</p>}
           </div>
         </div>
         {/* flex-wrap here (not on the outer row) so this cluster can spill
@@ -1037,6 +1045,35 @@ export function SigningView({
         </a>
         .
       </label>
+
+      {/* Trust strip. A signer is deciding "is this legitimate?" at exactly
+          this moment, and all three claims are things SignedBy already does
+          (timestamped/hashed/IP-logged audit trail, TLS + encrypted storage,
+          ESIGN/UETA compliance) — they simply weren't stated where it counts.
+          Deliberately muted: reassurance, not a sales badge. */}
+      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 border-b border-slate-100 bg-white px-6 py-2 text-[11px] text-slate-400">
+        {[
+          { label: "Audit-ready", path: "M12 3l7 3v6c0 4-3 6.5-7 8-4-1.5-7-4-7-8V6l7-3zM9 12l2 2 4-4" },
+          { label: "Encrypted", path: "M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4" },
+          { label: "ESIGN & UETA", path: "M6 3h8l4 4v14H6zM14 3v4h4M9 14h6" },
+        ].map((m) => (
+          <span key={m.label} className="flex items-center gap-1.5 whitespace-nowrap">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-3 w-3"
+              aria-hidden
+            >
+              <path d={m.path} />
+            </svg>
+            {m.label}
+          </span>
+        ))}
+      </div>
 
       {payment && (
         <div className="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-6 py-2.5">

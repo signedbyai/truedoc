@@ -16,13 +16,27 @@ export const MAX_PLAUSIBLE_SECONDS = 30 * 60;
 // is still worth showing on its own; just not the comparison.
 export const MIN_SAMPLE_SIZE_FOR_PERCENTILE = 5;
 
+// A percentile only belongs on a SHARE card when it's actually flattering.
+// "Faster than 13% of signers this month" is technically true and reads as an
+// insult -- it means slower than 87% of them -- so as a shareable brag it
+// lands backwards. Below this bar we keep the raw time (which stands on its
+// own perfectly well: "In 38 seconds.") and drop the comparison.
+export const MIN_PERCENTILE_TO_SHOW = 60;
+
+// ...and cap the top end. A genuine 100th percentile renders as "faster than
+// 100% of signers this month", which reads as broken rather than impressive --
+// you can't be faster than everyone including yourself. Showing 99 keeps the
+// claim true (they WERE faster than 99%) and sounds like a real statistic.
+export const MAX_PERCENTILE_TO_SHOW = 99;
+
 export type SpeedStat = { seconds: number; percentile: number | null };
 
 /**
  * Turns the raw RPC output into what's safe to show a signer, or null if
  * nothing worth showing exists (implausible timing, or no timing signal at
- * all). Percentile is dropped (not the whole stat) when the comparison
- * pool is too small to mean anything.
+ * all). Percentile is dropped (not the whole stat) when the comparison pool
+ * is too small to mean anything, OR when the result isn't flattering enough
+ * to be worth sharing.
  */
 export function buildSpeedStat(raw: {
   activeSeconds: number | null;
@@ -33,7 +47,9 @@ export function buildSpeedStat(raw: {
   if (seconds == null || seconds <= 0 || seconds > MAX_PLAUSIBLE_SECONDS) return null;
 
   const hasEnoughSample = (raw.sampleSize ?? 0) >= MIN_SAMPLE_SIZE_FOR_PERCENTILE;
-  const percentile = hasEnoughSample && raw.percentile != null ? raw.percentile : null;
+  const showPercentile =
+    hasEnoughSample && raw.percentile != null && raw.percentile >= MIN_PERCENTILE_TO_SHOW;
+  const percentile = showPercentile ? Math.min(raw.percentile!, MAX_PERCENTILE_TO_SHOW) : null;
 
   return { seconds: Math.round(seconds), percentile };
 }
