@@ -1049,6 +1049,51 @@ export function FieldEditor({
         </div>
 
         <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          {/* Mobile-only compact action strip. No logo/title bar here — at
+              this width the document is the scarce resource — but the autosave
+              pill rides along in the space that already exists, so mobile
+              still gets the same reassurance desktop does without a new row.
+              "Suggest" is shortened so it fits beside More without wrapping.
+
+              Sits FIRST, above the field-type control, matching the mockup and
+              desktop: navigation and document status are the outer frame, the
+              field tools are content inside it. Ordered in the DOM rather than
+              with CSS `order` so tab order still matches what you see. On
+              desktop this whole strip is hidden, so its position here is inert
+              and the sm:flex-row layout below is unchanged. */}
+          <div className="flex items-center justify-between gap-2 sm:hidden">
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="shrink-0 text-sm font-medium text-slate-500"
+            >
+              ← Back
+            </button>
+            {saveState !== "idle" && (
+              <span
+                className={cn(
+                  "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
+                  saveState === "saving" ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-700"
+                )}
+              >
+                {saveState === "saving" ? "Saving…" : "✓ Saved"}
+              </span>
+            )}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="ai-comet"
+                onClick={() => runSuggestFields(true)}
+                disabled={suggesting}
+              >
+                {suggesting ? "Suggesting…" : "Suggest"}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowMoreMenu((v) => !v)}>
+                {showMoreMenu ? "Close" : "More ⋯"}
+              </Button>
+            </div>
+          </div>
+
           {/* One horizontally-swipeable row on mobile (no wrapping — every
               wrapped line here is document space lost to the sticky
               header); wraps normally from sm: up. */}
@@ -1157,82 +1202,56 @@ export function FieldEditor({
             </Button>
           </div>
 
-          {/* Mobile-only compact action strip. No logo/title bar here — at
-              this width the document is the scarce resource — but the autosave
-              pill rides along in the space that already exists, so mobile
-              still gets the same reassurance desktop does without a new row.
-              "Suggest" is shortened so it fits beside More without wrapping. */}
-          <div className="flex items-center justify-between gap-2 sm:hidden">
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="shrink-0 text-sm font-medium text-slate-500"
-            >
-              ← Back
-            </button>
-            {saveState !== "idle" && (
-              <span
-                className={cn(
-                  "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
-                  saveState === "saving" ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-700"
-                )}
-              >
-                {saveState === "saving" ? "Saving…" : "✓ Saved"}
-              </span>
-            )}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="ai-comet"
-                onClick={() => runSuggestFields(true)}
-                disabled={suggesting}
-              >
-                {suggesting ? "Suggesting…" : "Suggest"}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowMoreMenu((v) => !v)}>
-                {showMoreMenu ? "Close" : "More ⋯"}
-              </Button>
-            </div>
-          </div>
         </div>
 
+        {/* Same running order as the desktop dropdown: Save draft, Duplicate,
+            Save as template, then Delete alone below a rule. It previously ran
+            Save draft / Duplicate / Delete / Save as template, so the
+            destructive action landed in the middle of the grid — next to
+            Duplicate, and directly under Save draft — with nothing marking it
+            apart. Two menus for the same feature disagreeing on where Delete
+            lives is how people delete the wrong thing. */}
         {showMoreMenu && (
-          <div className="grid grid-cols-2 items-start gap-2 border-t border-slate-100 px-4 py-2.5 sm:hidden">
-            {/* Save draft lives here now rather than in the bottom bar, so the
-                bottom bar can give its full width to Send. Safe to demote
-                because the autosave pill above says the draft is already
-                saved — but kept first in the menu for anyone who goes looking. */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                handleSaveDraft();
-                setShowMoreMenu(false);
-              }}
-              disabled={saving || sending}
-            >
-              {saving ? "Saving…" : "Save draft"}
-            </Button>
-            <DuplicateDocumentButton documentId={documentId} />
-            <DeleteDocumentButton documentId={documentId} redirectTo="/dashboard/documents" />
-            {hasTemplates ? (
+          <div className="border-t border-slate-100 px-4 py-2.5 sm:hidden">
+            <div className="grid grid-cols-2 items-start gap-2">
+              {/* Save draft lives here now rather than in the bottom bar, so the
+                  bottom bar can give its full width to Send. Safe to demote
+                  because the autosave pill above says the draft is already
+                  saved — but kept first in the menu for anyone who goes looking. */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setTemplateError("");
-                  setShowSaveTemplateModal(true);
+                  handleSaveDraft();
                   setShowMoreMenu(false);
                 }}
-                disabled={saving || sending || confirmedFields.length === 0}
+                disabled={saving || sending}
               >
-                Save as template
+                {saving ? "Saving…" : "Save draft"}
               </Button>
-            ) : (
-              <a href="/pricing" className="self-center text-xs text-slate-400">
-                Save as template (Starter+)
-              </a>
-            )}
+              <DuplicateDocumentButton documentId={documentId} />
+              {hasTemplates ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setTemplateError("");
+                    setShowSaveTemplateModal(true);
+                    setShowMoreMenu(false);
+                  }}
+                  disabled={saving || sending || confirmedFields.length === 0}
+                >
+                  Save as template
+                </Button>
+              ) : (
+                <a href="/pricing" className="self-center text-xs text-slate-400">
+                  Save as template (Starter+)
+                </a>
+              )}
+            </div>
+            <div className="mt-2 border-t border-slate-100 pt-2">
+              <DeleteDocumentButton documentId={documentId} redirectTo="/dashboard/documents" />
+            </div>
           </div>
         )}
 
