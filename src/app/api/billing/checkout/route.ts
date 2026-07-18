@@ -4,6 +4,7 @@ import { getUserAndOrg } from "@/lib/org";
 import { getStripe, priceIdFor, appUrl, type PlanId } from "@/lib/stripe";
 import { referralCouponId } from "@/lib/referral";
 import { getRequestCurrency } from "@/lib/currency.server";
+import { normalizeCurrency, type Currency } from "@/lib/currency";
 
 const bodySchema = z.object({
   plan: z.enum(["starter", "team", "business"]),
@@ -23,14 +24,9 @@ export async function POST(request: Request) {
   const plan: PlanId = parsed.data.plan;
 
   // Same geo/cookie resolution the pricing pages use, so a visitor is charged
-  // the currency they were shown. EUR customers get the dedicated EUR price;
-  // priceIdFor falls back to the USD price if the EUR price env var isn't set,
-  // so a missing config degrades to a USD sale rather than a hard failure.
-  const currency = await getRequestCurrency();
-  const priceId = priceIdFor(plan, currency);
-  if (!priceId) {
-    return NextResponse.json({ error: "That plan isn't configured yet." }, { status: 500 });
-  }
+  // the currency they were shown. The price id is resolved further down, once
+  // we know whether this customer is already locked to a currency in Stripe.
+  const requestCurrency = await getRequestCurrency();
 
   const { data: org } = await supabase
     .from("organizations")
@@ -65,6 +61,14 @@ export async function POST(request: Request) {
 
   try {
     let customerId = org.stripe_customer_id;
+    // A Stripe Customer is pinned to ONE currency as soon as it has any
+    // subscription/invoice/quote in one: a later checkout in a different
+    // currency fails with "You cannot combine currencies on a single
+    // customer". So an existing customer's currency WINS over the geo guess —
+    // otherwise a US customer who travels (or whose geo simply resolves
+    // differently) hits an opaque Stripe error at the payment step. New
+    // customers have no lock and get their local currency as normal.
+    let lockedCurrency: Currency | null = null;
 
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -74,6 +78,21 @@ export async function POST(request: Request) {
       });
       customerId = customer.id;
       await supabase.from("organizations").update({ stripe_customer_id: customerId }).eq("id", orgId);
+    } else {
+      const existing = await stripe.customers.retrieve(customerId);
+      if (!existing.deleted) lockedCurrency = normalizeCurrency(existing.currency);
+    }
+
+    const currency = lockedCurrency ?? requestCurrency;
+    if (lockedCurrency && lockedCurrency !== requestCurrency) {
+      console.info(
+        `Checkout: customer ${customerId} is locked to ${lockedCurrency}; ignoring resolved ${requestCurrency}.`
+      );
+    }
+
+    const priceId = priceIdFor(plan, currency);
+    if (!priceId) {
+      return NextResponse.json({ error: "That plan isn't configured yet." }, { status: 500 });
     }
 
     const session = await stripe.checkout.sessions.create({
