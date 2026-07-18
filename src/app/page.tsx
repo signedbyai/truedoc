@@ -232,6 +232,9 @@ export default async function LandingPage() {
           <Link href="/vs/docusign" className="hover:text-slate-600">
             vs DocuSign
           </Link>
+          <Link href="/security" className="hover:text-slate-600">
+            Security
+          </Link>
           <Link href="/terms" className="hover:text-slate-600">
             Terms
           </Link>
