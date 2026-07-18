@@ -181,9 +181,9 @@ export default async function LandingPage() {
           <div className="absolute -bottom-6 -right-6 hidden w-[24%] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:block lg:-right-10 lg:w-[26%]">
             <Image
               src="/hero-signer-mobile.png"
-              alt="A signer completing the same document on their phone: the date field filled and a yellow slide-to-sign bar ready to submit"
-              width={1260}
-              height={2568}
+              alt="A signer signing the same document on their phone: a handwritten signature drawn in the signature pad, with a yellow slide-to-sign bar ready to submit"
+              width={1236}
+              height={2370}
               sizes="(min-width: 1024px) 12rem, 10rem"
               className="h-auto w-full"
             />
