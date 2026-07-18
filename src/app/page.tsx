@@ -158,9 +158,9 @@ export default async function LandingPage() {
         <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
           <Image
             src="/hero-field-editor.png"
-            alt="The SignedBy field editor: a consulting agreement with signature and date fields placed for two recipients, ready to send for signature"
-            width={2060}
-            height={1070}
+            alt="The SignedBy field editor: a consulting agreement with signature fields placed for two recipients, showing the draft auto-saved and ready to send"
+            width={1557}
+            height={1058}
             priority
             sizes="(min-width: 1024px) 64rem, 100vw"
             className="h-auto w-full"
