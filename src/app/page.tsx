@@ -155,9 +155,12 @@ export default async function LandingPage() {
           so the UI is legible. next/image handles format negotiation and
           reserves the space via width/height, so it can't shift the layout. */}
       {/* Both halves of the product in one image: the sender placing fields on
-          desktop, and the signer finishing on a phone. Capped at 46rem and
+          desktop, and the signer finishing on a phone. Capped at 40rem and
           centred so it never balloons on a wide monitor — a product shot blown
-          up full-width reads as filler rather than proof.
+          up full-width reads as filler rather than proof. The cap came down
+          from 46rem, and the phone went up to 28/30%, to shift weight onto the
+          signer's phone: most traffic signs on mobile, so that frame is the
+          one carrying the pitch even for desktop visitors.
 
           The phone is absolutely positioned so it overlaps the editor's
           bottom-right (which is mostly whitespace, so nothing meaningful is
@@ -172,7 +175,7 @@ export default async function LandingPage() {
           answers "what will this be like for the person I send it to". So the
           bigger of the two on mobile is the phone, proportionally. */}
       <section className="mx-auto w-full max-w-5xl px-6 pb-12 sm:pr-12">
-        <div className="relative mx-auto max-w-[46rem]">
+        <div className="relative mx-auto max-w-[40rem]">
           <div className="w-[78%] overflow-hidden rounded-xl border border-slate-200 shadow-sm sm:w-full">
             <Image
               src="/hero-field-editor.png"
@@ -180,7 +183,7 @@ export default async function LandingPage() {
               width={1562}
               height={1070}
               priority
-              sizes="(min-width: 768px) 46rem, 78vw"
+              sizes="(min-width: 768px) 40rem, 78vw"
               className="h-auto w-full"
             />
           </div>
@@ -189,13 +192,13 @@ export default async function LandingPage() {
               and it's anchored to the container's bottom, so past ~32% its top
               edge climbs out of the container and collides with the CTA above.
               30% keeps it inside at every mobile width down to 320px. */}
-          <div className="absolute -bottom-6 -right-1 w-[30%] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:-right-6 sm:w-[24%] lg:-right-10 lg:w-[26%]">
+          <div className="absolute -bottom-6 -right-1 w-[30%] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:-right-6 sm:w-[28%] lg:-right-10 lg:w-[30%]">
             <Image
               src="/hero-signer-mobile.png"
               alt="A signer signing the same document on their phone: a handwritten signature drawn in the signature pad, with a yellow slide-to-sign bar ready to submit"
               width={1236}
               height={2370}
-              sizes="(min-width: 1024px) 12rem, (min-width: 640px) 10rem, 30vw"
+              sizes="(min-width: 1024px) 12rem, (min-width: 640px) 11rem, 30vw"
               className="h-auto w-full"
             />
           </div>
