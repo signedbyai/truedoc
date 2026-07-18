@@ -121,17 +121,36 @@ export default async function DocumentsPage({
             <h1 className="text-2xl font-semibold text-slate-900">Documents</h1>
             <p className="text-sm text-slate-600">{count ?? 0} total</p>
           </div>
-          {/* Matches the same-named button on the dashboard home: slim and
-              rounded (size="sm" + rounded-lg) with a right arrow. Same label
-              and same destination, so it should look the same in both places.
-              Local override rather than a ui/button.tsx change — the app-wide
-              restyle was tried in b0e3748 and rolled back. */}
-          <Link
-            href="/dashboard/documents/new"
-            className={buttonVariants({ size: "sm", className: "rounded-lg" })}
-          >
-            Upload document →
-          </Link>
+          {/* Same pair as the dashboard home, in the same order and at the same
+              equal width: slim, rounded, arrowed, min-w set off the longer
+              label. Two entry points to the same task should not look
+              different depending on which page you reached them from.
+
+              Left button is "From template", not "Upload template" — there is
+              no upload-a-template flow to point at. Templates are only created
+              by "Save as template" from a document
+              (/api/documents/[id]/save-as-template); this goes to the picker,
+              which is the real action. Local override rather than a
+              ui/button.tsx change — the app-wide restyle was tried in b0e3748
+              and rolled back. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/dashboard/templates"
+              className={buttonVariants({
+                variant: "outline",
+                size: "sm",
+                className: "min-w-[10.5rem] rounded-lg",
+              })}
+            >
+              From template →
+            </Link>
+            <Link
+              href="/dashboard/documents/new"
+              className={buttonVariants({ size: "sm", className: "min-w-[10.5rem] rounded-lg" })}
+            >
+              Upload document →
+            </Link>
+          </div>
         </div>
 
         <Card>
