@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { ReferralCapture } from "@/components/referral-capture";
 import { getRequestCurrency } from "@/lib/currency.server";
@@ -84,7 +85,14 @@ export default async function LandingPage() {
       {/* Asymmetric padding: keeps the generous space above the hero, but
           tightens the gap below the value row so the trusted-by strip sits
           closer to it instead of falling off the first screen. */}
-      <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-6 pt-20 pb-8 text-center">
+      {/* v19: two-column, left-aligned. The centred stack could only grow
+          downward, which pushed the product screenshot below the fold — and
+          every competitor's first screen (Robinhood, Lemonade, SignNow) commits
+          to something visual above it. Two columns is what gets the product
+          into the first screen without cutting copy. Stacks back to one column
+          below lg, where centred still reads better on a phone. */}
+      <section className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-10 px-6 pt-16 pb-8 lg:grid-cols-2 lg:gap-14 lg:pt-20">
+        <div className="flex flex-col items-center gap-5 text-center lg:items-start lg:text-left">
         {/* Concrete-savings badge (V3_Design_Inspiration.md #2, DocTrack-
             style): a number, not an adjective, with /vs/docusign as the
             receipts. "$700+" is the LOW end of the 3-user math already
@@ -97,29 +105,119 @@ export default async function LandingPage() {
             can never wrap into a slab again. Full sentence returns at sm. */}
         <Link
           href="/vs/docusign"
-          className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-yellow-300 bg-yellow-50 px-3 py-1 text-xs font-medium text-slate-800 hover:bg-yellow-100 sm:px-4 sm:py-1.5 sm:text-sm"
-        >
-          <span className="hidden sm:inline">Teams save</span>
-          <span className="font-bold">$700+/year</span>
-          <span>vs DocuSign</span>
-          <span className="hidden sm:inline">— see the math</span>
-          <span aria-hidden>→</span>
-        </Link>
-        <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-          E-signatures, without the per-seat tax.
-        </h1>
-        <p className="max-w-xl text-lg text-slate-600">
-          SignedBy is a fast, affordable alternative for e-Signatures — built for solo professionals and
-          small teams who sign a handful of documents a month, not a whole sales floor.{" "}
-          <span className="inline-block -rotate-1 rounded bg-yellow-300 px-1.5 py-0.5 font-semibold text-slate-900">
-            Sign documents.
-          </span>
-        </p>
-        <Link href="/login?intent=signup" className={buttonVariants({ size: "lg" })}>
-          Send your first document free →
-        </Link>
-        <p className="text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
+            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 sm:text-sm"
+          >
+            <span className="hidden sm:inline">Teams save</span>
+            <span className="font-bold text-yellow-300">$700+/year</span>
+            <span>vs DocuSign</span>
+            <span className="hidden sm:inline">— see the math</span>
+            <span aria-hidden>→</span>
+          </Link>
+          {/* Highlighter moved onto "per-seat tax". It was previously on
+              "Sign documents." at the end of the paragraph — a phrase that
+              isn't the differentiator and isn't in the headline, so the motif
+              was decorating rather than emphasising. SignNow does the same
+              thing with an underline on its headline; this is that, on the
+              words that actually distinguish us. */}
+          <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+            E-signatures, without the{" "}
+            <span className="inline-block -rotate-1 rounded bg-yellow-300 px-2 text-slate-900">
+              per-seat tax
+            </span>
+          </h1>
+          {/* Three lines down to one. The long version explained the
+              positioning thoroughly, but nobody reads three lines before
+              deciding — Lemonade's subhead is six words and is the best copy
+              on any of the pages compared. */}
+          <p className="max-w-md text-lg text-slate-600">
+            Built for a handful of documents a month. Not a whole sales floor.
+          </p>
+          {/* Yellow, not slate-900. Above the fold yellow was previously doing
+              three jobs (pill, highlight, four value icons) while the one thing
+              we want pressed was the least coloured element on screen. The
+              value icons move below the fold, so up here yellow means exactly
+              one thing: press this. */}
+          <Link
+            href="/login?intent=signup"
+            className={cn(
+              buttonVariants({ size: "lg" }),
+              "bg-yellow-300 text-slate-900 hover:bg-yellow-400"
+            )}
+          >
+            Send your first document free →
+          </Link>
+          <p className="text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
+        </div>
 
+        {/* Product shot. Until now the marketing site had no image of the actual
+            product anywhere — a visitor had to take on faith that it exists and
+            looks decent. Deliberately a real screenshot rather than an
+            illustration: it doubles as proof, and it's inherently unique to us
+            (stock art reads as templated). Wider than the max-w-3xl text column
+            so the UI is legible. next/image handles format negotiation and
+            reserves the space via width/height, so it can't shift the layout. */}
+        {/* Both halves of the product in one image: the sender placing fields on
+            desktop, and the signer finishing on a phone. Capped at 40rem and
+            centred so it never balloons on a wide monitor — a product shot blown
+            up full-width reads as filler rather than proof. The cap came down
+            from 46rem, and the phone went up to 28/30%, to shift weight onto the
+            signer's phone: most traffic signs on mobile, so that frame is the
+            one carrying the pitch even for desktop visitors.
+
+            The phone is absolutely positioned so it overlaps the editor's
+            bottom-right (which is mostly whitespace, so nothing meaningful is
+            covered) and hangs slightly past the edge for depth. Extra right
+            padding on the section reserves room for that overhang.
+
+            On mobile the editor shot is pulled in to 78% and left-aligned so the
+            phone has somewhere to sit. It was previously hidden below sm, which
+            was backwards: at phone width the editor screenshot is too small to
+            read anyway and works only as texture, while the phone shot is the
+            one a visitor on a phone can actually parse — and it's the frame that
+            answers "what will this be like for the person I send it to". So the
+            bigger of the two on mobile is the phone, proportionally. */}
+          <div className="relative mx-auto max-w-[40rem]">
+            <div className="w-[82%] overflow-hidden rounded-xl border border-slate-200/60 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)] sm:w-full">
+              <Image
+                src="/hero-field-editor.png"
+                alt="The SignedBy field editor: a consulting agreement with signature fields placed for two recipients, showing the draft auto-saved and ready to send"
+                width={1562}
+                height={1070}
+                priority
+                sizes="(min-width: 1024px) 32rem, (min-width: 768px) 40rem, 82vw"
+                className="h-auto w-full"
+              />
+            </div>
+            {/* 30% is the ceiling on mobile, not a look-right guess. The phone is
+                far taller per unit width (2370/1236) than the editor is (1070/1562),
+                and it's anchored to the container's bottom, so past ~32% its top
+                edge climbs out of the container and collides with the CTA above.
+                30% keeps it inside at every mobile width down to 320px.
+
+                No overhang on mobile (right-0, vs the negative insets from sm up).
+                At phone width the container is only a few hundred px, so even a
+                4px overhang parked the phone in the right gutter with barely any
+                overlap -- it read as a second, unrelated image floating off the
+                edge rather than as one composition. */}
+            <div className="absolute -bottom-6 right-0 w-[30%] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:-right-6 sm:w-[28%] lg:-right-10 lg:w-[30%]">
+              <Image
+                src="/hero-signer-mobile.png"
+                alt="A signer signing the same document on their phone: a handwritten signature drawn in the signature pad, with a yellow slide-to-sign bar ready to submit"
+                width={1236}
+                height={2370}
+                sizes="(min-width: 1024px) 12rem, (min-width: 640px) 11rem, 30vw"
+                className="h-auto w-full"
+              />
+            </div>
+          </div>
+
+      </section>
+
+      {/* Value row moved off the first screen. It sat directly under the
+          CTA competing with it — four yellow tiles pulling the eye away
+          from the one thing we want pressed. Same content, now a strip
+          below the hero where it supports rather than competes. */}
+      <section className="mx-auto flex w-full max-w-3xl flex-col items-center px-6 pb-4">
         {/* Four across at every width. A 2x2 grid on phones read as an odd
             floating square with too much dead space, so the icons/labels/gaps
             just scale down instead — one compact strip on mobile, full size
@@ -147,69 +245,6 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Product shot. Until now the marketing site had no image of the actual
-          product anywhere — a visitor had to take on faith that it exists and
-          looks decent. Deliberately a real screenshot rather than an
-          illustration: it doubles as proof, and it's inherently unique to us
-          (stock art reads as templated). Wider than the max-w-3xl text column
-          so the UI is legible. next/image handles format negotiation and
-          reserves the space via width/height, so it can't shift the layout. */}
-      {/* Both halves of the product in one image: the sender placing fields on
-          desktop, and the signer finishing on a phone. Capped at 40rem and
-          centred so it never balloons on a wide monitor — a product shot blown
-          up full-width reads as filler rather than proof. The cap came down
-          from 46rem, and the phone went up to 28/30%, to shift weight onto the
-          signer's phone: most traffic signs on mobile, so that frame is the
-          one carrying the pitch even for desktop visitors.
-
-          The phone is absolutely positioned so it overlaps the editor's
-          bottom-right (which is mostly whitespace, so nothing meaningful is
-          covered) and hangs slightly past the edge for depth. Extra right
-          padding on the section reserves room for that overhang.
-
-          On mobile the editor shot is pulled in to 78% and left-aligned so the
-          phone has somewhere to sit. It was previously hidden below sm, which
-          was backwards: at phone width the editor screenshot is too small to
-          read anyway and works only as texture, while the phone shot is the
-          one a visitor on a phone can actually parse — and it's the frame that
-          answers "what will this be like for the person I send it to". So the
-          bigger of the two on mobile is the phone, proportionally. */}
-      <section className="mx-auto w-full max-w-5xl px-6 pb-12 sm:pr-12">
-        <div className="relative mx-auto max-w-[40rem]">
-          <div className="w-[82%] overflow-hidden rounded-xl border border-slate-200 shadow-sm sm:w-full">
-            <Image
-              src="/hero-field-editor.png"
-              alt="The SignedBy field editor: a consulting agreement with signature fields placed for two recipients, showing the draft auto-saved and ready to send"
-              width={1562}
-              height={1070}
-              priority
-              sizes="(min-width: 768px) 40rem, 82vw"
-              className="h-auto w-full"
-            />
-          </div>
-          {/* 30% is the ceiling on mobile, not a look-right guess. The phone is
-              far taller per unit width (2370/1236) than the editor is (1070/1562),
-              and it's anchored to the container's bottom, so past ~32% its top
-              edge climbs out of the container and collides with the CTA above.
-              30% keeps it inside at every mobile width down to 320px.
-
-              No overhang on mobile (right-0, vs the negative insets from sm up).
-              At phone width the container is only a few hundred px, so even a
-              4px overhang parked the phone in the right gutter with barely any
-              overlap -- it read as a second, unrelated image floating off the
-              edge rather than as one composition. */}
-          <div className="absolute -bottom-6 right-0 w-[30%] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:-right-6 sm:w-[28%] lg:-right-10 lg:w-[30%]">
-            <Image
-              src="/hero-signer-mobile.png"
-              alt="A signer signing the same document on their phone: a handwritten signature drawn in the signature pad, with a yellow slide-to-sign bar ready to submit"
-              width={1236}
-              height={2370}
-              sizes="(min-width: 1024px) 12rem, (min-width: 640px) 11rem, 30vw"
-              className="h-auto w-full"
-            />
-          </div>
-        </div>
-      </section>
 
       <section className="mx-auto w-full max-w-3xl px-6 pb-16">
         <p className="mb-4 text-center text-xs font-medium uppercase tracking-wide text-slate-400">
