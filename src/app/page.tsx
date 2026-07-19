@@ -100,9 +100,10 @@ export default async function LandingPage() {
 
           What v19 changed and this keeps: highlighter on "per-seat tax" in the
           headline rather than a stray phrase at the end of a paragraph, the
-          one-line subhead, the dark savings chip with the number in yellow, the
-          yellow CTA, and the value row moved off the first screen so it stops
-          competing with it. */}
+          dark savings chip with the number in yellow, the yellow CTA, and the
+          value row moved off the first screen so it stops competing with it.
+          (v19's one-line subhead did NOT survive — see the note on the
+          paragraph below.) */}
       <section className="mx-auto flex w-full max-w-3xl flex-col items-center px-6 pt-16 pb-8 text-center sm:pt-20">
         {/* Concrete-savings badge (V3_Design_Inspiration.md #2, DocTrack-
             style): a number, not an adjective, with /vs/docusign as the
@@ -124,24 +125,32 @@ export default async function LandingPage() {
           <span className="hidden sm:inline">— see the math</span>
           <span aria-hidden>→</span>
         </Link>
-          {/* Highlighter moved onto "per-seat tax". It was previously on
-              "Sign documents." at the end of the paragraph — a phrase that
-              isn't the differentiator and isn't in the headline, so the motif
-              was decorating rather than emphasising. SignNow does the same
-              thing with an underline on its headline; this is that, on the
-              words that actually distinguish us. */}
+        {/* Highlighter moved onto "per-seat tax". It was previously on
+            "Sign documents." at the end of the paragraph — a phrase that
+            isn't the differentiator and isn't in the headline, so the motif
+            was decorating rather than emphasising. SignNow does the same
+            thing with an underline on its headline; this is that, on the
+            words that actually distinguish us. */}
         <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-slate-900 sm:text-5xl">
           E-signatures, without the{" "}
           <span className="inline-block -rotate-1 rounded bg-yellow-300 px-2 text-slate-900">
             per-seat tax
           </span>
         </h1>
-          {/* Three lines down to one. The long version explained the
-              positioning thoroughly, but nobody reads three lines before
-              deciding — Lemonade's subhead is six words and is the best copy
-              on any of the pages compared. */}
-        <p className="mt-4 max-w-md text-lg text-slate-600">
-          Built for a handful of documents a month. Not a whole sales floor.
+        {/* Full explanatory version, restored 2026-07-19 after being cut to
+            one line. The one-liner was modelled on Lemonade's six-word
+            subhead, but that comparison ignored brand awareness: Lemonade is
+            already known in that market, so its page has nothing to explain.
+            An unknown beta does. Until people arrive knowing what SignedBy is,
+            saying who it's for earns its length — brevity is a luxury of
+            recognition. Revisit once the brand carries itself.
+
+            "not a whole sales floor" stays the last clause deliberately: it is
+            the sharp, memorable half, and it lands better at the end than
+            buried mid-sentence. */}
+        <p className="mt-4 max-w-xl text-lg text-slate-600">
+          SignedBy is a fast, affordable alternative for e-Signatures — built for solo professionals
+          and small teams who sign a handful of documents each month, not a whole sales floor.
         </p>
         {/* Yellow, not slate-900. Above the fold yellow was previously doing
               three jobs (pill, highlight, four value icons) while the one thing
