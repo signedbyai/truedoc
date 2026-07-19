@@ -11,6 +11,7 @@ import { pickMostVisiblePage, computeDeltas, FLUSH_INTERVAL_SECONDS } from "@/li
 import { speedStatShareText, type SpeedStat } from "@/lib/speed-stat";
 import { SIGNATURE_STYLES, renderTypedSignature } from "@/lib/signature-styles";
 import { SummaryMarkdown } from "@/lib/summary-markdown";
+import { SignerLoading, type LoadStage } from "@/components/signer-loading";
 
 type FieldType = "signature" | "initials" | "date" | "text" | "checkbox";
 
@@ -126,6 +127,9 @@ export function SigningView({
   }
   const [pageCanvases, setPageCanvases] = useState<{ page: number; dataUrl: string; width: number; height: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  // Which real step the load is on, for the branded loading panel's bar. Only
+  // ever advanced by something actually completing — never on a timer.
+  const [loadStage, setLoadStage] = useState<LoadStage>("fetching");
   // PDF-load resilience: a single transient failure (a network/R2 blip, or the
   // pdf worker failing to load once) used to strand the signer on a dead-end
   // "couldn't load" message with no recovery but a manual page refresh. Now we
@@ -243,9 +247,13 @@ export function SigningView({
       setPageCanvases([]);
       setLoadError(false);
       setLoading(true);
+      setLoadStage("fetching");
       pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
       const loadingTask = pdfjsLib.getDocument({ url: `/api/sign/${token}/file` });
       const pdf = await loadingTask.promise;
+      if (cancelled) return;
+      // Document parsed, page count known — the bar can honestly move on.
+      setLoadStage("parsing");
 
       // Append each page to state as soon as it finishes rendering, instead
       // of collecting them all and calling setPageCanvases once at the very
@@ -1091,7 +1099,24 @@ export function SigningView({
       )}
 
       <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-6 py-10">
-        {loading && <p className="text-sm text-slate-500">Loading document…</p>}
+        {/* Was a bare "Loading document…" in grey. The signer often has never
+            heard of SignedBy, so this moment is doing trust work whether it was
+            designed to or not — it now says who sent the document, and shows
+            real progress. Disappears the instant page 1 renders (loading is
+            cleared there, not when every page is done), so a signer never waits
+            on pages they can't see yet. */}
+        {loading && (
+          <SignerLoading
+            orgName={branding.orgName}
+            stage={loadStage}
+            showSignedByMark={!branding.hasCustomBranding}
+            logoUrl={
+              branding.hasCustomBranding && branding.hasLogo
+                ? `/api/org/${branding.orgId}/logo`
+                : null
+            }
+          />
+        )}
 
         {!loading && pageCanvases.length > 0 && orderedFields.length > 0 && (
           <div className="flex w-full max-w-sm justify-end">
