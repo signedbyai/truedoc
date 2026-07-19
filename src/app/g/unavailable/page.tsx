@@ -6,7 +6,7 @@
 export default function DocGateUnavailablePage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
+      <div className="w-full max-w-sm rounded-lg border border-slate-200/60 bg-white p-8 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
         <h1 className="text-lg font-semibold text-slate-900">Link not available yet</h1>
         <p className="mt-2 text-sm text-slate-600">
           This link isn&apos;t valid, or the document it&apos;s attached to hasn&apos;t been signed by everyone yet.

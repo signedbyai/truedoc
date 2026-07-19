@@ -221,7 +221,7 @@ function StatusScreen({
 }) {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-slate-50 px-4">
-      <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
+      <div className="w-full max-w-sm rounded-lg border border-slate-200/60 bg-white p-8 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
         {logo && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={logo.url} alt={logo.alt} className="mx-auto mb-4 h-10 w-auto max-w-[180px] rounded object-contain" />

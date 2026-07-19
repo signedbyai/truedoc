@@ -238,10 +238,10 @@ function LoginPageInner() {
         <Logo withBeta={false} />
       </Link>
       <span className="mb-8 inline-block -rotate-1 rounded bg-yellow-300 px-1.5 py-0.5 text-sm font-semibold text-slate-900">
-        Documents. Signed.
+        Sign documents.
       </span>
 
-      <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+      <div className="w-full max-w-sm rounded-xl border border-slate-200/60 bg-white p-8 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
         <div className="mb-6 text-center">
           <h1 className="text-xl font-semibold text-slate-900">
             {isSignup ? "Create your account" : "Welcome back"}

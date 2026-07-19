@@ -822,7 +822,7 @@ export function SigningView({
   if (declined) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-slate-50 px-4">
-        <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <div className="w-full max-w-sm rounded-lg border border-slate-200/60 bg-white p-8 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
           {endScreenLogo}
           <h1 className="text-lg font-semibold text-slate-900">Declined</h1>
           <p className="mt-2 text-sm text-slate-600">
@@ -854,7 +854,7 @@ export function SigningView({
   if (done) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-        <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <div className="w-full max-w-sm rounded-lg border border-slate-200/60 bg-white p-8 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
           {endScreenLogo}
           <h1 className="text-lg font-semibold text-slate-900">Signed</h1>
           <p className="mt-2 text-sm text-slate-600">
@@ -1135,7 +1135,7 @@ export function SigningView({
             <div
               onTouchStart={handleCardTouchStart}
               onTouchEnd={handleCardTouchEnd}
-              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+              className="rounded-xl border border-slate-200/60 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]"
             >
               {(() => {
                 const pageInfo = pageByNumber.get(currentCardField.page);
