@@ -19,6 +19,12 @@ export type Archetype = {
   tagline: string; // short line for the shareable result card
   description: string; // longer blurb for the on-screen result
   styleId: string; // SIGNATURE_STYLES id
+  // Every archetype's CTA lands on signup. It used to vary: three pointed at
+  // "/" (the homepage, so a paid visitor had to find the CTA again) and one at
+  // "/verify" — the public hash-lookup tool, which has no signup path at all,
+  // so a quarter of campaign traffic hit a dead end at the exact conversion
+  // moment. Kept as a per-archetype field rather than a constant so a future
+  // archetype can deep-link somewhere better, but the default must be signup.
   feature: { name: string; description: string; href: string };
 };
 
@@ -44,7 +50,7 @@ export const ARCHETYPES: Record<ArchetypeId, Archetype> = {
       name: "Card mode for signing on your phone",
       description:
         "Since you're probably signing this on your phone anyway — SignedBy's mobile card mode swipes you through fields one at a time instead of making you pinch-zoom a whole page.",
-      href: "/",
+      href: "/login?intent=signup",
     },
   },
   "old-money": {
@@ -58,7 +64,7 @@ export const ARCHETYPES: Record<ArchetypeId, Archetype> = {
       name: "Certificate of Completion",
       description:
         "You'll appreciate that every SignedBy document comes with a Certificate of Completion — a verifiable audit trail, so exactly who signed what, and when, is never in question.",
-      href: "/verify",
+      href: "/login?intent=signup",
     },
   },
   "efficient-executive": {
@@ -72,7 +78,7 @@ export const ARCHETYPES: Record<ArchetypeId, Archetype> = {
       name: "AI-drafted documents",
       description:
         "You'll like this: describe what you need in plain language — a freelance agreement, an NDA, a waiver — and SignedBy drafts a starting point for you. No blank-page problem.",
-      href: "/",
+      href: "/login?intent=signup",
     },
   },
   traditionalist: {
@@ -86,7 +92,7 @@ export const ARCHETYPES: Record<ArchetypeId, Archetype> = {
       name: "A real downloadable PDF",
       description:
         "Every document you sign with SignedBy comes with an actual downloadable PDF — a permanent copy that's yours, not something locked behind someone else's login.",
-      href: "/",
+      href: "/login?intent=signup",
     },
   },
 };

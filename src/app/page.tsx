@@ -133,9 +133,13 @@ export default async function LandingPage() {
             words that actually distinguish us. */}
         <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-slate-900 sm:text-5xl">
           E-signatures, without the{" "}
-          <span className="inline-block -rotate-1 rounded bg-yellow-300 px-2 text-slate-900">
-            per-seat tax
-          </span>
+          {/* Underline, not a filled block. The fill competed with the CTA
+              directly below it — same yellow, similar area, so the one thing we
+              want pressed wasn't visibly the loudest. An underline keeps the
+              highlighter motif on the differentiator while using a fraction of
+              the ink, which leaves the filled yellow rectangle unambiguously
+              the button. Matches the nav's active indicator too. */}
+          <span className="border-b-[5px] border-yellow-300 pb-0.5">per-seat tax</span>
         </h1>
         {/* Full explanatory version, restored 2026-07-19 after being cut to
             one line. The one-liner was modelled on Lemonade's six-word

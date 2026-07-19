@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { ARCHETYPES, QUIZ_QUESTIONS, scoreQuiz, type ArchetypeId } from "@/lib/signature-quiz";
 import { renderQuizResultCard } from "@/lib/signature-quiz-card";
@@ -249,12 +250,24 @@ export function SignatureQuizView() {
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Made for you</p>
               <h3 className="mt-1 text-base font-semibold text-slate-900">{archetype.feature.name}</h3>
               <p className="mt-2 text-sm text-slate-600">{archetype.feature.description}</p>
+              {/* A button, not an underlined text link. This is the end of the
+                  quiz and the entire conversion moment for the LinkedIn
+                  campaign — it was styled as a tertiary link, quieter than the
+                  "Start the quiz" button that got them here. Yellow to match
+                  the homepage's primary CTA, so paid traffic meets the same
+                  call to action wherever it lands. */}
               <Link
                 href={archetype.feature.href}
-                className="mt-3 inline-block text-sm font-medium text-slate-900 underline underline-offset-4"
+                className={cn(
+                  buttonVariants({ size: "lg" }),
+                  "mt-4 bg-yellow-300 text-slate-900 hover:bg-yellow-400"
+                )}
               >
                 Try SignedBy free →
               </Link>
+              <p className="mt-2 text-xs text-slate-400">
+                No credit card required — 3 free documents every month.
+              </p>
             </div>
           </div>
         )}
