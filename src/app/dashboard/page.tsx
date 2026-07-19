@@ -199,13 +199,26 @@ export default async function DashboardPage() {
                 than the large amber field first tried: that block of colour sat
                 right under the yellow nav underline and spent the accent on a
                 passive achievement. */}
+            {/* No inner border. The badge sat in a bordered box inside the
+                Card's own bordered box, and nested containers flatten
+                everything — it read as a form row rather than something
+                earned. The Card is already the container; deleting the inner
+                frame gives the medallion room to be the object.
+
+                The "BADGE EARNED" caption does more work than any styling: the
+                row previously said "First send / 5 documents sent", which could
+                just as easily be a status field. One line of text is what
+                actually makes it read as an achievement. */}
             {stats.earned ? (
-              <div className="mt-5 flex items-center gap-3 rounded-lg border border-slate-200 px-3.5 py-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-yellow-300">
+              <div className="mt-5 flex items-center gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-900 text-yellow-300">
                   <BadgeIcon id={stats.earned.id} />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-900">{stats.earned.label}</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                    Badge earned
+                  </p>
+                  <p className="text-[15px] font-medium text-slate-900">{stats.earned.label}</p>
                   <p className="text-xs text-slate-500">
                     {stats.sent} document{stats.sent === 1 ? "" : "s"} sent
                     {stats.next && ` · next badge at ${stats.next.threshold}`}
@@ -213,12 +226,15 @@ export default async function DashboardPage() {
                 </div>
               </div>
             ) : (
-              <div className="mt-5 flex items-center gap-3 rounded-lg border border-slate-200 px-3.5 py-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+              /* No caption here — nothing has been earned yet, and "Badge
+                 earned" above an empty state would be the rebuke this card is
+                 built to avoid. */
+              <div className="mt-5 flex items-center gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400">
                   <FirstStepIcon />
                 </span>
                 <div>
-                  <p className="text-sm font-medium text-slate-900">Send your first document</p>
+                  <p className="text-[15px] font-medium text-slate-900">Send your first document</p>
                   <p className="text-xs text-slate-500">Earn your first badge</p>
                 </div>
               </div>
