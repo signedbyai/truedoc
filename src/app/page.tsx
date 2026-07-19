@@ -139,7 +139,18 @@ export default async function LandingPage() {
               highlighter motif on the differentiator while using a fraction of
               the ink, which leaves the filled yellow rectangle unambiguously
               the button. Matches the nav's active indicator too. */}
-          <span className="border-b-[5px] border-yellow-300 pb-0.5">per-seat tax</span>
+          {/* whitespace-nowrap so the phrase can never split. Without it the
+              headline broke at the hyphen and stranded "per-" alone on the
+              first line with its own short underline stub, which reads as a
+              rendering fault rather than emphasis. The headline now breaks
+              after "the" instead, which is a better break anyway.
+
+              Safe from overflow: at the mobile text-4xl size the phrase needs
+              ~233px and even a 320px viewport leaves 272px inside the padding;
+              desktop text-5xl needs ~311px against 720px. */}
+          <span className="whitespace-nowrap border-b-[5px] border-yellow-300 pb-0.5">
+            per-seat tax
+          </span>
         </h1>
         {/* Full explanatory version, restored 2026-07-19 after being cut to
             one line. The one-liner was modelled on Lemonade's six-word
