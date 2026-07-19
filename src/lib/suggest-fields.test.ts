@@ -125,14 +125,16 @@ describe("parseParties", () => {
       fields: [],
     });
     expect(parseParties(raw)).toEqual([
-      { role: 0, label: "Employer" },
-      { role: 1, label: "Employee" },
+      { role: 0, label: "Employer", name: null, title: null, company: null },
+      { role: 1, label: "Employee", name: null, title: null, company: null },
     ]);
   });
 
   it("strips a markdown fence", () => {
     const raw = "```json\n" + JSON.stringify({ parties: [{ role: 0, label: "Tenant" }], fields: [] }) + "\n```";
-    expect(parseParties(raw)).toEqual([{ role: 0, label: "Tenant" }]);
+    expect(parseParties(raw)).toEqual([
+      { role: 0, label: "Tenant", name: null, title: null, company: null },
+    ]);
   });
 
   it("drops entries with a bad role or empty label", () => {
@@ -144,7 +146,9 @@ describe("parseParties", () => {
         { role: 2, label: "Good" },
       ],
     });
-    expect(parseParties(raw)).toEqual([{ role: 2, label: "Good" }]);
+    expect(parseParties(raw)).toEqual([
+      { role: 2, label: "Good", name: null, title: null, company: null },
+    ]);
   });
 
   it("returns [] for a bare array (no parties key) or unparseable text", () => {
@@ -273,8 +277,81 @@ describe("suggestFields", () => {
     expect(result.suggestions).toHaveLength(1);
     expect(result.suggestions[0].role).toBe(1);
     expect(result.parties).toEqual([
-      { role: 0, label: "Employer" },
-      { role: 1, label: "Employee" },
+      { role: 0, label: "Employer", name: null, title: null, company: null },
+      { role: 1, label: "Employee", name: null, title: null, company: null },
     ]);
+  });
+});
+
+describe("parseParties — party details lifted from the document", () => {
+  it("keeps name, title and company when the document states them", () => {
+    const raw = JSON.stringify({
+      parties: [
+        {
+          role: 0,
+          label: "Consultant",
+          name: "Amara Okafor",
+          title: "Managing Director",
+          company: "Meridian Consulting Ltd",
+        },
+      ],
+    });
+    expect(parseParties(raw)).toEqual([
+      {
+        role: 0,
+        label: "Consultant",
+        name: "Amara Okafor",
+        title: "Managing Director",
+        company: "Meridian Consulting Ltd",
+      },
+    ]);
+  });
+
+  it("handles a company with no named signatory", () => {
+    // Very common: the entity is named in the preamble but whoever signs for it
+    // isn't. The company still gives the sender useful context.
+    const raw = JSON.stringify({
+      parties: [{ role: 0, label: "Client", name: null, title: null, company: "Acme Tech Solutions B.V." }],
+    });
+    expect(parseParties(raw)).toEqual([
+      { role: 0, label: "Client", name: null, title: null, company: "Acme Tech Solutions B.V." },
+    ]);
+  });
+
+  it("treats a response with no detail keys at all as all-null", () => {
+    // Backward compatibility: the model often omits these, and any response
+    // produced before the prompt change has no such keys. Absence must be
+    // ordinary, not an error.
+    const raw = JSON.stringify({ parties: [{ role: 0, label: "Party A" }] });
+    expect(parseParties(raw)).toEqual([
+      { role: 0, label: "Party A", name: null, title: null, company: null },
+    ]);
+  });
+
+  it("nulls out details that aren't usable strings", () => {
+    const raw = JSON.stringify({
+      parties: [{ role: 0, label: "Signatory", name: 42, title: "   ", company: null }],
+    });
+    expect(parseParties(raw)).toEqual([
+      { role: 0, label: "Signatory", name: null, title: null, company: null },
+    ]);
+  });
+
+  it("trims whitespace and caps detail length", () => {
+    const raw = JSON.stringify({
+      parties: [{ role: 0, label: "Party A", name: "  Amara Okafor  ", company: "C".repeat(200) }],
+    });
+    const [party] = parseParties(raw);
+    expect(party.name).toBe("Amara Okafor");
+    expect(party.company).toHaveLength(80);
+  });
+
+  it("still drops a party with a bad role even when details look good", () => {
+    // The existing role/label guards must not be weakened by the new fields —
+    // a party with no usable role can't be bound to a recipient at all.
+    const raw = JSON.stringify({
+      parties: [{ role: -1, label: "Consultant", name: "Amara Okafor" }],
+    });
+    expect(parseParties(raw)).toEqual([]);
   });
 });

@@ -159,7 +159,9 @@ export function FieldEditor({
   // which auto-binds the role-tagged field suggestions (see addDetectedSigners
   // + lib/suggestion-binding.ts).
   const [detectedParties, setDetectedParties] = useState<{ role: number; label: string }[]>([]);
-  const [signerInputs, setSignerInputs] = useState<{ role: number; label: string; name: string; email: string }[]>([]);
+  const [signerInputs, setSignerInputs] = useState<
+    { role: number; label: string; name: string; email: string; title: string | null; company: string | null }[]
+  >([]);
   const pageRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const dragState = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
   // Guards the auto-suggest effect below to a single attempt per mount —
@@ -442,9 +444,32 @@ export function FieldEditor({
         // Capture the distinct signing parties the model found, for the
         // "we detected N signers" guided setup (rendered only when the
         // document is multi-party and no recipients exist yet).
-        const parties: { role: number; label: string }[] = Array.isArray(data.parties) ? data.parties : [];
+        const parties: {
+          role: number;
+          label: string;
+          name?: string | null;
+          title?: string | null;
+          company?: string | null;
+        }[] = Array.isArray(data.parties) ? data.parties : [];
         setDetectedParties(parties);
-        setSignerInputs(parties.map((p) => ({ role: p.role, label: p.label, name: "", email: "" })));
+        // Name is seeded from the document when it states one — the scan is
+        // already reading the preamble and signature blocks, so asking the
+        // sender to retype a name that's sitting in the text is wasted work.
+        // Email is deliberately NEVER pre-filled, even if the document
+        // contains one: a name is visible and gets checked, whereas a
+        // plausible-but-wrong email is the one mistake here that sends the
+        // document to the wrong person, and nobody re-reads a field that
+        // already looks filled in.
+        setSignerInputs(
+          parties.map((p) => ({
+            role: p.role,
+            label: p.label,
+            name: p.name ?? "",
+            email: "",
+            title: p.title ?? null,
+            company: p.company ?? null,
+          }))
+        );
 
         // Scroll the sender to where the suggestions landed (usually the
         // signature block, off-screen below). Two rAFs so the new fields have
@@ -1391,36 +1416,56 @@ export function FieldEditor({
             <div className="mt-2.5 flex flex-col gap-2">
               {signerInputs.map((s, i) => {
                 const color = RECIPIENT_COLORS[i % RECIPIENT_COLORS.length];
+                // Title and company are context, not inputs — they tell the
+                // sender which "Consultant" this is without adding fields to
+                // fill. Shown whenever the document stated them, including the
+                // common case where the entity is named but its signatory
+                // isn't, which is exactly when the sender needs the hint most.
+                const context = [s.title, s.company].filter(Boolean).join(", ");
                 return (
-                  <div key={s.role} className="flex flex-wrap items-center gap-1.5">
-                    <span
-                      className={cn(
-                        "flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
-                        color.border,
-                        color.bg,
-                        color.text
-                      )}
-                    >
-                      <span className={cn("h-1.5 w-1.5 rounded-full", color.dot)} />
-                      {s.label}
-                    </span>
-                    <Input
-                      value={s.name}
-                      onChange={(e) => updateSignerInput(s.role, "name", e.target.value)}
-                      placeholder="Name (optional)"
-                      className="h-7 w-28 min-w-0 flex-1 text-xs sm:w-32 sm:flex-none"
-                    />
-                    <Input
-                      value={s.email}
-                      onChange={(e) => updateSignerInput(s.role, "email", e.target.value)}
-                      type="email"
-                      placeholder="email@example.com"
-                      className="h-7 w-40 min-w-0 flex-1 text-xs sm:w-44 sm:flex-none"
-                    />
+                  <div key={s.role}>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span
+                        className={cn(
+                          "flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
+                          color.border,
+                          color.bg,
+                          color.text
+                        )}
+                      >
+                        <span className={cn("h-1.5 w-1.5 rounded-full", color.dot)} />
+                        {s.label}
+                      </span>
+                      <Input
+                        value={s.name}
+                        onChange={(e) => updateSignerInput(s.role, "name", e.target.value)}
+                        placeholder="Name (optional)"
+                        className="h-7 w-28 min-w-0 flex-1 text-xs sm:w-32 sm:flex-none"
+                      />
+                      <Input
+                        value={s.email}
+                        onChange={(e) => updateSignerInput(s.role, "email", e.target.value)}
+                        type="email"
+                        placeholder="email@example.com"
+                        className="h-7 w-40 min-w-0 flex-1 text-xs sm:w-44 sm:flex-none"
+                      />
+                    </div>
+                    {context && <p className="mt-0.5 pl-1 text-[11px] text-slate-400">{context}</p>}
                   </div>
                 );
               })}
             </div>
+            {/* Says where the names came from. Pre-filled data that looks
+                user-entered stops being checked, and these are read from the
+                document rather than chosen by the sender — so the provenance
+                has to be visible, or the one thing this feature could get
+                wrong sails through unnoticed. Only shown when something was
+                actually pre-filled. */}
+            {signerInputs.some((s) => s.name.trim()) && (
+              <p className="mt-2 text-[11px] text-slate-400">
+                Names read from the document — check them before sending
+              </p>
+            )}
             <div className="mt-2.5">
               {(() => {
                 const filled = signerInputs.filter((s) => s.email.trim()).length;

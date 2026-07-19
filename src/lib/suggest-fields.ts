@@ -36,6 +36,13 @@ First, identify the distinct signing PARTIES the document expects — the people
 Number them from 0 in the order they first appear and give each a short human label. If the document only ever \
 has one signer, return a single party or an empty list.
 
+For each party, also return "name", "title" and "company" WHEN THE DOCUMENT ACTUALLY STATES THEM — a person's \
+name (e.g. after "Name:" in a signature block, or named in the opening paragraph), their job title (e.g. after \
+"Title:"), and the organization they sign for (e.g. the entity named in "made between X B.V. and Y Ltd"). Use \
+null for any you cannot find. Do NOT guess, infer, or invent a name: a document that only says "the Purchaser" \
+has no name for that party, and a wrong name here is worse than no name. It is normal and fine to return a \
+company with a null name, or a label with all three null.
+
 Then find the field spots that need a signer to sign, initial, date, write something, or check a box — for \
 example a line after "Signature:", an "Initials" box, a blank after "Date:", a blank for a printed \
 name/title/company, or a checkbox next to an opt-in clause. Point x and y at roughly where the blank or box \
@@ -52,7 +59,7 @@ Only include fields the text actually indicates — don't invent ones that aren'
 ${MAX_SUGGESTIONS} fields.
 
 Respond with ONLY a JSON object (no markdown fences, no prose, no explanation before or after):
-{"parties": [{"role": <integer from 0>, "label": "<short party label>"}], "fields": [{"page": <1-based page number>, "x": <0-1>, "y": <0-1>, "type": "signature" | "initials" | "date" | "text" | "checkbox", "role": <integer or null>, "purpose": "name" | "title" | "company" | null}]}
+{"parties": [{"role": <integer from 0>, "label": "<short party label>", "name": "<person's name or null>", "title": "<job title or null>", "company": "<organization or null>"}], "fields": [{"page": <1-based page number>, "x": <0-1>, "y": <0-1>, "type": "signature" | "initials" | "date" | "text" | "checkbox", "role": <integer or null>, "purpose": "name" | "title" | "company" | null}]}
 
 Use an empty "fields" array if you find no field spots.`;
 
@@ -100,12 +107,32 @@ export function fallbackSuggestion(): FieldSuggestion {
 // model gave it ("Employer", "Tenant", …). `role` is the same integer the
 // field candidates reference, so a party maps to the recipient slot the field
 // editor binds role-tagged suggestions to (order_index === role).
-export type Party = { role: number; label: string };
+// `label` is the ROLE ("Consultant", "Tenant"). name/title/company are the
+// actual details when the document states them, and are null far more often
+// than not — a contract that only ever says "the Purchaser" yields a label and
+// nothing else. Nullable rather than optional so the absence is explicit at
+// every call site.
+export type Party = {
+  role: number;
+  label: string;
+  name: string | null;
+  title: string | null;
+  company: string | null;
+};
 const MAX_PARTIES = 10;
 
 // Pulls the "parties" list out of the model's JSON object. Bare-array
 // responses (no parties key) yield []. Deduped by role and sorted, so the
 // editor can render one email input per party in a stable order.
+// Details are advisory and user-visible before anything is sent, so anything
+// that isn't a usable string becomes null rather than throwing.
+function optionalDetail(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, 80);
+}
+
 export function parseParties(raw: string): Party[] {
   let jsonText = raw.trim();
   const fenced = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -131,7 +158,18 @@ export function parseParties(raw: string): Party[] {
     if (!Number.isInteger(role) || role < 0 || !label) continue;
     if (seen.has(role)) continue;
     seen.add(role);
-    out.push({ role, label: label.slice(0, 40) });
+    out.push({
+      role,
+      label: label.slice(0, 40),
+      // Same treatment as label: string-or-nothing, trimmed, length-capped.
+      // A missing key, an explicit null, a number, or an empty string after
+      // trimming all collapse to null — the model omits these often, and older
+      // responses predate the fields entirely, so absence must be ordinary
+      // rather than exceptional.
+      name: optionalDetail(e.name),
+      title: optionalDetail(e.title),
+      company: optionalDetail(e.company),
+    });
     if (out.length >= MAX_PARTIES) break;
   }
   out.sort((a, b) => a.role - b.role);
