@@ -113,40 +113,41 @@ export function DashboardNav({
                     href={s.href}
                     aria-current={active ? "page" : undefined}
                     className={
-                      "relative py-4 text-sm transition-colors " +
+                      // h-14 + items-center rather than py-4: the link has to
+                      // span the header's full height for the indicator to sit
+                      // on its bottom border. With padding alone it stopped a
+                      // couple of pixels short and the line floated.
+                      "relative flex h-14 items-center text-sm transition-colors " +
                       (active
                         ? "font-medium text-slate-900"
                         : "font-medium text-slate-500 hover:text-slate-900")
                     }
                   >
-                    {/* Highlighter stroke, not a border. Four things together
-                        make it read as drawn rather than generated, and it
-                        needs all four — any one alone still looks like a rule:
-                        it overhangs the word at both ends, the corner radii are
-                        deliberately unequal, it's rotated half a degree, and it
-                        sits behind the baseline overlapping the descenders
-                        instead of floating below the text.
+                    {s.label}
+                    {/* Clean 3px rule on the header's bottom edge. Replaced a
+                        deliberately hand-drawn marker stroke (rotated, uneven
+                        radii, overhanging the word) — it was aiming for
+                        personality but read as untidy against otherwise precise
+                        chrome.
 
-                        Same yellow-highlight motif as the favicon (black S on
-                        yellow) and the login page's sweep, so the brand finally
-                        shows up in the chrome — the nav was otherwise entirely
-                        slate. This marks state, not an action, which is why it
-                        doesn't dilute yellow's job as "Send for signature":
-                        that rule is about actions. Keep the mobile nav pill
-                        slate for the same reason — a persistent yellow surface
-                        on every screen would spend the colour.
+                        3px, not 2: yellow is light, and at 2px it reads as a
+                        pale hairline rather than an accent. Dark indicators can
+                        be thinner; this one can't.
 
-                        Rendered before the label, with the label in its own
-                        relative span, so the text stacks above the stroke
-                        without needing a negative z-index that would drop it
-                        behind the header background. */}
+                        -bottom-px, not bottom-0, so it covers the header's own
+                        1px border instead of stacking on top of it. Otherwise
+                        you get a yellow line with a grey line directly beneath,
+                        which is the sort of near-miss that reads as unfinished.
+
+                        Width is the label, not wider: a tab-width indicator
+                        implies panels you switch between, and these are links
+                        to separate pages. */}
                     {active && (
                       <span
                         aria-hidden
-                        className="absolute -left-1 -right-1.5 bottom-3 h-[7px] -rotate-[0.5deg] rounded-[3px_5px_4px_6px] bg-yellow-300"
+                        className="absolute inset-x-0 -bottom-px h-[3px] bg-yellow-300"
                       />
                     )}
-                    <span className="relative">{s.label}</span>
                   </Link>
                 );
               })}
