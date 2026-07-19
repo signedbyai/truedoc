@@ -36,12 +36,29 @@ First, identify the distinct signing PARTIES the document expects — the people
 Number them from 0 in the order they first appear and give each a short human label. If the document only ever \
 has one signer, return a single party or an empty list.
 
-For each party, also return "name", "title" and "company" WHEN THE DOCUMENT ACTUALLY STATES THEM — a person's \
-name (e.g. after "Name:" in a signature block, or named in the opening paragraph), their job title (e.g. after \
-"Title:"), and the organization they sign for (e.g. the entity named in "made between X B.V. and Y Ltd"). Use \
-null for any you cannot find. Do NOT guess, infer, or invent a name: a document that only says "the Purchaser" \
-has no name for that party, and a wrong name here is worse than no name. It is normal and fine to return a \
-company with a null name, or a label with all three null.
+For each party, also return "name", "title" and "company".
+
+The SIGNATURE BLOCKS near the end are the main source for "name" and "title", and you must read them. A block \
+typically looks like:
+
+    For the <party label>:
+    ______________________
+    Signature
+    Name: <the person's printed name>
+    Title: <their job title>
+
+The heading above the block ("For the Client:", "Signed by the Tenant:", or similar) tells you WHICH party the \
+block belongs to — match it to that party's label. The text after "Name:" is that party's "name" and the text \
+after "Title:" is their "title". A name printed there is a real, stated name: use it. Do not leave "name" null \
+just because the signature line itself is blank — the printed name underneath is what you want.
+
+"company" is the organization the party signs for, usually the entity named in the opening paragraph — in a \
+sentence of the form 'made between <entity A> ("the <label A>") and <entity B> ("the <label B>")', entity A is \
+the company for the party labelled A.
+
+Use null only when the document genuinely does not state something. Do not invent or infer: a document that \
+only ever says "the Purchaser" has no name for that party, and a wrong name is worse than no name. Returning a \
+company with a null name is normal and fine.
 
 Then find the field spots that need a signer to sign, initial, date, write something, or check a box — for \
 example a line after "Signature:", an "Initials" box, a blank after "Date:", a blank for a printed \
