@@ -75,7 +75,11 @@ export default async function LandingPage() {
   return (
     <main className="flex min-h-screen flex-col bg-white">
       <ReferralCapture />
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
+      {/* Header, hero and every section below share max-w-6xl. Mixed
+          container widths (5xl header, 6xl hero, 3xl value row, 5xl
+          features) is the other half of why the page read as unsettled —
+          nothing lined up down the left edge. */}
+      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
         <Logo />
         <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
           Sign in
@@ -90,9 +94,27 @@ export default async function LandingPage() {
           every competitor's first screen (Robinhood, Lemonade, SignNow) commits
           to something visual above it. Two columns is what gets the product
           into the first screen without cutting copy. Stacks back to one column
-          below lg, where centred still reads better on a phone. */}
-      <section className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-10 px-6 pt-16 pb-8 lg:grid-cols-2 lg:gap-14 lg:pt-20">
-        <div className="flex flex-col items-center gap-5 text-center lg:items-start lg:text-left">
+          below lg.
+
+          LEFT-ALIGNED AT EVERY WIDTH. The first version flipped from centred
+          to left at lg, which meant the page had two different identities
+          depending on the window — the thing that made it feel unresolved.
+          One alignment everywhere, and left is the one that works in both
+          layouts; centred text next to a left-edged image never reads as
+          deliberate.
+
+          items-start, not items-center: vertically centring a short text block
+          against a tall screenshot floats it in the middle of its column with
+          dead space above and below. Top-aligned, the two columns share a
+          baseline.
+
+          Spacing is explicit per element rather than a uniform gap, so the
+          content groups: pill sits close to the headline it qualifies, subhead
+          close to the headline it explains, then a real break before the CTA.
+          A single gap value spaces unrelated things identically, which is what
+          made it look spread out. */}
+      <section className="mx-auto grid w-full max-w-6xl grid-cols-1 items-start gap-10 px-6 pt-16 pb-8 lg:grid-cols-2 lg:gap-12 lg:pt-24">
+        <div className="flex flex-col items-start text-left">
         {/* Concrete-savings badge (V3_Design_Inspiration.md #2, DocTrack-
             style): a number, not an adjective, with /vs/docusign as the
             receipts. "$700+" is the LOW end of the 3-user math already
@@ -103,9 +125,9 @@ export default async function LandingPage() {
             So the copy shortens on small screens ("$700+/year vs DocuSign →")
             rather than the box shrinking, and whitespace-nowrap guarantees it
             can never wrap into a slab again. Full sentence returns at sm. */}
-        <Link
-          href="/vs/docusign"
-            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 sm:text-sm"
+          <Link
+            href="/vs/docusign"
+            className="mb-5 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 sm:text-sm"
           >
             <span className="hidden sm:inline">Teams save</span>
             <span className="font-bold text-yellow-300">$700+/year</span>
@@ -119,7 +141,7 @@ export default async function LandingPage() {
               was decorating rather than emphasising. SignNow does the same
               thing with an underline on its headline; this is that, on the
               words that actually distinguish us. */}
-          <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+          <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-slate-900 sm:text-5xl">
             E-signatures, without the{" "}
             <span className="inline-block -rotate-1 rounded bg-yellow-300 px-2 text-slate-900">
               per-seat tax
@@ -129,7 +151,7 @@ export default async function LandingPage() {
               positioning thoroughly, but nobody reads three lines before
               deciding — Lemonade's subhead is six words and is the best copy
               on any of the pages compared. */}
-          <p className="max-w-md text-lg text-slate-600">
+          <p className="mt-4 max-w-md text-lg text-slate-600">
             Built for a handful of documents a month. Not a whole sales floor.
           </p>
           {/* Yellow, not slate-900. Above the fold yellow was previously doing
@@ -141,12 +163,12 @@ export default async function LandingPage() {
             href="/login?intent=signup"
             className={cn(
               buttonVariants({ size: "lg" }),
-              "bg-yellow-300 text-slate-900 hover:bg-yellow-400"
+              "mt-7 bg-yellow-300 text-slate-900 hover:bg-yellow-400"
             )}
           >
             Send your first document free →
           </Link>
-          <p className="text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
+          <p className="mt-3 text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
         </div>
 
         {/* Product shot. Until now the marketing site had no image of the actual
@@ -217,7 +239,7 @@ export default async function LandingPage() {
           CTA competing with it — four yellow tiles pulling the eye away
           from the one thing we want pressed. Same content, now a strip
           below the hero where it supports rather than competes. */}
-      <section className="mx-auto flex w-full max-w-3xl flex-col items-center px-6 pb-4">
+      <section className="mx-auto flex w-full max-w-6xl flex-col items-center px-6 pb-4">
         {/* Four across at every width. A 2x2 grid on phones read as an odd
             floating square with too much dead space, so the icons/labels/gaps
             just scale down instead — one compact strip on mobile, full size
@@ -246,7 +268,7 @@ export default async function LandingPage() {
       </section>
 
 
-      <section className="mx-auto w-full max-w-3xl px-6 pb-16">
+      <section className="mx-auto w-full max-w-6xl px-6 pb-16">
         <p className="mb-4 text-center text-xs font-medium uppercase tracking-wide text-slate-400">
           Trusted by
         </p>
@@ -265,7 +287,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-5xl px-6 py-12">
+      <section className="mx-auto w-full max-w-6xl px-6 py-12">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {FEATURES.map((f) => (
             <Card key={f.title}>
@@ -278,7 +300,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-5xl px-6 py-12">
+      <section className="mx-auto w-full max-w-6xl px-6 py-12">
         <h2 className="mb-6 text-center text-2xl font-semibold text-slate-900">Simple pricing</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {PRICING.map((p) => (
