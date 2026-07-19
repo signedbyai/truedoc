@@ -112,14 +112,31 @@ export default async function LandingPage() {
             Team) — keep the two in sync if either page's pricing changes. */}
         {/* A rounded-full pill only reads right on ONE line — wrapped, it
             became a tall slab with big gaps between the fragments on mobile.
-            So the copy shortens on small screens ("$700+/year vs DocuSign →")
-            rather than the box shrinking, and whitespace-nowrap guarantees it
-            can never wrap into a slab again. Full sentence returns at sm. */}
+            So the copy shortens on small screens rather than the box
+            shrinking, and whitespace-nowrap guarantees it can never wrap into a
+            slab again. Full sentence returns at sm. */}
         <Link
           href="/vs/docusign"
           className="mb-5 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 sm:text-sm"
         >
+          {/* Two variants rather than one phrase with pieces hidden: mobile
+              needs "Save" but not "Teams", and splitting them left desktop
+              reading "Teams Save" with a stray capital.
+
+              Mobile previously dropped the whole phrase, so the pill read
+              "$700+/year vs DocuSign" — which parses as a price rather than a
+              saving, i.e. the opposite of the point. Checked the longer mobile
+              copy still fits on one line: ~225px against 272px available even
+              at 320px. Worth checking because the pill is nowrap, so getting
+              this wrong overflows rather than wraps.
+
+              "/year" stays on mobile even though dropping it would buy room.
+              "Save $700+" is ambiguous — per month, per user, ever? The period
+              is what makes it a concrete claim, and the claim is the whole
+              point of the pill. If a real device disagrees with the maths
+              above, drop "vs DocuSign" before dropping "/year". */}
           <span className="hidden sm:inline">Teams save</span>
+          <span className="sm:hidden">Save</span>
           <span className="font-bold text-yellow-300">$700+/year</span>
           <span>vs DocuSign</span>
           <span className="hidden sm:inline">— see the math</span>

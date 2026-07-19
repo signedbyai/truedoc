@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 
 const TITLE = "SignedBy vs DocuSign — pricing and feature comparison";
@@ -81,8 +82,11 @@ export default function VsDocuSignPage() {
           DocuSign is built for enterprise procurement — envelope caps, per-user pricing, and add-on fees. SignedBy is
           a flat $7/mo, built for solo professionals and small teams who don&apos;t need any of that.
         </p>
-        <Link href="/login?intent=signup" className={buttonVariants({ size: "lg" })}>
-          Start for free
+        <Link
+          href="/login?intent=signup"
+          className={cn(buttonVariants({ size: "lg" }), "bg-yellow-300 text-slate-900 hover:bg-yellow-400")}
+        >
+          Start for free →
         </Link>
         <p className="text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
       </section>
@@ -105,8 +109,11 @@ export default function VsDocuSignPage() {
       <section className="mx-auto w-full max-w-3xl px-6 pb-20 text-center">
         <h2 className="text-2xl font-semibold text-slate-900">Try SignedBy free</h2>
         <p className="mt-2 text-sm text-slate-600">3 documents a month, no credit card, upgrade only if you need more.</p>
-        <Link href="/login?intent=signup" className={`${buttonVariants({ size: "lg" })} mt-5`}>
-          Start for free
+        <Link
+          href="/login?intent=signup"
+          className={cn(buttonVariants({ size: "lg" }), "mt-5 bg-yellow-300 text-slate-900 hover:bg-yellow-400")}
+        >
+          Start for free →
         </Link>
       </section>
 
