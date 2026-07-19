@@ -181,6 +181,10 @@ export function FieldEditor({
   const hasConfirmedRef = useRef(false);
 
   const confirmedFields = fields.filter((f) => !f.suggested);
+  // Whether the "This looks like it needs N signers" panel is on screen. Read
+  // by the panel itself and by the "+ Add recipient" glow, so the guided cue
+  // can never point at the manual path while the guided one is available.
+  const showingDetectedSigners = recipients.length === 0 && detectedParties.length >= 2;
 
   // Effective owner of a confirmed field: its assigned signer, or the sole
   // recipient when there's exactly one (an unassigned field still reaches that
@@ -1379,8 +1383,19 @@ export function FieldEditor({
               className="rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-500 hover:border-slate-400 hover:text-slate-700"
             >
               {/* First step of the guided flow: glow "add a recipient" before
-                  the field tools, so the sender picks WHO signs first. */}
-              {fieldsLoaded && confirmedFields.length === 0 && recipients.length === 0 ? (
+                  the field tools, so the sender picks WHO signs first.
+
+                  Suppressed once the scan has identified the signers, because
+                  the panel below is then offering a better route — pre-labelled
+                  rows with the parties already named — and highlighting the
+                  manual button pulls the sender towards the slower path. Both
+                  read `showingDetectedSigners` so the two can't drift out of
+                  agreement; they were separate conditions before, which is how
+                  the glow ended up competing with the panel. */}
+              {fieldsLoaded &&
+              confirmedFields.length === 0 &&
+              recipients.length === 0 &&
+              !showingDetectedSigners ? (
                 <span className="next-step-highlight">+ Add recipient</span>
               ) : (
                 "+ Add recipient"
@@ -1393,7 +1408,7 @@ export function FieldEditor({
             clean slate (no recipients yet) and only when the document is
             multi-party; adding them here creates recipients in role order so
             the role-tagged suggestions auto-bind. */}
-        {recipients.length === 0 && detectedParties.length >= 2 && (
+        {showingDetectedSigners && (
           <div className="border-t border-slate-100 bg-amber-50/50 px-4 py-3 sm:px-6">
             <div className="flex items-start justify-between gap-2">
               <div>
