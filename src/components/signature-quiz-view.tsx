@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { ARCHETYPES, QUIZ_QUESTIONS, scoreQuiz, type ArchetypeId } from "@/lib/signature-quiz";
 import { renderQuizResultCard } from "@/lib/signature-quiz-card";
+import { quizShareText, quizShareUrl } from "@/lib/quiz-share";
 
 type Step = "intro" | "question" | "name" | "result";
 
@@ -128,7 +129,13 @@ export function SignatureQuizView() {
       // Decoded locally, NOT fetch(cardUrl) — see dataUrlToFile's comment.
       const file = dataUrlToFile(cardUrl, "signature-personality.png");
       if (file && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], text: archetype ? archetype.tagline : undefined });
+        // Text carries the tagged link — see lib/quiz-share.ts for why it isn't
+        // navigator.share's `url` field. Without a link the share was a picture
+        // with a domain painted on it: nothing to tap, and nothing measurable.
+        await navigator.share({
+          files: [file],
+          text: quizShareText(archetype ? archetype.tagline : ""),
+        });
         return;
       }
     } catch (err) {
@@ -242,7 +249,18 @@ export function SignatureQuizView() {
 
             {shareFallbackHint && (
               <p className="mt-2.5 text-center text-xs text-slate-500">
-                Press and hold the image above (or right-click on desktop) to save or share it directly.
+                Press and hold the image above (or right-click on desktop) to save or share it directly.{" "}
+                {/* The fallback path is what iOS in-app browsers actually hit,
+                    and it previously offered no link at all — so the people
+                    most likely to be sharing from a messaging app had nothing
+                    to copy. */}
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard?.writeText(quizShareUrl())}
+                  className="font-medium text-slate-600 underline underline-offset-2 hover:text-slate-800"
+                >
+                  Copy the link
+                </button>
               </p>
             )}
 
