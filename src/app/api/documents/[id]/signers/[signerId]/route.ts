@@ -29,7 +29,11 @@ export async function PATCH(
     return NextResponse.json({ error: "Enter a valid email address" }, { status: 400 });
   }
 
-  const { data: doc } = await supabase.from("documents").select("id, org_id, title, status").eq("id", id).single();
+  const { data: doc } = await supabase
+    .from("documents")
+    .select("id, org_id, title, status, recipient_notice, invite_subject, invite_message")
+    .eq("id", id)
+    .single();
   if (!doc || doc.org_id !== orgId) return NextResponse.json({ error: "Document not found" }, { status: 404 });
   if (doc.status !== "sent") {
     return NextResponse.json(
@@ -84,6 +88,9 @@ export async function PATCH(
         senderName,
         documentTitle: doc.title,
         signingToken: newToken,
+        recipientNotice: doc.recipient_notice,
+        inviteSubject: doc.invite_subject,
+        inviteMessage: doc.invite_message,
       });
     } catch (err) {
       console.error("Corrected-recipient invite email failed", err);

@@ -12,17 +12,27 @@ import { getAnthropic } from "@/lib/anthropic";
 
 export type AIProvider = "anthropic" | "mistral" | "deepseek";
 
-// PROVIDER POSTURE (2026-07-16): Mistral is the ONLY AI provider used in the
-// live customer service and the only one disclosed in /privacy + /dpa.
-// Anthropic and DeepSeek (and Gemini, if ever built) exist here for SignedBy's
-// INTERNAL performance testing only — there's no user-facing picker (removed
-// 2026-07-16); provider is admin-only via the organizations.ai_provider column,
-// and the settings page shows a read-only "AI processing" line naming Mistral.
-// The switch is a manual DB change with NO technical guardrail, so only ever
-// point SignedBy's own test/synthetic orgs at a non-Mistral provider — never a
-// real customer org, or that customer's document text goes to an undisclosed
-// processor. If a non-Mistral provider is ever promoted to the live customer
-// service, it must be added to /privacy + /dpa (and the assessment) FIRST.
+// PROVIDER POSTURE (updated 2026-07-20): Mistral is the ONLY AI provider used
+// in the live customer service and the only one disclosed in /privacy + /dpa.
+// Anthropic exists here for SignedBy's INTERNAL performance testing only —
+// there's no user-facing picker (removed 2026-07-16), and it is NOT disclosed
+// as a customer-facing sub-processor. (A same-day privacy-assessment revision
+// on 2026-07-20 briefly re-added Anthropic to /privacy + /dpa as something a
+// customer could choose instead of Mistral; reverted the same day — Anthropic
+// stays undisclosed/internal-only, see [[legal-pages-subprocessors]].)
+// Switching an org's `ai_provider` remains an admin-only SQL change.
+//
+// DeepSeek (and Gemini, if ever built) stay INTERNAL-testing-only and are
+// not disclosed anywhere.
+//
+// Guardrail (organizations.ai_test_org, migration 0028): normalizeAIProvider
+// below only honors a non-Mistral ai_provider value when this flag is true
+// for that org — otherwise it silently falls back to Mistral no matter what
+// ai_provider is set to. This is independent of any provider's disclosure
+// status: it's what stops a fat-fingered SQL change from quietly sending a
+// real customer's document text to Anthropic, an undisclosed processor. If
+// Anthropic (or any provider) is ever promoted to the live customer service,
+// it needs /privacy + /dpa disclosure FIRST.
 //
 // PLANNED (not built): Google Gemini as a further testing provider. Data-
 // residency note (see privacy_assessment/): route via Vertex AI in an EU region
@@ -30,12 +40,15 @@ export type AIProvider = "anthropic" | "mistral" | "deepseek";
 // for internal testing: add "gemini" to this union + normalizeAIProvider, the DB
 // CHECK constraint (new migration), and a generateWithGemini() path.
 
-/** Defensive normalization for a raw DB value — the migration's CHECK
- *  constraint should already guarantee this, but a null/unexpected value
- *  (e.g. a migration not yet applied, per this project's manual
- *  Supabase-SQL-editor workflow) should fall back to the default rather
- *  than throw. Default provider is Mistral. */
-export function normalizeAIProvider(value: string | null | undefined): AIProvider {
+/** Defensive normalization for a raw DB value, gated by the org's
+ *  ai_test_org allowlist flag (organizations.ai_test_org, migration 0028) —
+ *  see the PROVIDER POSTURE note above. `isTestOrg` false collapses any
+ *  value straight to Mistral, so a plain unallowlisted org can never end up
+ *  on a non-Mistral provider even if ai_provider is somehow set otherwise
+ *  (bad data, a migration not yet applied, etc.). Default provider is
+ *  always Mistral. */
+export function normalizeAIProvider(value: string | null | undefined, isTestOrg: boolean): AIProvider {
+  if (!isTestOrg) return "mistral";
   if (value === "anthropic" || value === "deepseek") return value;
   return "mistral";
 }

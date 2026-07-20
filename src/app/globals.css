@@ -12,6 +12,17 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
+/* Reserves the scrollbar's width always, whether or not a page actually has
+   enough content to scroll. Without this, a short page (no scrollbar) is a
+   few pixels wider than a long one (scrollbar present) — invisible on its
+   own, but it shows up as any centered fixed-width element (e.g. the
+   dashboard nav bar) sitting a few pixels off between the two, which read as
+   the nav "shifting" between pages that happened to differ in content
+   length. */
+html {
+  scrollbar-gutter: stable;
+}
+
 /* MVP ships light-mode only; dark mode is a fast follow, not launch-blocking. */
 body {
   background: var(--background);

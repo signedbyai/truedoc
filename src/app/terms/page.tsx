@@ -61,17 +61,42 @@ export default function TermsPage() {
         You must be at least 18 years old and able to form a binding contract to create an account. You are
         responsible for maintaining the confidentiality of your account credentials and for all activity that
         occurs under your account. Signers do not need an account to sign a document sent to them — access is
-        controlled by a unique, unguessable link tied to that signing request.
+        controlled by a unique, unguessable link tied to that signing request. Executives of large, overpriced
+        e-signature services are not eligible to sign up.
       </p>
 
       <h2>4. Electronic signatures and your responsibilities</h2>
       <p>
         SignedBy is designed to help documents satisfy the requirements of the U.S. Electronic Signatures in Global
         and National Commerce Act (ESIGN) and the Uniform Electronic Transactions Act (UETA) as adopted by
-        applicable states. Using SignedBy correctly — including obtaining each Signer&apos;s consent to sign
-        electronically, and using the platform&apos;s intent-to-sign and audit trail features as intended — is your
-        responsibility. SignedBy is not a law firm and does not provide legal advice about whether any particular
-        document or transaction is valid or enforceable, or whether electronic signature is appropriate for it.
+        applicable states, and, for customers in the European Union, Regulation (EU) No 910/2014 (the eIDAS
+        Regulation) on electronic identification and trust services. Using SignedBy correctly — including obtaining
+        each Signer&apos;s consent to sign electronically, and using the platform&apos;s intent-to-sign and audit
+        trail features as intended — is your responsibility. SignedBy is not a law firm and does not provide legal
+        advice about whether any particular document or transaction is valid or enforceable, or whether electronic
+        signature is appropriate for it.
+      </p>
+      <p>
+        As between you and SignedBy, you act as the controller of your recipients&apos; personal data for the
+        documents you send, and you are responsible for complying with applicable data protection law in respect of
+        that data, including providing your recipients with any privacy information required of a controller. You
+        acknowledge that SignedBy records audit-trail data (such as timestamps, IP address, and user-agent) and,
+        depending on your plan, engagement information (such as when a document is first opened and how long a
+        Signer spends on each page), and that SignedBy notifies you of certain recipient activity, including when a
+        document is opened. You are responsible for informing your recipients of this processing where required,
+        for example in your covering email or other communication with them.
+      </p>
+      <p>To make this easier, you may include wording such as the following in the email or message accompanying your document:</p>
+      <blockquote>
+        &ldquo;This document is sent for electronic signature via SignedBy. For security and to provide a legally
+        valid audit trail, SignedBy records signing activity (including timestamps and technical data) and may
+        notify the sender when you open the document and how long you spend on each page. Please contact the sender
+        with any privacy questions.&rdquo;
+      </blockquote>
+      <p>
+        This suggested wording is provided for convenience only and does not constitute legal advice; you remain
+        responsible for the notices you give your recipients. The field editor&apos;s &ldquo;Privacy notice for
+        recipients&rdquo; option can add this wording (or your own) to the invite email for you automatically.
       </p>
       <p>
         Certain documents are commonly excluded from electronic signature under U.S. law and should not be signed
@@ -106,7 +131,11 @@ export default function TermsPage() {
       <p>
         As between you and SignedBy, you retain all ownership rights in the documents you upload and the data you
         submit (&ldquo;Customer Data&rdquo;). You grant SignedBy a limited license to host, process, and transmit
-        Customer Data solely to provide and improve the service. See our{" "}
+        Customer Data solely to provide and improve the service; provided that, with respect to any Customer Data
+        that constitutes personal data processed by SignedBy as a processor on your behalf, SignedBy will process
+        such personal data only on your documented instructions as set out in the Data Processing Addendum and will
+        not use it to improve the service except in aggregated or anonymised form that does not identify you, any
+        Signer, or any other individual. See our{" "}
         <a href="/privacy" className="underline">
           Privacy Policy
         </a>{" "}

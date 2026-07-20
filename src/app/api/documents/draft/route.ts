@@ -31,7 +31,11 @@ export async function POST(request: Request) {
   // Gated at generation, not just finalize — this call itself is the cost
   // (Sonnet, not Haiku), so a Free org must not be able to generate drafts
   // it can never save. See plan.ts's aiDraft comment.
-  const { data: org } = await supabase.from("organizations").select("plan, ai_provider").eq("id", orgId).single();
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("plan, ai_provider, ai_test_org")
+    .eq("id", orgId)
+    .single();
   if (!planHasFeature(org?.plan, "aiDraft")) {
     return NextResponse.json(
       { error: "AI-drafted documents are a Starter plan feature. Upgrade to describe and draft documents.", upgrade: true },
@@ -53,7 +57,7 @@ export async function POST(request: Request) {
   const result = await draftDocument(
     parsed.data.documentType,
     parsed.data.description,
-    normalizeAIProvider(org?.ai_provider),
+    normalizeAIProvider(org?.ai_provider, org?.ai_test_org ?? false),
     parsed.data.language
   );
   if ("error" in result) {

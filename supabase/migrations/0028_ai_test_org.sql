@@ -1,0 +1,17 @@
+-- Code-level guardrail for the "Anthropic/DeepSeek are internal-testing-only,
+-- undisclosed" posture (see src/lib/ai-provider.ts). Until now,
+-- organizations.ai_provider was a manual SQL change with NO enforcement --
+-- nothing stopped a real customer org from being pointed at a non-Mistral
+-- provider, which would send that customer's document text to a processor
+-- not disclosed in /privacy or /dpa. Kept even though a same-day 2026-07-20
+-- privacy-assessment revision that briefly disclosed Anthropic as
+-- customer-choosable was reverted the same day -- this guardrail is useful
+-- defense-in-depth regardless of disclosure status, not something tied to
+-- that reverted wording.
+--
+-- normalizeAIProvider() only honors a non-Mistral ai_provider value when this
+-- flag is true; otherwise it silently falls back to Mistral regardless of
+-- what ai_provider is set to. Off by default -- every existing and future org
+-- stays on Mistral until explicitly allowlisted (SQL, same admin-only
+-- mechanism as ai_provider itself).
+alter table organizations add column if not exists ai_test_org boolean not null default false;

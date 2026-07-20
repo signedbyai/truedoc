@@ -32,8 +32,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Document not found" }, { status: 404 });
   }
 
-  const { data: org } = await supabase.from("organizations").select("ai_provider").eq("id", orgId).single();
-  const provider = normalizeAIProvider(org?.ai_provider);
+  const { data: org } = await supabase.from("organizations").select("ai_provider, ai_test_org").eq("id", orgId).single();
+  const provider = normalizeAIProvider(org?.ai_provider, org?.ai_test_org ?? false);
 
   let bytes: Buffer;
   try {

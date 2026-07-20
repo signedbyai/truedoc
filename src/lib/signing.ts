@@ -33,7 +33,9 @@ export async function getSignerByToken(token: string) {
 
   const { data: signer } = await admin
     .from("signers")
-    .select("id, document_id, name, email, order_index, status, signed_at, docgate_code")
+    .select(
+      "id, document_id, name, email, order_index, status, signed_at, docgate_code, auth_required, auth_verified_at"
+    )
     .eq("signing_token", token)
     .single();
 

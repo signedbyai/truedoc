@@ -99,7 +99,14 @@ export function DashboardNav({
           (hideTopBar ? "-translate-y-full" : "translate-y-0")
         }
       >
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-6">
+        {/* Full-width, not `mx-auto max-w-5xl` — that centered the whole bar
+            to match the page content below it, which meant the logo drifted
+            rightward as the window grew past that breakpoint instead of
+            staying put like the mobile header (a plain `w-full` bar) does.
+            Pinning both flex groups to the true edges here keeps the logo
+            fixed regardless of width; page content can still be independently
+            centered/max-width'd below without the header tracking it. */}
+        <div className="flex h-14 items-center justify-between gap-4 px-6">
           <div className="flex items-center gap-8">
             <Link href="/dashboard" aria-label="SignedBy home">
               <Logo />

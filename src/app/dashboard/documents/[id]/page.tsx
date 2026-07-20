@@ -26,7 +26,7 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
   const { data: doc } = await supabase
     .from("documents")
     .select(
-      "id, title, page_count, status, signed_file_path, payment_link_url, payment_label, docgate_url, docgate_label, open_notifications, organizations(plan, auto_suggest_on_upload)"
+      "id, title, page_count, status, signed_file_path, payment_link_url, payment_label, docgate_url, docgate_label, open_notifications, recipient_notice, invite_subject, invite_message, expires_at, organizations(plan, auto_suggest_on_upload)"
     )
     .eq("id", id)
     .single();
@@ -305,11 +305,16 @@ export default async function DocumentEditorPage({ params }: { params: Promise<{
       hasPaymentCollection={hasPaymentCollection}
       hasDocGate={hasDocGate}
       hasTemplates={hasTemplates}
+      hasPageViewTracking={hasPageViewTracking}
       autoSuggestOnUpload={autoSuggestOnUpload}
       initialPaymentLinkUrl={doc.payment_link_url}
       initialPaymentLabel={doc.payment_label}
       initialDocgateUrl={doc.docgate_url}
       initialDocgateLabel={doc.docgate_label}
+      initialRecipientNotice={doc.recipient_notice}
+      initialInviteSubject={doc.invite_subject}
+      initialInviteMessage={doc.invite_message}
+      initialExpiresAt={doc.expires_at}
     />
   );
 }

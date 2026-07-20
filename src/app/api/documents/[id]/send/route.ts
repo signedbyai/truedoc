@@ -3,11 +3,25 @@ import { getUserAndOrg } from "@/lib/org";
 import { sendSignerInviteEmail } from "@/lib/email";
 import { signersWithoutFields } from "@/lib/field-visibility";
 
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ctx = await getUserAndOrg();
   if (!ctx) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   const { supabase, user, orgId } = ctx;
+
+  // Optional — the field editor's "Customize invite email" modal. Same
+  // undefined-skips-the-column pattern for all three: a missing/invalid body
+  // leaves the document's existing values untouched rather than clobbering
+  // them. recipientNotice's '' means explicitly turned off; inviteSubject/
+  // inviteMessage have no "off" state of their own, so an empty string there
+  // is normalized to null ("use the default") rather than stored as "".
+  const json = await request.json().catch(() => null);
+  const recipientNotice =
+    json && typeof json.recipientNotice === "string" ? json.recipientNotice.trim().slice(0, 2000) : undefined;
+  const inviteSubject =
+    json && typeof json.inviteSubject === "string" ? json.inviteSubject.trim().slice(0, 200) || null : undefined;
+  const inviteMessage =
+    json && typeof json.inviteMessage === "string" ? json.inviteMessage.trim().slice(0, 2000) || null : undefined;
 
   const { data: doc, error: docError } = await supabase
     .from("documents")
@@ -76,6 +90,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       senderName,
       documentTitle: doc.title,
       signingToken: signer.signing_token,
+      recipientNotice,
+      inviteSubject,
+      inviteMessage,
     });
   }
 
@@ -87,7 +104,15 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       toNotify.map((s) => s.id)
     );
 
-  await supabase.from("documents").update({ status: "sent" }).eq("id", id);
+  await supabase
+    .from("documents")
+    .update({
+      status: "sent",
+      ...(recipientNotice !== undefined ? { recipient_notice: recipientNotice } : {}),
+      ...(inviteSubject !== undefined ? { invite_subject: inviteSubject } : {}),
+      ...(inviteMessage !== undefined ? { invite_message: inviteMessage } : {}),
+    })
+    .eq("id", id);
 
   await supabase.from("audit_events").insert({
     document_id: id,

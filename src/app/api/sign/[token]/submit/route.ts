@@ -173,7 +173,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     const nextUp = (allSigners || []).filter((s) => outcome.nextUpSignerIds.includes(s.id));
     const { data: org } = await admin
       .from("documents")
-      .select("org_id, title, organizations(name)")
+      .select("org_id, title, recipient_notice, invite_subject, invite_message, organizations(name)")
       .eq("id", document.id)
       .single();
     const senderName = (org as unknown as { organizations?: { name?: string } })?.organizations?.name || "Someone";
@@ -185,6 +185,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
         senderName,
         documentTitle: org?.title || document.title,
         signingToken: nextSigner.signing_token,
+        // Same notice every recipient on this document gets — set once at
+        // the initial send (see api/documents/[id]/send), not re-decided
+        // per signer.
+        recipientNotice: org?.recipient_notice,
+        inviteSubject: org?.invite_subject,
+        inviteMessage: org?.invite_message,
       }).catch((err) => console.error("Invite email failed", err));
     }
 

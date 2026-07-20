@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { getSignerByToken } from "@/lib/signing";
 import { sendSignerOpenedEmail } from "@/lib/email";
 import { SigningView } from "@/components/signing-view";
+import { SignerAuthGate } from "@/components/signer-auth-gate";
 import { planHasFeature } from "@/lib/plan";
 import { visibleFieldsForSigner } from "@/lib/field-visibility";
 
@@ -115,6 +116,27 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
         logo={statusLogo}
       />
     );
+  }
+
+  if (document.status === "expired") {
+    return (
+      <StatusScreen
+        title="This link has expired"
+        message="The sender set an expiration date for this document and it has passed. Contact the sender if you still need to sign it."
+        showGrowthCta={!orgHasBranding}
+        logo={statusLogo}
+      />
+    );
+  }
+
+  // Per-recipient authentication (free on every plan, PER_RECIPIENT_AUTH_
+  // SCOPE.md): no plan check — same ungated shape as recipient_notice/
+  // invite_subject/expires_at. Sits BEFORE the "mark viewed" side effect
+  // below: an unverified visitor hasn't actually reached the document yet,
+  // so no viewed/owner-notified event should fire until they clear this
+  // screen.
+  if (signer.auth_required && !signer.auth_verified_at) {
+    return <SignerAuthGate token={token} documentTitle={document.title} logo={statusLogo} />;
   }
 
   // Mark viewed the first time this link is opened.

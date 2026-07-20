@@ -13,8 +13,9 @@ import { remapFieldSignerIds } from "@/lib/field-persist";
 import { signerForArrivingSuggestion, signerForConfirmedSuggestion } from "@/lib/suggestion-binding";
 import { DeleteDocumentButton } from "@/components/delete-document-button";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
-import { BookmarkIcon, MENU_ITEM_CLASS, SaveIcon } from "@/components/ui/menu-item";
+import { BookmarkIcon, MENU_ITEM_CLASS, SaveIcon, MailIcon, ClockIcon } from "@/components/ui/menu-item";
 import { FIELD_TYPES, fieldDef, type FieldType } from "@/lib/field-types";
+import { defaultRecipientNotice } from "@/lib/recipient-notice";
 
 type Field = {
   id: string;
@@ -54,6 +55,10 @@ type Recipient = {
   name: string;
   email: string;
   order_index: number;
+  // Per-recipient authentication (Business tier, PER_RECIPIENT_AUTH_SCOPE.md)
+  // — when true, this signer must clear a one-time email code before their
+  // signing link opens the document.
+  auth_required: boolean;
 };
 
 // Cycled by recipient index so each signer's fields are visually distinct.
@@ -65,10 +70,51 @@ const RECIPIENT_COLORS = [
   { border: "border-rose-500", bg: "bg-rose-50", text: "text-rose-700", dot: "bg-rose-500" },
 ];
 
+// Tiny inline lock glyph for the per-recipient authentication toggle on
+// each chip below — not worth pulling into menu-item.tsx's shared icon set
+// since it's the only non-menu-row icon in this file.
+function LockIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-3 w-3 shrink-0"
+      aria-hidden
+    >
+      <rect x="5" y="11" width="14" height="9" rx="2" fill={filled ? "currentColor" : "none"} />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
+
 function recipientColor(recipients: Recipient[], signerId: string | null) {
   if (!signerId) return { border: "border-slate-400", bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400" };
   const idx = recipients.findIndex((r) => r.id === signerId);
   return RECIPIENT_COLORS[idx % RECIPIENT_COLORS.length] ?? RECIPIENT_COLORS[0];
+}
+
+// <input type="datetime-local"> has no timezone of its own — its value is
+// always "as if" the browser's local time, with no offset in the string
+// ("2026-08-01T14:30"). These convert between that and the UTC ISO string
+// documents.expires_at actually stores, both directions going through the
+// Date object's own local-time getters/constructor so the conversion always
+// matches whatever timezone the browser (and therefore the sender) is in.
+function isoToLocalInput(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function localInputToIso(value: string): string {
+  if (!value) return "";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "" : d.toISOString();
 }
 
 export function FieldEditor({
@@ -78,11 +124,16 @@ export function FieldEditor({
   hasPaymentCollection,
   hasDocGate,
   hasTemplates,
+  hasPageViewTracking,
   autoSuggestOnUpload,
   initialPaymentLinkUrl,
   initialPaymentLabel,
   initialDocgateUrl,
   initialDocgateLabel,
+  initialRecipientNotice,
+  initialInviteSubject,
+  initialInviteMessage,
+  initialExpiresAt,
 }: {
   documentId: string;
   // Shown in the editor's own header — the immersive editor hides the shared
@@ -93,6 +144,10 @@ export function FieldEditor({
   hasPaymentCollection: boolean;
   hasDocGate: boolean;
   hasTemplates: boolean;
+  // Whether this org's plan includes per-page engagement tracking (see
+  // plan.ts) — determines whether the default recipient-notice wording
+  // below claims page-dwell-time tracking that Free orgs don't actually do.
+  hasPageViewTracking: boolean;
   // Org-wide preference (dashboard/settings), off by default — see
   // src/app/api/org/auto-suggest/route.ts. Only controls whether
   // suggestions run automatically on a brand-new document; the manual
@@ -102,6 +157,15 @@ export function FieldEditor({
   initialPaymentLabel: string | null;
   initialDocgateUrl: string | null;
   initialDocgateLabel: string | null;
+  // documents.recipient_notice — null (never configured), '' (sender turned
+  // it off), or the active notice text. See supabase/migrations/0027.
+  initialRecipientNotice: string | null;
+  // documents.invite_subject / invite_message — null means "use the
+  // default" for each independently. See supabase/migrations/0029.
+  initialInviteSubject: string | null;
+  initialInviteMessage: string | null;
+  // documents.expires_at (migration 0030) — null means no expiration.
+  initialExpiresAt: string | null;
 }) {
   const router = useRouter();
   const [selectedTool, setSelectedTool] = useState<FieldType | null>(null);
@@ -130,6 +194,32 @@ export function FieldEditor({
   // Pre-send "who signs where" sanity check — surfaced only when a recipient
   // has no fields to sign (the tell of a mis-placed or forgotten field).
   const [showSendReview, setShowSendReview] = useState(false);
+  // Sender-editable privacy notice appended to the invite email (see
+  // recipient-notice.ts + supabase/migrations/0027). Re-derived from
+  // initialRecipientNotice on mount: '' means the sender explicitly turned
+  // it off, anything else (including null) starts enabled with either the
+  // sender's saved text or the suggested default.
+  const [showNoticeModal, setShowNoticeModal] = useState(false);
+  const [noticeEnabled, setNoticeEnabled] = useState(initialRecipientNotice !== "");
+  const [noticeText, setNoticeText] = useState(
+    initialRecipientNotice || defaultRecipientNotice(hasPageViewTracking)
+  );
+  // Sender-editable subject/message for the same invite email (see
+  // supabase/migrations/0029) — shown in the same "Customize invite email"
+  // modal as the notice above. Blank means "use the default" for each
+  // independently, so unlike the notice there's no separate enabled flag.
+  const [inviteSubject, setInviteSubject] = useState(initialInviteSubject || "");
+  const [inviteMessage, setInviteMessage] = useState(initialInviteMessage || "");
+
+  // Document expiration (see supabase/migrations/0030) — saved immediately
+  // via its own endpoint, independent of Send, same pattern as the payment
+  // link/DocGate settings below. isoToLocalInput/localInputToIso convert
+  // between the stored UTC ISO string and the <input type="datetime-local">
+  // value, which has no timezone of its own (it's implicitly the browser's).
+  const [showExpirationModal, setShowExpirationModal] = useState(false);
+  const [expiresAtInput, setExpiresAtInput] = useState(isoToLocalInput(initialExpiresAt));
+  const [savingExpiration, setSavingExpiration] = useState(false);
+  const [expirationError, setExpirationError] = useState("");
   const [templateName, setTemplateName] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateError, setTemplateError] = useState("");
@@ -222,11 +312,12 @@ export function FieldEditor({
       .then(([signersData, fieldsData]) => {
         if (Array.isArray(signersData.signers)) {
           const loaded: Recipient[] = signersData.signers.map(
-            (s: { id: string; name: string | null; email: string; order_index: number }) => ({
+            (s: { id: string; name: string | null; email: string; order_index: number; auth_required?: boolean }) => ({
               id: s.id,
               name: s.name || "",
               email: s.email,
               order_index: s.order_index,
+              auth_required: s.auth_required ?? false,
             })
           );
           setRecipients(loaded);
@@ -280,7 +371,7 @@ export function FieldEditor({
   const draftSignature = useCallback(() => {
     const recips = [...recipients]
       .sort((a, b) => a.order_index - b.order_index)
-      .map((r) => `${r.order_index}|${r.email.trim().toLowerCase()}|${(r.name || "").trim()}`)
+      .map((r) => `${r.order_index}|${r.email.trim().toLowerCase()}|${(r.name || "").trim()}|${r.auth_required}`)
       .join(";");
     const flds = confirmedFields
       .map((f) => {
@@ -521,6 +612,7 @@ export function FieldEditor({
       name: newName.trim(),
       email,
       order_index: roleClaimed,
+      auth_required: false,
     };
     setRecipients((prev) => [...prev, recipient]);
     setActiveRecipientId(recipient.id);
@@ -546,6 +638,10 @@ export function FieldEditor({
     setActiveRecipientId((prev) => (prev === id ? null : prev));
   }
 
+  function toggleAuthRequired(id: string) {
+    setRecipients((prev) => prev.map((r) => (r.id === id ? { ...r, auth_required: !r.auth_required } : r)));
+  }
+
   function updateSignerInput(role: number, field: "name" | "email", value: string) {
     setSignerInputs((prev) => prev.map((s) => (s.role === role ? { ...s, [field]: value } : s)));
   }
@@ -563,6 +659,7 @@ export function FieldEditor({
       name: s.name.trim(),
       email: s.email.trim(),
       order_index: s.role,
+      auth_required: false,
     }));
     setRecipients(created);
     setActiveRecipientId(created[0].id);
@@ -779,7 +876,12 @@ export function FieldEditor({
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            signers: recipients.map((r) => ({ name: r.name || null, email: r.email, order_index: r.order_index })),
+            signers: recipients.map((r) => ({
+              name: r.name || null,
+              email: r.email,
+              order_index: r.order_index,
+              auth_required: r.auth_required,
+            })),
           }),
         });
         if (!res.ok) return false;
@@ -895,7 +997,15 @@ export function FieldEditor({
       return;
     }
     try {
-      const res = await fetch(`/api/documents/${documentId}/send`, { method: "POST" });
+      const res = await fetch(`/api/documents/${documentId}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientNotice: noticeEnabled ? noticeText.trim() : "",
+          inviteSubject: inviteSubject.trim(),
+          inviteMessage: inviteMessage.trim(),
+        }),
+      });
       if (res.ok) {
         router.push("/dashboard");
         return; // keep the button disabled through navigation
@@ -979,6 +1089,27 @@ export function FieldEditor({
       setDocgateError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setSavingDocgate(false);
+    }
+  }
+
+  async function saveExpiration() {
+    setSavingExpiration(true);
+    setExpirationError("");
+    try {
+      const iso = localInputToIso(expiresAtInput);
+      const res = await fetch(`/api/documents/${documentId}/expiration`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expires_at: iso }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Couldn't save the expiration date.");
+      setShowExpirationModal(false);
+      setStatusMessage(iso ? "Expiration date saved." : "Expiration date removed.");
+    } catch (err) {
+      setExpirationError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSavingExpiration(false);
     }
   }
 
@@ -1078,6 +1209,35 @@ export function FieldEditor({
                       </span>
                     </a>
                   )}
+                  {/* Available on every plan — subject/message personalization
+                      and the privacy-disclosure notice are both compliance/
+                      communication tools, not a productivity upsell, so this
+                      isn't gated like the row above it. */}
+                  <button
+                    onClick={() => {
+                      setShowNoticeModal(true);
+                      setShowMoreMenu(false);
+                    }}
+                    className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
+                  >
+                    <MailIcon />
+                    Customize invite email
+                  </button>
+                  {/* Also ungated — a timestamp column plus a check in the
+                      cron job that already runs the reminder sweep, not a
+                      new piece of infrastructure, so there's no cost basis
+                      for a plan gate here either. */}
+                  <button
+                    onClick={() => {
+                      setExpirationError("");
+                      setShowExpirationModal(true);
+                      setShowMoreMenu(false);
+                    }}
+                    className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
+                  >
+                    <ClockIcon />
+                    Document expiration
+                  </button>
                   {/* Destructive action last, below a rule — it previously sat
                       one slip away from Send in the flat row. */}
                   <div className="my-1 border-t border-slate-100" />
@@ -1307,6 +1467,27 @@ export function FieldEditor({
                 </span>
               </a>
             )}
+            <button
+              onClick={() => {
+                setShowNoticeModal(true);
+                setShowMoreMenu(false);
+              }}
+              className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
+            >
+              <MailIcon />
+              Customize invite email
+            </button>
+            <button
+              onClick={() => {
+                setExpirationError("");
+                setShowExpirationModal(true);
+                setShowMoreMenu(false);
+              }}
+              className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
+            >
+              <ClockIcon />
+              Document expiration
+            </button>
             <div className="my-1 border-t border-slate-100" />
             <DeleteDocumentButton
               documentId={documentId}
@@ -1334,6 +1515,24 @@ export function FieldEditor({
               >
                 <span className={cn("h-1.5 w-1.5 rounded-full", color.dot)} />
                 {r.name || r.email}
+                <span
+                  role="button"
+                  title={
+                    r.auth_required
+                      ? "Verification required before signing — click to remove"
+                      : "Require a one-time email code before this signer can open the document"
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleAuthRequired(r.id);
+                  }}
+                  className={cn(
+                    "ml-0.5 inline px-0.5",
+                    r.auth_required ? "text-amber-600" : "text-slate-400 hover:text-slate-600"
+                  )}
+                >
+                  <LockIcon filled={r.auth_required} />
+                </span>
                 <span
                   role="button"
                   onClick={(e) => {
@@ -1943,6 +2142,145 @@ export function FieldEditor({
               </button>
               <Button onClick={handleSaveAsTemplate} disabled={savingTemplate || !templateName.trim()}>
                 {savingTemplate ? "Saving…" : "Save template"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Subject/message: sender-editable, no default preview shown here —
+          the real default is computed server-side from the org name (which
+          this component doesn't have), so the input is blank-by-default
+          with a placeholder rather than duplicating that logic client-side
+          and risking the two drifting apart. Notice: as between you and
+          SignedBy, you're the controller of your recipients' data (Terms of
+          Service Section 4) — this is where you set the notice that helps
+          you meet that disclosure duty. Nothing here is gated to any plan;
+          not a hard gate on Send either, matching the product's general
+          no-added-friction stance on the send path — senders who never
+          open this menu item still get sensible defaults for all three
+          fields. */}
+      {showNoticeModal && (
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+            <p className="text-sm font-medium text-slate-900">Customize invite email</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Sent to every recipient when you send this document. Leave anything blank to use the default.
+            </p>
+
+            <label className="mt-3 block text-xs font-medium text-slate-700">Subject line</label>
+            <Input
+              value={inviteSubject}
+              onChange={(e) => setInviteSubject(e.target.value)}
+              placeholder={`e.g. Please review and sign "${documentTitle}"`}
+              maxLength={200}
+              className="mt-1"
+            />
+
+            <label className="mt-3 block text-xs font-medium text-slate-700">
+              Personal message <span className="font-normal text-slate-400">(optional)</span>
+            </label>
+            <textarea
+              value={inviteMessage}
+              onChange={(e) => setInviteMessage(e.target.value)}
+              placeholder="Add a note for your recipients — e.g. context on the document or a deadline"
+              rows={3}
+              maxLength={2000}
+              className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-xs text-slate-700"
+            />
+            <p className="mt-1 text-[11px] text-slate-400">
+              Shown above the &quot;Review &amp; Sign&quot; button, below the standard greeting.
+            </p>
+
+            <div className="mt-4 border-t border-slate-100 pt-3">
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={noticeEnabled}
+                  onChange={(e) => setNoticeEnabled(e.target.checked)}
+                />
+                Include a privacy notice for recipients
+              </label>
+              <textarea
+                value={noticeText}
+                onChange={(e) => setNoticeText(e.target.value)}
+                disabled={!noticeEnabled}
+                rows={4}
+                maxLength={2000}
+                className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-xs text-slate-700 disabled:bg-slate-50 disabled:text-slate-400"
+              />
+              <p className="mt-1 text-[11px] text-slate-400">
+                As the sender, you&apos;re the controller of your recipients&apos; data — suggested wording, not
+                legal advice. A Privacy Policy link is added automatically.
+              </p>
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setInviteSubject("");
+                  setInviteMessage("");
+                  setNoticeText(defaultRecipientNotice(hasPageViewTracking));
+                  setNoticeEnabled(true);
+                }}
+                className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+              >
+                Reset to default
+              </button>
+              <Button onClick={() => setShowNoticeModal(false)}>Done</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Expiration: saved immediately via its own PUT route (not bundled
+          into Send), so it can be set on a draft before it's ever sent or
+          adjusted later — unlike recipient notice / subject / message above,
+          which only take effect at the moment of Send. Enforced by the daily
+          reminders cron (src/app/api/cron/reminders/route.ts), which flips a
+          "sent" document past its expires_at to the 'expired' terminal
+          status — so a saved date can take up to ~24h to actually take
+          effect, which the copy below is explicit about. Ungated, same
+          reasoning as the invite-customization modal above it. */}
+      {showExpirationModal && (
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+            <p className="text-sm font-medium text-slate-900">Document expiration</p>
+            <p className="mt-1 text-xs text-slate-500">
+              After this date, the signing link stops working and any recipient who hasn&apos;t signed sees an
+              &quot;expired&quot; screen. Checked once a day, so it may take up to 24 hours to take effect.
+            </p>
+
+            <label className="mt-3 block text-xs font-medium text-slate-700">Expires at</label>
+            <input
+              type="datetime-local"
+              value={expiresAtInput}
+              onChange={(e) => setExpiresAtInput(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700"
+            />
+            <p className="mt-1 text-[11px] text-slate-400">Leave blank for no expiration.</p>
+
+            {expirationError && <p className="mt-2 text-sm text-red-600">{expirationError}</p>}
+
+            <div className="mt-4 flex justify-end gap-2">
+              {expiresAtInput && (
+                <button
+                  onClick={() => setExpiresAtInput("")}
+                  disabled={savingExpiration}
+                  className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                onClick={() => setShowExpirationModal(false)}
+                disabled={savingExpiration}
+                className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <Button onClick={saveExpiration} disabled={savingExpiration}>
+                {savingExpiration ? "Saving…" : "Save"}
               </Button>
             </div>
           </div>

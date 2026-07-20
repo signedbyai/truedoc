@@ -132,8 +132,12 @@ export async function getOrCreateDocumentSummary(documentId: string, lang: strin
   // suggest-fields/draft routes have — so the org's AI provider preference
   // has to be resolved here, from the document's own org_id, rather than
   // being passed in by the caller.
-  const { data: org } = await admin.from("organizations").select("ai_provider").eq("id", doc.org_id).single();
-  const provider = normalizeAIProvider(org?.ai_provider);
+  const { data: org } = await admin
+    .from("organizations")
+    .select("ai_provider, ai_test_org")
+    .eq("id", doc.org_id)
+    .single();
+  const provider = normalizeAIProvider(org?.ai_provider, org?.ai_test_org ?? false);
 
   let englishSummary = doc.ai_summary as string | null;
   if (!englishSummary) {

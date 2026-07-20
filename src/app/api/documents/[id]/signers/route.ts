@@ -6,6 +6,12 @@ const signerSchema = z.object({
   name: z.string().trim().max(200).optional().nullable(),
   email: z.string().trim().email(),
   order_index: z.number().int().min(0).default(0),
+  // Per-recipient authentication (Business tier, PER_RECIPIENT_AUTH_SCOPE.md).
+  // Not plan-checked here — same downgrade-safe pattern as payment_link_url/
+  // docgate_url: it's harmless to store on a lower-plan org, enforcement
+  // happens at read time in sign/[token]/page.tsx against the org's CURRENT
+  // plan, so a downgrade can't leave a signer permanently locked out.
+  auth_required: z.boolean().optional().default(false),
 });
 
 const bodySchema = z.object({ signers: z.array(signerSchema).min(1) });
@@ -16,7 +22,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const { data, error } = await supabase
     .from("signers")
-    .select("id, name, email, order_index, status, signed_at")
+    .select("id, name, email, order_index, status, signed_at, auth_required")
     .eq("document_id", id)
     .order("order_index", { ascending: true });
 
@@ -57,9 +63,13 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     name: s.name || null,
     email: s.email,
     order_index: s.order_index,
+    auth_required: s.auth_required,
   }));
 
-  const { data, error: insertError } = await supabase.from("signers").insert(rows).select("id, name, email, order_index");
+  const { data, error: insertError } = await supabase
+    .from("signers")
+    .insert(rows)
+    .select("id, name, email, order_index, auth_required");
   if (insertError) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }

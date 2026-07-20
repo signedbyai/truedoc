@@ -22,23 +22,31 @@ const { mockDeepSeekCreate, MockAnthropicCtor } = vi.hoisted(() => {
 vi.mock("@anthropic-ai/sdk", () => ({ default: MockAnthropicCtor }));
 
 describe("normalizeAIProvider", () => {
-  it("passes through a valid 'mistral' value", () => {
-    expect(normalizeAIProvider("mistral")).toBe("mistral");
+  it("passes through a valid 'mistral' value for a test org", () => {
+    expect(normalizeAIProvider("mistral", true)).toBe("mistral");
   });
 
-  it("passes through a valid 'anthropic' value", () => {
-    expect(normalizeAIProvider("anthropic")).toBe("anthropic");
+  it("passes through a valid 'anthropic' value for a test org", () => {
+    expect(normalizeAIProvider("anthropic", true)).toBe("anthropic");
   });
 
-  it("passes through a valid 'deepseek' value", () => {
-    expect(normalizeAIProvider("deepseek")).toBe("deepseek");
+  it("passes through a valid 'deepseek' value for a test org", () => {
+    expect(normalizeAIProvider("deepseek", true)).toBe("deepseek");
   });
 
-  it("falls back to mistral for null/undefined/unexpected values", () => {
-    expect(normalizeAIProvider(null)).toBe("mistral");
-    expect(normalizeAIProvider(undefined)).toBe("mistral");
-    expect(normalizeAIProvider("something-else")).toBe("mistral");
-    expect(normalizeAIProvider("")).toBe("mistral");
+  it("falls back to mistral for null/undefined/unexpected values even for a test org", () => {
+    expect(normalizeAIProvider(null, true)).toBe("mistral");
+    expect(normalizeAIProvider(undefined, true)).toBe("mistral");
+    expect(normalizeAIProvider("something-else", true)).toBe("mistral");
+    expect(normalizeAIProvider("", true)).toBe("mistral");
+  });
+
+  // The guardrail: an org not on the ai_test_org allowlist stays on Mistral
+  // no matter what ai_provider is set to — see supabase/migrations/0028.
+  it("forces mistral for a non-test org even when ai_provider requests anthropic or deepseek", () => {
+    expect(normalizeAIProvider("anthropic", false)).toBe("mistral");
+    expect(normalizeAIProvider("deepseek", false)).toBe("mistral");
+    expect(normalizeAIProvider("mistral", false)).toBe("mistral");
   });
 });
 

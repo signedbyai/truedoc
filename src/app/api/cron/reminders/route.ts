@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendReminderEmail } from "@/lib/email";
+import { sendReminderEmail, sendDocumentExpiredEmail } from "@/lib/email";
 import { planHasFeature } from "@/lib/plan";
 
 const REMINDER_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000; // nudge every 3 days until signed, declined, or voided
@@ -34,10 +34,55 @@ function firstOf<T>(v: T | T[] | null | undefined): T | null {
   return Array.isArray(v) ? v[0] ?? null : v;
 }
 
+// Flips "sent" documents whose expires_at has passed into the 'expired'
+// terminal status, and lets the owner know. Runs BEFORE the reminder pass
+// in GET below so a document that just expired this same run doesn't also
+// get a reminder sent out for it in the same invocation — the reminder
+// pass re-selects fresh document status after this has already updated it.
+async function expireOverdueDocuments(admin: ReturnType<typeof createAdminClient>): Promise<number> {
+  const { data: overdue, error } = await admin
+    .from("documents")
+    .select("id, owner_id, title")
+    .eq("status", "sent")
+    .not("expires_at", "is", null)
+    .lte("expires_at", new Date().toISOString())
+    .limit(MAX_PER_RUN);
+
+  if (error) {
+    console.error("Reminder cron: expiration fetch failed", error);
+    return 0;
+  }
+
+  let expiredCount = 0;
+  for (const doc of overdue || []) {
+    const { error: updateError } = await admin.from("documents").update({ status: "expired" }).eq("id", doc.id);
+    if (updateError) {
+      console.error("Reminder cron: failed to expire document", doc.id, updateError);
+      continue;
+    }
+    await admin.from("audit_events").insert({ document_id: doc.id, event_type: "expired" });
+    expiredCount++;
+
+    try {
+      const { data: ownerData } = await admin.auth.admin.getUserById(doc.owner_id);
+      const ownerEmail = ownerData?.user?.email;
+      if (ownerEmail) {
+        await sendDocumentExpiredEmail({ to: ownerEmail, documentTitle: doc.title, documentId: doc.id });
+      }
+    } catch (err) {
+      console.error("Reminder cron: expired-notice email failed for document", doc.id, err);
+    }
+  }
+
+  return expiredCount;
+}
+
 // Daily Vercel Cron job (see vercel.json). Nudges signers who've been sitting
 // on a "sent"/"viewed" status for 3+ days since their last email (initial
 // invite or previous reminder), stopping once they sign, decline, or the
-// document is voided.
+// document is voided. Also sweeps documents past their optional expires_at
+// (documents.expires_at, migration 0030) into the 'expired' terminal status
+// before the reminder pass below runs — same daily trigger, no separate cron.
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = request.headers.get("authorization");
@@ -46,6 +91,7 @@ export async function GET(request: Request) {
   }
 
   const admin = createAdminClient();
+  const expiredCount = await expireOverdueDocuments(admin);
 
   const { data, error } = await admin
     .from("signers")
@@ -92,5 +138,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ remindedCount });
+  return NextResponse.json({ remindedCount, expiredCount });
 }

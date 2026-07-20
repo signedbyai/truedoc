@@ -36,26 +36,78 @@ function ctaButton(href: string, label: string) {
   `;
 }
 
+// The recipient-notice, invite-subject, and invite-message fields are all
+// sender-supplied free text that lands in an email a third party (the
+// Signer) receives — everything else interpolated into these templates
+// (title, names) is short and already trusted the same way elsewhere in
+// this file. Escaping just these fields is deliberately narrower than a
+// codebase-wide fix; see recipient-notice.ts.
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// Email headers are one line each — a raw newline in a sender-supplied
+// subject would either break the header or (worse, on a naive SMTP sender)
+// inject a second header. Resend's API takes `subject` as a JSON field, not
+// a raw header line, so this is defense-in-depth rather than a live
+// exploit today, but cheap enough to always do.
+function sanitizeSubject(text: string): string {
+  return text.replace(/[\r\n]+/g, " ").trim();
+}
+
 export async function sendSignerInviteEmail(opts: {
   to: string;
   signerName: string | null;
   senderName: string;
   documentTitle: string;
   signingToken: string;
+  // Sender-editable text set on the document (documents.recipient_notice,
+  // see supabase/migrations/0027) — SignedBy's suggested privacy-disclosure
+  // wording, or the sender's own. Omitted/empty means the sender turned it
+  // off. A Privacy Policy link is always appended when present so the
+  // recipient can read the full policy, not just the sender's note.
+  recipientNotice?: string | null;
+  // Sender-editable subject/message (documents.invite_subject/
+  // invite_message, migration 0029). Both replace/augment the default —
+  // omitted/empty means "use the standard text" for each independently
+  // (a custom message doesn't require a custom subject or vice versa).
+  inviteSubject?: string | null;
+  inviteMessage?: string | null;
 }) {
   const link = `${appUrl()}/sign/${opts.signingToken}`;
   const greeting = opts.signerName ? `Hi ${opts.signerName},` : "Hi,";
+  const subject = opts.inviteSubject
+    ? sanitizeSubject(opts.inviteSubject)
+    : `${opts.senderName} sent you "${opts.documentTitle}" to sign`;
+  const messageBlock = opts.inviteMessage
+    ? `<p style="white-space:pre-wrap;">${escapeHtml(opts.inviteMessage)}</p>`
+    : "";
+  const noticeBlock = opts.recipientNotice
+    ? `
+        <p style="color:#64748b;font-size:12px;line-height:1.5;border-top:1px solid #e2e8f0;padding-top:12px;margin-top:16px;">
+          ${escapeHtml(opts.recipientNotice)}
+          <a href="${appUrl()}/privacy" style="color:#64748b;">Privacy Policy</a>
+        </p>
+      `
+    : "";
 
   await getClient().emails.send({
     from: FROM,
     to: opts.to,
-    subject: `${opts.senderName} sent you "${opts.documentTitle}" to sign`,
+    subject,
     html: `
       <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
         <p>${greeting}</p>
         <p><strong>${opts.senderName}</strong> has asked you to review and sign <strong>${opts.documentTitle}</strong>.</p>
+        ${messageBlock}
         ${ctaButton(link, "Review &amp; Sign")}
         <p style="color:#64748b;font-size:13px;">No account needed — this link is unique to you. If you weren't expecting this, you can ignore this email.</p>
+        ${noticeBlock}
       </div>
     `,
   });
@@ -107,6 +159,57 @@ export async function sendDeclineNotificationEmail(opts: {
         <p><strong>${who}</strong> declined to sign <strong>${opts.documentTitle}</strong>.</p>
         ${opts.reason ? `<p style="color:#334155;">Reason given: &ldquo;${opts.reason}&rdquo;</p>` : ""}
         ${ctaButton(link, "View Document")}
+      </div>
+    `,
+  });
+}
+
+// Sent to the document owner when the reminders cron (src/app/api/cron/
+// reminders/route.ts) auto-expires a document that was never fully signed —
+// same "let the sender know something happened without them" shape as
+// sendDeclineNotificationEmail above, just for a different terminal state.
+export async function sendDocumentExpiredEmail(opts: { to: string; documentTitle: string; documentId: string }) {
+  const link = `${appUrl()}/dashboard/documents/${opts.documentId}`;
+
+  await getClient().emails.send({
+    from: FROM,
+    to: opts.to,
+    subject: `"${opts.documentTitle}" expired before it was fully signed`,
+    html: `
+      <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <p><strong>${opts.documentTitle}</strong> reached its expiration date before every recipient signed, so it's no longer available for signature.</p>
+        <p style="color:#64748b;font-size:13px;">Duplicate it to send a fresh copy, or remove the expiration date next time if you'd rather it stay open indefinitely.</p>
+        ${ctaButton(link, "View Document")}
+      </div>
+    `,
+  });
+}
+
+// Per-recipient authentication (Business tier, PER_RECIPIENT_AUTH_SCOPE.md):
+// sent every time a signer required to verify requests a code, including
+// resends — the code itself is the only thing that changes between sends,
+// same shape as any other OTP email. Not a link — the whole point is proof
+// the signer can read this specific inbox, not just click a button in it.
+export async function sendVerificationCodeEmail(opts: {
+  to: string;
+  signerName: string | null;
+  documentTitle: string;
+  code: string;
+}) {
+  const greeting = opts.signerName ? `Hi ${opts.signerName},` : "Hi,";
+
+  await getClient().emails.send({
+    from: FROM,
+    to: opts.to,
+    subject: `Your verification code for "${opts.documentTitle}"`,
+    html: `
+      <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <p>${greeting}</p>
+        <p>Enter this code to confirm it's you before signing <strong>${opts.documentTitle}</strong>:</p>
+        <div style="text-align:center; margin: 28px 0;">
+          <span style="display:inline-block; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:16px 28px; font-size:28px; font-weight:700; letter-spacing:8px; color:#0f172a;">${opts.code}</span>
+        </div>
+        <p style="color:#64748b;font-size:13px;">This code expires in 10 minutes. If you didn't request this, you can ignore this email.</p>
       </div>
     `,
   });

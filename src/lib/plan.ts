@@ -65,6 +65,14 @@ const FEATURE_PLANS = {
   docGate: ["business"],
 } as const;
 
+// Per-recipient authentication (a sender can require a signer to enter a
+// one-time email code before the signing link opens the document) was
+// originally scoped as Business-tier here, then explicitly moved to free
+// on every plan (2026-07-20, direct instruction) — same shape as
+// recipient_notice/invite_subject/invite_message/expires_at, none of which
+// have a FEATURE_PLANS entry either. See PER_RECIPIENT_AUTH_SCOPE.md
+// (project root) and src/app/api/sign/[token]/auth/*.
+
 export type Feature = keyof typeof FEATURE_PLANS;
 
 export function planHasFeature(plan: string | null | undefined, feature: Feature): boolean {

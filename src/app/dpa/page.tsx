@@ -34,6 +34,19 @@ export default function DpaPage() {
         applicable law). SignedBy processes such data only on the Customer&apos;s documented instructions, as
         reflected in this DPA and the Customer&apos;s configuration and use of the service.
       </p>
+      <p>
+        Notwithstanding the foregoing, to the extent SignedBy retains audit-trail records after closure of the
+        Customer&apos;s account for its own legal-defensibility, evidentiary, and compliance purposes, SignedBy acts
+        as an independent controller with respect to those retained records and processes them under its own
+        responsibility in accordance with applicable law.
+      </p>
+      <p>
+        As controller of its recipients&apos; personal data, the Customer is responsible for complying with
+        applicable data protection law in respect of the documents it sends, including providing recipients with
+        any required privacy information and informing them, where required, about the audit-trail and engagement
+        tracking involved in the signing process (such as open notifications and, on paid plans, per-page
+        engagement data).
+      </p>
 
       <h2>2. Scope and nature of processing</h2>
       <p>
@@ -67,6 +80,16 @@ export default function DpaPage() {
         located outside the European Economic Area, SignedBy relies on appropriate transfer safeguards recognized
         under GDPR, such as the European Commission&apos;s Standard Contractual Clauses.
       </p>
+      <p>
+        Where personal data covered by this DPA is transferred to, or accessible by, a sub-processor incorporated in
+        the United States (including Supabase, Cloudflare, Resend, Stripe, and Vercel), the Standard Contractual
+        Clauses adopted by the European Commission in Commission
+        Implementing Decision (EU) 2021/914 of 4 June 2021 (the &ldquo;2021 SCCs&rdquo;), including the module
+        applicable to the relevant controller-to-processor or processor-to-processor transfer, are hereby
+        incorporated into this DPA by reference and apply as if set out in full. In the event of any conflict
+        between the 2021 SCCs and the other terms of this DPA or the Terms of Service, the 2021 SCCs will prevail
+        with respect to the transfers they govern.
+      </p>
 
       <h2>4. SignedBy&apos;s obligations</h2>
       <p>SignedBy will:</p>
@@ -74,16 +97,30 @@ export default function DpaPage() {
         <li>Process personal data only on the Customer&apos;s documented instructions;</li>
         <li>Ensure personnel with access to personal data are subject to confidentiality obligations;</li>
         <li>Implement appropriate technical and organizational security measures, including encryption in transit and at rest;</li>
-        <li>Assist the Customer, to the extent reasonably possible, in responding to data subject requests (access, correction, deletion) relating to data the Customer controls; and</li>
-        <li>Notify the Customer without undue delay after becoming aware of a personal data breach affecting the Customer&apos;s data.</li>
+        <li>
+          Assist the Customer, to the extent reasonably possible, in responding to data subject requests (access,
+          correction, deletion) relating to data the Customer controls, and, where SignedBy receives such a request
+          directly from a data subject, promptly notify the Customer and not respond to the request itself except
+          on the Customer&apos;s documented instructions; and
+        </li>
+        <li>
+          Notify the Customer of any personal data breach affecting the Customer&apos;s data without undue delay,
+          and in any event no later than 48 hours after becoming aware of it, providing at least the nature of the
+          breach, the categories and approximate number of data subjects and records affected, the likely
+          consequences of the breach, the measures taken or proposed to address it, and a contact point from whom
+          further information can be obtained.
+        </li>
       </ul>
 
       <h2>5. Deletion or return of data</h2>
       <p>
-        On termination of the Customer&apos;s account, SignedBy will delete or, on written request made before
-        termination, return the personal data processed on the Customer&apos;s behalf, except to the extent we are
-        required by law to retain it (for example, audit-trail records tied to a completed electronic signature that
-        must remain reproducible).
+        On termination of the Customer&apos;s account, SignedBy will, at the Customer&apos;s election (made in
+        writing on or before termination), delete or return the personal data processed on the Customer&apos;s
+        behalf, and will do so within a reasonable period not exceeding ninety (90) days after termination, except
+        to the extent SignedBy is required by law to retain it. Audit-trail records tied to a completed electronic
+        signature that must remain reproducible are expressly carved out from this deletion or return obligation
+        and will be retained by SignedBy, and any such retained records will continue to be held subject to the
+        confidentiality and security obligations of this DPA.
       </p>
 
       <h2>6. Audits</h2>
@@ -94,10 +131,56 @@ export default function DpaPage() {
       </p>
 
       <h2>7. Liability</h2>
-      <p>Liability under this DPA is subject to the limitation of liability set out in the SignedBy Terms of Service.</p>
+      <p>
+        Liability under this DPA is subject to, and does not increase, the limitation of liability and exclusions
+        of liability set out in the SignedBy Terms of Service. Those limitations, caps, and exclusions apply to and
+        flow through to all claims arising under or in connection with this DPA, whether in contract, tort, or
+        otherwise, and nothing in this DPA increases or expands either party&apos;s aggregate liability beyond what
+        is provided in the Terms of Service.
+      </p>
 
       <h2>8. Contact</h2>
       <p>Questions about this DPA can be sent to privacy@signedby.ai.</p>
+
+      <h2>Annex A — Details of Processing</h2>
+      <p>
+        This Annex A sets out the details of the processing carried out by SignedBy on behalf of the Customer, as
+        required by Article 28(3) of the GDPR.
+      </p>
+      <p>
+        <strong>Subject matter of the processing:</strong> SignedBy&apos;s processing of personal data on behalf of
+        the Customer in connection with providing the SignedBy electronic-signature and document-workflow service
+        under the Terms of Service and this DPA.
+      </p>
+      <p>
+        <strong>Duration of the processing:</strong> For the duration of the Customer&apos;s use of the service and
+        any applicable retention period described in the Privacy Policy, subject to the deletion and return
+        provisions of this DPA and any legally required retention (including audit-trail records tied to a
+        completed electronic signature).
+      </p>
+      <p>
+        <strong>Categories of data subjects:</strong> Senders (the Customer&apos;s account holders and authorized
+        users) and Signers (individuals the Customer invites to view or sign a document).
+      </p>
+      <p>
+        <strong>Types of personal data:</strong> names; email addresses; document content uploaded by or on behalf
+        of the Customer; field values and typed or drawn signature images entered by Signers; and audit-trail data
+        (including timestamps, IP addresses, browser/user-agent strings, and cryptographic document hashes).
+      </p>
+      <p>
+        <strong>Special categories of data:</strong> SignedBy does not intentionally collect or request special
+        categories of personal data (as defined in Article 9 of the GDPR). Uploaded documents may contain any
+        content the Customer chooses to include; as controller, the Customer is solely responsible for determining
+        the content of documents, for the presence of any special-category or other sensitive data within them, and
+        for ensuring an appropriate lawful basis for its processing.
+      </p>
+      <p>
+        <strong>Nature and purpose of the processing:</strong> to render and store uploaded documents; capture field
+        values and signatures entered by Signers; route signing requests by email; record the audit trail needed
+        for a legally defensible electronic signature; generate the final signed PDF and certificate of completion;
+        provide optional AI-assisted features (field-suggestion, drafting, and summarization); process billing;
+        secure the service and prevent abuse; and comply with legal obligations.
+      </p>
     </LegalPage>
   );
 }

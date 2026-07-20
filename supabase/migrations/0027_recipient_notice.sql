@@ -1,0 +1,18 @@
+-- Optional sender-editable privacy notice appended to the sign-request
+-- invite email, pre-filled with the recommended wording from the 2026-07
+-- privacy assessment (see /terms Section 4). Senders are the controller of
+-- their recipients' personal data and are responsible for telling them
+-- about SignedBy's audit-trail and engagement tracking -- this gives them
+-- ready-to-use wording, editable per document, from the field editor's
+-- "Privacy notice for recipients" menu item (src/components/field-editor.tsx).
+--
+-- Three states in one nullable column, set at send time
+-- (POST /api/documents/[id]/send):
+--   null        -- never configured; UI falls back to the suggested default
+--   ''          -- sender explicitly turned the notice off
+--   non-empty   -- the (possibly edited) notice text to include
+--
+-- Reused for resends after a recipient correction (signers/[signerId] PATCH)
+-- and for sequential next-signer invites (sign/[token]/submit) so every
+-- recipient on a document sees the same notice, not just the first.
+alter table documents add column if not exists recipient_notice text;
