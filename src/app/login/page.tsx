@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { Logo } from "@/components/logo";
+import { sanitizeNextPath } from "@/lib/safe-redirect";
 import { sendMagicLink, signInWithPassword, sendPasswordReset, verifyLoginCode } from "./actions";
 
 type AuthView = "email" | "password";
@@ -69,6 +70,12 @@ function readOAuthErrorFromHash(): string | null {
 function LoginPageInner() {
   const searchParams = useSearchParams();
   const isSignup = searchParams.get("intent") === "signup";
+  // Where to land after a successful sign-in, e.g. a template landing page
+  // sending someone to /login?intent=signup&next=/dashboard/documents/new
+  // %3Ftype%3Dnda so they arrive with that template preselected instead of
+  // a generic dashboard. Validated so this query param (attacker-editable)
+  // can never redirect somewhere off-site — see safe-redirect.ts.
+  const next = sanitizeNextPath(searchParams.get("next"));
 
   const [view, setView] = useState<AuthView>("email");
   const [passwordMode, setPasswordMode] = useState<PasswordMode>("signin");
@@ -139,7 +146,7 @@ function LoginPageInner() {
         setOtpDigits(Array(6).fill(""));
         otpRefs.current[0]?.focus();
       } else {
-        window.location.href = "/dashboard";
+        window.location.href = next ?? "/dashboard";
       }
     });
   }
@@ -199,7 +206,7 @@ function LoginPageInner() {
         setStatus("error");
         setMessage(result.error);
       } else {
-        window.location.href = "/dashboard";
+        window.location.href = next ?? "/dashboard";
       }
     });
   }
@@ -220,9 +227,11 @@ function LoginPageInner() {
   async function handleOAuth(provider: "google" | "azure") {
     setOauthLoading(provider);
     const supabase = createClient();
+    const callbackUrl = new URL("/auth/callback", window.location.origin);
+    if (next) callbackUrl.searchParams.set("next", next);
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: callbackUrl.toString() },
     });
     if (error) {
       setOauthLoading(null);
@@ -309,6 +318,11 @@ function LoginPageInner() {
               </div>
             ) : (
               <form action={handleMagicLink} className="space-y-3">
+                {/* Read server-side by sendMagicLink and appended to the
+                    emailed link's redirect target, so clicking the actual
+                    email link (instead of typing the code) still preserves
+                    where we came from. */}
+                {next && <input type="hidden" name="next" value={next} />}
                 <div className="space-y-1.5">
                   <Label htmlFor="email" className="sr-only">
                     Email

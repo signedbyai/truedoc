@@ -146,6 +146,9 @@ export default function VsHixPage() {
           <Link href="/vs/docusign" className="hover:text-slate-600">
             SignedBy vs DocuSign
           </Link>
+          <Link href="/templates" className="hover:text-slate-600">
+            Free templates
+          </Link>
           <Link href="/pricing" className="hover:text-slate-600">
             Pricing
           </Link>

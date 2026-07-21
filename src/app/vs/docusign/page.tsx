@@ -127,6 +127,9 @@ export default function VsDocuSignPage() {
           <Link href="/vs/hix" className="hover:text-slate-600">
             SignedBy vs Hix
           </Link>
+          <Link href="/templates" className="hover:text-slate-600">
+            Free templates
+          </Link>
           <Link href="/pricing" className="hover:text-slate-600">
             Pricing
           </Link>

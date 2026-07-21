@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { sanitizeNextPath } from "@/lib/safe-redirect";
 
 /** Best-effort client IP from standard proxy headers — server actions don't get a Request object. */
 async function clientIp() {
@@ -25,12 +26,18 @@ export async function sendMagicLink(formData: FormData) {
     return { error: "Too many sign-in attempts. Try again in a few minutes." };
   }
 
+  // Re-validated server-side (formData is client-controlled input, same as
+  // any other form field) even though the page already sanitized it before
+  // rendering the hidden input — see safe-redirect.ts.
+  const next = sanitizeNextPath(String(formData.get("next") || ""));
+  const emailRedirectTo = next
+    ? `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=${encodeURIComponent(next)}`
+    : `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`;
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
-    },
+    options: { emailRedirectTo },
   });
 
   if (error) return { error: error.message };

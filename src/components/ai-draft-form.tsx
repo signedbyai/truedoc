@@ -21,10 +21,15 @@ import {
 // draft never touches the database — the sender reviews and can edit the
 // full text before anything becomes a real document. See
 // src/lib/draft-document.ts and the two API routes this calls into.
-export function AiDraftForm() {
+//
+// `initialDocumentType` lets a caller preselect the dropdown — used when
+// someone arrives from a /templates/[slug] landing page (via
+// /dashboard/documents/new?type=nda) so they don't have to re-pick the
+// template they came here for.
+export function AiDraftForm({ initialDocumentType }: { initialDocumentType?: DraftDocumentType } = {}) {
   const router = useRouter();
   const [step, setStep] = useState<"describe" | "review">("describe");
-  const [documentType, setDocumentType] = useState<DraftDocumentType>(DOCUMENT_TYPES[0].id);
+  const [documentType, setDocumentType] = useState<DraftDocumentType>(initialDocumentType ?? DOCUMENT_TYPES[0].id);
   const [language, setLanguage] = useState(() =>
     detectDraftLang(typeof navigator !== "undefined" ? navigator.language : undefined)
   );

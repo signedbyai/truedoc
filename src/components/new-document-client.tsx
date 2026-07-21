@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { AiDraftForm } from "@/components/ai-draft-form";
 import { MagicQuoteForm } from "@/components/magic-quote-form";
 import type { QuoteCurrencySymbol } from "@/lib/quote-types";
+import type { DraftDocumentType } from "@/lib/ai-draft-types";
 
 // Shared by all four tab states (upload, AI Drafter, the locked AI Drafter
 // upsell, and Magic Quote) so they stay the same size as labels change.
@@ -28,13 +29,20 @@ const MODE_TAB_CLASS =
 export function NewDocumentClient({
   hasAiDraft,
   defaultQuoteCurrency,
+  initialDocumentType,
 }: {
   hasAiDraft: boolean;
   defaultQuoteCurrency: QuoteCurrencySymbol;
+  // Set when arriving from a /templates/[slug] page via
+  // ?type=nda — opens straight into the AI Drafter tab with that template
+  // preselected. Harmless if the account is on Free (the existing hasAiDraft
+  // gate below already falls back to the Upload tab in that case; no
+  // special-casing needed here).
+  initialDocumentType?: DraftDocumentType;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [mode, setMode] = useState<"upload" | "draft" | "quote">("upload");
+  const [mode, setMode] = useState<"upload" | "draft" | "quote">(initialDocumentType ? "draft" : "upload");
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [isDragging, setIsDragging] = useState(false);
@@ -220,7 +228,7 @@ export function NewDocumentClient({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <AiDraftForm />
+              <AiDraftForm initialDocumentType={initialDocumentType} />
             </CardContent>
           </Card>
         ) : (

@@ -1,0 +1,95 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Logo } from "@/components/logo";
+import { TEMPLATE_PAGES } from "@/lib/template-pages";
+
+const TITLE = "Free Document Templates — Agreements & Contracts";
+const DESCRIPTION =
+  "Free, ready-to-use templates for freelance agreements, NDAs, waivers, rental agreements, and more. Copy the example or send it for e-signature in minutes.";
+const SHARED_IMAGE = ["/opengraph-image"];
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: "/templates" },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/templates", images: SHARED_IMAGE },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: SHARED_IMAGE },
+};
+
+export default function TemplatesIndexPage() {
+  return (
+    <main className="flex min-h-screen flex-col bg-white">
+      <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-6">
+        <Link href="/">
+          <Logo />
+        </Link>
+        <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+          Sign in
+        </Link>
+      </header>
+
+      <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-4 px-6 py-10 text-center">
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Free Document Templates</h1>
+        <p className="max-w-xl text-base text-slate-600">
+          Real, complete templates you can use as-is — freelance agreements, NDAs, waivers, and more. Copy what you
+          need, or sign up free to send one for e-signature.
+        </p>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl px-6 pb-16">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {TEMPLATE_PAGES.map((t) => (
+            <Link
+              key={t.slug}
+              href={`/templates/${t.slug}`}
+              className="rounded-xl border border-slate-200 p-5 text-left transition-colors hover:border-slate-400"
+            >
+              <h2 className="text-base font-semibold text-slate-900">{t.h1}</h2>
+              <p className="mt-1.5 text-sm text-slate-600">{t.intro[0]}</p>
+              <span className="mt-3 inline-block text-sm font-medium text-slate-900 underline underline-offset-2">
+                View template →
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl px-6 pb-20 text-center">
+        <h2 className="text-2xl font-semibold text-slate-900">Need something else signed?</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Upload any PDF, or describe what you need and let AI draft a starting point.
+        </p>
+        <Link
+          href="/login?intent=signup"
+          className={cn(buttonVariants({ size: "lg" }), "mt-5 bg-yellow-300 text-slate-900 hover:bg-yellow-400")}
+        >
+          Start for free →
+        </Link>
+      </section>
+
+      <footer className="mt-auto border-t border-slate-100 px-6 py-8 text-center text-xs text-slate-400">
+        <p>© {new Date().getFullYear()} SignedBy. signedby.ai</p>
+        <p className="mt-1">A trading name of SPRK10 B.V. KVK 98888625</p>
+        <p className="mt-2 space-x-4">
+          <Link href="/vs/signnow" className="hover:text-slate-600">
+            SignedBy vs SignNow
+          </Link>
+          <Link href="/vs/docusign" className="hover:text-slate-600">
+            SignedBy vs DocuSign
+          </Link>
+          <Link href="/pricing" className="hover:text-slate-600">
+            Pricing
+          </Link>
+          <Link href="/terms" className="hover:text-slate-600">
+            Terms
+          </Link>
+          <Link href="/privacy" className="hover:text-slate-600">
+            Privacy
+          </Link>
+        </p>
+      </footer>
+    </main>
+  );
+}
