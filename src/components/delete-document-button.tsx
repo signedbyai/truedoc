@@ -94,7 +94,14 @@ export function DeleteDocumentButton({
             }}
           >
             <div
-              className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-xl"
+              // Matches the standard modal treatment used everywhere else
+              // (bulk-send, field-editor's confirmation dialogs,
+              // signing-view) — rounded-lg, no border. This was the one
+              // outlier using Card's bordered rounded-xl instead; brought
+              // in line 2026-07-22 (design-audit-2026-07-22.md, project
+              // root), not the other way around, since the majority
+              // pattern was 9 modals to 1.
+              className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
               <h2 id="delete-draft-title" className="text-base font-semibold text-slate-900">
