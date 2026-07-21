@@ -79,6 +79,9 @@ export default function TemplatesIndexPage() {
           <Link href="/vs/docusign" className="hover:text-slate-600">
             SignedBy vs DocuSign
           </Link>
+          <Link href="/vs/pandadoc" className="hover:text-slate-600">
+            SignedBy vs PandaDoc
+          </Link>
           <Link href="/pricing" className="hover:text-slate-600">
             Pricing
           </Link>

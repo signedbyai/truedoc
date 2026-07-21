@@ -124,6 +124,9 @@ export default function VsSignNowPage() {
           <Link href="/vs/docusign" className="hover:text-slate-600">
             SignedBy vs DocuSign
           </Link>
+          <Link href="/vs/pandadoc" className="hover:text-slate-600">
+            SignedBy vs PandaDoc
+          </Link>
           <Link href="/vs/hix" className="hover:text-slate-600">
             SignedBy vs Hix
           </Link>

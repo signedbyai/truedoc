@@ -17,6 +17,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE_URL}/vs/docusign`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     // Was built but never listed here — added 2026-07-18.
     { url: `${BASE_URL}/vs/hix`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    // Added 2026-07-21 — PandaDoc chosen over Adobe Sign/Dropbox Sign as the
+    // next comparison page because it's the one with real growth momentum
+    // (80% user growth, 63% revenue growth per PandaDoc's own reporting),
+    // vs. Adobe Sign's installed-base-driven share and Dropbox Sign's
+    // reported stagnation.
+    { url: `${BASE_URL}/vs/pandadoc`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     // Programmatic-SEO template pages, added 2026-07-21 (see the DocuSign/
     // SignNow GTM research this was modeled on) — one per AI Drafter
     // document type, index page plus each individual /templates/[slug].

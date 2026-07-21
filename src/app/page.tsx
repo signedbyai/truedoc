@@ -363,6 +363,9 @@ export default async function LandingPage() {
           <Link href="/vs/docusign" className="hover:text-slate-600">
             vs DocuSign
           </Link>
+          <Link href="/vs/pandadoc" className="hover:text-slate-600">
+            vs PandaDoc
+          </Link>
           <Link href="/templates" className="hover:text-slate-600">
             Free templates
           </Link>

@@ -4,9 +4,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 
-const TITLE = "SignedBy vs DocuSign — pricing and feature comparison";
+const TITLE = "SignedBy vs PandaDoc — pricing and feature comparison";
 const DESCRIPTION =
-  "How SignedBy compares to DocuSign eSignature on price, envelope limits, and AI-assisted features. Flat $7/mo unlimited plan vs DocuSign's per-envelope, per-user pricing.";
+  "How SignedBy compares to PandaDoc on price, document limits, and AI-assisted features. Flat $7/mo unlimited plan vs PandaDoc's per-user pricing and 5-document free cap.";
 
 // A page that sets its own metadata.openGraph/twitter -- even without an
 // images field -- stops Next.js from auto-inheriting the root layout's
@@ -20,29 +20,30 @@ const SHARED_IMAGE = ["/opengraph-image"];
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
-  alternates: { canonical: "/vs/docusign" },
-  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/vs/docusign", images: SHARED_IMAGE },
+  alternates: { canonical: "/vs/pandadoc" },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/vs/pandadoc", images: SHARED_IMAGE },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: SHARED_IMAGE },
 };
 
 type Row = { label: string; signedby: string; competitor: string };
 
 const PRICING_ROWS: Row[] = [
-  { label: "Cheapest paid plan", signedby: "$7/mo flat", competitor: "Personal: $10-15/mo, 1 user" },
-  { label: "Document/envelope limits on that plan", signedby: "Unlimited documents", competitor: "5 envelopes per month" },
-  { label: "Next tier up, 3 users", signedby: "$14/mo total (Team)", competitor: "~$75-195/mo total (Standard/Business Pro, priced per user)" },
-  { label: "Metered add-on fees", signedby: "None — flat pricing", competitor: "Extra charges for SMS delivery, ID verification, and notifications" },
+  { label: "Cheapest paid plan", signedby: "$7/mo flat", competitor: "$19/user/mo (billed annually)" },
+  { label: "Free plan document limits", signedby: "3 documents/month", competitor: "5 documents/month (60/year); $3 per extra doc" },
+  { label: "Realistic team-ready tier", signedby: "$14/mo total (Team, up to 3 users)", competitor: "$49/user/mo (Business) — CRM integrations require this tier" },
+  { label: "Pricing model", signedby: "Flat fee, no per-seat math", competitor: "Per-user, so cost rises with every teammate added" },
 ];
 
 const FEATURE_ROWS: Row[] = [
-  { label: "AI-drafted documents from a plain-language description", signedby: "Included (Starter+)", competitor: "Not in standard eSignature plans (separate higher-tier IAM platform)" },
-  { label: "AI-assisted field placement on upload", signedby: "Included, all plans", competitor: "Not offered in standard eSignature plans" },
-  { label: "Per-page signer engagement tracking (dwell time per page)", signedby: "Included (Starter+)", competitor: "Not included in standard eSignature plans" },
+  { label: "AI-drafted documents from a plain-language description", signedby: "Included (Starter+), any document type, $7/mo flat", competitor: "AI document/proposal generation offered, positioned around sales workflows and CRM data — confirm current plan requirements directly with PandaDoc" },
+  { label: "AI-assisted field placement on upload", signedby: "Included, all plans", competitor: "Not offered as a plain upload-and-place flow" },
+  { label: "Per-page signer engagement tracking (dwell time per page)", signedby: "Included (Starter+)", competitor: "Document-level tracking/analytics on paid tiers" },
   { label: "Mobile signing UX", signedby: "Field-by-field guided mode", competitor: "Standard pinch-and-zoom PDF view" },
   { label: "Public document-hash verification page", signedby: "Included, no login needed", competitor: "Not offered" },
   { label: "Company / primary AI processing location", signedby: "Netherlands (EU); Mistral AI (France) by default", competitor: "United States" },
   { label: "Audit trail, ESIGN/UETA compliance", signedby: "Included", competitor: "Included" },
-  { label: "Payment collection", signedby: "Business ($29/mo)", competitor: "Business Pro ($40-65/user/mo)" },
+  { label: "Templates and bulk send", signedby: "Templates on Starter+, bulk send on Team+", competitor: "Included, mainly aimed at sales/proposal teams" },
+  { label: "API access", signedby: "Business ($29/mo)", competitor: "Enterprise tier, custom pricing" },
 ];
 
 function CompareTable({ title, rows }: { title: string; rows: Row[] }) {
@@ -51,7 +52,7 @@ function CompareTable({ title, rows }: { title: string; rows: Row[] }) {
       <div className="grid grid-cols-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
         <span>{title}</span>
         <span className="text-slate-900">SignedBy</span>
-        <span>DocuSign</span>
+        <span>PandaDoc</span>
       </div>
       {rows.map((r) => (
         <div key={r.label} className="grid grid-cols-3 gap-2 border-t border-slate-100 px-4 py-3 text-sm">
@@ -64,7 +65,7 @@ function CompareTable({ title, rows }: { title: string; rows: Row[] }) {
   );
 }
 
-export default function VsDocuSignPage() {
+export default function VsPandaDocPage() {
   return (
     <main className="flex min-h-screen flex-col bg-white">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
@@ -77,10 +78,11 @@ export default function VsDocuSignPage() {
       </header>
 
       <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-6 py-16 text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">SignedBy vs DocuSign</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">SignedBy vs PandaDoc</h1>
         <p className="max-w-xl text-lg text-slate-600">
-          DocuSign is built for enterprise procurement — envelope caps, per-user pricing, and add-on fees. SignedBy is
-          a flat $7/mo, built for solo professionals and small teams who don&apos;t need any of that.
+          PandaDoc is built around sales proposals and CRM-driven document workflows, priced per user. SignedBy is a
+          flat $7/mo focused on send-and-sign for solo professionals and small teams, with AI drafting included at
+          that price instead of gated behind a sales-team platform.
         </p>
         <Link
           href="/login?intent=signup"
@@ -100,9 +102,10 @@ export default function VsDocuSignPage() {
         <h2 className="text-lg font-semibold text-slate-900">Features</h2>
         <CompareTable title="Feature" rows={FEATURE_ROWS} />
         <p className="mt-4 text-xs text-slate-400">
-          Pricing and feature details as of July 2026, based on DocuSign&apos;s publicly listed eSignature plans —
-          always confirm current rates directly with DocuSign, since providers change plans without notice. DocuSign
-          is a registered trademark of Docusign, Inc.; SignedBy is not affiliated with or endorsed by DocuSign.
+          Pricing and feature details as of July 2026, based on PandaDoc&apos;s publicly listed plans — always
+          confirm current rates and plan requirements directly with PandaDoc, since providers change plans without
+          notice. PandaDoc is a registered trademark of PandaDoc, Inc.; SignedBy is not affiliated with or endorsed
+          by PandaDoc.
         </p>
       </section>
 
@@ -124,8 +127,8 @@ export default function VsDocuSignPage() {
           <Link href="/vs/signnow" className="hover:text-slate-600">
             SignedBy vs SignNow
           </Link>
-          <Link href="/vs/pandadoc" className="hover:text-slate-600">
-            SignedBy vs PandaDoc
+          <Link href="/vs/docusign" className="hover:text-slate-600">
+            SignedBy vs DocuSign
           </Link>
           <Link href="/vs/hix" className="hover:text-slate-600">
             SignedBy vs Hix

@@ -157,6 +157,10 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
           ·{" "}
           <Link href="/vs/docusign" className="underline underline-offset-2 hover:text-slate-900">
             SignedBy vs DocuSign
+          </Link>{" "}
+          ·{" "}
+          <Link href="/vs/pandadoc" className="underline underline-offset-2 hover:text-slate-900">
+            SignedBy vs PandaDoc
           </Link>
         </p>
       </section>
