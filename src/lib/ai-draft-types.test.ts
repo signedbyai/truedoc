@@ -67,4 +67,19 @@ describe("documentTypeLabel", () => {
     expect(documentTypeLabel("nda")).toBe("Non-Disclosure Agreement (NDA)");
     expect(documentTypeLabel("not-a-type")).toBe("Document");
   });
+
+  it("uses the plain English label for types without a Dutch override, regardless of language", () => {
+    expect(documentTypeLabel("phone_repair")).toBe("Phone Repair Agreement");
+    expect(documentTypeLabel("phone_repair", "nl")).toBe("Phone Repair Agreement");
+  });
+
+  it("swaps in the Dutch trade term only when the language is Dutch", () => {
+    expect(documentTypeLabel("boiler_maintenance")).toBe("Boiler Maintenance Agreement");
+    expect(documentTypeLabel("boiler_maintenance", "en")).toBe("Boiler Maintenance Agreement");
+    expect(documentTypeLabel("boiler_maintenance", "nl")).toBe("CV-onderhoudscontract");
+
+    expect(documentTypeLabel("bike_rental")).toBe("Bike Rental Agreement");
+    expect(documentTypeLabel("bike_rental", "fr")).toBe("Bike Rental Agreement");
+    expect(documentTypeLabel("bike_rental", "nl")).toBe("Fietsverhuurovereenkomst");
+  });
 });

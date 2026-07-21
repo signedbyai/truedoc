@@ -32,6 +32,20 @@ const TYPE_GUIDANCE: Record<DraftDocumentType, string> = {
   general:
     "A general agreement typically covers: the parties, a plain description of what each party is agreeing to do, " +
     "any payment or exchange involved, the timeline or duration, and how either party can end the agreement.",
+  phone_repair:
+    "A phone repair agreement typically covers: the device (make/model) and its condition or any pre-existing " +
+    "damage noted at drop-off, the specific repair or part being replaced, the price and any deposit, the " +
+    "estimated turnaround time, warranty on the repair or part (and what voids it), and liability if additional " +
+    "damage is discovered once the device is opened.",
+  boiler_maintenance:
+    "A boiler/heating maintenance agreement typically covers: the property and equipment covered, the service " +
+    "schedule (e.g. one annual inspection), what's included versus billed separately (parts, emergency " +
+    "call-outs), expected response time for breakdowns, payment terms (one-off or recurring), and liability or " +
+    "insurance requirements for gas/heating-system work.",
+  bike_rental:
+    "A bike rental agreement typically covers: the bike(s) being rented and their condition at handover, the " +
+    "rental period and rate, a security deposit and what it can be used against, the renter's responsibility for " +
+    "damage, loss, or theft during the rental period, and the condition the bike must be returned in.",
 };
 
 const PROMPT = (documentType: DraftDocumentType, description: string, languageLabel: string) => `You are drafting \

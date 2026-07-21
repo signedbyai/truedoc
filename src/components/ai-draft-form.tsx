@@ -11,6 +11,7 @@ import {
   AI_DRAFT_DISCLAIMER,
   AI_DRAFT_CHECKBOX_LABEL,
   detectDraftLang,
+  documentTypeLabel,
   type DraftDocumentType,
 } from "@/lib/ai-draft-types";
 
@@ -149,7 +150,7 @@ export function AiDraftForm() {
         >
           {DOCUMENT_TYPES.map((t) => (
             <option key={t.id} value={t.id}>
-              {t.label}
+              {documentTypeLabel(t.id, language)}
             </option>
           ))}
         </select>

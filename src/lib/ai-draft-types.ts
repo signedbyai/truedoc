@@ -4,9 +4,21 @@
 
 import { SUMMARY_LANGUAGES } from "@/lib/summary-languages";
 
-export type DraftDocumentType = "freelance" | "nda" | "waiver" | "general";
+export type DraftDocumentType =
+  | "freelance"
+  | "nda"
+  | "waiver"
+  | "general"
+  | "phone_repair"
+  | "boiler_maintenance"
+  | "bike_rental";
 
-export const DOCUMENT_TYPES: { id: DraftDocumentType; label: string; placeholder: string }[] = [
+// `labelNl` is an optional Dutch-specific override — used for the two
+// templates (boiler/CV, bike/fiets) where the Dutch trade term reads more
+// naturally than a translated English one. Only shown when the template
+// maker's language is set to Dutch (see documentTypeLabel below); every
+// other language falls back to the plain English `label`.
+export const DOCUMENT_TYPES: { id: DraftDocumentType; label: string; labelNl?: string; placeholder: string }[] = [
   {
     id: "freelance",
     label: "Freelance / Services Agreement",
@@ -27,10 +39,34 @@ export const DOCUMENT_TYPES: { id: DraftDocumentType; label: string; placeholder
     label: "General Agreement",
     placeholder: "e.g. a simple agreement for a one-time equipment rental between two small businesses",
   },
+  {
+    id: "phone_repair",
+    label: "Phone Repair Agreement",
+    placeholder: "e.g. iPhone 13 screen replacement, $150 flat rate, 90-day warranty on the part",
+  },
+  {
+    id: "boiler_maintenance",
+    label: "Boiler Maintenance Agreement",
+    labelNl: "CV-onderhoudscontract",
+    placeholder: "e.g. annual boiler service contract, one inspection per year plus emergency call-outs, €180/year",
+  },
+  {
+    id: "bike_rental",
+    label: "Bike Rental Agreement",
+    labelNl: "Fietsverhuurovereenkomst",
+    placeholder: "e.g. weekend bike rental, €50 refundable deposit, renter liable for damage or theft",
+  },
 ];
 
-export function documentTypeLabel(id: string): string {
-  return DOCUMENT_TYPES.find((t) => t.id === id)?.label ?? "Document";
+// languageCode is optional and only changes anything for the two templates
+// above that define a labelNl — pass the template maker's current draft
+// language in to get the Dutch trade term; every other id/language
+// combination returns the same plain-English label as before.
+export function documentTypeLabel(id: string, languageCode?: string): string {
+  const type = DOCUMENT_TYPES.find((t) => t.id === id);
+  if (!type) return "Document";
+  if (languageCode === "nl" && type.labelNl) return type.labelNl;
+  return type.label;
 }
 
 // Shown before drafting, and re-affirmed (via the required checkbox) every
