@@ -163,7 +163,7 @@ export function SignatureQuizView() {
                 end-of-flow "Try SignedBy free" button below — the whole
                 funnel should meet the same call to action, not just the
                 exit. */}
-            <Button size="lg" className="mt-6 bg-yellow-300 text-slate-900 hover:bg-yellow-400" onClick={start}>
+            <Button size="lg" variant="cta" className="mt-6" onClick={start}>
               Start the quiz →
             </Button>
           </div>
@@ -281,10 +281,7 @@ export function SignatureQuizView() {
                   wherever it lands, start to finish. */}
               <Link
                 href={archetype.feature.href}
-                className={cn(
-                  buttonVariants({ size: "lg" }),
-                  "mt-4 bg-yellow-300 text-slate-900 hover:bg-yellow-400"
-                )}
+                className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-4")}
               >
                 Try SignedBy free →
               </Link>

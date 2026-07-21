@@ -1334,7 +1334,8 @@ export function FieldEditor({
               onClick={() => handleSend()}
               disabled={saving || sending}
               size="sm"
-              className="rounded-lg bg-yellow-300 text-slate-900 hover:bg-yellow-400"
+              variant="cta"
+              className="rounded-lg"
             >
               {sending ? "Sending…" : "Send for signature →"}
             </Button>
@@ -2217,7 +2218,8 @@ export function FieldEditor({
             forward arrow, matching the homepage CTA and the signer side's
             swipe-to-sign bar, so both ends of the flow finish the same way. */}
         <Button
-          className="w-full bg-yellow-300 text-slate-900 hover:bg-yellow-400"
+          variant="cta"
+          className="w-full"
           onClick={() => handleSend()}
           disabled={saving || sending}
         >

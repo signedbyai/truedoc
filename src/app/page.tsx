@@ -191,10 +191,7 @@ export default async function LandingPage() {
               one thing: press this. */}
         <Link
           href="/login?intent=signup"
-          className={cn(
-            buttonVariants({ size: "lg" }),
-            "mt-7 bg-yellow-300 text-slate-900 hover:bg-yellow-400"
-          )}
+          className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-7")}
         >
           Send your first document free →
         </Link>

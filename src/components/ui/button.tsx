@@ -12,6 +12,14 @@ const buttonVariants = cva(
         ghost: "hover:bg-slate-100 text-slate-900",
         link: "text-slate-900 underline-offset-4 hover:underline",
         destructive: "border border-red-200 bg-white text-red-600 hover:bg-red-50",
+        // The one accent color in the whole app, reserved for the single
+        // primary conversion action per screen ("Start for free", "Send for
+        // signature") — never used for anything else, so it stays meaningful.
+        // Previously retyped as a literal className on every marketing page
+        // and in field-editor.tsx; consolidated here 2026-07-22 so it's
+        // defined once. See design-system.md (project root) for the full
+        // token reference this variant is drawn from.
+        cta: "bg-yellow-300 text-slate-900 hover:bg-yellow-400",
       },
       size: {
         default: "h-10 px-4 py-2",

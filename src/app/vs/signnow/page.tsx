@@ -84,7 +84,7 @@ export default function VsSignNowPage() {
         </p>
         <Link
           href="/login?intent=signup"
-          className={cn(buttonVariants({ size: "lg" }), "bg-yellow-300 text-slate-900 hover:bg-yellow-400")}
+          className={buttonVariants({ variant: "cta", size: "lg" })}
         >
           Start for free →
         </Link>
@@ -111,7 +111,7 @@ export default function VsSignNowPage() {
         <p className="mt-2 text-sm text-slate-600">3 documents a month, no credit card, upgrade only if you need more.</p>
         <Link
           href="/login?intent=signup"
-          className={cn(buttonVariants({ size: "lg" }), "mt-5 bg-yellow-300 text-slate-900 hover:bg-yellow-400")}
+          className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-5")}
         >
           Start for free →
         </Link>

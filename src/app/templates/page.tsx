@@ -63,7 +63,7 @@ export default function TemplatesIndexPage() {
         </p>
         <Link
           href="/login?intent=signup"
-          className={cn(buttonVariants({ size: "lg" }), "mt-5 bg-yellow-300 text-slate-900 hover:bg-yellow-400")}
+          className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-5")}
         >
           Start for free →
         </Link>

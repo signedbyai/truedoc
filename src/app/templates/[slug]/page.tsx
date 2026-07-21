@@ -88,7 +88,7 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
         <div className="mt-2 flex flex-col items-center gap-2">
           <Link
             href={useTemplateHref}
-            className={cn(buttonVariants({ size: "lg" }), "bg-yellow-300 text-slate-900 hover:bg-yellow-400")}
+            className={buttonVariants({ variant: "cta", size: "lg" })}
           >
             Use this template — free →
           </Link>
@@ -118,7 +118,7 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
         </p>
         <Link
           href={useTemplateHref}
-          className={cn(buttonVariants({ size: "lg" }), "mt-5 bg-yellow-300 text-slate-900 hover:bg-yellow-400")}
+          className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-5")}
         >
           Start for free →
         </Link>
