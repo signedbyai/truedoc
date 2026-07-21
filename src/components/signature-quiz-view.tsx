@@ -159,8 +159,12 @@ export function SignatureQuizView() {
             <p className="mt-3 text-sm text-slate-600">
               8 quick questions about how you sign things. No email required, takes about a minute.
             </p>
-            <Button size="lg" className="mt-6" onClick={start}>
-              Start the quiz
+            {/* Yellow to match the homepage's primary CTA and the quiz's own
+                end-of-flow "Try SignedBy free" button below — the whole
+                funnel should meet the same call to action, not just the
+                exit. */}
+            <Button size="lg" className="mt-6 bg-yellow-300 text-slate-900 hover:bg-yellow-400" onClick={start}>
+              Start the quiz →
             </Button>
           </div>
         )}
@@ -270,10 +274,11 @@ export function SignatureQuizView() {
               <p className="mt-2 text-sm text-slate-600">{archetype.feature.description}</p>
               {/* A button, not an underlined text link. This is the end of the
                   quiz and the entire conversion moment for the LinkedIn
-                  campaign — it was styled as a tertiary link, quieter than the
-                  "Start the quiz" button that got them here. Yellow to match
-                  the homepage's primary CTA, so paid traffic meets the same
-                  call to action wherever it lands. */}
+                  campaign — it was styled as a tertiary link, quieter than
+                  every other CTA in the flow. Yellow (same as the intro
+                  step's "Start the quiz →" button above and the homepage's
+                  primary CTA) so paid traffic meets the same call to action
+                  wherever it lands, start to finish. */}
               <Link
                 href={archetype.feature.href}
                 className={cn(
