@@ -135,17 +135,17 @@ export const DOCUMENT_TYPES: { id: DraftDocumentType; labels: Localized; placeho
   {
     id: "bike_rental",
     labels: {
-      en: "Bike Rental Agreement",
+      en: "Bicycle Rental Agreement",
       es: "Contrato de Alquiler de Bicicletas",
       fr: "Contrat de Location de Vélo",
       de: "Fahrradverleihvertrag",
       pt: "Contrato de Aluguel de Bicicleta",
-      // Dutch "fiets" (bike) — same reasoning as boiler_maintenance's "CV" above.
+      // Dutch "fiets" (bicycle) — same reasoning as boiler_maintenance's "CV" above.
       nl: "Fietsverhuurovereenkomst",
       it: "Contratto di Noleggio Bici",
     },
     placeholders: {
-      en: "e.g. weekend bike rental, $50 refundable deposit, renter liable for damage or theft",
+      en: "e.g. weekend bicycle rental, $50 refundable deposit, renter liable for damage or theft",
       es: "ej. alquiler de bicicleta de fin de semana, depósito reembolsable de €50, el arrendatario responde por daños o robo",
       fr: "ex. location de vélo pour le week-end, caution remboursable de 50 €, le locataire est responsable des dommages ou du vol",
       de: "z. B. Fahrradverleih übers Wochenende, rückzahlbare Kaution von 50 €, Mieter haftet für Schäden oder Diebstahl",

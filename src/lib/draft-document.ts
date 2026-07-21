@@ -43,9 +43,9 @@ const TYPE_GUIDANCE: Record<DraftDocumentType, string> = {
     "call-outs), expected response time for breakdowns, payment terms (one-off or recurring), and liability or " +
     "insurance requirements for gas/heating-system work.",
   bike_rental:
-    "A bike rental agreement typically covers: the bike(s) being rented and their condition at handover, the " +
-    "rental period and rate, a security deposit and what it can be used against, the renter's responsibility for " +
-    "damage, loss, or theft during the rental period, and the condition the bike must be returned in.",
+    "A bicycle rental agreement typically covers: the bicycle(s) being rented and their condition at handover, " +
+    "the rental period and rate, a security deposit and what it can be used against, the renter's responsibility " +
+    "for damage, loss, or theft during the rental period, and the condition the bicycle must be returned in.",
 };
 
 const PROMPT = (documentType: DraftDocumentType, description: string, languageLabel: string) => `You are drafting \

@@ -100,7 +100,7 @@ describe("documentTypeLabel", () => {
     expect(documentTypeLabel("boiler_maintenance", "en")).toBe("Boiler Maintenance Agreement");
     expect(documentTypeLabel("boiler_maintenance", "nl")).toBe("CV-onderhoudscontract");
 
-    expect(documentTypeLabel("bike_rental", "en")).toBe("Bike Rental Agreement");
+    expect(documentTypeLabel("bike_rental", "en")).toBe("Bicycle Rental Agreement");
     expect(documentTypeLabel("bike_rental", "nl")).toBe("Fietsverhuurovereenkomst");
   });
 });
