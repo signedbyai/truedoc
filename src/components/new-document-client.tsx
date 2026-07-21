@@ -13,10 +13,16 @@ import { MagicQuoteForm } from "@/components/magic-quote-form";
 
 // Shared by all four tab states (upload, AI Drafter, the locked AI Drafter
 // upsell, and Magic Quote) so they stay the same size as labels change.
-// min-w is sized off the longest live label; text-center keeps shorter ones
-// from sitting left in their padded box.
+// No min-w here on purpose — the parent is a 3-column grid (see the JSX
+// below), so each tab's width comes from its grid column, which always
+// divides the available space three ways instead of the old fixed
+// min-w-[8rem] flex row, which added up to wider than a narrow phone
+// screen and pushed the third tab past the card's edge. text-center keeps
+// a short label centered in its column; text-xs/px-2 (vs. sm:text-sm/px-3)
+// give the longest label ("AI Drafter · Starter+") more room to fit
+// without wrapping on the narrowest columns.
 const MODE_TAB_CLASS =
-  "min-w-[8rem] rounded-md border px-3 py-1.5 text-center text-sm font-medium transition-colors";
+  "w-full rounded-md border px-2 py-1.5 text-center text-xs font-medium transition-colors sm:px-3 sm:text-sm";
 
 export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
   const router = useRouter();
@@ -112,13 +118,14 @@ export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
       <div className="mx-auto max-w-xl">
         <h1 className="mb-6 text-2xl font-semibold text-slate-900">New document</h1>
 
-        {/* Every tab shares MODE_TAB_CLASS, including a min-width, so they come
-            out the same size instead of each sizing to its own label — a set of
-            unequal boxes would read as a primary option with afterthoughts
-            beside it, which isn't the relationship here. The min-width is set
-            off the longest label ("Upload a file"), so shorter ones pad out
-            to meet it. */}
-        <div className="mb-4 flex gap-2">
+        {/* Every tab shares MODE_TAB_CLASS and sits in a 3-column grid, so
+            they come out the same size instead of each sizing to its own
+            label — a set of unequal boxes would read as a primary option
+            with afterthoughts beside it, which isn't the relationship here.
+            The grid (not a min-width flex row) is what keeps this from
+            overflowing a narrow phone screen: three columns always split
+            the card's actual width evenly, so there's nothing to overflow. */}
+        <div className="mb-4 grid grid-cols-3 gap-2">
           <button
             onClick={() => setMode("upload")}
             className={cn(
