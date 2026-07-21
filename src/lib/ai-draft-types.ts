@@ -8,66 +8,176 @@ export type DraftDocumentType =
   | "freelance"
   | "nda"
   | "waiver"
-  | "general"
   | "phone_repair"
   | "boiler_maintenance"
-  | "bike_rental";
+  | "bike_rental"
+  | "general";
 
-// `labelNl` is an optional Dutch-specific override — used for the two
-// templates (boiler/CV, bike/fiets) where the Dutch trade term reads more
-// naturally than a translated English one. Only shown when the template
-// maker's language is set to Dutch (see documentTypeLabel below); every
-// other language falls back to the plain English `label`.
-export const DOCUMENT_TYPES: { id: DraftDocumentType; label: string; labelNl?: string; placeholder: string }[] = [
+// `en` is required as the fallback; other draft-language codes are optional
+// overrides. Every template's `labels`/`placeholders` is fully translated
+// into all 7 draft languages (not just an English default) — both the
+// document-type name shown in the dropdown and the example text in the
+// description box should read naturally in whichever language the sender
+// has picked, currency example included (a Freelance placeholder in French
+// shows euros, not dollars). See documentTypeLabel/documentTypePlaceholder
+// below for how these are looked up.
+type Localized = { en: string } & Partial<Record<string, string>>;
+
+export const DOCUMENT_TYPES: { id: DraftDocumentType; labels: Localized; placeholders: Localized }[] = [
   {
     id: "freelance",
-    label: "Freelance / Services Agreement",
-    placeholder: "e.g. 3-month logo design project, $2,000 total, net-30, client owns final files",
+    labels: {
+      en: "Freelance / Services Agreement",
+      es: "Contrato de Servicios / Freelance",
+      fr: "Contrat de Prestation de Services / Freelance",
+      de: "Freelancer-/Dienstleistungsvertrag",
+      pt: "Contrato de Prestação de Serviços / Freelance",
+      nl: "Freelance-/Dienstverleningsovereenkomst",
+      it: "Contratto di Collaborazione / Freelance",
+    },
+    placeholders: {
+      en: "e.g. 3-month logo design project, $2,000 total, net-30, client owns final files",
+      es: "ej. proyecto de diseño de logotipo de 3 meses, €2.000 en total, pago a 30 días, el cliente es dueño de los archivos finales",
+      fr: "ex. projet de conception de logo de 3 mois, 2 000 € au total, paiement à 30 jours, le client est propriétaire des fichiers finaux",
+      de: "z. B. 3-monatiges Logo-Design-Projekt, insgesamt 2.000 €, Zahlungsziel 30 Tage, Kunde erhält die finalen Dateien",
+      pt: "ex. projeto de design de logotipo de 3 meses, €2.000 no total, pagamento em 30 dias, cliente fica com os arquivos finais",
+      nl: "bijv. 3 maanden durend logo-ontwerpproject, €2.000 in totaal, 30 dagen betaaltermijn, klant krijgt de definitieve bestanden",
+      it: "es. progetto di logo design di 3 mesi, 2.000 € totali, pagamento a 30 giorni, il cliente ottiene i file definitivi",
+    },
   },
   {
     id: "nda",
-    label: "Non-Disclosure Agreement (NDA)",
-    placeholder: "e.g. mutual NDA before discussing a potential partnership with another company",
+    labels: {
+      en: "Non-Disclosure Agreement (NDA)",
+      es: "Acuerdo de Confidencialidad (NDA)",
+      fr: "Accord de Confidentialité (NDA)",
+      de: "Geheimhaltungsvereinbarung (NDA)",
+      pt: "Acordo de Confidencialidade (NDA)",
+      nl: "Geheimhoudingsovereenkomst (NDA)",
+      it: "Accordo di Riservatezza (NDA)",
+    },
+    placeholders: {
+      en: "e.g. mutual NDA before discussing a potential partnership with another company",
+      es: "ej. NDA mutuo antes de conversar sobre una posible colaboración con otra empresa",
+      fr: "ex. NDA mutuel avant de discuter d'un partenariat potentiel avec une autre entreprise",
+      de: "z. B. gegenseitige Geheimhaltungsvereinbarung vor Gesprächen über eine mögliche Partnerschaft mit einem anderen Unternehmen",
+      pt: "ex. NDA mútuo antes de discutir uma possível parceria com outra empresa",
+      nl: "bijv. wederzijdse geheimhoudingsovereenkomst voorafgaand aan een gesprek over een mogelijke samenwerking met een ander bedrijf",
+      it: "es. NDA reciproco prima di discutere una possibile collaborazione con un'altra azienda",
+    },
   },
   {
     id: "waiver",
-    label: "Waiver / Release of Liability",
-    placeholder: "e.g. release form for participants in a one-day photography workshop",
-  },
-  {
-    id: "general",
-    label: "General Agreement",
-    placeholder: "e.g. a simple agreement for a one-time equipment rental between two small businesses",
+    labels: {
+      en: "Waiver / Release of Liability",
+      es: "Exención de Responsabilidad",
+      fr: "Décharge de Responsabilité",
+      de: "Haftungsverzicht",
+      pt: "Termo de Isenção de Responsabilidade",
+      nl: "Vrijwaringsverklaring",
+      it: "Liberatoria di Responsabilità",
+    },
+    placeholders: {
+      en: "e.g. release form for participants in a one-day photography workshop",
+      es: "ej. formulario de exención para los participantes de un taller de fotografía de un día",
+      fr: "ex. décharge pour les participants à un atelier photo d'une journée",
+      de: "z. B. Haftungsverzichtsformular für Teilnehmer eines eintägigen Fotografie-Workshops",
+      pt: "ex. termo de isenção para participantes de uma oficina de fotografia de um dia",
+      nl: "bijv. vrijwaringsformulier voor deelnemers aan een eendaagse fotografieworkshop",
+      it: "es. modulo di liberatoria per i partecipanti a un workshop fotografico di un giorno",
+    },
   },
   {
     id: "phone_repair",
-    label: "Phone Repair Agreement",
-    placeholder: "e.g. iPhone 13 screen replacement, $150 flat rate, 90-day warranty on the part",
+    labels: {
+      en: "Phone Repair Agreement",
+      es: "Contrato de Reparación de Teléfono",
+      fr: "Contrat de Réparation de Téléphone",
+      de: "Reparaturvertrag für Mobiltelefone",
+      pt: "Contrato de Reparo de Celular",
+      nl: "Reparatieovereenkomst voor Telefoons",
+      it: "Contratto di Riparazione Telefono",
+    },
+    placeholders: {
+      en: "e.g. iPhone 13 screen replacement, $150 flat rate, 90-day warranty on the part",
+      es: "ej. cambio de pantalla de un iPhone 13, tarifa fija de €150, garantía de 90 días sobre la pieza",
+      fr: "ex. remplacement d'écran d'iPhone 13, forfait de 150 €, garantie de 90 jours sur la pièce",
+      de: "z. B. Displaytausch beim iPhone 13, Festpreis 150 €, 90 Tage Garantie auf das Ersatzteil",
+      pt: "ex. troca de tela do iPhone 13, taxa fixa de €150, garantia de 90 dias na peça",
+      nl: "bijv. schermvervanging iPhone 13, vast tarief van €150, 90 dagen garantie op het onderdeel",
+      it: "es. sostituzione schermo iPhone 13, tariffa fissa di 150 €, garanzia di 90 giorni sul pezzo",
+    },
   },
   {
     id: "boiler_maintenance",
-    label: "Boiler Maintenance Agreement",
-    labelNl: "CV-onderhoudscontract",
-    placeholder: "e.g. annual boiler service contract, one inspection per year plus emergency call-outs, €180/year",
+    labels: {
+      en: "Boiler Maintenance Agreement",
+      es: "Contrato de Mantenimiento de Caldera",
+      fr: "Contrat d'Entretien de Chaudière",
+      de: "Wartungsvertrag für Heizkessel",
+      pt: "Contrato de Manutenção de Caldeira",
+      // Dutch trade term (CV = "centrale verwarming", i.e. a boiler) reads
+      // more naturally than a literal translation — this is the one this
+      // whole localized-labels system was originally built for.
+      nl: "CV-onderhoudscontract",
+      it: "Contratto di Manutenzione Caldaia",
+    },
+    placeholders: {
+      en: "e.g. annual boiler service contract, one inspection per year plus emergency call-outs, $180/year",
+      es: "ej. contrato anual de mantenimiento de caldera, una revisión al año más avisos de urgencia, €180/año",
+      fr: "ex. contrat annuel d'entretien de chaudière, une visite par an plus les interventions d'urgence, 180 €/an",
+      de: "z. B. jährlicher Wartungsvertrag für die Heizung, eine Inspektion pro Jahr plus Notfalleinsätze, 180 €/Jahr",
+      pt: "ex. contrato anual de manutenção de caldeira, uma inspeção por ano mais chamadas de emergência, €180/ano",
+      nl: "bijv. jaarlijks onderhoudscontract voor de CV-ketel, één inspectie per jaar plus storingsdienst, €180/jaar",
+      it: "es. contratto annuale di manutenzione caldaia, un controllo all'anno più interventi d'emergenza, 180 €/anno",
+    },
   },
   {
     id: "bike_rental",
-    label: "Bike Rental Agreement",
-    labelNl: "Fietsverhuurovereenkomst",
-    placeholder: "e.g. weekend bike rental, €50 refundable deposit, renter liable for damage or theft",
+    labels: {
+      en: "Bike Rental Agreement",
+      es: "Contrato de Alquiler de Bicicletas",
+      fr: "Contrat de Location de Vélo",
+      de: "Fahrradverleihvertrag",
+      pt: "Contrato de Aluguel de Bicicleta",
+      // Dutch "fiets" (bike) — same reasoning as boiler_maintenance's "CV" above.
+      nl: "Fietsverhuurovereenkomst",
+      it: "Contratto di Noleggio Bici",
+    },
+    placeholders: {
+      en: "e.g. weekend bike rental, $50 refundable deposit, renter liable for damage or theft",
+      es: "ej. alquiler de bicicleta de fin de semana, depósito reembolsable de €50, el arrendatario responde por daños o robo",
+      fr: "ex. location de vélo pour le week-end, caution remboursable de 50 €, le locataire est responsable des dommages ou du vol",
+      de: "z. B. Fahrradverleih übers Wochenende, rückzahlbare Kaution von 50 €, Mieter haftet für Schäden oder Diebstahl",
+      pt: "ex. aluguel de bicicleta de fim de semana, caução reembolsável de €50, locatário responsável por danos ou roubo",
+      nl: "bijv. fietsverhuur voor het weekend, terugbetaalbare borg van €50, huurder aansprakelijk voor schade of diefstal",
+      it: "es. noleggio bici per il weekend, cauzione rimborsabile di 50 €, il noleggiatore risponde di danni o furto",
+    },
+  },
+  {
+    // Kept last in the list on purpose — it's the catch-all/fallback type,
+    // so every more-specific template above it should get first look.
+    id: "general",
+    labels: {
+      en: "General Agreement",
+      es: "Acuerdo General",
+      fr: "Accord Général",
+      de: "Allgemeine Vereinbarung",
+      pt: "Acordo Geral",
+      nl: "Algemene Overeenkomst",
+      it: "Accordo Generale",
+    },
+    placeholders: {
+      en: "e.g. a simple agreement for a one-time equipment rental between two small businesses",
+      es: "ej. un acuerdo sencillo para el alquiler puntual de un equipo entre dos pequeñas empresas",
+      fr: "ex. un accord simple pour la location ponctuelle d'un équipement entre deux petites entreprises",
+      de: "z. B. eine einfache Vereinbarung für eine einmalige Geräte-Vermietung zwischen zwei kleinen Unternehmen",
+      pt: "ex. um acordo simples para o aluguel pontual de um equipamento entre duas pequenas empresas",
+      nl: "bijv. een eenvoudige overeenkomst voor eenmalige verhuur van apparatuur tussen twee kleine bedrijven",
+      it: "es. un accordo semplice per il noleggio occasionale di un'attrezzatura tra due piccole imprese",
+    },
   },
 ];
-
-// languageCode is optional and only changes anything for the two templates
-// above that define a labelNl — pass the template maker's current draft
-// language in to get the Dutch trade term; every other id/language
-// combination returns the same plain-English label as before.
-export function documentTypeLabel(id: string, languageCode?: string): string {
-  const type = DOCUMENT_TYPES.find((t) => t.id === id);
-  if (!type) return "Document";
-  if (languageCode === "nl" && type.labelNl) return type.labelNl;
-  return type.label;
-}
 
 // Shown before drafting, and re-affirmed (via the required checkbox) every
 // time — this is the load-bearing legal-risk mitigation for this whole
@@ -123,4 +233,24 @@ export function detectDraftLang(locale: string | undefined | null): string {
   if (!locale) return "en";
   const primary = locale.split("-")[0].toLowerCase();
   return isSupportedDraftLang(primary) ? primary : "en";
+}
+
+// languageCode is optional — an unsupported/missing code (stale client,
+// direct API call, or simply not passed by an older caller) falls back to
+// the English label/placeholder, same defensive precedent as
+// draftLanguageLabel. Every DOCUMENT_TYPES entry defines all 7 draft
+// languages, so in practice this is just a lookup, not a partial-coverage
+// fallback.
+export function documentTypeLabel(id: string, languageCode?: string): string {
+  const type = DOCUMENT_TYPES.find((t) => t.id === id);
+  if (!type) return "Document";
+  const lang = languageCode && isSupportedDraftLang(languageCode) ? languageCode : "en";
+  return type.labels[lang] ?? type.labels.en;
+}
+
+export function documentTypePlaceholder(id: string, languageCode?: string): string {
+  const type = DOCUMENT_TYPES.find((t) => t.id === id);
+  if (!type) return "";
+  const lang = languageCode && isSupportedDraftLang(languageCode) ? languageCode : "en";
+  return type.placeholders[lang] ?? type.placeholders.en;
 }

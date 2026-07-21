@@ -12,6 +12,7 @@ import {
   AI_DRAFT_CHECKBOX_LABEL,
   detectDraftLang,
   documentTypeLabel,
+  documentTypePlaceholder,
   type DraftDocumentType,
 } from "@/lib/ai-draft-types";
 
@@ -37,7 +38,10 @@ export function AiDraftForm() {
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState("");
 
-  const selectedType = DOCUMENT_TYPES.find((t) => t.id === documentType) ?? DOCUMENT_TYPES[0];
+  // Both re-derive from `language` on every render, so switching the
+  // document language updates the description placeholder immediately —
+  // same "picked language" treatment the dropdown label already gets.
+  const selectedPlaceholder = documentTypePlaceholder(documentType, language);
 
   async function handleGenerate() {
     setGenerating(true);
@@ -183,7 +187,7 @@ export function AiDraftForm() {
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder={selectedType.placeholder}
+            placeholder={selectedPlaceholder}
             rows={4}
             className="block w-full rounded-md border border-slate-300 p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
           />

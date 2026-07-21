@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  DOCUMENT_TYPES,
   DRAFT_LANGUAGES,
   detectDraftLang,
   documentTypeLabel,
+  documentTypePlaceholder,
   draftLanguageLabel,
   isSupportedDraftLang,
 } from "./ai-draft-types";
@@ -62,24 +64,59 @@ describe("detectDraftLang", () => {
   });
 });
 
+describe("DOCUMENT_TYPES ordering", () => {
+  it("keeps the general/catch-all template last, after every more-specific type", () => {
+    expect(DOCUMENT_TYPES[DOCUMENT_TYPES.length - 1].id).toBe("general");
+  });
+
+  it("gives every template a translation for all 7 draft languages (no silent English fallback)", () => {
+    const codes = DRAFT_LANGUAGES.map((l) => l.code);
+    for (const type of DOCUMENT_TYPES) {
+      for (const code of codes) {
+        expect(type.labels[code], `${type.id}.labels.${code}`).toBeTruthy();
+        expect(type.placeholders[code], `${type.id}.placeholders.${code}`).toBeTruthy();
+      }
+    }
+  });
+});
+
 describe("documentTypeLabel", () => {
   it("still resolves known document types (regression check alongside the new language exports)", () => {
     expect(documentTypeLabel("nda")).toBe("Non-Disclosure Agreement (NDA)");
     expect(documentTypeLabel("not-a-type")).toBe("Document");
   });
 
-  it("uses the plain English label for types without a Dutch override, regardless of language", () => {
+  it("defaults to the English label when no language is given, or an unsupported one is", () => {
     expect(documentTypeLabel("phone_repair")).toBe("Phone Repair Agreement");
-    expect(documentTypeLabel("phone_repair", "nl")).toBe("Phone Repair Agreement");
+    expect(documentTypeLabel("phone_repair", "zh")).toBe("Phone Repair Agreement");
   });
 
-  it("swaps in the Dutch trade term only when the language is Dutch", () => {
-    expect(documentTypeLabel("boiler_maintenance")).toBe("Boiler Maintenance Agreement");
+  it("translates the label for a supported non-English language", () => {
+    expect(documentTypeLabel("bike_rental", "fr")).toBe("Contrat de Location de Vélo");
+    expect(documentTypeLabel("phone_repair", "es")).toBe("Contrato de Reparación de Teléfono");
+  });
+
+  it("uses the Dutch trade term (not a literal translation) for boiler and bike, only when the language is Dutch", () => {
     expect(documentTypeLabel("boiler_maintenance", "en")).toBe("Boiler Maintenance Agreement");
     expect(documentTypeLabel("boiler_maintenance", "nl")).toBe("CV-onderhoudscontract");
 
-    expect(documentTypeLabel("bike_rental")).toBe("Bike Rental Agreement");
-    expect(documentTypeLabel("bike_rental", "fr")).toBe("Bike Rental Agreement");
+    expect(documentTypeLabel("bike_rental", "en")).toBe("Bike Rental Agreement");
     expect(documentTypeLabel("bike_rental", "nl")).toBe("Fietsverhuurovereenkomst");
+  });
+});
+
+describe("documentTypePlaceholder", () => {
+  it("defaults to the English example text when no language is given", () => {
+    expect(documentTypePlaceholder("freelance")).toContain("$2,000");
+  });
+
+  it("switches the example's currency along with the translated text for a euro-zone language", () => {
+    const fr = documentTypePlaceholder("freelance", "fr");
+    expect(fr).toContain("€");
+    expect(fr).not.toContain("$");
+  });
+
+  it("returns an empty string for an unknown document type", () => {
+    expect(documentTypePlaceholder("not-a-type")).toBe("");
   });
 });
