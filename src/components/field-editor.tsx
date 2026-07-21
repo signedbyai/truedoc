@@ -73,6 +73,13 @@ const RECIPIENT_COLORS = [
 // Tiny inline lock glyph for the per-recipient authentication toggle on
 // each chip below — not worth pulling into menu-item.tsx's shared icon set
 // since it's the only non-menu-row icon in this file.
+// Per-recipient auth lock icon has no hover state on mobile, so the tooltip
+// that explains it there instead auto-shows once, ever, on the first
+// recipient chip — same one-time "seen" pattern as the referral gift
+// button's SEEN_KEY (referral-gift-button.tsx), just a separate key since
+// they're unrelated discovery moments.
+const LOCK_HINT_SEEN_KEY = "sb_lock_hint_seen";
+
 function LockIcon({ filled }: { filled: boolean }) {
   return (
     <svg
@@ -236,6 +243,10 @@ export function FieldEditor({
   // started. Primary actions live in a fixed bottom bar instead (see the
   // end of the JSX), mirroring the signer side's thumb-reachable bar.
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  // Forces the per-recipient-auth lock tooltip open once, on the first
+  // recipient chip, so mobile visitors (no hover) get the same explanation
+  // desktop gets for free. See the effect below and LOCK_HINT_SEEN_KEY.
+  const [showLockHint, setShowLockHint] = useState(false);
   // "saved" is sticky until the next edit dirties the draft again — a pill
   // that flickers back to nothing reads as "it stopped saving".
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
@@ -602,6 +613,33 @@ export function FieldEditor({
     // elsewhere in this file/signing-view.tsx for the same reason.
     Promise.resolve().then(() => runSuggestFields());
   }, [autoSuggestOnUpload, fieldsLoaded, fields.length, recipients.length, runSuggestFields]);
+
+  // Auto-shows the per-recipient-auth lock tooltip once, ever, the first
+  // time a recipient exists — covers mobile, which has no hover state to
+  // discover it otherwise. Gated on the localStorage flag rather than
+  // recipients.length itself, so it doesn't re-fire on every document that
+  // happens to be a visitor's first with a recipient.
+  useEffect(() => {
+    if (recipients.length === 0) return;
+    let alreadySeen = true;
+    try {
+      alreadySeen = window.localStorage.getItem(LOCK_HINT_SEEN_KEY) === "1";
+      if (!alreadySeen) window.localStorage.setItem(LOCK_HINT_SEEN_KEY, "1");
+    } catch {
+      alreadySeen = true;
+    }
+    if (alreadySeen) return;
+    let timeoutId: number | undefined;
+    // Deferred via Promise.resolve().then(...) — same
+    // react-hooks/set-state-in-effect workaround used elsewhere in this
+    // file (see the auto-suggest effect) and in signer-auth-gate.tsx.
+    Promise.resolve().then(() => {
+      setShowLockHint(true);
+      timeoutId = window.setTimeout(() => setShowLockHint(false), 4000);
+    });
+    return () => window.clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipients.length > 0]);
 
   function addRecipient() {
     const email = newEmail.trim();
@@ -1164,90 +1202,105 @@ export function FieldEditor({
                   read as four unrelated controls with a ragged right edge.
                   Shared MENU_ITEM_CLASS is what keeps them identical. */}
               {showMoreMenu && (
-                <div className="absolute right-0 top-full z-30 mt-1 w-56 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg">
+                <>
+                  {/* Invisible full-screen scrim behind the menu — click
+                      anywhere outside to dismiss, same technique
+                      referral-gift-button.tsx already uses. Previously the
+                      only way to close this was pressing the More button
+                      again, which read as broken. z-20 sits below the
+                      menu's z-30 so the menu itself stays clickable. */}
                   <button
-                    onClick={() => {
-                      handleSaveDraft();
-                      setShowMoreMenu(false);
-                    }}
-                    disabled={saving || sending}
-                    className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
-                  >
-                    <SaveIcon />
-                    {saving ? "Saving…" : "Save draft"}
-                  </button>
-                  <DuplicateDocumentButton
-                    documentId={documentId}
-                    asMenuItem
-                    onSelect={() => setShowMoreMenu(false)}
+                    type="button"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                    onClick={() => setShowMoreMenu(false)}
+                    className="fixed inset-0 z-20 cursor-default"
                   />
-                  {hasTemplates ? (
+                  <div className="absolute right-0 top-full z-30 mt-1 w-56 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg">
                     <button
                       onClick={() => {
-                        setTemplateError("");
-                        setShowSaveTemplateModal(true);
+                        handleSaveDraft();
                         setShowMoreMenu(false);
                       }}
-                      disabled={saving || sending || confirmedFields.length === 0}
+                      disabled={saving || sending}
                       className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
                     >
-                      <BookmarkIcon />
-                      Save as template
+                      <SaveIcon />
+                      {saving ? "Saving…" : "Save draft"}
                     </button>
-                  ) : (
-                    // Was a bare <a> in 12px grey, which looked like a broken
-                    // row rather than a locked feature. Same row shape as the
-                    // rest, with the tier as a badge.
-                    <a
-                      href="/pricing"
-                      className={cn(MENU_ITEM_CLASS, "text-slate-400 hover:bg-slate-50")}
+                    <DuplicateDocumentButton
+                      documentId={documentId}
+                      asMenuItem
+                      onSelect={() => setShowMoreMenu(false)}
+                    />
+                    {hasTemplates ? (
+                      <button
+                        onClick={() => {
+                          setTemplateError("");
+                          setShowSaveTemplateModal(true);
+                          setShowMoreMenu(false);
+                        }}
+                        disabled={saving || sending || confirmedFields.length === 0}
+                        className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
+                      >
+                        <BookmarkIcon />
+                        Save as template
+                      </button>
+                    ) : (
+                      // Was a bare <a> in 12px grey, which looked like a broken
+                      // row rather than a locked feature. Same row shape as the
+                      // rest, with the tier as a badge.
+                      <a
+                        href="/pricing"
+                        className={cn(MENU_ITEM_CLASS, "text-slate-400 hover:bg-slate-50")}
+                      >
+                        <BookmarkIcon />
+                        Save as template
+                        <span className="ml-auto rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">
+                          Starter+
+                        </span>
+                      </a>
+                    )}
+                    {/* Available on every plan — subject/message personalization
+                        and the privacy-disclosure notice are both compliance/
+                        communication tools, not a productivity upsell, so this
+                        isn't gated like the row above it. */}
+                    <button
+                      onClick={() => {
+                        setShowNoticeModal(true);
+                        setShowMoreMenu(false);
+                      }}
+                      className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
                     >
-                      <BookmarkIcon />
-                      Save as template
-                      <span className="ml-auto rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">
-                        Starter+
-                      </span>
-                    </a>
-                  )}
-                  {/* Available on every plan — subject/message personalization
-                      and the privacy-disclosure notice are both compliance/
-                      communication tools, not a productivity upsell, so this
-                      isn't gated like the row above it. */}
-                  <button
-                    onClick={() => {
-                      setShowNoticeModal(true);
-                      setShowMoreMenu(false);
-                    }}
-                    className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
-                  >
-                    <MailIcon />
-                    Customize invite email
-                  </button>
-                  {/* Also ungated — a timestamp column plus a check in the
-                      cron job that already runs the reminder sweep, not a
-                      new piece of infrastructure, so there's no cost basis
-                      for a plan gate here either. */}
-                  <button
-                    onClick={() => {
-                      setExpirationError("");
-                      setShowExpirationModal(true);
-                      setShowMoreMenu(false);
-                    }}
-                    className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
-                  >
-                    <ClockIcon />
-                    Document expiration
-                  </button>
-                  {/* Destructive action last, below a rule — it previously sat
-                      one slip away from Send in the flat row. */}
-                  <div className="my-1 border-t border-slate-100" />
-                  <DeleteDocumentButton
-                    documentId={documentId}
-                    redirectTo="/dashboard/documents"
-                    asMenuItem
-                    onSelect={() => setShowMoreMenu(false)}
-                  />
-                </div>
+                      <MailIcon />
+                      Customize invite email
+                    </button>
+                    {/* Also ungated — a timestamp column plus a check in the
+                        cron job that already runs the reminder sweep, not a
+                        new piece of infrastructure, so there's no cost basis
+                        for a plan gate here either. */}
+                    <button
+                      onClick={() => {
+                        setExpirationError("");
+                        setShowExpirationModal(true);
+                        setShowMoreMenu(false);
+                      }}
+                      className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
+                    >
+                      <ClockIcon />
+                      Document expiration
+                    </button>
+                    {/* Destructive action last, below a rule — it previously sat
+                        one slip away from Send in the flat row. */}
+                    <div className="my-1 border-t border-slate-100" />
+                    <DeleteDocumentButton
+                      documentId={documentId}
+                      redirectTo="/dashboard/documents"
+                      asMenuItem
+                      onSelect={() => setShowMoreMenu(false)}
+                    />
+                  </div>
+                </>
               )}
             </div>
             <Button
@@ -1301,8 +1354,12 @@ export function FieldEditor({
               >
                 {suggesting ? "Suggesting…" : "Suggest"}
               </Button>
+              {/* Label stays "More ⋯" even while open — it used to flip to
+                  "Close", which read like it might close the whole document
+                  rather than just this menu, especially once the menu below
+                  became a full overlay with its own explicit "Done". */}
               <Button variant="outline" size="sm" onClick={() => setShowMoreMenu((v) => !v)}>
-                {showMoreMenu ? "Close" : "More ⋯"}
+                More ⋯
               </Button>
             </div>
           </div>
@@ -1329,10 +1386,17 @@ export function FieldEditor({
               // Only glow the field tools once there's a recipient to assign a
               // field to — the guided order is "add who signs" first (that
               // button glows when there are none), THEN "pick a field".
+              // fields.length (not confirmedFields.length) — the glow was
+              // checking only CONFIRMED fields, so it kept sweeping the
+              // whole time AI suggestions sat on the page unconfirmed (they
+              // don't count as confirmed until individually accepted). The
+              // point of the glow is "you haven't placed anything yet";
+              // once suggestions have landed, something IS there for the
+              // sender to review, so it should stop.
               const isNextStep =
                 f.type === "signature" &&
                 fieldsLoaded &&
-                confirmedFields.length === 0 &&
+                fields.length === 0 &&
                 recipients.length > 0 &&
                 !selectedTool;
               return (
@@ -1423,79 +1487,110 @@ export function FieldEditor({
             destructive action landed in the middle of the grid — next to
             Duplicate, and directly under Save draft — with nothing marking it
             apart. Two menus for the same feature disagreeing on where Delete
-            lives is how people delete the wrong thing. */}
+            lives is how people delete the wrong thing.
+
+            Was rendered inline in normal document flow, which shoved the
+            whole document down every time it opened, and the trigger button
+            up top flipped between "More ⋯" and "Close" — easy to misread as
+            "close this document" rather than "close this menu". Now a real
+            bottom sheet: fixed to the viewport (so it floats over the
+            document instead of reflowing it) with a dimmed scrim behind it,
+            same tap-outside-to-dismiss as the desktop menu, plus an explicit
+            "Done" in the sheet's own header so there's never an ambiguous
+            top-bar label to misread. z-20/z-30 mirrors the desktop scrim/
+            menu pair, both above the fixed bottom Save/Send bar's z-10. */}
         {showMoreMenu && (
-          <div className="border-t border-slate-100 px-2 py-1.5 sm:hidden">
-            {/* Same rows as desktop, one column. The two-column button grid it
-                replaces cost roughly twice the height for the same four
-                actions — on a phone that came straight out of the document. */}
+          <>
             <button
-              onClick={() => {
-                handleSaveDraft();
-                setShowMoreMenu(false);
-              }}
-              disabled={saving || sending}
-              className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
-            >
-              <SaveIcon />
-              {saving ? "Saving…" : "Save draft"}
-            </button>
-            <DuplicateDocumentButton
-              documentId={documentId}
-              asMenuItem
-              onSelect={() => setShowMoreMenu(false)}
+              type="button"
+              aria-hidden="true"
+              tabIndex={-1}
+              onClick={() => setShowMoreMenu(false)}
+              className="fixed inset-0 z-20 bg-black/30 sm:hidden"
             />
-            {hasTemplates ? (
-              <button
-                onClick={() => {
-                  setTemplateError("");
-                  setShowSaveTemplateModal(true);
-                  setShowMoreMenu(false);
-                }}
-                disabled={saving || sending || confirmedFields.length === 0}
-                className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
-              >
-                <BookmarkIcon />
-                Save as template
-              </button>
-            ) : (
-              <a href="/pricing" className={cn(MENU_ITEM_CLASS, "text-slate-400 hover:bg-slate-50")}>
-                <BookmarkIcon />
-                Save as template
-                <span className="ml-auto rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">
-                  Starter+
-                </span>
-              </a>
-            )}
-            <button
-              onClick={() => {
-                setShowNoticeModal(true);
-                setShowMoreMenu(false);
-              }}
-              className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
-            >
-              <MailIcon />
-              Customize invite email
-            </button>
-            <button
-              onClick={() => {
-                setExpirationError("");
-                setShowExpirationModal(true);
-                setShowMoreMenu(false);
-              }}
-              className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
-            >
-              <ClockIcon />
-              Document expiration
-            </button>
-            <div className="my-1 border-t border-slate-100" />
-            <DeleteDocumentButton
-              documentId={documentId}
-              redirectTo="/dashboard/documents"
-              asMenuItem
-              onSelect={() => setShowMoreMenu(false)}
-            />
-          </div>
+            <div className="fixed inset-x-0 bottom-0 z-30 rounded-t-2xl border-t border-slate-200 bg-white pb-[max(env(safe-area-inset-bottom),0.5rem)] shadow-[0_-4px_16px_rgba(0,0,0,0.12)] sm:hidden">
+              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                <span className="text-sm font-medium text-slate-900">More</span>
+                <button
+                  onClick={() => setShowMoreMenu(false)}
+                  className="text-sm font-medium text-slate-500 hover:text-slate-700"
+                >
+                  Done
+                </button>
+              </div>
+              {/* Same rows as desktop, one column. The two-column button grid it
+                  replaces cost roughly twice the height for the same four
+                  actions — on a phone that came straight out of the document. */}
+              <div className="px-2 py-1.5">
+                <button
+                  onClick={() => {
+                    handleSaveDraft();
+                    setShowMoreMenu(false);
+                  }}
+                  disabled={saving || sending}
+                  className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
+                >
+                  <SaveIcon />
+                  {saving ? "Saving…" : "Save draft"}
+                </button>
+                <DuplicateDocumentButton
+                  documentId={documentId}
+                  asMenuItem
+                  onSelect={() => setShowMoreMenu(false)}
+                />
+                {hasTemplates ? (
+                  <button
+                    onClick={() => {
+                      setTemplateError("");
+                      setShowSaveTemplateModal(true);
+                      setShowMoreMenu(false);
+                    }}
+                    disabled={saving || sending || confirmedFields.length === 0}
+                    className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
+                  >
+                    <BookmarkIcon />
+                    Save as template
+                  </button>
+                ) : (
+                  <a href="/pricing" className={cn(MENU_ITEM_CLASS, "text-slate-400 hover:bg-slate-50")}>
+                    <BookmarkIcon />
+                    Save as template
+                    <span className="ml-auto rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">
+                      Starter+
+                    </span>
+                  </a>
+                )}
+                <button
+                  onClick={() => {
+                    setShowNoticeModal(true);
+                    setShowMoreMenu(false);
+                  }}
+                  className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
+                >
+                  <MailIcon />
+                  Customize invite email
+                </button>
+                <button
+                  onClick={() => {
+                    setExpirationError("");
+                    setShowExpirationModal(true);
+                    setShowMoreMenu(false);
+                  }}
+                  className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
+                >
+                  <ClockIcon />
+                  Document expiration
+                </button>
+                <div className="my-1 border-t border-slate-100" />
+                <DeleteDocumentButton
+                  documentId={documentId}
+                  redirectTo="/dashboard/documents"
+                  asMenuItem
+                  onSelect={() => setShowMoreMenu(false)}
+                />
+              </div>
+            </div>
+          </>
         )}
 
         <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-4 py-2.5 sm:px-6">
@@ -1515,23 +1610,37 @@ export function FieldEditor({
               >
                 <span className={cn("h-1.5 w-1.5 rounded-full", color.dot)} />
                 {r.name || r.email}
+                {/* group/lock scopes the CSS hover so only THIS chip's
+                    tooltip shows, not every chip's at once. Was a native
+                    `title` attribute — the unstyled browser tooltip was
+                    hard to read; this is a small custom bubble styled like
+                    the rest of the app instead (same white/border/shadow
+                    language as the refer-a-friend popover, just sized down
+                    since it's one line with no actions). i === 0 also wires
+                    in showLockHint, which force-shows this same bubble once
+                    on mobile, where there's no hover to discover it. */}
                 <span
                   role="button"
-                  title={
-                    r.auth_required
-                      ? "Verification required before signing — click to remove"
-                      : "Require a one-time email code before this signer can open the document"
-                  }
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleAuthRequired(r.id);
                   }}
                   className={cn(
-                    "ml-0.5 inline px-0.5",
+                    "group/lock relative ml-0.5 inline-block px-0.5",
                     r.auth_required ? "text-amber-600" : "text-slate-400 hover:text-slate-600"
                   )}
                 >
                   <LockIcon filled={r.auth_required} />
+                  <span
+                    className={cn(
+                      "pointer-events-none absolute left-1/2 top-full z-40 mt-1.5 hidden w-48 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-2 text-[11px] font-normal normal-case leading-snug text-slate-600 shadow-lg group-hover/lock:block",
+                      showLockHint && i === 0 && "block"
+                    )}
+                  >
+                    {r.auth_required
+                      ? "Verification required before signing — click to remove"
+                      : "Require a one-time email code before this signer can open the document"}
+                  </span>
                 </span>
                 <span
                   role="button"
