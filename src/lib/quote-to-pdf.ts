@@ -62,8 +62,12 @@ export type QuoteRenderInput = {
   totals: QuoteTotals;
 };
 
+// A space before the number for multi-letter symbols ("CHF 150.00"), none
+// for single-glyph ones ("$150.00") — same convention currency.ts's
+// formatPrice already uses for pricing display.
 function formatAmount(currency: string, amount: number): string {
-  return `${currency}${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatted = amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return currency.length > 1 ? `${currency} ${formatted}` : `${currency}${formatted}`;
 }
 
 function formatDate(iso: string): string {

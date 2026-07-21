@@ -7,14 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   computeQuoteTotals,
-  detectQuoteCurrency,
   QUOTE_CURRENCY_SYMBOLS,
   type QuoteCurrencySymbol,
   type QuoteLineItem,
 } from "@/lib/quote-types";
 
+// A space before the number for multi-letter symbols ("CHF 150.00"), none
+// for single-glyph ones ("$150.00") — matches quote-to-pdf.ts's formatAmount
+// so the review-step preview and the finalized PDF never disagree.
 function formatAmount(currency: string, amount: number): string {
-  return `${currency}${amount.toFixed(2)}`;
+  const formatted = amount.toFixed(2);
+  return currency.length > 1 ? `${currency} ${formatted}` : `${currency}${formatted}`;
 }
 
 // Two-step flow, same "nothing is final until confirmed" shape as
@@ -23,7 +26,16 @@ function formatAmount(currency: string, amount: number): string {
 // recompute live via computeQuoteTotals, never trusting the AI's own math)
 // before anything becomes a real, signable document. See
 // src/lib/quote-document.ts and the two API routes this calls into.
-export function MagicQuoteForm() {
+//
+// `defaultCurrency` comes from the server (the "new document" page calls
+// getRequestCurrency() — the same geo/cookie-based signal the pricing and
+// checkout pages already use — and converts it via
+// quoteCurrencyForAppCurrency in quote-types.ts). That's a materially better
+// default than guessing from the browser's language setting: a browser set
+// to English doesn't mean the visitor is billing in dollars. Falls back to
+// "$" only if the caller doesn't pass one (e.g. a test rendering this
+// component directly).
+export function MagicQuoteForm({ defaultCurrency = "$" }: { defaultCurrency?: QuoteCurrencySymbol }) {
   const router = useRouter();
   const [step, setStep] = useState<"describe" | "review">("describe");
   const [description, setDescription] = useState("");
@@ -31,9 +43,7 @@ export function MagicQuoteForm() {
   const [generateError, setGenerateError] = useState("");
 
   const [title, setTitle] = useState("");
-  const [currency, setCurrency] = useState<QuoteCurrencySymbol>(() =>
-    detectQuoteCurrency(typeof navigator !== "undefined" ? navigator.language : undefined)
-  );
+  const [currency, setCurrency] = useState<QuoteCurrencySymbol>(defaultCurrency);
   const [billToName, setBillToName] = useState("");
   const [billToEmail, setBillToEmail] = useState("");
   const [validUntil, setValidUntil] = useState("");

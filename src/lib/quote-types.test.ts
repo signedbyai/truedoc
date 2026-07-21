@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeQuoteTotals, detectQuoteCurrency, MAX_TAX_RATE_PERCENT } from "./quote-types";
+import { computeQuoteTotals, quoteCurrencyForAppCurrency, MAX_TAX_RATE_PERCENT } from "./quote-types";
 
 describe("computeQuoteTotals", () => {
   it("computes a single line item with no tax", () => {
@@ -61,25 +61,11 @@ describe("computeQuoteTotals", () => {
   });
 });
 
-describe("detectQuoteCurrency", () => {
-  it("defaults to dollars for missing/empty input", () => {
-    expect(detectQuoteCurrency(undefined)).toBe("$");
-    expect(detectQuoteCurrency(null)).toBe("$");
-  });
-
-  it("uses dollars for US/Canadian English", () => {
-    expect(detectQuoteCurrency("en-US")).toBe("$");
-    expect(detectQuoteCurrency("en-CA")).toBe("$");
-    expect(detectQuoteCurrency("en")).toBe("$");
-  });
-
-  it("uses pounds for British English specifically", () => {
-    expect(detectQuoteCurrency("en-GB")).toBe("£");
-  });
-
-  it("defaults every other locale to euros", () => {
-    expect(detectQuoteCurrency("fr-FR")).toBe("€");
-    expect(detectQuoteCurrency("de-DE")).toBe("€");
-    expect(detectQuoteCurrency("nl-NL")).toBe("€");
+describe("quoteCurrencyForAppCurrency", () => {
+  it("maps each of the app's 4 billing currencies to its quote symbol", () => {
+    expect(quoteCurrencyForAppCurrency("USD")).toBe("$");
+    expect(quoteCurrencyForAppCurrency("EUR")).toBe("€");
+    expect(quoteCurrencyForAppCurrency("GBP")).toBe("£");
+    expect(quoteCurrencyForAppCurrency("CHF")).toBe("CHF");
   });
 });

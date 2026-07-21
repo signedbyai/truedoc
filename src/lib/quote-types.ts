@@ -4,6 +4,8 @@
 // pure data/math, no AI SDK or Supabase imports, so it's safe in either
 // bundle. Same split as ai-draft-types.ts vs. draft-document.ts.
 
+import type { Currency } from "@/lib/currency";
+
 export type QuoteLineItem = {
   description: string;
   quantity: number;
@@ -32,23 +34,34 @@ export const MAX_QUANTITY = 100_000;
 export const MAX_UNIT_PRICE = 1_000_000;
 export const MAX_TAX_RATE_PERCENT = 100;
 
-// Light locale → symbol guess, same "defensive fallback, not a hard
-// requirement" precedent as detectDraftLang in ai-draft-types.ts. Only 3
-// symbols for v1 (no full currency-code/formatting system) — good enough to
-// stop every quote defaulting to dollars regardless of where the sender is,
-// which was the exact inconsistency Michael flagged in the AI-draft
-// templates (some hardcoded $, others €).
-export const QUOTE_CURRENCY_SYMBOLS = ["$", "€", "£"] as const;
+// Reuses the app's existing pricing/checkout currency system (currency.ts /
+// currency.server.ts — geo IP header, with a cookie override from the
+// pricing page's currency switcher) instead of a separate browser-locale
+// guess. That system is a better signal than locale (a browser set to
+// English doesn't mean the visitor is in the US or UK) and it's already
+// exactly the "what currency is this person in" answer the rest of the app
+// relies on for billing — one source of truth, not two disagreeing guesses.
+// Same 4 currencies pricing supports; CHF (unlike $/€/£) isn't a single
+// glyph, so callers that print it (quote-to-pdf.ts, MagicQuoteForm) add a
+// space before the amount — see formatAmount in both.
+export const QUOTE_CURRENCY_SYMBOLS = ["$", "€", "£", "CHF"] as const;
 export type QuoteCurrencySymbol = (typeof QUOTE_CURRENCY_SYMBOLS)[number];
 
-export function detectQuoteCurrency(locale: string | undefined | null): QuoteCurrencySymbol {
-  if (!locale) return "$";
-  const l = locale.toLowerCase();
-  if (l.startsWith("en-gb")) return "£";
-  if (l === "en" || l.startsWith("en-us") || l.startsWith("en-ca")) return "$";
-  // Every other locale this app's language-aware features already handle
-  // (es, fr, de, pt, nl, it, and any other en- region) defaults to euro.
-  return "€";
+const CURRENCY_TO_QUOTE_SYMBOL: Record<Currency, QuoteCurrencySymbol> = {
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  CHF: "CHF",
+};
+
+// Server callers (the "new document" page) resolve the visitor's real
+// Currency via getRequestCurrency() and pass the result through this to get
+// a default for both MagicQuoteForm's initial currency picker value and,
+// implicitly, whatever a sender's job description forgot to mention a
+// currency for — the AI never infers currency from the description text
+// (see quote-document.ts), so the picker's default IS the fallback.
+export function quoteCurrencyForAppCurrency(currency: Currency): QuoteCurrencySymbol {
+  return CURRENCY_TO_QUOTE_SYMBOL[currency];
 }
 
 function toCents(amount: number): number {

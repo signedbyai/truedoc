@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { cn } from "@/lib/utils";
 import { AiDraftForm } from "@/components/ai-draft-form";
 import { MagicQuoteForm } from "@/components/magic-quote-form";
+import type { QuoteCurrencySymbol } from "@/lib/quote-types";
 
 // Shared by all four tab states (upload, AI Drafter, the locked AI Drafter
 // upsell, and Magic Quote) so they stay the same size as labels change.
@@ -24,7 +25,13 @@ import { MagicQuoteForm } from "@/components/magic-quote-form";
 const MODE_TAB_CLASS =
   "w-full rounded-md border px-2 py-1.5 text-center text-xs font-medium transition-colors sm:px-3 sm:text-sm";
 
-export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
+export function NewDocumentClient({
+  hasAiDraft,
+  defaultQuoteCurrency,
+}: {
+  hasAiDraft: boolean;
+  defaultQuoteCurrency: QuoteCurrencySymbol;
+}) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<"upload" | "draft" | "quote">("upload");
@@ -201,7 +208,7 @@ export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <MagicQuoteForm />
+              <MagicQuoteForm defaultCurrency={defaultQuoteCurrency} />
             </CardContent>
           </Card>
         ) : mode === "draft" && hasAiDraft ? (
