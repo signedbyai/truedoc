@@ -290,6 +290,15 @@ export function MagicQuoteForm() {
 
       {generateError && <p className="text-sm text-red-600">{generateError}</p>}
 
+      {/* Lighter touch than AI Drafter's "not legal advice" disclaimer —
+          Magic Quote only extracts numbers the sender already stated (never
+          invents a price) and the app itself computes every total, so this
+          is an ordinary review-your-work reminder, not a legal-risk
+          checkbox. See magic-quote-feature.md for the reasoning. */}
+      <p className="text-xs text-slate-500">
+        Review the line items and totals before sending — you&rsquo;re responsible for the final quote.
+      </p>
+
       <Button className="w-full" disabled={!description.trim() || generating} onClick={handleGenerate}>
         {generating ? "Generating quote…" : "Generate quote"}
       </Button>
