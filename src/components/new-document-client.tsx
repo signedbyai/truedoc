@@ -9,18 +9,19 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { AiDraftForm } from "@/components/ai-draft-form";
+import { MagicQuoteForm } from "@/components/magic-quote-form";
 
-// Shared by all three states of the mode pair (upload, AI Drafter, and the
-// locked AI Drafter upsell) so they stay the same size as labels change.
-// min-w is sized off the longest of the two live labels; text-center keeps the
-// shorter one from sitting left in its padded box.
+// Shared by all four tab states (upload, AI Drafter, the locked AI Drafter
+// upsell, and Magic Quote) so they stay the same size as labels change.
+// min-w is sized off the longest live label; text-center keeps shorter ones
+// from sitting left in their padded box.
 const MODE_TAB_CLASS =
   "min-w-[8rem] rounded-md border px-3 py-1.5 text-center text-sm font-medium transition-colors";
 
 export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [mode, setMode] = useState<"upload" | "draft">("upload");
+  const [mode, setMode] = useState<"upload" | "draft" | "quote">("upload");
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [isDragging, setIsDragging] = useState(false);
@@ -111,12 +112,12 @@ export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
       <div className="mx-auto max-w-xl">
         <h1 className="mb-6 text-2xl font-semibold text-slate-900">New document</h1>
 
-        {/* Both tabs share MODE_TAB_CLASS, including a min-width, so they come
-            out the same size instead of each sizing to its own label. They are
-            two halves of one either/or choice — a pair of unequal boxes reads
-            as a primary option with an afterthought beside it, which is not
-            the relationship here. The min-width is set off the longer label
-            ("Upload a file"), so the shorter one pads out to meet it. */}
+        {/* Every tab shares MODE_TAB_CLASS, including a min-width, so they come
+            out the same size instead of each sizing to its own label — a set of
+            unequal boxes would read as a primary option with afterthoughts
+            beside it, which isn't the relationship here. The min-width is set
+            off the longest label ("Upload a file"), so shorter ones pad out
+            to meet it. */}
         <div className="mb-4 flex gap-2">
           <button
             onClick={() => setMode("upload")}
@@ -161,9 +162,34 @@ export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
               AI Drafter · Starter+
             </a>
           )}
+          {/* Free on every plan (2026-07-21) — no locked/upsell state needed,
+              unlike the AI Drafter tab above. */}
+          <button
+            onClick={() => setMode("quote")}
+            className={cn(
+              MODE_TAB_CLASS,
+              mode === "quote"
+                ? "border-slate-900 bg-slate-900 text-white"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+            )}
+          >
+            Magic Quote
+          </button>
         </div>
 
-        {mode === "draft" && hasAiDraft ? (
+        {mode === "quote" ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Magic Quote</CardTitle>
+              <CardDescription>
+                Describe the job in plain language and get a line-item price quote to review and edit.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MagicQuoteForm />
+            </CardContent>
+          </Card>
+        ) : mode === "draft" && hasAiDraft ? (
           <Card>
             <CardHeader>
               <CardTitle>AI-drafted document</CardTitle>

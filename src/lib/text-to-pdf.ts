@@ -44,7 +44,9 @@ export function isFieldLabelLine(line: string): boolean {
 
 // Greedy word-wrap using the font's actual measured width — generic
 // enough to reuse for both the title and body at whatever size is passed.
-function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+// Exported so quote-to-pdf.ts's line-item table can wrap a long description
+// inside its column without duplicating this logic.
+export function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length === 0) return [];
 

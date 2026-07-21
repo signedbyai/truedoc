@@ -1,0 +1,298 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  computeQuoteTotals,
+  detectQuoteCurrency,
+  QUOTE_CURRENCY_SYMBOLS,
+  type QuoteCurrencySymbol,
+  type QuoteLineItem,
+} from "@/lib/quote-types";
+
+function formatAmount(currency: string, amount: number): string {
+  return `${currency}${amount.toFixed(2)}`;
+}
+
+// Two-step flow, same "nothing is final until confirmed" shape as
+// AiDraftForm: generating a quote never touches the database — the sender
+// reviews and can edit every line item, the tax rate, and the totals (which
+// recompute live via computeQuoteTotals, never trusting the AI's own math)
+// before anything becomes a real, signable document. See
+// src/lib/quote-document.ts and the two API routes this calls into.
+export function MagicQuoteForm() {
+  const router = useRouter();
+  const [step, setStep] = useState<"describe" | "review">("describe");
+  const [description, setDescription] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState("");
+
+  const [title, setTitle] = useState("");
+  const [currency, setCurrency] = useState<QuoteCurrencySymbol>(() =>
+    detectQuoteCurrency(typeof navigator !== "undefined" ? navigator.language : undefined)
+  );
+  const [billToName, setBillToName] = useState("");
+  const [billToEmail, setBillToEmail] = useState("");
+  const [validUntil, setValidUntil] = useState("");
+  const [notes, setNotes] = useState("");
+  const [taxRatePercent, setTaxRatePercent] = useState(0);
+  const [items, setItems] = useState<QuoteLineItem[]>([]);
+  const [finalizing, setFinalizing] = useState(false);
+  const [finalizeError, setFinalizeError] = useState("");
+
+  // Recomputed on every render from the current (possibly just-edited)
+  // items/tax rate — the same pure function the finalize route uses
+  // server-side, so what the sender sees here is exactly what ends up on
+  // the PDF, never a number the AI proposed directly.
+  const totals = useMemo(() => computeQuoteTotals(items, taxRatePercent), [items, taxRatePercent]);
+
+  function updateItem(index: number, patch: Partial<QuoteLineItem>) {
+    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  }
+
+  function removeItem(index: number) {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function addItem() {
+    setItems((prev) => [...prev, { description: "", quantity: 1, unitPrice: 0 }]);
+  }
+
+  async function handleGenerate() {
+    setGenerating(true);
+    setGenerateError("");
+    try {
+      const res = await fetch("/api/quotes/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Couldn't generate a quote.");
+      setTitle(data.title);
+      setItems(data.items);
+      setStep("review");
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function handleFinalize() {
+    setFinalizing(true);
+    setFinalizeError("");
+    try {
+      const res = await fetch("/api/quotes/finalize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          currency,
+          billToName,
+          billToEmail,
+          validUntil,
+          notes,
+          taxRatePercent,
+          items,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Couldn't create the document.");
+      router.push(`/dashboard/documents/${data.id}`);
+    } catch (err) {
+      setFinalizeError(err instanceof Error ? err.message : "Something went wrong.");
+      setFinalizing(false);
+    }
+  }
+
+  const hasValidItems = items.length > 0 && items.every((i) => i.description.trim() && i.quantity > 0);
+
+  if (step === "review") {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="quote-title">Quote title</Label>
+            <Input id="quote-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="quote-currency">Currency</Label>
+            <select
+              id="quote-currency"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value as QuoteCurrencySymbol)}
+              className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+            >
+              {QUOTE_CURRENCY_SYMBOLS.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="bill-to-name">Bill to (customer name)</Label>
+            <Input id="bill-to-name" value={billToName} onChange={(e) => setBillToName(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="bill-to-email">Customer email (optional)</Label>
+            <Input
+              id="bill-to-email"
+              type="email"
+              value={billToEmail}
+              onChange={(e) => setBillToEmail(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="valid-until">Valid until (optional)</Label>
+          <Input id="valid-until" type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Line items</Label>
+          <div className="space-y-2 rounded-md border border-slate-200 p-3">
+            {items.map((item, i) => (
+              <div key={i} className="flex flex-wrap items-center gap-2">
+                <input
+                  value={item.description}
+                  onChange={(e) => updateItem(i, { description: e.target.value })}
+                  placeholder="Description"
+                  className="min-w-[10rem] flex-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+                />
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={item.quantity}
+                  onChange={(e) => updateItem(i, { quantity: Number(e.target.value) || 0 })}
+                  aria-label="Quantity"
+                  className="w-16 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+                />
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={item.unitPrice}
+                  onChange={(e) => updateItem(i, { unitPrice: Number(e.target.value) || 0 })}
+                  aria-label="Unit price"
+                  className="w-24 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+                />
+                <span className="w-20 text-right text-sm text-slate-600">
+                  {formatAmount(currency, item.quantity * item.unitPrice)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeItem(i)}
+                  aria-label="Remove line item"
+                  className="text-slate-400 hover:text-red-600"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <Button type="button" variant="outline" onClick={addItem} className="w-full">
+              + Add line item
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="tax-rate">Tax rate % (optional)</Label>
+          <Input
+            id="tax-rate"
+            type="number"
+            min={0}
+            max={100}
+            step="any"
+            value={taxRatePercent}
+            onChange={(e) => setTaxRatePercent(Number(e.target.value) || 0)}
+            className="w-32"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="quote-notes">Notes (optional)</Label>
+          <textarea
+            id="quote-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            className="block w-full rounded-md border border-slate-300 p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+          />
+        </div>
+
+        <div className="space-y-1 rounded-md bg-slate-50 p-3 text-sm">
+          <div className="flex justify-between text-slate-600">
+            <span>Subtotal</span>
+            <span>{formatAmount(currency, totals.subtotal)}</span>
+          </div>
+          {totals.taxRatePercent > 0 && (
+            <div className="flex justify-between text-slate-600">
+              <span>Tax ({totals.taxRatePercent}%)</span>
+              <span>{formatAmount(currency, totals.taxAmount)}</span>
+            </div>
+          )}
+          <div className="flex justify-between text-base font-semibold text-slate-900">
+            <span>Total</span>
+            <span>{formatAmount(currency, totals.total)}</span>
+          </div>
+        </div>
+
+        {finalizeError && <p className="text-sm text-red-600">{finalizeError}</p>}
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            className="flex-1"
+            disabled={finalizing || !title.trim() || !hasValidItems}
+            onClick={handleFinalize}
+          >
+            {finalizing ? "Creating…" : "Create document"}
+          </Button>
+          <Button
+            variant="outline"
+            disabled={finalizing}
+            onClick={() => {
+              setStep("describe");
+              setGenerateError("");
+            }}
+          >
+            Start over
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="quote-description">Describe the job</Label>
+        <div className="ai-comet rounded-md">
+          <textarea
+            id="quote-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="e.g. iPhone 13 screen replacement for Alice, $80 for the part, 1 hour labor at $70/hr"
+            rows={4}
+            className="block w-full rounded-md border border-slate-300 p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+          />
+        </div>
+      </div>
+
+      {generateError && <p className="text-sm text-red-600">{generateError}</p>}
+
+      <Button className="w-full" disabled={!description.trim() || generating} onClick={handleGenerate}>
+        {generating ? "Generating quote…" : "Generate quote"}
+      </Button>
+    </div>
+  );
+}
