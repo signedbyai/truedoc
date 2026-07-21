@@ -135,9 +135,13 @@ export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
               onClick={() => setMode("draft")}
               className={cn(
                 MODE_TAB_CLASS,
-                // Comet lives on this button until AI-draft mode is chosen — then
-                // it hops to the "Describe what you need" box (see ai-draft-form).
-                mode !== "draft" && "ai-comet",
+                // Comet lives on this button only in the initial "upload"
+                // state, same as the Magic Quote tab below — choosing either
+                // AI mode turns both off, not just the one clicked, since
+                // they're two answers to the same "which way in?" prompt.
+                // Once AI Drafter itself is chosen, the comet hops to the
+                // "Describe what you need" box (see ai-draft-form).
+                mode === "upload" && "ai-comet",
                 mode === "draft"
                   ? "border-slate-900 bg-slate-900 text-white"
                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -168,6 +172,10 @@ export function NewDocumentClient({ hasAiDraft }: { hasAiDraft: boolean }) {
             onClick={() => setMode("quote")}
             className={cn(
               MODE_TAB_CLASS,
+              // Same shared-comet rule as the AI Drafter tab above: glows
+              // only in the initial "upload" state, and hops to Magic
+              // Quote's own "Describe the job" box once chosen.
+              mode === "upload" && "ai-comet",
               mode === "quote"
                 ? "border-slate-900 bg-slate-900 text-white"
                 : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
