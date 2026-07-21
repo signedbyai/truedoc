@@ -282,6 +282,13 @@ export function MagicQuoteForm({ defaultCurrency = "$" }: { defaultCurrency?: Qu
     );
   }
 
+  // Same currency the review step defaults to (from the visitor's real
+  // currency, not a guess — see the component doc comment above), so the
+  // example amounts don't show dollars to someone who's about to see euros
+  // or pounds on the very next screen. Same multi-letter-symbol spacing as
+  // formatAmount.
+  const currencyPrefix = currency.length > 1 ? `${currency} ` : currency;
+
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
@@ -291,7 +298,7 @@ export function MagicQuoteForm({ defaultCurrency = "$" }: { defaultCurrency?: Qu
             id="quote-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="e.g. iPhone 13 screen replacement for Alice, $80 for the part, 1 hour labor at $70/hr"
+            placeholder={`e.g. iPhone 13 screen replacement for Alice, ${currencyPrefix}80 for the part, 1 hour labor at ${currencyPrefix}70/hr`}
             rows={4}
             className="block w-full rounded-md border border-slate-300 p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
           />
