@@ -13,7 +13,7 @@ import { remapFieldSignerIds } from "@/lib/field-persist";
 import { signerForArrivingSuggestion, signerForConfirmedSuggestion } from "@/lib/suggestion-binding";
 import { DeleteDocumentButton } from "@/components/delete-document-button";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
-import { BookmarkIcon, MENU_ITEM_CLASS, SaveIcon, MailIcon, ClockIcon } from "@/components/ui/menu-item";
+import { BookmarkIcon, MENU_ITEM_CLASS, SaveIcon, MailIcon, ClockIcon, ShieldIcon } from "@/components/ui/menu-item";
 import { FIELD_TYPES, fieldDef, type FieldType } from "@/lib/field-types";
 import { defaultRecipientNotice } from "@/lib/recipient-notice";
 
@@ -227,6 +227,10 @@ export function FieldEditor({
   const [expiresAtInput, setExpiresAtInput] = useState(isoToLocalInput(initialExpiresAt));
   const [savingExpiration, setSavingExpiration] = useState(false);
   const [expirationError, setExpirationError] = useState("");
+  // Bulk on/off for per-recipient authentication — client state only, same
+  // as the per-chip lock toggle (toggleAuthRequired below); only actually
+  // persists on Save draft / Send, same as every other recipient edit.
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateError, setTemplateError] = useState("");
@@ -678,6 +682,14 @@ export function FieldEditor({
 
   function toggleAuthRequired(id: string) {
     setRecipients((prev) => prev.map((r) => (r.id === id ? { ...r, auth_required: !r.auth_required } : r)));
+  }
+
+  // Bulk version of the above, driven by the "Verification" menu item's
+  // modal — sets every current recipient to the same value in one go. Still
+  // just client state; individual chips can be fine-tuned afterward the
+  // same as always.
+  function setAllAuthRequired(value: boolean) {
+    setRecipients((prev) => prev.map((r) => ({ ...r, auth_required: value })));
   }
 
   function updateSignerInput(role: number, field: "name" | "email", value: string) {
@@ -1290,6 +1302,21 @@ export function FieldEditor({
                       <ClockIcon />
                       Document expiration
                     </button>
+                    {/* Bulk on/off for the per-recipient lock toggles below —
+                        disabled with nobody to apply it to yet, same
+                        disabled-until-ready treatment as "Save as template"
+                        above. */}
+                    <button
+                      onClick={() => {
+                        setShowVerificationModal(true);
+                        setShowMoreMenu(false);
+                      }}
+                      disabled={recipients.length === 0}
+                      className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
+                    >
+                      <ShieldIcon />
+                      Verification
+                    </button>
                     {/* Destructive action last, below a rule — it previously sat
                         one slip away from Send in the flat row. */}
                     <div className="my-1 border-t border-slate-100" />
@@ -1580,6 +1607,17 @@ export function FieldEditor({
                 >
                   <ClockIcon />
                   Document expiration
+                </button>
+                <button
+                  onClick={() => {
+                    setShowVerificationModal(true);
+                    setShowMoreMenu(false);
+                  }}
+                  disabled={recipients.length === 0}
+                  className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
+                >
+                  <ShieldIcon />
+                  Verification
                 </button>
                 <div className="my-1 border-t border-slate-100" />
                 <DeleteDocumentButton
@@ -2391,6 +2429,44 @@ export function FieldEditor({
               <Button onClick={saveExpiration} disabled={savingExpiration}>
                 {savingExpiration ? "Saving…" : "Save"}
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk on/off for per-recipient authentication (see
+          PER_RECIPIENT_AUTH_SCOPE.md) — a shortcut over clicking each
+          chip's lock icon individually, most useful once there are more
+          than a couple of recipients. Just flips client state the same way
+          the individual toggle does; nothing is saved until Save draft or
+          Send, same as every other recipient edit. */}
+      {showVerificationModal && (
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+            <p className="text-sm font-medium text-slate-900">Verification</p>
+            <p className="mt-1 text-xs text-slate-500">
+              {recipients.filter((r) => r.auth_required).length} of {recipients.length} recipient
+              {recipients.length === 1 ? "" : "s"} currently require a one-time email code before opening this
+              document. You can still fine-tune individual recipients afterward from their lock icon.
+            </p>
+
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                onClick={() => setAllAuthRequired(true)}
+                className="rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Require verification for everyone
+              </button>
+              <button
+                onClick={() => setAllAuthRequired(false)}
+                className="rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Turn off for everyone
+              </button>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <Button onClick={() => setShowVerificationModal(false)}>Done</Button>
             </div>
           </div>
         </div>
