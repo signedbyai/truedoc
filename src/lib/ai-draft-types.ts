@@ -8,7 +8,6 @@ export type DraftDocumentType =
   | "freelance"
   | "nda"
   | "waiver"
-  | "phone_repair"
   | "boiler_maintenance"
   | "bike_rental"
   | "general";
@@ -85,27 +84,6 @@ export const DOCUMENT_TYPES: { id: DraftDocumentType; labels: Localized; placeho
       pt: "ex. termo de isenção para participantes de uma oficina de fotografia de um dia",
       nl: "bijv. vrijwaringsformulier voor deelnemers aan een eendaagse fotografieworkshop",
       it: "es. modulo di liberatoria per i partecipanti a un workshop fotografico di un giorno",
-    },
-  },
-  {
-    id: "phone_repair",
-    labels: {
-      en: "Phone Repair Agreement",
-      es: "Contrato de Reparación de Teléfono",
-      fr: "Contrat de Réparation de Téléphone",
-      de: "Reparaturvertrag für Mobiltelefone",
-      pt: "Contrato de Reparo de Celular",
-      nl: "Reparatieovereenkomst voor Telefoons",
-      it: "Contratto di Riparazione Telefono",
-    },
-    placeholders: {
-      en: "e.g. iPhone 13 screen replacement, $150 flat rate, 90-day warranty on the part",
-      es: "ej. cambio de pantalla de un iPhone 13, tarifa fija de €150, garantía de 90 días sobre la pieza",
-      fr: "ex. remplacement d'écran d'iPhone 13, forfait de 150 €, garantie de 90 jours sur la pièce",
-      de: "z. B. Displaytausch beim iPhone 13, Festpreis 150 €, 90 Tage Garantie auf das Ersatzteil",
-      pt: "ex. troca de tela do iPhone 13, taxa fixa de €150, garantia de 90 dias na peça",
-      nl: "bijv. schermvervanging iPhone 13, vast tarief van €150, 90 dagen garantie op het onderdeel",
-      it: "es. sostituzione schermo iPhone 13, tariffa fissa di 150 €, garanzia di 90 giorni sul pezzo",
     },
   },
   {

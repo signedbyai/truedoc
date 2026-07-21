@@ -87,13 +87,13 @@ describe("documentTypeLabel", () => {
   });
 
   it("defaults to the English label when no language is given, or an unsupported one is", () => {
-    expect(documentTypeLabel("phone_repair")).toBe("Phone Repair Agreement");
-    expect(documentTypeLabel("phone_repair", "zh")).toBe("Phone Repair Agreement");
+    expect(documentTypeLabel("waiver")).toBe("Waiver / Release of Liability");
+    expect(documentTypeLabel("waiver", "zh")).toBe("Waiver / Release of Liability");
   });
 
   it("translates the label for a supported non-English language", () => {
     expect(documentTypeLabel("bike_rental", "fr")).toBe("Contrat de Location de Vélo");
-    expect(documentTypeLabel("phone_repair", "es")).toBe("Contrato de Reparación de Teléfono");
+    expect(documentTypeLabel("waiver", "es")).toBe("Exención de Responsabilidad");
   });
 
   it("uses the Dutch trade term (not a literal translation) for boiler and bike, only when the language is Dutch", () => {

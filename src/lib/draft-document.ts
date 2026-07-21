@@ -32,11 +32,6 @@ const TYPE_GUIDANCE: Record<DraftDocumentType, string> = {
   general:
     "A general agreement typically covers: the parties, a plain description of what each party is agreeing to do, " +
     "any payment or exchange involved, the timeline or duration, and how either party can end the agreement.",
-  phone_repair:
-    "A phone repair agreement typically covers: the device (make/model) and its condition or any pre-existing " +
-    "damage noted at drop-off, the specific repair or part being replaced, the price and any deposit, the " +
-    "estimated turnaround time, warranty on the repair or part (and what voids it), and liability if additional " +
-    "damage is discovered once the device is opened.",
   boiler_maintenance:
     "A boiler/heating maintenance agreement typically covers: the property and equipment covered, the service " +
     "schedule (e.g. one annual inspection), what's included versus billed separately (parts, emergency " +
