@@ -134,6 +134,9 @@ export default function VsPandaDocPage() {
           <Link href="/vs/hix" className="hover:text-slate-600">
             SignedBy vs Hix
           </Link>
+          <Link href="/vs/bolosign" className="hover:text-slate-600">
+            SignedBy vs BoloSign
+          </Link>
           <Link href="/templates" className="hover:text-slate-600">
             Free templates
           </Link>

@@ -23,6 +23,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // vs. Adobe Sign's installed-base-driven share and Dropbox Sign's
     // reported stagnation.
     { url: `${BASE_URL}/vs/pandadoc`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    // Added 2026-07-22 — BoloSign is a genuine SMB e-signature competitor
+    // (unlike EvoTrust/Evrotrust, an EU qualified-trust-service provider
+    // for national eID, which doesn't compete for the same buyer and was
+    // skipped rather than forced into an apples-to-oranges comparison).
+    { url: `${BASE_URL}/vs/bolosign`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     // Programmatic-SEO template pages, added 2026-07-21 (see the DocuSign/
     // SignNow GTM research this was modeled on) — one per AI Drafter
     // document type, index page plus each individual /templates/[slug].

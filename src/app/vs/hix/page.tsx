@@ -150,6 +150,9 @@ export default function VsHixPage() {
           <Link href="/vs/pandadoc" className="hover:text-slate-600">
             SignedBy vs PandaDoc
           </Link>
+          <Link href="/vs/bolosign" className="hover:text-slate-600">
+            SignedBy vs BoloSign
+          </Link>
           <Link href="/templates" className="hover:text-slate-600">
             Free templates
           </Link>
