@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { MENU_ITEM_CLASS, TrashIcon } from "@/components/ui/menu-item";
 import { cn } from "@/lib/utils";
 
@@ -112,20 +112,12 @@ export function DeleteDocumentButton({
               </p>
               {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
               <div className="mt-4 flex justify-end gap-2">
-                <button
-                  onClick={() => setConfirming(false)}
-                  disabled={loading}
-                  className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-                >
+                <Button variant="outline" size="sm" onClick={() => setConfirming(false)} disabled={loading}>
                   Cancel
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={loading}
-                  className="rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                >
+                </Button>
+                <Button variant="destructive" size="sm" onClick={handleDelete} disabled={loading}>
                   {loading ? "Deleting…" : "Delete draft"}
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -151,28 +143,30 @@ export function DeleteDocumentButton({
         </p>
         {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
         <div className="mt-2 flex gap-2">
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               setConfirming(false);
             }}
             disabled={loading}
-            className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               handleDelete();
             }}
             disabled={loading}
-            className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
           >
             {loading ? "Deleting…" : "Yes, delete it"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

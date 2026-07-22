@@ -67,14 +67,11 @@ export function BulkSendButton({ templateId }: { templateId: string }) {
             {status === "error" && <p className="mt-2 text-sm text-red-600">{message}</p>}
             {status === "done" && <p className="mt-2 text-sm text-emerald-600">{message}</p>}
             <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => setOpen(false)}
-                className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
-              >
+              <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
                 {status === "done" ? "Close" : "Cancel"}
-              </button>
+              </Button>
               {status !== "done" && (
-                <Button onClick={submit} disabled={status === "loading"}>
+                <Button size="sm" onClick={submit} disabled={status === "loading"}>
                   {status === "loading" ? "Sending…" : "Send to all"}
                 </Button>
               )}

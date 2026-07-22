@@ -1341,20 +1341,12 @@ export function SigningView({
             />
             {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
             <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => setShowDeclineModal(false)}
-                disabled={declining}
-                className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
-              >
+              <Button variant="outline" size="sm" onClick={() => setShowDeclineModal(false)} disabled={declining}>
                 Cancel
-              </button>
-              <button
-                onClick={handleDecline}
-                disabled={declining}
-                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-              >
+              </Button>
+              <Button variant="destructive" size="sm" onClick={handleDecline} disabled={declining}>
                 {declining ? "Declining…" : "Decline to sign"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

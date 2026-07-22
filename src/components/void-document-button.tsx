@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function VoidDocumentButton({ documentId }: { documentId: string }) {
@@ -49,20 +49,12 @@ export function VoidDocumentButton({ documentId }: { documentId: string }) {
       </p>
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
       <div className="mt-2 flex gap-2">
-        <button
-          onClick={() => setConfirming(false)}
-          disabled={loading}
-          className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
-        >
+        <Button variant="outline" size="sm" onClick={() => setConfirming(false)} disabled={loading}>
           Cancel
-        </button>
-        <button
-          onClick={handleVoid}
-          disabled={loading}
-          className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
-        >
+        </Button>
+        <Button variant="destructive" size="sm" onClick={handleVoid} disabled={loading}>
           {loading ? "Voiding…" : "Yes, void it"}
-        </button>
+        </Button>
       </div>
     </div>
   );

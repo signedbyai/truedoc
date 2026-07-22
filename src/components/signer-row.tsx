@@ -7,6 +7,7 @@ import { CopySigningLinkButton } from "@/components/copy-signing-link-button";
 import { RemindSignerButton } from "@/components/remind-signer-button";
 import { formatEngagement } from "@/lib/page-view-tracking";
 import { StatusPill, SIGNER_STATUS_PILL } from "@/components/status-pill";
+import { Button } from "@/components/ui/button";
 
 type Signer = {
   id: string;
@@ -139,7 +140,9 @@ export function SignerRow({
             stops working.
           </p>
           <div className="mt-2 flex justify-end gap-2">
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => {
                 setEditing(false);
                 setName(signer.name || "");
@@ -147,17 +150,12 @@ export function SignerRow({
                 setError("");
               }}
               disabled={saving}
-              className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
             >
               Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving || !email.trim()}
-              className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-            >
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={saving || !email.trim()}>
               {saving ? "Saving…" : "Save"}
-            </button>
+            </Button>
           </div>
         </div>
       )}

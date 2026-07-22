@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { MessageSquare, Send, MessageSquareHeart, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 // "Send us feedback" — the nav message-bubble icon (sits between the referral
 // gift and the account avatar). Opens a one-textarea panel that posts to
@@ -90,13 +91,9 @@ export function FeedbackButton({
                   Thanks{firstName ? `, ${firstName}` : ""}
                 </p>
                 <p className="mt-1 text-xs text-slate-600">We got your message and we&apos;ll get back to you soon.</p>
-                <button
-                  type="button"
-                  onClick={close}
-                  className="mt-3 rounded-md border border-slate-900 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
-                >
+                <Button size="sm" className="mt-3" onClick={close}>
                   Done
-                </button>
+                </Button>
               </div>
             ) : (
               <>
@@ -124,15 +121,10 @@ export function FeedbackButton({
                   <button type="button" onClick={close} className="text-xs font-medium text-slate-500 hover:text-slate-700">
                     Cancel
                   </button>
-                  <button
-                    type="button"
-                    onClick={send}
-                    disabled={!message.trim() || sending}
-                    className="flex items-center gap-1.5 rounded-md border border-slate-900 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-                  >
+                  <Button type="button" size="sm" onClick={send} disabled={!message.trim() || sending}>
                     <Send className="h-3.5 w-3.5" />
                     {sending ? "Sending…" : "Send"}
-                  </button>
+                  </Button>
                 </div>
               </>
             )}
