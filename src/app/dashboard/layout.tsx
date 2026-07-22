@@ -24,8 +24,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <h1 className="text-lg font-semibold text-slate-900">Private preview</h1>
           <p className="mt-2 text-sm text-slate-600">
             This is a work-in-progress preview of SignedBy — access is limited to a testing
-            allowlist. Ask Michael to add <span className="font-medium text-slate-900">{user.email}</span> if
-            you should have access.
+            allowlist. Email{" "}
+            <a href="mailto:michael@signedby.ai" className="font-medium text-slate-900 underline">
+              michael@signedby.ai
+            </a>{" "}
+            and ask him to add <span className="font-medium text-slate-900">{user.email}</span>.
           </p>
         </div>
       </div>
