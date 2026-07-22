@@ -82,8 +82,26 @@ export function DashboardNav({
         ticking = false;
       });
     };
+    // Crossing the md breakpoint drops the mobile pill's reserved bottom
+    // padding (pb-24 -> pb-0 in dashboard/layout.tsx). If the page was
+    // scrolled near the bottom at that moment, the shrinking document
+    // height clamps window.scrollY, which fires a native `scroll` event —
+    // onScroll then reads that clamp as a real scroll, large enough to flip
+    // hideTopBar and trigger the header's 300ms slide transition at the
+    // exact instant the pill<->bar layout is already swapping. That
+    // coincidence is what read as a jitter/jump when resizing across the
+    // breakpoint. Resetting the baseline here (synchronously, before
+    // onScroll's rAF-deferred callback runs) absorbs a resize-induced clamp
+    // into the new baseline instead of letting it register as a delta.
+    const onResize = () => {
+      lastY = window.scrollY;
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("resize", onResize, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+    };
   }, []);
 
   const settingsActive = pathname.startsWith("/dashboard/settings");
