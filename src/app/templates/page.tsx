@@ -8,14 +8,18 @@ import { TEMPLATE_PAGES } from "@/lib/template-pages";
 const TITLE = "Free Document Templates — Agreements & Contracts";
 const DESCRIPTION =
   "Free, ready-to-use templates for freelance agreements, NDAs, waivers, rental agreements, and more. Copy the example or send it for e-signature in minutes.";
-const SHARED_IMAGE = ["/opengraph-image"];
-
+// This route has its own colocated opengraph-image.tsx, so -- unlike
+// /vs/*, which has no image file of its own and has to explicitly point
+// back at the root layout's opengraph-image.tsx -- openGraph/twitter here
+// omit `images` entirely and let Next auto-merge the route-scoped one in.
+// Same pattern as /quiz. (/templates/[slug] has its own dynamic version,
+// one per template, in that segment's opengraph-image.tsx.)
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: "/templates" },
-  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/templates", images: SHARED_IMAGE },
-  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: SHARED_IMAGE },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/templates" },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
 export default function TemplatesIndexPage() {

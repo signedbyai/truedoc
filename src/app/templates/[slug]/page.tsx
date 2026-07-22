@@ -6,11 +6,12 @@ import { cn } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { TEMPLATE_PAGES, findTemplatePage } from "@/lib/template-pages";
 
-// Same og:image gotcha as /vs/docusign and /quiz — any page that sets its
-// own metadata.openGraph has to explicitly repoint at the shared image, or
-// Next silently drops the preview image instead of inheriting the root
-// layout's.
-const SHARED_IMAGE = ["/opengraph-image"];
+// This route now has its own colocated, per-slug opengraph-image.tsx (one
+// image per template, reusing generateStaticParams the same way this file
+// does) -- so openGraph/twitter below omit `images` entirely and let Next
+// auto-merge the route-scoped one in, instead of pointing back at the
+// shared root image the way /vs/* still does. Same pattern as /quiz,
+// /ai-drafter, /magic-quote, and /templates.
 const BASE_URL = "https://signedby.ai";
 
 export function generateStaticParams() {
@@ -31,8 +32,8 @@ export async function generateMetadata({
     title: page.seoTitle,
     description: page.metaDescription,
     alternates: { canonical: `/templates/${page.slug}` },
-    openGraph: { title: page.seoTitle, description: page.metaDescription, url, images: SHARED_IMAGE },
-    twitter: { card: "summary_large_image", title: page.seoTitle, description: page.metaDescription, images: SHARED_IMAGE },
+    openGraph: { title: page.seoTitle, description: page.metaDescription, url },
+    twitter: { card: "summary_large_image", title: page.seoTitle, description: page.metaDescription },
   };
 }
 

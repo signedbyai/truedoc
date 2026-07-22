@@ -6,19 +6,20 @@ import { Logo } from "@/components/logo";
 
 const TITLE = "Magic Quote — describe the job, get a line-item price quote | SignedBy";
 const DESCRIPTION =
-  "Describe a job in plain language and SignedBy's Magic Quote builds a line-item price quote you can review and edit — it becomes a real signable document instantly. Free on every plan, including Free.";
+  "Describe a job in plain language and SignedBy's Magic Quote builds a line-item price quote you can review and edit — it becomes a real signable document instantly. On every plan, including Free.";
 
-// Same og:image gotcha as /vs/* and /templates/[slug] — a page overriding
-// metadata.openGraph has to explicitly repoint at the shared image or Next
-// silently drops the preview image instead of inheriting the root layout's.
-const SHARED_IMAGE = ["/opengraph-image"];
-
+// This route has its own colocated opengraph-image.tsx, so -- unlike
+// /vs/* and /templates/[slug], which have no image file of their own and
+// have to explicitly point back at the root layout's opengraph-image.tsx --
+// openGraph/twitter here omit `images` entirely and let Next auto-merge the
+// route-scoped one in. Setting images explicitly here would override it
+// right back to the generic homepage image. Same pattern as /quiz.
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: "/magic-quote" },
-  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/magic-quote", images: SHARED_IMAGE },
-  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: SHARED_IMAGE },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/magic-quote" },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
 // mode=quote opens the Magic Quote tab directly (see new-document-client.tsx's
