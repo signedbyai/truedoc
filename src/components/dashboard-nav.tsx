@@ -99,14 +99,16 @@ export function DashboardNav({
           (hideTopBar ? "-translate-y-full" : "translate-y-0")
         }
       >
-        {/* Full-width, not `mx-auto max-w-5xl` — that centered the whole bar
-            to match the page content below it, which meant the logo drifted
-            rightward as the window grew past that breakpoint instead of
-            staying put like the mobile header (a plain `w-full` bar) does.
-            Pinning both flex groups to the true edges here keeps the logo
-            fixed regardless of width; page content can still be independently
-            centered/max-width'd below without the header tracking it. */}
-        <div className="flex h-14 items-center justify-between gap-4 px-6">
+        {/* mx-auto max-w-5xl, matching the widest content container (Home,
+            Documents) so the logo lines up with the card edge below it
+            instead of the raw viewport edge. Pages narrower than 5xl
+            (billing, team, settings, document detail at max-w-3xl/2xl)
+            will sit indented under this header rather than flush — a
+            known tradeoff of picking one shared header width across
+            routes with different content widths. Padding mirrors the
+            content wrapper's own px-4 sm:px-6 so the two stay aligned
+            below `sm:` too. */}
+        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex items-center gap-8">
             <Link href="/dashboard" aria-label="SignedBy home">
               <Logo />
