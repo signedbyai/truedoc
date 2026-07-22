@@ -30,6 +30,7 @@ export function NewDocumentClient({
   hasAiDraft,
   defaultQuoteCurrency,
   initialDocumentType,
+  initialMode,
 }: {
   hasAiDraft: boolean;
   defaultQuoteCurrency: QuoteCurrencySymbol;
@@ -39,10 +40,19 @@ export function NewDocumentClient({
   // gate below already falls back to the Upload tab in that case; no
   // special-casing needed here).
   initialDocumentType?: DraftDocumentType;
+  // Set when arriving via ?mode=quote|draft (the /magic-quote and
+  // /ai-drafter marketing pages link here this way) — lets a feature
+  // landing page open straight into the matching tab without needing a
+  // specific document type the way ?type= does. ?type= still wins when both
+  // could apply (it implies "draft" anyway), so existing /templates links
+  // are unaffected.
+  initialMode?: "draft" | "quote";
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [mode, setMode] = useState<"upload" | "draft" | "quote">(initialDocumentType ? "draft" : "upload");
+  const [mode, setMode] = useState<"upload" | "draft" | "quote">(
+    initialDocumentType ? "draft" : initialMode ?? "upload"
+  );
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [isDragging, setIsDragging] = useState(false);

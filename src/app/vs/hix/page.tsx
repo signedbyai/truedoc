@@ -33,6 +33,7 @@ const FEATURE_ROWS: Row[] = [
   { label: "Get started without a sales call", signedby: "Yes — sign up and send in minutes", competitor: "No — starts with a demo and a guided onboarding" },
   { label: "AI-drafted documents from a plain-language description", signedby: "Included (Starter+)", competitor: "Not offered" },
   { label: "AI-assisted field placement on upload", signedby: "Included, all plans", competitor: "Not offered" },
+  { label: "AI-drafted quotes from a plain-language description", signedby: "Included, all plans — becomes a signable document instantly", competitor: "Not offered — Hix's modules are document requests, questionnaires, and VAT reminders, not quoting" },
   { label: "Native integrations with accounting/payroll software", signedby: "REST API (Business); no native bookkeeping integrations", competitor: "2000+ integrations (AFAS, Exact Online, Nextens, SnelStart…) — its core strength" },
   { label: "Per-page signer engagement tracking (dwell time)", signedby: "Included (Starter+)", competitor: "Status tracking only (signed / outstanding / reminders)" },
   { label: "Public document-hash verification page", signedby: "Included, no login needed", competitor: "Not advertised (encrypted storage + audit trail)" },

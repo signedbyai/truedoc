@@ -1,0 +1,188 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Logo } from "@/components/logo";
+
+const TITLE = "Magic Quote — describe the job, get a line-item price quote | SignedBy";
+const DESCRIPTION =
+  "Describe a job in plain language and SignedBy's Magic Quote builds a line-item price quote you can review and edit — it becomes a real signable document instantly. Free on every plan, including Free.";
+
+// Same og:image gotcha as /vs/* and /templates/[slug] — a page overriding
+// metadata.openGraph has to explicitly repoint at the shared image or Next
+// silently drops the preview image instead of inheriting the root layout's.
+const SHARED_IMAGE = ["/opengraph-image"];
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: "/magic-quote" },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/magic-quote", images: SHARED_IMAGE },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: SHARED_IMAGE },
+};
+
+// mode=quote opens the Magic Quote tab directly (see new-document-client.tsx's
+// initialMode) instead of dropping someone on the Upload tab.
+const START_HREF = "/login?intent=signup&next=" + encodeURIComponent("/dashboard/documents/new?mode=quote");
+
+const FAQ = [
+  {
+    q: "Does the AI do the math?",
+    a: "No. The AI only reads your description and pulls out line items and prices you already stated — every subtotal, tax amount, and total is computed by the app's own code, not the AI, and recalculates live if you edit anything.",
+  },
+  {
+    q: "What plan do I need?",
+    a: "None — Magic Quote is free on every plan, including Free. Sending the finished quote for signature follows the same document limits as any other SignedBy document (3/month on Free, unlimited on Starter+).",
+  },
+  {
+    q: "What happens after I generate a quote?",
+    a: "You land on a review screen — edit the title, currency, line items, quantities, prices, and tax rate before anything is saved. Once you confirm, it becomes a normal signable SignedBy document with fields, audit trail, and ESIGN/UETA compliance.",
+  },
+  {
+    q: "What currencies does it support?",
+    a: "Magic Quote defaults to your local currency automatically and lets you switch to any of SignedBy's supported currencies before you send.",
+  },
+];
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQ.map((item) => ({
+    "@type": "Question",
+    name: item.q,
+    acceptedAnswer: { "@type": "Answer", text: item.a },
+  })),
+};
+
+export default function MagicQuotePage() {
+  return (
+    <main className="flex min-h-screen flex-col bg-white">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+
+      <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-6">
+        <Link href="/">
+          <Logo />
+        </Link>
+        <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+          Sign in
+        </Link>
+      </header>
+
+      <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-5 px-6 py-10 text-center">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Magic Quote</p>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+          Describe the job. Get a real price quote.
+        </h1>
+        <p className="max-w-xl text-base text-slate-600">
+          Skip the spreadsheet. Describe what you&apos;re quoting and Magic Quote pulls out the line items and prices
+          you mentioned, then hands you an editable quote — ready to send for signature in the same document.
+        </p>
+        <p className="max-w-xl text-sm text-slate-500">
+          {"e.g. "}
+          <span className="italic">
+            &ldquo;iPhone 13 screen replacement for Alice, $80 for the part, 1 hour labor at $70/hr&rdquo;
+          </span>
+        </p>
+        <div className="mt-2 flex flex-col items-center gap-2">
+          <Link href={START_HREF} className={buttonVariants({ variant: "cta", size: "lg" })}>
+            Start for free →
+          </Link>
+          <p className="text-xs text-slate-400">Free on every plan, including Free. No credit card required.</p>
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl px-6 pb-4">
+        <h2 className="text-lg font-semibold text-slate-900">How it works</h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          {[
+            {
+              step: "1. Describe the job",
+              body: "A sentence or two — what you're quoting, quantities, and the prices you already have in mind.",
+            },
+            {
+              step: "2. Review the line items",
+              body: "Edit descriptions, quantities, prices, and tax rate. Totals recompute live from your numbers, not the AI's.",
+            },
+            {
+              step: "3. Send for signature",
+              body: "Confirm and it becomes a normal SignedBy document — fields, audit trail, ESIGN/UETA compliant, ready to sign.",
+            },
+          ].map((s) => (
+            <div key={s.step} className="rounded-xl border border-slate-200 p-4">
+              <p className="text-sm font-semibold text-slate-900">{s.step}</p>
+              <p className="mt-1.5 text-sm text-slate-600">{s.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl px-6 py-8">
+        <h2 className="text-lg font-semibold text-slate-900">Math you can trust</h2>
+        <p className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          The AI never calculates a subtotal, tax amount, or total — it only reads the numbers you describe. Every
+          total on screen and in the final PDF is computed by SignedBy&apos;s own code, and recalculates instantly if
+          you change a quantity, price, or tax rate.
+        </p>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl px-6 py-10 text-center">
+        <h2 className="text-2xl font-semibold text-slate-900">Try Magic Quote</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Free on every plan, including Free — no credit card, no upgrade required to try it.
+        </p>
+        <Link href={START_HREF} className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-5")}>
+          Start for free →
+        </Link>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl pb-12 px-6">
+        <h2 className="text-lg font-semibold text-slate-900">Frequently asked questions</h2>
+        <div className="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-200">
+          {FAQ.map((item) => (
+            <div key={item.q} className="px-5 py-4">
+              <h3 className="text-sm font-semibold text-slate-900">{item.q}</h3>
+              <p className="mt-1.5 text-sm text-slate-600">{item.a}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl px-6 pb-16">
+        <p className="text-sm text-slate-500">
+          Also on SignedBy:{" "}
+          <Link href="/ai-drafter" className="underline underline-offset-2 hover:text-slate-900">
+            AI Drafter
+          </Link>{" "}
+          ·{" "}
+          <Link href="/templates" className="underline underline-offset-2 hover:text-slate-900">
+            Free templates
+          </Link>{" "}
+          ·{" "}
+          <Link href="/vs/docusign" className="underline underline-offset-2 hover:text-slate-900">
+            SignedBy vs DocuSign
+          </Link>{" "}
+          ·{" "}
+          <Link href="/vs/signnow" className="underline underline-offset-2 hover:text-slate-900">
+            SignedBy vs SignNow
+          </Link>
+        </p>
+      </section>
+
+      <footer className="mt-auto border-t border-slate-100 px-6 py-8 text-center text-xs text-slate-400">
+        <p>© {new Date().getFullYear()} SignedBy. signedby.ai</p>
+        <p className="mt-1">A trading name of SPRK10 B.V. KVK 98888625</p>
+        <p className="mt-2 space-x-4">
+          <Link href="/pricing" className="hover:text-slate-600">
+            Pricing
+          </Link>
+          <Link href="/terms" className="hover:text-slate-600">
+            Terms
+          </Link>
+          <Link href="/privacy" className="hover:text-slate-600">
+            Privacy
+          </Link>
+        </p>
+      </footer>
+    </main>
+  );
+}

@@ -37,6 +37,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // protected, and the ESIGN/UETA position. Indexable (unlike /privacy,
     // /terms, /dpa) — it's a page we actively want found.
     { url: `${BASE_URL}/security`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    // Feature-specific landing pages, added 2026-07-22 for LinkedIn ad
+    // message-match — same priority tier as the template pages.
+    { url: `${BASE_URL}/ai-drafter`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE_URL}/magic-quote`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE_URL}/quiz`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE_URL}/verify`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
     // /privacy, /terms, /dpa, /referral-terms are intentionally excluded — noindexed

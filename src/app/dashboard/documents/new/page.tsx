@@ -9,18 +9,23 @@ import { NewDocumentClient } from "@/components/new-document-client";
 export default async function NewDocumentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; mode?: string }>;
 }) {
-  const { type } = await searchParams;
+  const { type, mode } = await searchParams;
 
   const ctx = await getUserAndOrg();
   if (!ctx) {
-    // Preserves ?type= across the sign-in detour, e.g. someone who clicked
-    // "Use this template" from /templates/nda while logged out but landed
-    // here directly (the template pages themselves link to /login?next=...
-    // for that case — this is defense in depth for any other path that
-    // reaches this URL unauthenticated).
-    const next = type ? `/dashboard/documents/new?type=${encodeURIComponent(type)}` : "/dashboard/documents/new";
+    // Preserves ?type=/?mode= across the sign-in detour, e.g. someone who
+    // clicked "Use this template" from /templates/nda, or "Try Magic Quote"
+    // from /magic-quote, while logged out but landed here directly (those
+    // pages themselves link to /login?next=... for that case — this is
+    // defense in depth for any other path that reaches this URL
+    // unauthenticated).
+    const params = new URLSearchParams();
+    if (type) params.set("type", type);
+    if (mode) params.set("mode", mode);
+    const query = params.toString();
+    const next = `/dashboard/documents/new${query ? `?${query}` : ""}`;
     redirect(`/login?next=${encodeURIComponent(next)}`);
   }
 
@@ -38,12 +43,14 @@ export default async function NewDocumentPage({
   // the real DOCUMENT_TYPES list rather than cast directly — it's a
   // visitor-editable query param.
   const initialDocumentType = DOCUMENT_TYPES.some((t) => t.id === type) ? (type as DraftDocumentType) : undefined;
+  const initialMode = mode === "quote" ? "quote" : mode === "draft" ? "draft" : undefined;
 
   return (
     <NewDocumentClient
       hasAiDraft={hasAiDraft}
       defaultQuoteCurrency={defaultQuoteCurrency}
       initialDocumentType={initialDocumentType}
+      initialMode={initialMode}
     />
   );
 }

@@ -36,6 +36,7 @@ const PRICING_ROWS: Row[] = [
 const FEATURE_ROWS: Row[] = [
   { label: "AI-drafted documents from a plain-language description", signedby: "Included (Starter+)", competitor: "Not offered" },
   { label: "AI-assisted field placement on upload", signedby: "Included, all plans", competitor: "Not offered" },
+  { label: "AI-drafted quotes from a plain-language description", signedby: "Included, all plans — becomes a signable document instantly", competitor: "Not offered" },
   { label: "Per-page signer engagement tracking (dwell time per page)", signedby: "Included (Starter+)", competitor: "Basic status only (sent/viewed/completed)" },
   { label: "Mobile signing UX", signedby: "Field-by-field guided mode", competitor: "Standard pinch-and-zoom PDF view" },
   { label: "Public document-hash verification page", signedby: "Included, no login needed", competitor: "Not offered" },
