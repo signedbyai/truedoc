@@ -24,22 +24,41 @@ Read it in the Vercel dashboard's Analytics → Events tab, or via
 
 ## 2. Button color test
 
-**Narrowed to 2 variants on 2026-07-23** (started as 3 — see below).
-Deterministically assigned per visitor via `src/flags.ts`'s `cta-color`
-flag:
+**3-way concurrent test as of 2026-07-23** (went 3 → 2 → 3 the same day —
+see the history below). Deterministically assigned per visitor via
+`src/flags.ts`'s `cta-color` flag:
 
 - `yellow` — the current color, unchanged.
 - `blue` — `bg-blue-600`, a conventional SaaS primary-action color, and the
   color 4 of the 6 competitors surveyed below effectively use.
+- `purple` — `bg-purple-700`, deliberately a darker/more saturated purple
+  than BoloSign's `#8B5CF6` violet (see the competitor table below) so it
+  doesn't read as copying the one competitor already in that color family.
 
-**Why `black` got dropped:** it started as a 3-way test (`yellow` / `blue`
-/ `black`, the last one identical to the existing `default` Button variant
-— a no-accent control arm). At SignedBy's current traffic volume, a 3-way
-split was diluting signal too much to read anything in a reasonable
-timeframe, so Michael cut it back to a straight yellow-vs-blue test.
-`black` can be reintroduced later (`CTA_COLORS` in `flags.ts`, plus a
-`COLOR_CLASSES` entry in `cta-link.tsx`) once yellow-vs-blue has a clear
-enough answer that a 3rd bucket won't starve all three of signal.
+**History of this decision (all on 2026-07-23):**
+
+1. Started as a 3-way split, `yellow` / `blue` / `black` (`black` = the
+   existing `default` Button variant, a no-accent control arm).
+2. Narrowed to just `yellow` / `blue` the same day — at SignedBy's traffic
+   volume, splitting 3 ways was diluting signal too much to read anything
+   in a reasonable timeframe.
+3. A plan was then made to run this as a *sequential chain* instead:
+   yellow-vs-blue for a week, auto-swap the loser for `purple`, run that a
+   week, auto-swap that loser for `black` as a final round — via two
+   scheduled tasks that would each check results and edit the code
+   automatically (no auto-deploy either way).
+4. That chain plan was scrapped before either task fired. The real
+   tradeoff surfaced in review: sequential rounds aren't a clean
+   comparison — week 1's yellow-vs-blue rate and week 2's winner-vs-purple
+   rate aren't just measuring color, they're also picking up whatever
+   changed about traffic mix, live ad campaigns, or seasonality between
+   the two weeks. A concurrent 3-way split avoids that confound at the
+   cost of needing more total traffic before any color reaches
+   significance — Michael chose that tradeoff deliberately, reverting to
+   3-way with `purple` swapped in for `black` from the start, rather than
+   the slower-but-time-confounded sequential version. The two scheduled
+   tasks were deleted (`cta-color-test-purple-swap`,
+   `cta-color-test-black-swap`) before they ever ran.
 
 **Deliberately cookieless.** Per instruction, no cookie is set and nothing
 is written to `localStorage`. `identify()` in `flags.ts` derives a stable
@@ -75,19 +94,13 @@ flags-in-DOM mechanism working correctly.)
 
 Don't call a winner on a day or two of data — Vercel's bounce/visitor
 counts move a lot at this volume (see the Day-2/Day-3 LinkedIn campaign
-checks). Let it accumulate at least a week of real, mixed-source traffic
-(not just one ad campaign's audience) before comparing click-through rate
-by color.
-
-## Planned next step: swap the loser for purple (2026-07-30)
-
-Michael's plan, set 2026-07-23: after one week of yellow-vs-blue data, drop
-whichever color is clearly behind and bring in purple as the new
-challenger, so the test continues as winner-vs-purple rather than stopping
-after one round. A scheduled task (`cta-color-test-purple-swap`, fires
-2026-07-30 09:00 CEST) will pull the click-through numbers, make the swap
-if the gap is clear enough to act on, and report back — see that task's
-prompt for the exact decision rule (won't force a call on thin data).
+checks). With a 3-way concurrent split, expect to need longer than the
+2-way version would have to reach a readable gap between colors — that's
+the accepted cost of avoiding the sequential-testing confound (see history
+above). No automated check-in is currently scheduled for this; run the
+comparison manually via Vercel Analytics (`flags/cta-color` breakdown,
+or the `color` property on `cta_click` events) when there's been enough
+time and traffic.
 
 ## Competitive & research context (added 2026-07-23)
 
@@ -102,10 +115,10 @@ Checked live CSS on each competitor's site (not just screenshots) for their prim
 | Adobe Acrobat Sign | Blue-indigo (brand color) | `#3B63FB` |
 | BoloSign | Violet | `#8B5CF6` |
 | **SignedBy — `yellow` (current)** | Yellow (`bg-yellow-300`) | `#FDE047` |
-| **SignedBy — `blue` (active test variant)** | Blue (`bg-blue-600`) | `#2563EB` |
-| **SignedBy — `black` (paused, was the control arm)** | Black/slate (`bg-slate-900`, matches `default` button) | `#0F172A` |
+| **SignedBy — `blue` (test variant)** | Blue (`bg-blue-600`) | `#2563EB` |
+| **SignedBy — `purple` (test variant)** | Purple (`bg-purple-700`) | `#7E22CE` |
 
-SignedBy's `blue` variant lands in the same family as 4 of the 6 competitors above (DocuSign, SignNow, Dropbox Sign, Adobe Sign all cluster in the `#0061FE`–`#4C00FF` blue-indigo range) — so that variant is effectively "test the category-normal color." `yellow` and `black` are both outside every competitor's color, for different reasons: `yellow` is the highest-contrast/most attention-grabbing option in the set, `black` is the lowest-contrast, brand-neutral option (no accent color at all).
+SignedBy's `blue` variant lands in the same family as 4 of the 6 competitors above (DocuSign, SignNow, Dropbox Sign, Adobe Sign all cluster in the `#0061FE`–`#4C00FF` blue-indigo range) — so that variant is effectively "test the category-normal color." `purple` is close to BoloSign's family but a deliberately darker, more saturated shade (`#7E22CE` vs BoloSign's `#8B5CF6`) rather than a near-match. `yellow` is the outlier of the three — the highest-contrast, most attention-grabbing option, and the only one no competitor uses at all.
 
 Every one of the 6 uses its own cool-toned brand color for the CTA — none use yellow, orange, or red. All optimize for brand consistency, not maximum attention-contrast. That's a point in favor of SignedBy's yellow, not against it: it's the one thing in this category that isn't blending into a sea of blue.
 

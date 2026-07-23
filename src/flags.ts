@@ -9,12 +9,16 @@ import { dedupe, flag } from "flags/next";
 // layout.tsx). The tradeoff: a visitor's color can shift across sessions if
 // their IP changes (new network, VPN), which a cookie wouldn't have — an
 // accepted cost for staying cookieless.
-// Started as yellow/blue/black, narrowed to yellow/blue on 2026-07-23 —
-// at low traffic volume, a 3-way split was diluting signal too much to
-// read anything in a reasonable timeframe. "black" (the no-accent control
-// arm) can be reintroduced later once yellow-vs-blue has a clear answer;
-// see marketing/cta-color-test.md.
-export const CTA_COLORS = ["yellow", "blue"] as const;
+// Started as yellow/blue/black (2026-07-23), narrowed to yellow/blue the
+// same day over signal-dilution concerns, then reverted back to a 3-way
+// concurrent split on 2026-07-23 -- black swapped for purple -- after
+// deciding a chain of sequential 2-way rounds (yellow/blue -> winner/
+// purple -> winner/black) was a worse tradeoff: comparing week-over-week
+// winners isn't a clean comparison, since traffic mix/campaigns/season
+// change between rounds too, not just the color. A concurrent 3-way split
+// is slower to reach significance but isn't confounded by time. See
+// marketing/cta-color-test.md for the full history.
+export const CTA_COLORS = ["yellow", "blue", "purple"] as const;
 export type CtaColor = (typeof CTA_COLORS)[number];
 
 // Small non-cryptographic string hash (djb2 variant) — pure JS, no
@@ -44,6 +48,6 @@ export const ctaColorFlag = flag<CtaColor>({
     return CTA_COLORS[bucket];
   },
   defaultValue: "yellow",
-  description: "Marketing CTA button color test: yellow (current) vs blue. Narrowed from 3 colors for signal at low volume.",
+  description: "Marketing CTA button color test: yellow (current) vs blue vs purple, all concurrent.",
   options: CTA_COLORS.map((value) => ({ value })),
 });
