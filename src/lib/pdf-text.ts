@@ -51,6 +51,12 @@ export type PositionedTextItem = {
   str: string;
   x: number; // 0-1, fraction of page width, left edge, top-left origin
   y: number; // 0-1, fraction of page height, top edge, top-left origin
+  // 0-1, fraction of page width this text run spans horizontally — lets a
+  // caller compute where a label like "Signature:" actually ENDS (x + width),
+  // not just where it starts. Optional so older callers/mocks that only ever
+  // provided {page, str, x, y} keep working. See suggest-fields.ts, which
+  // uses it to stop suggested fields from landing on top of label text.
+  width?: number;
 };
 
 // Like extractPdfText, but keeps each text run's position instead of
@@ -89,6 +95,12 @@ export async function extractPdfTextPositions(
           str: raw.str.trim(),
           x: Math.min(Math.max(tx[4] / viewport.width, 0), 1),
           y: Math.min(Math.max(tx[5] / viewport.height, 0), 1),
+          // raw.width is already "in device space" per pdfjs's own TextItem
+          // type — i.e. already scaled the same way tx[4]/tx[5] are (our
+          // viewport is scale:1, unrotated for the vast majority of real
+          // documents), so dividing by the same viewport.width as x above
+          // gives a directly comparable page-fraction length.
+          width: Math.max(raw.width / viewport.width, 0),
         });
         if (items.length >= maxItems) break;
       }

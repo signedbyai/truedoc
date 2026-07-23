@@ -27,7 +27,8 @@ signature/initial/date/text/checkbox fields likely belong, before a human review
 individually. Nothing you suggest is final.
 
 Below is text extracted from a ${pageCount}-page PDF. Each line is given with its approximate position on the \
-page as (x, y) fractions, where (0, 0) is the page's top-left corner and (1, 1) is its bottom-right corner.
+page as (x, y, w) fractions, where (0, 0) is the page's top-left corner, (1, 1) is its bottom-right corner, and \
+w is that text run's own width — so it spans from x to roughly x + w.
 
 ${itemsByPage}
 
@@ -63,9 +64,17 @@ company with a null name is normal and fine.
 Then find the field spots that need a signer to sign, initial, date, write something, or check a box — for \
 example a line after "Signature:", an "Initials" box, a blank after "Date:", a blank for a printed \
 name/title/company, or a checkbox next to an opt-in clause. Point x and y at roughly where the blank or box \
-itself is — e.g. just to the right of "Signature:", or on the blank line — not the label text. For each field's \
-"role", use the party number it belongs to (0, 1, …), or null if you can't confidently tell or there's only one \
-signer.
+itself is, using each line's w to find it: for a colon-terminated label like "Signature:" or "Date:" at (x, y, w), \
+the blank comes right AFTER the label, so place the field's x at that label's own x + w (plus a small gap of \
+about 0.01-0.02), never inside its x-to-x+w span and never before it — a field placed at or before the label's \
+own x lands on top of the label text itself, which is wrong. For each field's "role", use the party number it \
+belongs to (0, 1, …), or null if you can't confidently tell or there's only one signer.
+
+Skip any name/title/company blank that's already filled in — if a real value already appears right after \
+"Name:", "Print Name:", "Title:", or "Company:" on the page (not just the bare label with nothing after it, and \
+not a placeholder like "___" or "[name]"), that spot is already done and does NOT need a field. Only genuinely \
+still-blank spots need one. A signature line and a date blank almost always still need fields even when a name \
+is already printed nearby on the same block — don't skip those just because a neighboring name is filled.
 
 For a "text" field, also set "purpose" to "name" when the blank is clearly for a person's printed or full name \
 (e.g. after "Print Name:", "Name:"), "title" for a job title (after "Title:"), or "company" for a company or \
@@ -80,7 +89,9 @@ Respond with ONLY a JSON object (no markdown fences, no prose, no explanation be
 
 Use an empty "fields" array if you find no field spots.`;
 
-function formatItemsByPage(items: PositionedTextItem[]): string {
+// Exported for testing the width-formatting behavior directly, without
+// going through the full prompt string.
+export function formatItemsByPage(items: PositionedTextItem[]): string {
   const byPage = new Map<number, PositionedTextItem[]>();
   for (const item of items) {
     const list = byPage.get(item.page);
@@ -92,7 +103,11 @@ function formatItemsByPage(items: PositionedTextItem[]): string {
   for (const page of Array.from(byPage.keys()).sort((a, b) => a - b)) {
     lines.push(`Page ${page}:`);
     for (const item of byPage.get(page)!) {
-      lines.push(`(${item.x.toFixed(2)}, ${item.y.toFixed(2)}) "${item.str}"`);
+      // width is optional on PositionedTextItem (older callers/test mocks
+      // may omit it) — fall back to 0 rather than emitting "undefined" into
+      // the prompt text, which would read as a literal token to the model.
+      const w = typeof item.width === "number" ? item.width : 0;
+      lines.push(`(${item.x.toFixed(2)}, ${item.y.toFixed(2)}, ${w.toFixed(2)}) "${item.str}"`);
     }
   }
   return lines.join("\n");

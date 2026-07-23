@@ -5,6 +5,7 @@ import {
   placeCandidates,
   fallbackSuggestion,
   suggestFields,
+  formatItemsByPage,
   type Candidate,
 } from "./suggest-fields";
 
@@ -353,5 +354,29 @@ describe("parseParties — party details lifted from the document", () => {
       parties: [{ role: -1, label: "Consultant", name: "Amara Okafor" }],
     });
     expect(parseParties(raw)).toEqual([]);
+  });
+});
+
+describe("formatItemsByPage", () => {
+  it("includes each item's width as a third number so the model can locate a label's end, not just its start", () => {
+    const text = formatItemsByPage([{ page: 1, str: "Signature:", x: 0.1, y: 0.8, width: 0.12 }]);
+    expect(text).toContain('(0.10, 0.80, 0.12) "Signature:"');
+  });
+
+  it("falls back to 0 width rather than printing \"undefined\" for items that predate width tracking", () => {
+    const text = formatItemsByPage([{ page: 1, str: "Signature:", x: 0.1, y: 0.8 }]);
+    expect(text).toContain('(0.10, 0.80, 0.00) "Signature:"');
+    expect(text).not.toContain("undefined");
+  });
+
+  it("groups items under a \"Page N:\" header per page, sorted ascending", () => {
+    const text = formatItemsByPage([
+      { page: 2, str: "Second", x: 0, y: 0, width: 0 },
+      { page: 1, str: "First", x: 0, y: 0, width: 0 },
+    ]);
+    const lines = text.split("\n");
+    expect(lines[0]).toBe("Page 1:");
+    expect(lines).toContain("Page 2:");
+    expect(lines.indexOf("Page 1:")).toBeLessThan(lines.indexOf("Page 2:"));
   });
 });
