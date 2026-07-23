@@ -18,8 +18,8 @@ const DESCRIPTION =
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
-  alternates: { canonical: "/ai" },
-  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/ai" },
+  alternates: { canonical: "/signedby-ai" },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/signedby-ai" },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 

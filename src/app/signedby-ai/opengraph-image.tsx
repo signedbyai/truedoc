@@ -57,7 +57,7 @@ export default function SignedByAiOpengraphImage() {
             alignSelf: "flex-start",
           }}
         >
-          signedby.ai/ai
+          signedby.ai/signedby-ai
         </div>
       </div>
     ),

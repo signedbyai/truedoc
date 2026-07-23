@@ -179,7 +179,7 @@ export default async function MagicQuotePage() {
             AI Drafter
           </Link>{" "}
           ·{" "}
-          <Link href="/ai" className="underline underline-offset-2 hover:text-slate-900">
+          <Link href="/signedby-ai" className="underline underline-offset-2 hover:text-slate-900">
             SignedBy AI
           </Link>{" "}
           ·{" "}
