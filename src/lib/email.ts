@@ -392,6 +392,42 @@ export async function sendCompletionEmail(opts: {
   });
 }
 
+// Trustpilot's Automatic Feedback Service (AFS): a unique per-account BCC
+// address that, when copied on a transactional email, makes Trustpilot send
+// the customer its own review-invite email later (timing/template are
+// configured in the Trustpilot dashboard, not here — currently "1 week
+// after" the purchase-experience template). Optional: undefined just means
+// AFS isn't configured yet, not an error — see sendPlanUpgradeEmail, the
+// only email that uses this.
+function trustpilotAfsBcc(): string | undefined {
+  return process.env.TRUSTPILOT_AFS_BCC || undefined;
+}
+
+// Sent once, right after a NEW subscription checkout completes (see the
+// "checkout.session.completed" handler in api/webhooks/stripe/route.ts) —
+// deliberately not on every renewal invoice, since re-triggering a review
+// invite every month would be spammy and Trustpilot's own AFS timing
+// assumes one send per genuinely new purchase. BCCs Trustpilot's AFS
+// address (trustpilotAfsBcc above) so this same email doubles as the
+// review-invite trigger set up in Settings > Automatic Feedback Service —
+// skips the BCC entirely (still sends the email) if that env var isn't set.
+export async function sendPlanUpgradeEmail(opts: { to: string; planLabel: string }) {
+  const bcc = trustpilotAfsBcc();
+
+  await getClient().emails.send({
+    from: FROM,
+    to: opts.to,
+    ...(bcc ? { bcc: [bcc] } : {}),
+    subject: `You're on the ${opts.planLabel} plan`,
+    html: `
+      <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <p>Thanks for upgrading to <strong>${opts.planLabel}</strong> — your account is live on the new plan right away.</p>
+        ${ctaButton(`${appUrl()}/dashboard`, "Go to your dashboard")}
+      </div>
+    `,
+  });
+}
+
 // Internal "someone sent feedback" email to the team, from the in-app feedback
 // widget (the nav message-bubble icon). replyTo is the user's address so the
 // team can just hit reply. FEEDBACK_TO_EMAIL overrides the default recipient.

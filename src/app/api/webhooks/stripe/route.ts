@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe, planFromPriceId } from "@/lib/stripe";
 import { referralCouponId } from "@/lib/referral";
+import { sendPlanUpgradeEmail } from "@/lib/email";
 
 // Stripe webhooks arrive unauthenticated (verified by signature instead), so
 // this route uses the service-role admin client throughout — same pattern as
@@ -49,6 +50,24 @@ export async function POST(request: Request) {
             .eq("referred_org_id", orgId);
         } else if (referralContext === "reward") {
           await admin.from("organizations").update({ pending_referral_reward: false }).eq("id", orgId);
+        }
+
+        // Plan-upgrade confirmation + Trustpilot AFS trigger (see
+        // sendPlanUpgradeEmail) — only on this brand-new-checkout event,
+        // never on renewals. Best-effort: a failed send here shouldn't fail
+        // the whole webhook, since the subscription itself is already
+        // synced above regardless.
+        try {
+          const customerEmail = session.customer_details?.email;
+          const plan = planFromPriceId(subscription.items.data[0]?.price?.id);
+          if (customerEmail && plan) {
+            await sendPlanUpgradeEmail({
+              to: customerEmail,
+              planLabel: plan.charAt(0).toUpperCase() + plan.slice(1),
+            });
+          }
+        } catch (err) {
+          console.error("Failed to send plan upgrade email", err);
         }
         break;
       }
