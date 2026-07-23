@@ -278,9 +278,15 @@ export function MagicQuoteForm({
 
         {finalizeError && <p className="text-sm text-red-600">{finalizeError}</p>}
 
-        <div className="flex flex-wrap gap-2">
+        {/* Stacked full-width on mobile so a long "Create document" label
+            never squeezes "Start over" into an awkwardly narrow sliver or
+            an uneven second row — sm: and up switches back to a single row
+            with Create taking the remaining space. Same pattern as
+            ai-draft-form.tsx's review-step buttons, kept in sync so a
+            three-button vs two-button set doesn't wrap differently. */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <Button
-            className="flex-1"
+            className="w-full sm:w-auto sm:flex-1"
             disabled={finalizing || !title.trim() || !hasValidItems}
             onClick={handleFinalize}
           >
@@ -288,6 +294,7 @@ export function MagicQuoteForm({
           </Button>
           <Button
             variant="outline"
+            className="w-full sm:w-auto"
             disabled={finalizing}
             onClick={() => {
               setStep("describe");

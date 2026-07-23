@@ -125,9 +125,16 @@ export function AiDraftForm({
 
         {finalizeError && <p className="text-sm text-red-600">{finalizeError}</p>}
 
-        <div className="flex flex-wrap gap-2">
+        {/* Stacked full-width on mobile: with three buttons here (one more
+            than Magic Quote's two), a single flex-wrap row wrapped
+            unpredictably depending on label length -- "Creating…" fit all
+            three on one row while "Create document" pushed "Start over"
+            onto its own uneven row. sm: and up switches back to a single
+            row with Create taking the remaining space, matching
+            magic-quote-form.tsx's review-step buttons. */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <Button
-            className="flex-1"
+            className="w-full sm:w-auto sm:flex-1"
             disabled={finalizing || !draftTitle.trim() || !draftBody.trim()}
             onClick={handleFinalize}
           >
@@ -135,6 +142,7 @@ export function AiDraftForm({
           </Button>
           <Button
             variant="outline"
+            className="w-full sm:w-auto"
             disabled={generating || finalizing}
             onClick={handleGenerate}
           >
@@ -142,6 +150,7 @@ export function AiDraftForm({
           </Button>
           <Button
             variant="outline"
+            className="w-full sm:w-auto"
             disabled={finalizing}
             onClick={() => {
               setStep("describe");
