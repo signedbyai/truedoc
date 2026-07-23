@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FrequentSignerPicker, type FrequentSigner } from "@/components/frequent-signer-picker";
+import { SenderIdentityPicker, type SenderIdentity } from "@/components/sender-identity-picker";
 import {
   computeQuoteTotals,
   QUOTE_CURRENCY_SYMBOLS,
@@ -36,7 +37,13 @@ function formatAmount(currency: string, amount: number): string {
 // to English doesn't mean the visitor is billing in dollars. Falls back to
 // "$" only if the caller doesn't pass one (e.g. a test rendering this
 // component directly).
-export function MagicQuoteForm({ defaultCurrency = "$" }: { defaultCurrency?: QuoteCurrencySymbol }) {
+export function MagicQuoteForm({
+  defaultCurrency = "$",
+  hasTeam = false,
+}: {
+  defaultCurrency?: QuoteCurrencySymbol;
+  hasTeam?: boolean;
+}) {
   const router = useRouter();
   const [step, setStep] = useState<"describe" | "review">("describe");
   const [description, setDescription] = useState("");
@@ -53,13 +60,17 @@ export function MagicQuoteForm({ defaultCurrency = "$" }: { defaultCurrency?: Qu
   const [items, setItems] = useState<QuoteLineItem[]>([]);
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState("");
-  // "Who's this for?" (optional) -- see frequent-signer-picker.tsx. Selecting
-  // a saved contact pre-fills the Bill to fields below (still editable) and
-  // pre-fills the document's first recipient once it's created (handleFinalize
-  // passes it through as a query param on the redirect; field-editor.tsx
-  // picks it up from there) -- so the sender doesn't retype the same
-  // counterparty's name/email in two different places.
+  // Recipient (optional) -- see frequent-signer-picker.tsx. Selecting a saved
+  // contact pre-fills the Bill to fields below (still editable) and pre-fills
+  // the document's first recipient once it's created (handleFinalize passes
+  // it through as a query param on the redirect; field-editor.tsx picks it up
+  // from there) -- so the sender doesn't retype the same counterparty's
+  // name/email in two different places.
   const [selectedSigner, setSelectedSigner] = useState<FrequentSigner | null>(null);
+  // Prepared by (team orgs only) -- see sender-identity-picker.tsx. A
+  // genuinely different question ("who on our team is this quote from," not
+  // "who is it for") -- rendered as a visible line on the quote PDF.
+  const [preparedBy, setPreparedBy] = useState<SenderIdentity | null>(null);
 
   function handleSelectSigner(signer: FrequentSigner | null) {
     setSelectedSigner(signer);
@@ -122,6 +133,7 @@ export function MagicQuoteForm({ defaultCurrency = "$" }: { defaultCurrency?: Qu
           notes,
           taxRatePercent,
           items,
+          preparedByName: preparedBy?.name || undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -172,6 +184,8 @@ export function MagicQuoteForm({ defaultCurrency = "$" }: { defaultCurrency?: Qu
             </select>
           </div>
         </div>
+
+        <SenderIdentityPicker value={preparedBy} onChange={setPreparedBy} hasTeam={hasTeam} />
 
         <FrequentSignerPicker value={selectedSigner} onChange={handleSelectSigner} />
 

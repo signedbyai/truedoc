@@ -24,6 +24,8 @@ const PARAGRAPH_GAP = 8;
 const SIGNATURE_LINE_HEIGHT = 38;
 
 const DARK = rgb(0.06, 0.09, 0.16);
+const MUTED = rgb(0.42, 0.46, 0.55);
+const PREPARED_BY_SIZE = 10;
 
 // A short "label:" line whose value is empty or a bracket placeholder — i.e. a
 // signature-block field line ("Signature:", "Print Name: [Client Name]",
@@ -75,7 +77,12 @@ export type GeneratedPdf = { bytes: Buffer; pageCount: number };
 // look like a plain, readable contract draft, not a styled document —
 // consistent with the AI-draft feature's framing as a starting point, not
 // a polished final product.
-export async function textToPdf(title: string, body: string): Promise<GeneratedPdf> {
+// `preparedByName` (added 2026-07-23, sender-identity-picker.tsx's "Prepared
+// by" -- Team/Business orgs only) is optional so the two existing call sites
+// (draft/finalize/route.ts and this file's own tests) don't need updating
+// just to keep compiling; omitting it (or passing null) renders the same
+// title+body-only PDF as before this existed.
+export async function textToPdf(title: string, body: string, preparedByName?: string | null): Promise<GeneratedPdf> {
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -99,6 +106,14 @@ export async function textToPdf(title: string, body: string): Promise<GeneratedP
     y -= TITLE_LINE_HEIGHT;
   }
   y -= 10;
+
+  if (preparedByName && preparedByName.trim()) {
+    ensureSpace(PREPARED_BY_SIZE + 4);
+    const line = `Prepared by ${preparedByName.trim()}`;
+    const width = font.widthOfTextAtSize(line, PREPARED_BY_SIZE);
+    page.drawText(line, { x: (PAGE_WIDTH - width) / 2, y, size: PREPARED_BY_SIZE, font, color: MUTED });
+    y -= PREPARED_BY_SIZE + 12;
+  }
 
   const paragraphs = body.split(/\n\s*\n/);
   for (const paragraph of paragraphs) {

@@ -34,6 +34,12 @@ const bodySchema = z.object({
   currency: z.enum(QUOTE_CURRENCY_SYMBOLS),
   billToName: z.string().trim().max(MAX_NAME_CHARS).optional(),
   billToEmail: z.string().trim().email().max(MAX_NAME_CHARS).optional().or(z.literal("")),
+  // Sender-identity-picker.tsx's "Prepared by" (Team/Business orgs only) —
+  // a team member's own display name, rendered on the quote's "From" line.
+  // Not verified against the org's actual roster here: it's cosmetic text
+  // on a PDF, not an access-control decision, and re-checking would mean an
+  // extra roster query on every finalize for no real safety benefit.
+  preparedByName: z.string().trim().max(MAX_NAME_CHARS).optional(),
   validUntil: z.string().trim().optional().or(z.literal("")),
   notes: z.string().trim().max(MAX_NOTES_CHARS).optional().or(z.literal("")),
   taxRatePercent: z.number().finite().min(0).max(MAX_TAX_RATE_PERCENT),
@@ -65,7 +71,8 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Missing or invalid quote details." }, { status: 400 });
   }
-  const { title, currency, billToName, billToEmail, validUntil, notes, taxRatePercent, items } = parsed.data;
+  const { title, currency, billToName, billToEmail, preparedByName, validUntil, notes, taxRatePercent, items } =
+    parsed.data;
 
   // Same free-plan monthly cap as a fresh upload/duplicate/AI-draft — this
   // still creates a new `documents` row.
@@ -85,6 +92,7 @@ export async function POST(request: Request) {
       fromName,
       billToName: billToName || "",
       billToEmail: billToEmail || null,
+      preparedByName: preparedByName || null,
       quoteDateIso,
       validUntilIso: validUntil || null,
       notes: notes || null,

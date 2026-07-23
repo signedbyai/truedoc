@@ -17,6 +17,11 @@ const bodySchema = z.object({
   // the step that actually creates the document — see draft/route.ts's
   // comment on the same field.
   disclaimerAccepted: z.literal(true),
+  // Sender-identity-picker.tsx's "Prepared by" (Team/Business orgs only) —
+  // a team member's own display name, rendered as a line on the drafted
+  // PDF. Not verified against the org's actual roster: cosmetic PDF text,
+  // not an access-control decision.
+  preparedByName: z.string().trim().max(120).optional(),
 });
 
 // Turns a (possibly sender-edited) AI draft into a real document: renders
@@ -50,7 +55,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Missing or invalid document details." }, { status: 400 });
   }
-  const { documentType, title, body } = parsed.data;
+  const { documentType, title, body, preparedByName } = parsed.data;
 
   // Same free-plan monthly cap as a fresh upload/duplicate — this still
   // creates a new `documents` row.
@@ -60,7 +65,7 @@ export async function POST(request: Request) {
   let pdfBytes: Buffer;
   let pageCount: number;
   try {
-    const generated = await textToPdf(title, body);
+    const generated = await textToPdf(title, body, preparedByName || null);
     pdfBytes = generated.bytes;
     pageCount = generated.pageCount;
   } catch (err) {

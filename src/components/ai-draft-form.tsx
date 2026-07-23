@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FrequentSignerPicker, type FrequentSigner } from "@/components/frequent-signer-picker";
+import { SenderIdentityPicker, type SenderIdentity } from "@/components/sender-identity-picker";
 import {
   DOCUMENT_TYPES,
   DRAFT_LANGUAGES,
@@ -27,7 +28,13 @@ import {
 // someone arrives from a /templates/[slug] landing page (via
 // /dashboard/documents/new?type=nda) so they don't have to re-pick the
 // template they came here for.
-export function AiDraftForm({ initialDocumentType }: { initialDocumentType?: DraftDocumentType } = {}) {
+export function AiDraftForm({
+  initialDocumentType,
+  hasTeam = false,
+}: {
+  initialDocumentType?: DraftDocumentType;
+  hasTeam?: boolean;
+} = {}) {
   const router = useRouter();
   const [step, setStep] = useState<"describe" | "review">("describe");
   const [documentType, setDocumentType] = useState<DraftDocumentType>(initialDocumentType ?? DOCUMENT_TYPES[0].id);
@@ -43,11 +50,15 @@ export function AiDraftForm({ initialDocumentType }: { initialDocumentType?: Dra
   const [draftBody, setDraftBody] = useState("");
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState("");
-  // "Who's this for?" (optional) -- see frequent-signer-picker.tsx. Selecting
-  // a saved contact here pre-fills them as the document's first recipient
-  // once it's created (handleFinalize passes it through as a query param on
-  // the redirect; field-editor.tsx picks it up from there).
+  // Recipient (optional) -- see frequent-signer-picker.tsx. Selecting a saved
+  // contact here pre-fills them as the document's first recipient once it's
+  // created (handleFinalize passes it through as a query param on the
+  // redirect; field-editor.tsx picks it up from there).
   const [selectedSigner, setSelectedSigner] = useState<FrequentSigner | null>(null);
+  // Prepared by (team orgs only) -- see sender-identity-picker.tsx. Rendered
+  // as a visible line on the finished PDF (handleFinalize passes the name
+  // through; textToPdf renders it).
+  const [preparedBy, setPreparedBy] = useState<SenderIdentity | null>(null);
 
   // Both re-derive from `language` on every render, so switching the
   // document language updates the description placeholder immediately —
@@ -87,6 +98,7 @@ export function AiDraftForm({ initialDocumentType }: { initialDocumentType?: Dra
           title: draftTitle,
           body: draftBody,
           disclaimerAccepted: true,
+          preparedByName: preparedBy?.name || undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -126,6 +138,8 @@ export function AiDraftForm({ initialDocumentType }: { initialDocumentType?: Dra
             className="w-full rounded-md border border-slate-300 p-3 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
           />
         </div>
+
+        <SenderIdentityPicker value={preparedBy} onChange={setPreparedBy} hasTeam={hasTeam} />
 
         <FrequentSignerPicker value={selectedSigner} onChange={setSelectedSigner} />
 

@@ -54,6 +54,12 @@ export type QuoteRenderInput = {
   title: string;
   currency: string;
   fromName: string;
+  // Sender-identity-picker.tsx's "Prepared by" (Team/Business orgs) — the
+  // picked team member's own name, appended to the "From" line so a quote
+  // shows both the org and the specific person who prepared it. Null on
+  // Free/Starter orgs (the picker never renders there, nothing to append)
+  // and whenever the sender leaves it unset.
+  preparedByName: string | null;
   billToName: string;
   billToEmail: string | null;
   quoteDateIso: string;
@@ -119,9 +125,13 @@ export async function quoteToPdf(input: QuoteRenderInput): Promise<GeneratedPdf>
   page.drawText(input.title, { x: MARGIN, y, size: TITLE_SIZE, font: boldFont, color: DARK });
   y -= TITLE_SIZE + 22;
 
-  // From / Bill To / Date / Valid-until — a 2x2 header grid.
+  // From / Bill To / Date / Valid-until — a 2x2 header grid. When a "Prepared
+  // by" team member was picked, it's appended to the From value (" — Name")
+  // rather than given its own header slot — keeps the existing 2x2 grid
+  // layout untouched for the common (solo-org) case where it's null.
   const rightColX = MARGIN + DESC_COL_WIDTH / 2 + 40;
-  drawLabelValue(MARGIN, "From", input.fromName || "—");
+  const fromValue = input.preparedByName ? `${input.fromName || "—"} — ${input.preparedByName}` : input.fromName || "—";
+  drawLabelValue(MARGIN, "From", fromValue);
   drawLabelValue(
     rightColX,
     "Bill to",

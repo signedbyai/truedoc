@@ -28,11 +28,15 @@ const MODE_TAB_CLASS =
 
 export function NewDocumentClient({
   hasAiDraft,
+  hasTeam,
   defaultQuoteCurrency,
   initialDocumentType,
   initialMode,
 }: {
   hasAiDraft: boolean;
+  // Gates sender-identity-picker.tsx's "Prepared by" picker, threaded down
+  // into both AiDraftForm and MagicQuoteForm below.
+  hasTeam: boolean;
   defaultQuoteCurrency: QuoteCurrencySymbol;
   // Set when arriving from a /templates/[slug] page via
   // ?type=nda — opens straight into the AI Drafter tab with that template
@@ -226,7 +230,7 @@ export function NewDocumentClient({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <MagicQuoteForm defaultCurrency={defaultQuoteCurrency} />
+              <MagicQuoteForm defaultCurrency={defaultQuoteCurrency} hasTeam={hasTeam} />
             </CardContent>
           </Card>
         ) : mode === "draft" && hasAiDraft ? (
@@ -238,7 +242,7 @@ export function NewDocumentClient({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <AiDraftForm initialDocumentType={initialDocumentType} />
+              <AiDraftForm initialDocumentType={initialDocumentType} hasTeam={hasTeam} />
             </CardContent>
           </Card>
         ) : (
