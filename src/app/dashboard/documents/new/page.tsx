@@ -31,10 +31,6 @@ export default async function NewDocumentPage({
 
   const { data: org } = await ctx.supabase.from("organizations").select("plan").eq("id", ctx.orgId).single();
   const hasAiDraft = planHasFeature(org?.plan, "aiDraft");
-  // Gates sender-identity-picker.tsx's "Prepared by" team-member picker —
-  // Free/Starter orgs can only ever have one member, so there's nothing to
-  // pick and no point fetching the roster.
-  const hasTeam = planHasFeature(org?.plan, "teamMembers");
 
   // Same geo/cookie-based signal the pricing and checkout pages already use
   // (see currency.server.ts) — a materially better default for Magic
@@ -52,7 +48,6 @@ export default async function NewDocumentPage({
   return (
     <NewDocumentClient
       hasAiDraft={hasAiDraft}
-      hasTeam={hasTeam}
       defaultQuoteCurrency={defaultQuoteCurrency}
       initialDocumentType={initialDocumentType}
       initialMode={initialMode}

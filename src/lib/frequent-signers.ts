@@ -19,7 +19,12 @@ export { MAX_NAME_CHARS, MAX_EMAIL_CHARS };
 // entry should show more than a first name) and falls back to the email's
 // local part if the account has no display name at all, since `name` is a
 // not-null column.
-function selfDisplayName(user: User): string {
+//
+// Exported (2026-07-23) so the AI Drafter/Magic Quote "Prepared by" name --
+// now silently computed server-side from the signed-in user, no picker UI --
+// can reuse the exact same fallback chain instead of duplicating it. See
+// draft/route.ts, draft/finalize/route.ts, quotes/finalize/route.ts.
+export function selfDisplayName(user: User): string {
   const fullName = ((user.user_metadata?.full_name || user.user_metadata?.name || "") as string).trim();
   if (fullName) return fullName;
   return user.email?.split("@")[0] || "You";

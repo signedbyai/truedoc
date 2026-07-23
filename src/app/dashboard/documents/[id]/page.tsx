@@ -16,19 +16,10 @@ import { StatusPill, DOCUMENT_STATUS_PILL } from "@/components/status-pill";
 
 export default async function DocumentEditorPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  // ?signerName=/?signerEmail= arrive only on the one-time redirect right
-  // after AiDraftForm/MagicQuoteForm's finalize call, when the sender picked
-  // a frequent signer in the "who's this for?" picker — see field-editor.tsx's
-  // initialSignerName/initialSignerEmail seeding effect. Absent on every
-  // other path into this page (a plain upload, duplicate, template, or a
-  // returning visit), which is unaffected.
-  searchParams: Promise<{ signerName?: string; signerEmail?: string }>;
 }) {
   const { id } = await params;
-  const { signerName, signerEmail } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -328,8 +319,6 @@ export default async function DocumentEditorPage({
       initialInviteSubject={doc.invite_subject}
       initialInviteMessage={doc.invite_message}
       initialExpiresAt={doc.expires_at}
-      initialSignerName={signerName ?? null}
-      initialSignerEmail={signerEmail ?? null}
     />
   );
 }

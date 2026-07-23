@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FrequentSignerPicker, type FrequentSigner } from "@/components/frequent-signer-picker";
-import { SenderIdentityPicker, type SenderIdentity } from "@/components/sender-identity-picker";
 import {
   DOCUMENT_TYPES,
   DRAFT_LANGUAGES,
@@ -30,10 +28,8 @@ import {
 // template they came here for.
 export function AiDraftForm({
   initialDocumentType,
-  hasTeam = false,
 }: {
   initialDocumentType?: DraftDocumentType;
-  hasTeam?: boolean;
 } = {}) {
   const router = useRouter();
   const [step, setStep] = useState<"describe" | "review">("describe");
@@ -50,15 +46,6 @@ export function AiDraftForm({
   const [draftBody, setDraftBody] = useState("");
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState("");
-  // Recipient (optional) -- see frequent-signer-picker.tsx. Selecting a saved
-  // contact here pre-fills them as the document's first recipient once it's
-  // created (handleFinalize passes it through as a query param on the
-  // redirect; field-editor.tsx picks it up from there).
-  const [selectedSigner, setSelectedSigner] = useState<FrequentSigner | null>(null);
-  // Prepared by (team orgs only) -- see sender-identity-picker.tsx. Rendered
-  // as a visible line on the finished PDF (handleFinalize passes the name
-  // through; textToPdf renders it).
-  const [preparedBy, setPreparedBy] = useState<SenderIdentity | null>(null);
 
   // Both re-derive from `language` on every render, so switching the
   // document language updates the description placeholder immediately —
@@ -98,18 +85,15 @@ export function AiDraftForm({
           title: draftTitle,
           body: draftBody,
           disclaimerAccepted: true,
-          preparedByName: preparedBy?.name || undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Couldn't create the document.");
-      const query = new URLSearchParams();
-      if (selectedSigner) {
-        query.set("signerName", selectedSigner.name);
-        query.set("signerEmail", selectedSigner.email);
-      }
-      const qs = query.toString();
-      router.push(`/dashboard/documents/${data.id}${qs ? `?${qs}` : ""}`);
+      // No recipient pre-seeding (removed 2026-07-23) -- the sender presses
+      // "Suggested fields" on the field editor themselves, same as any other
+      // document; phase 2's name-match against frequent signers fills the
+      // email once a detected party's name matches a saved contact.
+      router.push(`/dashboard/documents/${data.id}`);
     } catch (err) {
       setFinalizeError(err instanceof Error ? err.message : "Something went wrong.");
       setFinalizing(false);
@@ -138,10 +122,6 @@ export function AiDraftForm({
             className="w-full rounded-md border border-slate-300 p-3 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
           />
         </div>
-
-        <SenderIdentityPicker value={preparedBy} onChange={setPreparedBy} hasTeam={hasTeam} />
-
-        <FrequentSignerPicker value={selectedSigner} onChange={setSelectedSigner} />
 
         {finalizeError && <p className="text-sm text-red-600">{finalizeError}</p>}
 

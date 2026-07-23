@@ -6,6 +6,7 @@ import { checkFreePlanDocCap, planHasFeature } from "@/lib/plan";
 import { uploadToR2 } from "@/lib/r2";
 import { textToPdf } from "@/lib/text-to-pdf";
 import { DOCUMENT_TYPES } from "@/lib/ai-draft-types";
+import { selfDisplayName } from "@/lib/frequent-signers";
 
 const MAX_BODY_CHARS = 30000; // generous — a Sonnet-drafted contract is nowhere near this, just a sanity cap
 
@@ -17,11 +18,6 @@ const bodySchema = z.object({
   // the step that actually creates the document — see draft/route.ts's
   // comment on the same field.
   disclaimerAccepted: z.literal(true),
-  // Sender-identity-picker.tsx's "Prepared by" (Team/Business orgs only) —
-  // a team member's own display name, rendered as a line on the drafted
-  // PDF. Not verified against the org's actual roster: cosmetic PDF text,
-  // not an access-control decision.
-  preparedByName: z.string().trim().max(120).optional(),
 });
 
 // Turns a (possibly sender-edited) AI draft into a real document: renders
@@ -55,7 +51,10 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Missing or invalid document details." }, { status: 400 });
   }
-  const { documentType, title, body, preparedByName } = parsed.data;
+  const { documentType, title, body } = parsed.data;
+  // Silent "Prepared by" (2026-07-23) — always the signed-in user's own
+  // name, no picker/client input for this. Rendered as a line on the PDF.
+  const preparedByName = selfDisplayName(user);
 
   // Same free-plan monthly cap as a fresh upload/duplicate — this still
   // creates a new `documents` row.

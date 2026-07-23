@@ -43,7 +43,12 @@ const TYPE_GUIDANCE: Record<DraftDocumentType, string> = {
     "for damage, loss, or theft during the rental period, and the condition the bicycle must be returned in.",
 };
 
-const PROMPT = (documentType: DraftDocumentType, description: string, languageLabel: string) => `You are drafting \
+const PROMPT = (
+  documentType: DraftDocumentType,
+  description: string,
+  languageLabel: string,
+  preparedByName?: string
+) => `You are drafting \
 a standard-form ${documentTypeLabel(documentType)}, written in plain ${languageLabel}, for a small business or \
 solo professional to review, edit, and send for e-signature. This is a starting draft the user will review and \
 adjust themselves — not final legal advice, and not tailored to any specific jurisdiction's requirements.
@@ -59,7 +64,14 @@ Instructions:
 - Use what the user described to fill in specifics (names, amounts, dates, scope). For anything they didn't \
 specify, insert a clearly marked blank in square brackets, e.g. [Client Name], [Amount], [Start Date] — never \
 invent a specific fact they didn't give you. Keep bracketed placeholders themselves in ${languageLabel} too \
-(e.g. the equivalent of "[Client Name]" in ${languageLabel}, not the English word-for-word).
+(e.g. the equivalent of "[Client Name]" in ${languageLabel}, not the English word-for-word).${
+  preparedByName
+    ? `\n- The person preparing this document (the drafting party — e.g. the freelancer, service provider, or \
+organizer, whichever role fits this document type) is named "${preparedByName}". Use that name directly for \
+their side wherever the document names the parties — do not leave a bracket placeholder for the preparing \
+party's own name, only for anything about the *other* party or detail the user didn't specify.`
+    : ""
+}
 - Write the entire document — title, section headings, body text, and the closing signature block — in \
 ${languageLabel}, regardless of what language the user's description above happens to be written in.
 - Keep the language plain, neutral, and balanced between the parties — not aggressive or one-sided toward either \
@@ -94,7 +106,14 @@ export async function draftDocument(
   documentType: string,
   description: string,
   provider: AIProvider = "mistral",
-  language: string = "en"
+  language: string = "en",
+  // The signed-in user's own display name (see frequent-signers.ts's
+  // selfDisplayName, same fallback chain), computed server-side in the API
+  // route -- no client picker for this, it's always just whoever's account
+  // is generating the draft. Optional so existing calls/tests keep compiling
+  // unchanged; omitting it falls back to the pre-2026-07-23 behavior of
+  // leaving a bracket placeholder for the preparing party too.
+  preparedByName?: string
 ): Promise<DraftResult> {
   if (!DOCUMENT_TYPES.some((t) => t.id === documentType)) {
     return { error: "Choose a document type." };
@@ -114,7 +133,12 @@ export async function draftDocument(
       await generateAIText({
         provider,
         tier: "quality",
-        prompt: PROMPT(documentType as DraftDocumentType, description.trim(), draftLanguageLabel(languageCode)),
+        prompt: PROMPT(
+          documentType as DraftDocumentType,
+          description.trim(),
+          draftLanguageLabel(languageCode),
+          preparedByName?.trim() || undefined
+        ),
         maxTokens: 4000,
       })
     ).trim();

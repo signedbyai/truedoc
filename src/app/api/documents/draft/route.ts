@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { draftDocument } from "@/lib/draft-document";
 import { planHasFeature } from "@/lib/plan";
 import { normalizeAIProvider } from "@/lib/ai-provider";
+import { selfDisplayName } from "@/lib/frequent-signers";
 
 const bodySchema = z.object({
   documentType: z.string(),
@@ -26,7 +27,7 @@ const bodySchema = z.object({
 export async function POST(request: Request) {
   const ctx = await getUserAndOrg();
   if (!ctx) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  const { supabase, orgId } = ctx;
+  const { supabase, orgId, user } = ctx;
 
   // Gated at generation, not just finalize — this call itself is the cost
   // (Sonnet, not Haiku), so a Free org must not be able to generate drafts
@@ -54,11 +55,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Please accept the disclaimer and describe what you need." }, { status: 400 });
   }
 
+  // Silent "Prepared by" (2026-07-23) — always the signed-in user's own name,
+  // no picker/UI for this. Lets the draft name the preparing party directly
+  // instead of leaving a bracket placeholder for it. See draft-document.ts.
   const result = await draftDocument(
     parsed.data.documentType,
     parsed.data.description,
     normalizeAIProvider(org?.ai_provider, org?.ai_test_org ?? false),
-    parsed.data.language
+    parsed.data.language,
+    selfDisplayName(user)
   );
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 422 });

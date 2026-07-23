@@ -116,4 +116,22 @@ describe("draftDocument", () => {
     const prompt = mockCreate.mock.calls[0][0].messages[0].content as string;
     expect(prompt).toContain("plain English");
   });
+
+  // Silent "Prepared by" (2026-07-23) — the signed-in user's own name,
+  // computed server-side, no picker. Passed through so the draft names the
+  // preparing party instead of leaving a bracket placeholder for it.
+  it("includes the preparing party's name in the prompt when given", async () => {
+    mockCreate.mockResolvedValue(anthropicTextResponse("Title\n\nBody."));
+    await draftDocument("freelance", "logo design project, $2000, net-30", "anthropic", "en", "Michael Eagles");
+    const prompt = mockCreate.mock.calls[0][0].messages[0].content as string;
+    expect(prompt).toContain("Michael Eagles");
+    expect(prompt).toContain("do not leave a bracket placeholder for the preparing party's own name");
+  });
+
+  it("omits the preparing-party instruction entirely when no name is given", async () => {
+    mockCreate.mockResolvedValue(anthropicTextResponse("Title\n\nBody."));
+    await draftDocument("general", "a simple agreement", "anthropic");
+    const prompt = mockCreate.mock.calls[0][0].messages[0].content as string;
+    expect(prompt).not.toContain("preparing party");
+  });
 });
