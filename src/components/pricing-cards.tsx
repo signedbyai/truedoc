@@ -4,8 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CtaLink } from "@/components/cta-link";
 import { cn } from "@/lib/utils";
 import { CURRENCY_COOKIE, formatPrice, otherCurrencies, type Currency, type PlanKey } from "@/lib/currency";
+import type { CtaColor } from "@/flags";
 
 type PlanId = "starter" | "team" | "business";
 
@@ -45,10 +47,19 @@ export function PricingCards({
   isLoggedIn,
   currentPlan,
   initialCurrency,
+  // Optional, defaulting to "yellow": the "Sign in to subscribe" CTA only
+  // renders when isLoggedIn is false, which is only reachable from the
+  // public /pricing page (see src/app/pricing/page.tsx, which passes the
+  // real flag value). dashboard/billing/page.tsx always renders this with
+  // isLoggedIn hardcoded true, so that branch -- and this prop -- doesn't
+  // apply there; no need to thread the flag through an authenticated
+  // dashboard page just to satisfy the type.
+  ctaColor = "yellow",
 }: {
   isLoggedIn: boolean;
   currentPlan: "free" | PlanId | null;
   initialCurrency: Currency;
+  ctaColor?: CtaColor;
 }) {
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [error, setError] = useState("");
@@ -137,9 +148,16 @@ export function PricingCards({
                       {loadingPlan === p.id ? "Redirecting…" : "Subscribe"}
                     </Button>
                   ) : (
-                    <Link href="/login?intent=signup" className="block">
-                      <Button className="w-full">Sign in to subscribe</Button>
-                    </Link>
+                    <CtaLink
+                      href="/login?intent=signup"
+                      size="default"
+                      className="w-full"
+                      color={ctaColor}
+                      page="pricing"
+                      position="subscribe"
+                    >
+                      Sign in to subscribe
+                    </CtaLink>
                   )}
                 </div>
               </CardContent>

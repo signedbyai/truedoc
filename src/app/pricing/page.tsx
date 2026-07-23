@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { FlagValues } from "flags/react";
 import { getUserAndOrg } from "@/lib/org";
 import { PricingCards } from "@/components/pricing-cards";
 import { Logo } from "@/components/logo";
 import { getRequestCurrency } from "@/lib/currency.server";
+import { ctaColorFlag } from "@/flags";
 
 const TITLE = "Pricing — SignedBy";
 const DESCRIPTION = "Flat $7/mo unlimited plan. No per-seat pricing. 3 free documents every month, no credit card required.";
@@ -22,6 +24,7 @@ export default async function PricingPage() {
   // returns null for a signed-out visitor, same as it always has.
   const ctx = await getUserAndOrg();
   const currency = await getRequestCurrency();
+  const ctaColor = await ctaColorFlag();
 
   let currentPlan: "free" | "starter" | "team" | "business" | null = null;
   if (ctx) {
@@ -31,6 +34,7 @@ export default async function PricingPage() {
 
   return (
     <main className="min-h-screen bg-white px-6 py-16">
+      <FlagValues values={{ "cta-color": ctaColor }} />
       <div className="mx-auto max-w-5xl">
         <div className="mb-10 text-center">
           <Link href="/" className="inline-flex items-center gap-2 text-slate-500 hover:opacity-80">
@@ -41,7 +45,7 @@ export default async function PricingPage() {
           <p className="mt-2 text-sm text-slate-600">No per-seat tax. Cancel anytime.</p>
         </div>
 
-        <PricingCards isLoggedIn={Boolean(ctx)} currentPlan={currentPlan} initialCurrency={currency} />
+        <PricingCards isLoggedIn={Boolean(ctx)} currentPlan={currentPlan} initialCurrency={currency} ctaColor={ctaColor} />
       </div>
     </main>
   );

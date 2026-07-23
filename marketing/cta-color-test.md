@@ -6,11 +6,24 @@ Two separate pieces:
 
 ## 1. CTA click tracking (live immediately, no test involved)
 
-Every primary "Start for free" / "Use this template" CTA on the marketing
-pages (`/`, `/ai-drafter`, `/magic-quote`, `/templates`, `/templates/[slug]`,
-and all five `/vs/*` comparison pages — 10 pages, ~18 buttons) now fires a
-`cta_click` custom event via `@vercel/analytics` (`src/components/cta-link.tsx`)
-with `page`, `position` (`hero`/`footer`), `color`, and `href` properties.
+Every primary "Start for free" / "Use this template" / "Sign in to
+subscribe" CTA on the marketing pages (`/`, `/ai-drafter`, `/magic-quote`,
+`/templates`, `/templates/[slug]`, all five `/vs/*` comparison pages, and
+`/pricing`'s signed-out "Sign in to subscribe" buttons — 11 pages, ~21
+buttons) now fires a `cta_click` custom event via `@vercel/analytics`
+(`src/components/cta-link.tsx`) with `page`, `position` (`hero`/`footer`/
+`subscribe`), `color`, and `href` properties.
+
+**`/pricing` was added 2026-07-23, after being missed in the initial
+rollout.** Only the signed-out "Sign in to subscribe" button (one per
+paid plan card) is in the test — the "Get started" (free plan) and
+"Subscribe" (logged-in, direct-checkout) buttons stay as they were,
+unconverted. `PricingCards` (`src/components/pricing-cards.tsx`) is also
+reused inside the authenticated dashboard at
+`dashboard/billing/page.tsx`, where `isLoggedIn` is always `true` — the
+"Sign in to subscribe" branch (and therefore the color) never renders
+there, so `ctaColor` defaults to `"yellow"` and that page didn't need any
+changes.
 
 This answers the standing "are people even pressing it?" question
 independent of the color test below — a bounce with zero `cta_click` events
