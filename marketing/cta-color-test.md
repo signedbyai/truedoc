@@ -79,6 +79,16 @@ checks). Let it accumulate at least a week of real, mixed-source traffic
 (not just one ad campaign's audience) before comparing click-through rate
 by color.
 
+## Planned next step: swap the loser for purple (2026-07-30)
+
+Michael's plan, set 2026-07-23: after one week of yellow-vs-blue data, drop
+whichever color is clearly behind and bring in purple as the new
+challenger, so the test continues as winner-vs-purple rather than stopping
+after one round. A scheduled task (`cta-color-test-purple-swap`, fires
+2026-07-30 09:00 CEST) will pull the click-through numbers, make the swap
+if the gap is clear enough to act on, and report back — see that task's
+prompt for the exact decision rule (won't force a call on thin data).
+
 ## Competitive & research context (added 2026-07-23)
 
 Checked live CSS on each competitor's site (not just screenshots) for their primary CTA color:
