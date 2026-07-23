@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
-import { wrapText, type GeneratedPdf } from "@/lib/text-to-pdf";
+import { isFieldLabelLine, wrapText, type GeneratedPdf } from "@/lib/text-to-pdf";
 import type { QuoteTotals } from "@/lib/quote-types";
 
 // A genuinely tabular layout (columns + a totals block), unlike
@@ -238,10 +238,31 @@ export async function quoteToPdf(input: QuoteRenderInput): Promise<GeneratedPdf>
   ensureSpace(18 + SIGNATURE_LINE_HEIGHT * 3);
   page.drawText("CLIENT ACCEPTANCE", { x: MARGIN, y, size: HEADER_LABEL_SIZE, font: boldFont, color: MUTED });
   y -= 22;
-  for (const label of ["Signature:", "Print Name:", "Date:"]) {
-    ensureSpace(SIGNATURE_LINE_HEIGHT);
-    page.drawText(label, { x: MARGIN, y, size: BODY_SIZE, font, color: DARK });
-    y -= SIGNATURE_LINE_HEIGHT;
+  // Bill-to name (2026-07-23) is baked directly onto the Print Name line,
+  // not just kept in the Bill To header above -- suggest-fields.ts's prompt
+  // reads a signature block's "Name:"/"Print Name:" line as that party's real
+  // name (see its "do not leave name null just because the signature line
+  // itself is blank" instruction), which previously had nothing to read here.
+  // With a real name printed, the field editor's detected-parties panel
+  // shows it pre-filled, and phase 2's name-match against frequent signers
+  // (frequent-signer-match.ts) can find and auto-fill the matching email --
+  // the same loop AI-drafted documents already close via their own
+  // placeholder-vs-real-name signature blocks. Falls back to a blank label
+  // (unchanged prior behavior) when no Bill To name was entered.
+  const printNameLine = input.billToName.trim() ? `Print Name: ${input.billToName.trim()}` : "Print Name:";
+  for (const rawLine of ["Signature:", printNameLine, "Date:"]) {
+    const wrapped = wrapText(rawLine, font, BODY_SIZE, RIGHT_EDGE - MARGIN);
+    for (let i = 0; i < wrapped.length; i++) {
+      // Only the label's own (last) wrapped line gets the bigger
+      // field-placement gap -- same rule text-to-pdf.ts uses, so an
+      // unusually long business name that fails isFieldLabelLine's length
+      // guard just wraps like normal paragraph text instead of mis-reserving
+      // room for a field on every wrapped segment.
+      const advance = isFieldLabelLine(rawLine) && i === wrapped.length - 1 ? SIGNATURE_LINE_HEIGHT : ROW_LINE_HEIGHT;
+      ensureSpace(advance);
+      page.drawText(wrapped[i], { x: MARGIN, y, size: BODY_SIZE, font, color: DARK });
+      y -= advance;
+    }
   }
 
   const bytes = Buffer.from(await pdfDoc.save());
