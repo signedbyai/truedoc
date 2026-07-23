@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { FlagValues } from "flags/react";
 import { Logo } from "@/components/logo";
@@ -93,6 +94,25 @@ export default async function MagicQuotePage() {
             Start for free →
           </CtaLink>
           <p className="text-xs text-slate-400">Free on every plan, including Free. No credit card required.</p>
+        </div>
+      </section>
+
+      {/* Real product screenshot, not an illustration — same rationale as the
+          homepage's hero shot: it doubles as proof and reads as ours, not
+          templated stock art. This page previously had zero visual content,
+          which stood out once analytics showed it drawing more traffic than
+          the homepage itself. */}
+      <section className="mx-auto flex w-full max-w-3xl justify-center px-6 pb-10">
+        <div className="w-full max-w-sm overflow-hidden rounded-xl border border-slate-200/60 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
+          <Image
+            src="/hero-magic-quote.png"
+            alt="Magic Quote review screen showing an AI-generated line-item quote with recipient picker and computed totals"
+            width={592}
+            height={952}
+            priority
+            sizes="(max-width: 640px) 90vw, 384px"
+            className="h-auto w-full"
+          />
         </div>
       </section>
 
