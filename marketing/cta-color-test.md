@@ -84,6 +84,11 @@ Checked live CSS on each competitor's site (not just screenshots) for their prim
 | Dropbox Sign | Blue (Dropbox brand blue) | `#0061FE` |
 | Adobe Acrobat Sign | Blue-indigo (brand color) | `#3B63FB` |
 | BoloSign | Violet | `#8B5CF6` |
+| **SignedBy — `yellow` (current)** | Yellow (`bg-yellow-300`) | `#FDE047` |
+| **SignedBy — `blue` (test variant)** | Blue (`bg-blue-600`) | `#2563EB` |
+| **SignedBy — `black` (test variant, control)** | Black/slate (`bg-slate-900`, matches `default` button) | `#0F172A` |
+
+SignedBy's `blue` variant lands in the same family as 4 of the 6 competitors above (DocuSign, SignNow, Dropbox Sign, Adobe Sign all cluster in the `#0061FE`–`#4C00FF` blue-indigo range) — so that variant is effectively "test the category-normal color." `yellow` and `black` are both outside every competitor's color, for different reasons: `yellow` is the highest-contrast/most attention-grabbing option in the set, `black` is the lowest-contrast, brand-neutral option (no accent color at all).
 
 Every one of the 6 uses its own cool-toned brand color for the CTA — none use yellow, orange, or red. All optimize for brand consistency, not maximum attention-contrast. That's a point in favor of SignedBy's yellow, not against it: it's the one thing in this category that isn't blending into a sea of blue.
 
