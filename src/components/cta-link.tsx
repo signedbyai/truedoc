@@ -8,14 +8,14 @@ import { buttonVariants } from "@/components/ui/button";
 import type { CtaColor } from "@/flags";
 
 // Color classes for the CTA experiment: yellow / blue / purple, concurrent.
-// purple is violet-500 (#8B5CF6) — lightened 2026-07-23 per explicit
-// request, matching BoloSign's own CTA color (see the competitor table in
-// marketing/cta-color-test.md). Originally purple-700 specifically to stay
-// distinct from BoloSign; superseded by that request.
+// purple is violet-600 (#7C3AED) — a middle ground settled on 2026-07-23:
+// one step darker than BoloSign's own CTA color (violet-500, #8B5CF6, see
+// the competitor table in marketing/cta-color-test.md) but lighter than
+// the original purple-700 (#7E22CE) pick, which read as too strong.
 const COLOR_CLASSES: Record<CtaColor, string> = {
   yellow: "bg-yellow-300 text-slate-900 hover:bg-yellow-400",
   blue: "bg-blue-600 text-white hover:bg-blue-700",
-  purple: "bg-violet-500 text-white hover:bg-violet-600",
+  purple: "bg-violet-600 text-white hover:bg-violet-700",
 };
 
 interface CtaLinkProps {

@@ -116,9 +116,9 @@ Checked live CSS on each competitor's site (not just screenshots) for their prim
 | BoloSign | Violet | `#8B5CF6` |
 | **SignedBy — `yellow` (current)** | Yellow (`bg-yellow-300`) | `#FDE047` |
 | **SignedBy — `blue` (test variant)** | Blue (`bg-blue-600`) | `#2563EB` |
-| **SignedBy — `purple` (test variant)** | Violet (`bg-violet-500`) | `#8B5CF6` |
+| **SignedBy — `purple` (test variant)** | Violet (`bg-violet-600`) | `#7C3AED` |
 
-SignedBy's `blue` variant lands in the same family as 4 of the 6 competitors above (DocuSign, SignNow, Dropbox Sign, Adobe Sign all cluster in the `#0061FE`–`#4C00FF` blue-indigo range) — so that variant is effectively "test the category-normal color." `purple` was originally a deliberately darker `#7E22CE` to stay distinct from BoloSign's `#8B5CF6` violet, then lightened to match BoloSign's shade exactly on 2026-07-23 per explicit request (the initial purple read as too strong/heavy). `yellow` is the outlier of the three — the highest-contrast, most attention-grabbing option, and the only one no competitor uses at all.
+SignedBy's `blue` variant lands in the same family as 4 of the 6 competitors above (DocuSign, SignNow, Dropbox Sign, Adobe Sign all cluster in the `#0061FE`–`#4C00FF` blue-indigo range) — so that variant is effectively "test the category-normal color." `purple` went through 3 shades on 2026-07-23: started as a deliberately darker `#7E22CE` (purple-700) to stay distinct from BoloSign's `#8B5CF6` violet, got lightened to match BoloSign's shade exactly (violet-500), then settled on `#7C3AED` (violet-600) — one step darker than BoloSign's own color but lighter than the original pick, per explicit request. `yellow` is the outlier of the three — the highest-contrast, most attention-grabbing option, and the only one no competitor uses at all.
 
 Every one of the 6 uses its own cool-toned brand color for the CTA — none use yellow, orange, or red. All optimize for brand consistency, not maximum attention-contrast. That's a point in favor of SignedBy's yellow, not against it: it's the one thing in this category that isn't blending into a sea of blue.
 
