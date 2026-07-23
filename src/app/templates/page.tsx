@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { FlagValues } from "flags/react";
 import { Logo } from "@/components/logo";
+import { CtaLink } from "@/components/cta-link";
+import { ctaColorFlag } from "@/flags";
 import { TEMPLATE_PAGES } from "@/lib/template-pages";
 
 const TITLE = "Free Document Templates — Agreements & Contracts";
@@ -22,9 +23,12 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
-export default function TemplatesIndexPage() {
+export default async function TemplatesIndexPage() {
+  const ctaColor = await ctaColorFlag();
+
   return (
     <main className="flex min-h-screen flex-col bg-white">
+      <FlagValues values={{ "cta-color": ctaColor }} />
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-6">
         <Link href="/">
           <Logo />
@@ -65,12 +69,9 @@ export default function TemplatesIndexPage() {
         <p className="mt-2 text-sm text-slate-600">
           Upload any PDF, or describe what you need and let AI draft a starting point.
         </p>
-        <Link
-          href="/login?intent=signup"
-          className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-5")}
-        >
+        <CtaLink href="/login?intent=signup" className="mt-5" color={ctaColor} page="templates" position="footer">
           Start for free →
-        </Link>
+        </CtaLink>
       </section>
 
       <footer className="mt-auto border-t border-slate-100 px-6 py-8 text-center text-xs text-slate-400">

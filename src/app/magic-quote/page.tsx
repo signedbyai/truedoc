@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { FlagValues } from "flags/react";
 import { Logo } from "@/components/logo";
+import { CtaLink } from "@/components/cta-link";
+import { ctaColorFlag } from "@/flags";
 
 const TITLE = "Magic Quote — describe the job, get a line-item price quote | SignedBy";
 const DESCRIPTION =
@@ -55,9 +56,12 @@ const faqJsonLd = {
   })),
 };
 
-export default function MagicQuotePage() {
+export default async function MagicQuotePage() {
+  const ctaColor = await ctaColorFlag();
+
   return (
     <main className="flex min-h-screen flex-col bg-white">
+      <FlagValues values={{ "cta-color": ctaColor }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-6">
@@ -85,9 +89,9 @@ export default function MagicQuotePage() {
           </span>
         </p>
         <div className="mt-2 flex flex-col items-center gap-2">
-          <Link href={START_HREF} className={buttonVariants({ variant: "cta", size: "lg" })}>
+          <CtaLink href={START_HREF} color={ctaColor} page="magic-quote" position="hero">
             Start for free →
-          </Link>
+          </CtaLink>
           <p className="text-xs text-slate-400">Free on every plan, including Free. No credit card required.</p>
         </div>
       </section>
@@ -131,9 +135,9 @@ export default function MagicQuotePage() {
         <p className="mt-2 text-sm text-slate-600">
           Free on every plan, including Free — no credit card, no upgrade required to try it.
         </p>
-        <Link href={START_HREF} className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-5")}>
+        <CtaLink href={START_HREF} className="mt-5" color={ctaColor} page="magic-quote" position="footer">
           Start for free →
-        </Link>
+        </CtaLink>
       </section>
 
       <section className="mx-auto w-full max-w-3xl pb-12 px-6">

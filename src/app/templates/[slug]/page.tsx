@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { FlagValues } from "flags/react";
 import { Logo } from "@/components/logo";
+import { CtaLink } from "@/components/cta-link";
+import { ctaColorFlag } from "@/flags";
 import { TEMPLATE_PAGES, findTemplatePage } from "@/lib/template-pages";
 
 // This route now has its own colocated, per-slug opengraph-image.tsx (one
@@ -43,6 +44,7 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
   if (!page) notFound();
 
   const otherTemplates = TEMPLATE_PAGES.filter((t) => t.slug !== page.slug);
+  const ctaColor = await ctaColorFlag();
 
   // The honest version of "use this template with AI": AI drafting is a
   // Starter-plan feature (see plan.ts's aiDraft gate), so this can't promise
@@ -67,6 +69,7 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
 
   return (
     <main className="flex min-h-screen flex-col bg-white">
+      <FlagValues values={{ "cta-color": ctaColor }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-6">
@@ -87,12 +90,9 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
           </p>
         ))}
         <div className="mt-2 flex flex-col items-center gap-2">
-          <Link
-            href={useTemplateHref}
-            className={buttonVariants({ variant: "cta", size: "lg" })}
-          >
+          <CtaLink href={useTemplateHref} color={ctaColor} page="templates-slug" position="hero">
             Use this template — free →
-          </Link>
+          </CtaLink>
           <p className="text-xs text-slate-400">
             Sign up free to send it. AI-assisted customization is included on the Starter plan ($7/mo).
           </p>
@@ -117,12 +117,9 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
         <p className="mt-2 text-sm text-slate-600">
           3 free documents a month, no credit card. Upload this template or start from the AI Drafter.
         </p>
-        <Link
-          href={useTemplateHref}
-          className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-5")}
-        >
+        <CtaLink href={useTemplateHref} className="mt-5" color={ctaColor} page="templates-slug" position="footer">
           Start for free →
-        </Link>
+        </CtaLink>
       </section>
 
       <section className="mx-auto w-full max-w-3xl px-6 pb-12">

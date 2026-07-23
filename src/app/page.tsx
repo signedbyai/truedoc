@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { FlagValues } from "flags/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { ReferralCapture } from "@/components/referral-capture";
+import { CtaLink } from "@/components/cta-link";
+import { ctaColorFlag } from "@/flags";
 import { getRequestCurrency } from "@/lib/currency.server";
 import { formatPrice, type PlanKey } from "@/lib/currency";
 
@@ -71,9 +72,11 @@ export default async function LandingPage() {
   // resolution the /pricing page and checkout use, so the figures stay in
   // sync across the whole funnel. See src/lib/currency.ts.
   const currency = await getRequestCurrency();
+  const ctaColor = await ctaColorFlag();
 
   return (
     <main className="flex min-h-screen flex-col bg-white">
+      <FlagValues values={{ "cta-color": ctaColor }} />
       <ReferralCapture />
       {/* Widths are deliberately NOT all the same. Unifying them to max-w-6xl
           was a fix for the left-aligned layout, where four different measures
@@ -189,12 +192,9 @@ export default async function LandingPage() {
               we want pressed was the least coloured element on screen. The
               value icons move below the fold, so up here yellow means exactly
               one thing: press this. */}
-        <Link
-          href="/login?intent=signup"
-          className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-7")}
-        >
+        <CtaLink href="/login?intent=signup" className="mt-7" color={ctaColor} page="homepage" position="hero">
           Send your first document free →
-        </Link>
+        </CtaLink>
         <p className="mt-3 text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
       </section>
 

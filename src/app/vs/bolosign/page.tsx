@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { FlagValues } from "flags/react";
 import { Logo } from "@/components/logo";
+import { CtaLink } from "@/components/cta-link";
+import { ctaColorFlag } from "@/flags";
 
 const TITLE = "SignedBy vs BoloSign — pricing and feature comparison";
 const DESCRIPTION =
@@ -62,9 +63,12 @@ function CompareTable({ title, rows }: { title: string; rows: Row[] }) {
   );
 }
 
-export default function VsBoloSignPage() {
+export default async function VsBoloSignPage() {
+  const ctaColor = await ctaColorFlag();
+
   return (
     <main className="flex min-h-screen flex-col bg-white">
+      <FlagValues values={{ "cta-color": ctaColor }} />
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
         <Link href="/">
           <Logo />
@@ -77,14 +81,14 @@ export default function VsBoloSignPage() {
       <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-6 py-16 text-center">
         <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">SignedBy vs BoloSign</h1>
         <p className="max-w-xl text-lg text-slate-600">
-          Both are affordable, self-serve alternatives to the big e-signature platforms. The difference is what's
-          underneath the price: SignedBy is one flat $7/mo with genuinely unlimited documents and built-in AI
+          Both are affordable, self-serve alternatives to the big e-signature platforms. The difference is
+          what&apos;s underneath the price: SignedBy is one flat $7/mo with genuinely unlimited documents and built-in AI
           drafting and quoting. BoloSign is priced in signature/submission credits per tier, built around form
           collection (Google Forms, Sheets, multi-channel delivery) as much as document signing.
         </p>
-        <Link href="/login?intent=signup" className={buttonVariants({ variant: "cta", size: "lg" })}>
+        <CtaLink href="/login?intent=signup" color={ctaColor} page="vs-bolosign" position="hero">
           Start for free →
-        </Link>
+        </CtaLink>
         <p className="text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
       </section>
 
@@ -129,9 +133,9 @@ export default function VsBoloSignPage() {
       <section className="mx-auto w-full max-w-3xl px-6 pb-20 text-center">
         <h2 className="text-2xl font-semibold text-slate-900">Try SignedBy free</h2>
         <p className="mt-2 text-sm text-slate-600">3 documents a month, no credit card, upgrade only if you need more.</p>
-        <Link href="/login?intent=signup" className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-5")}>
+        <CtaLink href="/login?intent=signup" className="mt-5" color={ctaColor} page="vs-bolosign" position="footer">
           Start for free →
-        </Link>
+        </CtaLink>
       </section>
 
       <footer className="mt-auto border-t border-slate-100 px-6 py-8 text-center text-xs text-slate-400">

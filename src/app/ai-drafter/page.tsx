@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { FlagValues } from "flags/react";
 import { Logo } from "@/components/logo";
+import { CtaLink } from "@/components/cta-link";
+import { ctaColorFlag } from "@/flags";
 import { AI_DRAFT_DISCLAIMER, DOCUMENT_TYPES, DRAFT_LANGUAGES } from "@/lib/ai-draft-types";
 
 const TITLE = "AI Drafter — describe a contract, get a real first draft | SignedBy";
@@ -58,9 +59,12 @@ const faqJsonLd = {
   })),
 };
 
-export default function AiDrafterPage() {
+export default async function AiDrafterPage() {
+  const ctaColor = await ctaColorFlag();
+
   return (
     <main className="flex min-h-screen flex-col bg-white">
+      <FlagValues values={{ "cta-color": ctaColor }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-6">
@@ -89,9 +93,9 @@ export default function AiDrafterPage() {
           </span>
         </p>
         <div className="mt-2 flex flex-col items-center gap-2">
-          <Link href={START_HREF} className={buttonVariants({ variant: "cta", size: "lg" })}>
+          <CtaLink href={START_HREF} color={ctaColor} page="ai-drafter" position="hero">
             Start for free →
-          </Link>
+          </CtaLink>
           <p className="text-xs text-slate-400">
             AI Drafter is included on the Starter plan ($7/mo). Signing up is free.
           </p>
@@ -152,9 +156,9 @@ export default function AiDrafterPage() {
         <p className="mt-2 text-sm text-slate-600">
           Free to sign up. AI Drafter itself is included on Starter, $7/mo — unlimited documents, one user.
         </p>
-        <Link href={START_HREF} className={cn(buttonVariants({ variant: "cta", size: "lg" }), "mt-5")}>
+        <CtaLink href={START_HREF} className="mt-5" color={ctaColor} page="ai-drafter" position="footer">
           Start for free →
-        </Link>
+        </CtaLink>
       </section>
 
       <section className="mx-auto w-full max-w-3xl px-6 pb-12">
