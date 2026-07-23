@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FrequentSignerPicker, type FrequentSigner } from "@/components/frequent-signer-picker";
 import {
   DOCUMENT_TYPES,
   DRAFT_LANGUAGES,
@@ -42,6 +43,11 @@ export function AiDraftForm({ initialDocumentType }: { initialDocumentType?: Dra
   const [draftBody, setDraftBody] = useState("");
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState("");
+  // "Who's this for?" (optional) -- see frequent-signer-picker.tsx. Selecting
+  // a saved contact here pre-fills them as the document's first recipient
+  // once it's created (handleFinalize passes it through as a query param on
+  // the redirect; field-editor.tsx picks it up from there).
+  const [selectedSigner, setSelectedSigner] = useState<FrequentSigner | null>(null);
 
   // Both re-derive from `language` on every render, so switching the
   // document language updates the description placeholder immediately —
@@ -85,7 +91,13 @@ export function AiDraftForm({ initialDocumentType }: { initialDocumentType?: Dra
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Couldn't create the document.");
-      router.push(`/dashboard/documents/${data.id}`);
+      const query = new URLSearchParams();
+      if (selectedSigner) {
+        query.set("signerName", selectedSigner.name);
+        query.set("signerEmail", selectedSigner.email);
+      }
+      const qs = query.toString();
+      router.push(`/dashboard/documents/${data.id}${qs ? `?${qs}` : ""}`);
     } catch (err) {
       setFinalizeError(err instanceof Error ? err.message : "Something went wrong.");
       setFinalizing(false);
@@ -114,6 +126,8 @@ export function AiDraftForm({ initialDocumentType }: { initialDocumentType?: Dra
             className="w-full rounded-md border border-slate-300 p-3 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
           />
         </div>
+
+        <FrequentSignerPicker value={selectedSigner} onChange={setSelectedSigner} />
 
         {finalizeError && <p className="text-sm text-red-600">{finalizeError}</p>}
 

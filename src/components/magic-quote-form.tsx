@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FrequentSignerPicker, type FrequentSigner } from "@/components/frequent-signer-picker";
 import {
   computeQuoteTotals,
   QUOTE_CURRENCY_SYMBOLS,
@@ -52,6 +53,19 @@ export function MagicQuoteForm({ defaultCurrency = "$" }: { defaultCurrency?: Qu
   const [items, setItems] = useState<QuoteLineItem[]>([]);
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState("");
+  // "Who's this for?" (optional) -- see frequent-signer-picker.tsx. Selecting
+  // a saved contact pre-fills the Bill to fields below (still editable) and
+  // pre-fills the document's first recipient once it's created (handleFinalize
+  // passes it through as a query param on the redirect; field-editor.tsx
+  // picks it up from there) -- so the sender doesn't retype the same
+  // counterparty's name/email in two different places.
+  const [selectedSigner, setSelectedSigner] = useState<FrequentSigner | null>(null);
+
+  function handleSelectSigner(signer: FrequentSigner | null) {
+    setSelectedSigner(signer);
+    setBillToName(signer?.name ?? "");
+    setBillToEmail(signer?.email ?? "");
+  }
 
   // Recomputed on every render from the current (possibly just-edited)
   // items/tax rate — the same pure function the finalize route uses
@@ -112,7 +126,20 @@ export function MagicQuoteForm({ defaultCurrency = "$" }: { defaultCurrency?: Qu
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Couldn't create the document.");
-      router.push(`/dashboard/documents/${data.id}`);
+      // Only seeds a recipient if the picker selection is still active --
+      // hand-editing either Bill to field clears selectedSigner (see the
+      // onChange handlers above), so the visible chip highlight never lies
+      // about what's about to happen. Reads the live billToName/billToEmail
+      // values rather than the picked contact's own fields, so the one case
+      // that *doesn't* clear the selection -- MagicQuoteForm's own
+      // regeneration/re-render -- still matches what's on the quote.
+      const query = new URLSearchParams();
+      if (selectedSigner && billToEmail.trim()) {
+        query.set("signerName", billToName.trim());
+        query.set("signerEmail", billToEmail.trim());
+      }
+      const qs = query.toString();
+      router.push(`/dashboard/documents/${data.id}${qs ? `?${qs}` : ""}`);
     } catch (err) {
       setFinalizeError(err instanceof Error ? err.message : "Something went wrong.");
       setFinalizing(false);
@@ -146,10 +173,19 @@ export function MagicQuoteForm({ defaultCurrency = "$" }: { defaultCurrency?: Qu
           </div>
         </div>
 
+        <FrequentSignerPicker value={selectedSigner} onChange={handleSelectSigner} />
+
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="bill-to-name">Bill to (customer name)</Label>
-            <Input id="bill-to-name" value={billToName} onChange={(e) => setBillToName(e.target.value)} />
+            <Input
+              id="bill-to-name"
+              value={billToName}
+              onChange={(e) => {
+                setBillToName(e.target.value);
+                setSelectedSigner(null);
+              }}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="bill-to-email">Customer email (optional)</Label>
@@ -157,7 +193,10 @@ export function MagicQuoteForm({ defaultCurrency = "$" }: { defaultCurrency?: Qu
               id="bill-to-email"
               type="email"
               value={billToEmail}
-              onChange={(e) => setBillToEmail(e.target.value)}
+              onChange={(e) => {
+                setBillToEmail(e.target.value);
+                setSelectedSigner(null);
+              }}
             />
           </div>
         </div>

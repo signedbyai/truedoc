@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { BrandingSettings } from "@/components/branding-settings";
 import { ApiKeySettings } from "@/components/api-key-settings";
 import { AutoSuggestSettings } from "@/components/auto-suggest-settings";
+import { FrequentSignersSettings } from "@/components/frequent-signers-settings";
 
 // Grouped by concern, not by tier: Workspace (identity) → Automation & AI →
 // Integrations → Plan & team. Plan/seat management actually lives on separate
@@ -68,6 +69,19 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <AutoSuggestSettings initialEnabled={org.auto_suggest_on_upload} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Frequent signers</CardTitle>
+            <CardDescription>
+              Saved contacts you send to often. Pick one from the AI Drafter or Magic Quote to pre-fill them as the
+              recipient instead of retyping their email every time.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FrequentSignersSettings />
           </CardContent>
         </Card>
 
