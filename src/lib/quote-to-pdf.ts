@@ -32,6 +32,14 @@ const DARK = rgb(0.06, 0.09, 0.16);
 const MUTED = rgb(0.42, 0.46, 0.55);
 const RULE = rgb(0.85, 0.87, 0.9);
 
+// Same signature-block line height as text-to-pdf.ts's SIGNATURES block
+// (kept as a separate local constant rather than importing/exporting it --
+// this file already duplicates that file's page-break bookkeeping for the
+// same "different enough shapes" reason, see the file doc comment above).
+// Extra room below each label so a field can sit on the line without
+// overlapping the next one.
+const SIGNATURE_LINE_HEIGHT = 38;
+
 // Column boundaries, built right-to-left so the three numeric columns never
 // overlap: each is defined as (right edge, width), and the next column over
 // is placed a fixed gap to its left. Description gets whatever room is left
@@ -121,23 +129,43 @@ export async function quoteToPdf(input: QuoteRenderInput): Promise<GeneratedPdf>
     page.drawText(value, { x, y: y - 14, size: HEADER_VALUE_SIZE, font, color: DARK });
   }
 
+  // "From" gets its own multi-line renderer instead of drawLabelValue's
+  // single line -- concatenating "Workspace — Name" onto one line
+  // overflowed past the column into the Bill To text next to it for
+  // anything longer than a short workspace name (2026-07-23, caught in
+  // testing on a real quote). Person's name first, workspace name on its
+  // own line below -- reads like a signature line ("Michael Eagles,
+  // Amara Okafor's workspace") and the wrap is a hard line break, not
+  // word-wrap, so it can never overflow into the next column regardless
+  // of length.
+  function drawFromBlock(x: number, lines: string[]) {
+    page.drawText("FROM", { x, y, size: HEADER_LABEL_SIZE, font: boldFont, color: MUTED });
+    lines.forEach((line, i) => {
+      page.drawText(line, { x, y: y - 14 - i * 13, size: HEADER_VALUE_SIZE, font, color: DARK });
+    });
+  }
+
   // Title
   page.drawText(input.title, { x: MARGIN, y, size: TITLE_SIZE, font: boldFont, color: DARK });
   y -= TITLE_SIZE + 22;
 
-  // From / Bill To / Date / Valid-until — a 2x2 header grid. When a "Prepared
-  // by" team member was picked, it's appended to the From value (" — Name")
-  // rather than given its own header slot — keeps the existing 2x2 grid
-  // layout untouched for the common (solo-org) case where it's null.
+  // From / Bill To / Date / Valid-until — a 2x2 header grid. "Prepared by"
+  // (now always the signed-in user's own name, silently — see
+  // frequent-signers.ts's selfDisplayName) is the person's name; fromName is
+  // the org/workspace name — shown as two stacked lines under FROM rather
+  // than one concatenated line, see drawFromBlock above.
   const rightColX = MARGIN + DESC_COL_WIDTH / 2 + 40;
-  const fromValue = input.preparedByName ? `${input.fromName || "—"} — ${input.preparedByName}` : input.fromName || "—";
-  drawLabelValue(MARGIN, "From", fromValue);
+  const fromLines = input.preparedByName ? [input.preparedByName, input.fromName || "—"] : [input.fromName || "—"];
+  drawFromBlock(MARGIN, fromLines);
   drawLabelValue(
     rightColX,
     "Bill to",
     input.billToEmail ? `${input.billToName || "—"} (${input.billToEmail})` : input.billToName || "—"
   );
-  y -= 40;
+  // Same 26px gap below the value block as every other header row -- just
+  // measured from wherever FROM's last line landed, which varies with
+  // fromLines.length.
+  y -= 40 + (fromLines.length - 1) * 13;
   drawLabelValue(MARGIN, "Quote date", formatDate(input.quoteDateIso));
   if (input.validUntilIso) drawLabelValue(rightColX, "Valid until", formatDate(input.validUntilIso));
   y -= 40;
@@ -196,6 +224,24 @@ export async function quoteToPdf(input: QuoteRenderInput): Promise<GeneratedPdf>
       page.drawText(wrapped, { x: MARGIN, y, size: BODY_SIZE, font, color: DARK });
       y -= ROW_LINE_HEIGHT;
     }
+  }
+
+  // Client acceptance signature block (2026-07-23) — until now a quote had
+  // nothing to actually sign on the PDF itself, so "Suggested fields" found
+  // no signature line to detect and a sender had to place one manually
+  // every time. Same "Signature:"/"Print Name:"/"Date:" label convention
+  // and extra per-line height as text-to-pdf.ts's AI-drafted-document
+  // SIGNATURES block, so suggest-fields.ts's detection recognizes this the
+  // same way. Client-only (not a mutual two-party block) — a quote is the
+  // sender's own offer; only the recipient needs to accept it.
+  y -= 20;
+  ensureSpace(18 + SIGNATURE_LINE_HEIGHT * 3);
+  page.drawText("CLIENT ACCEPTANCE", { x: MARGIN, y, size: HEADER_LABEL_SIZE, font: boldFont, color: MUTED });
+  y -= 22;
+  for (const label of ["Signature:", "Print Name:", "Date:"]) {
+    ensureSpace(SIGNATURE_LINE_HEIGHT);
+    page.drawText(label, { x: MARGIN, y, size: BODY_SIZE, font, color: DARK });
+    y -= SIGNATURE_LINE_HEIGHT;
   }
 
   const bytes = Buffer.from(await pdfDoc.save());
