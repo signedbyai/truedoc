@@ -72,6 +72,23 @@ checks). Let it accumulate at least a week of real, mixed-source traffic
 (not just one ad campaign's audience) before comparing click-through rate
 by color.
 
+## Competitive & research context (added 2026-07-23)
+
+Checked live CSS on each competitor's site (not just screenshots) for their primary CTA color:
+
+| Company | CTA color | Hex |
+|---|---|---|
+| DocuSign | Electric indigo/purple (brand color) | `#4C00FF` |
+| SignNow | Blue (brand color) | `#0777CF` |
+| PandaDoc | Dark green (brand color) | `#248567` |
+| Dropbox Sign | Blue (Dropbox brand blue) | `#0061FE` |
+| Adobe Acrobat Sign | Blue-indigo (brand color) | `#3B63FB` |
+| BoloSign | Violet | `#8B5CF6` |
+
+Every one of the 6 uses its own cool-toned brand color for the CTA — none use yellow, orange, or red. All optimize for brand consistency, not maximum attention-contrast. That's a point in favor of SignedBy's yellow, not against it: it's the one thing in this category that isn't blending into a sea of blue.
+
+On the research side: the famous HubSpot/Performable red-vs-green test (~21% lift for red) gets over-generalized — the researchers themselves warned against "red always wins." The more defensible, widely-replicated finding (CXL, VWO) is the "isolation effect": a button's specific hue matters less than how much it contrasts with everything around it on that page. Treat any listicle's specific "+38% conversion" style numbers as directional marketing content, not rigorous studies — most don't cite an identifiable primary source. No color is universally best; the A/B test above is the correct way to find out for SignedBy specifically, and yellow-on-white/slate already scores well on the one principle (contrast/isolation) that actually replicates.
+
 ## Ending the test
 
 Once a winner is picked: hardcode that color into `cta-link.tsx` (or set it
