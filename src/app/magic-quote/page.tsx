@@ -106,9 +106,9 @@ export default async function MagicQuotePage() {
         <div className="w-full max-w-sm overflow-hidden rounded-xl border border-slate-200/60 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
           <Image
             src="/hero-magic-quote.png"
-            alt="Magic Quote review screen showing an AI-generated line-item quote with recipient picker and computed totals"
+            alt="Magic Quote review screen showing an AI-generated line-item quote with editable line items and computed totals"
             width={592}
-            height={952}
+            height={946}
             priority
             sizes="(max-width: 640px) 90vw, 384px"
             className="h-auto w-full"
