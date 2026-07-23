@@ -64,16 +64,6 @@ export default async function SettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Automation &amp; AI</CardTitle>
-            <CardDescription>Controls when AI-suggested field placements run for new documents.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AutoSuggestSettings initialEnabled={org.auto_suggest_on_upload} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
             <CardTitle>Frequent signers</CardTitle>
             <CardDescription>
               Saved contacts you send to often. Pick one from the AI Drafter or Magic Quote to pre-fill them as the
@@ -82,6 +72,16 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <FrequentSignersSettings />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Automation &amp; AI</CardTitle>
+            <CardDescription>Controls when AI-suggested field placements run for new documents.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AutoSuggestSettings initialEnabled={org.auto_suggest_on_upload} />
           </CardContent>
         </Card>
 
