@@ -13,11 +13,13 @@ export type FrequentSigner = { id: string; name: string; email: string; isSelf: 
 // effect); picking nothing leaves the flow exactly as it was before this
 // feature existed.
 //
-// Deliberately excludes the auto-seeded self entry (frequent-signers.ts) --
-// "who's this for" is asking about the other party, not the sender, and
-// showing "you" as a pickable option here would be confusing. Renders
-// nothing at all while loading or if the org has no non-self contacts yet
-// (nothing worth showing rather than an empty state nobody asked for).
+// Includes the auto-seeded self entry (frequent-signers.ts), tagged "(you)"
+// -- self-signing (a sole proprietor signing their own agreement) is a real
+// case, and excluding it meant the picker never had anything to show for an
+// org that hadn't yet added a second contact in Settings, since the self
+// entry is the only one every org is guaranteed to have (2026-07-23,
+// corrected after Michael caught this in testing). Renders nothing only
+// while the initial fetch is still in flight.
 export function FrequentSignerPicker({
   value,
   onChange,
@@ -42,8 +44,7 @@ export function FrequentSignerPicker({
     };
   }, []);
 
-  const pickable = (signers ?? []).filter((s) => !s.isSelf);
-  if (pickable.length === 0) return null;
+  if (!signers || signers.length === 0) return null;
 
   return (
     <div className="space-y-1.5">
@@ -51,7 +52,7 @@ export function FrequentSignerPicker({
         Who&rsquo;s this for? <span className="font-normal text-slate-400">(optional)</span>
       </p>
       <div className="flex flex-wrap gap-2">
-        {pickable.map((s) => {
+        {signers.map((s) => {
           const selected = value?.id === s.id;
           return (
             <button
@@ -66,6 +67,7 @@ export function FrequentSignerPicker({
               )}
             >
               {s.name}
+              {s.isSelf && <span className="text-slate-400"> (you)</span>}
             </button>
           );
         })}
