@@ -11,6 +11,7 @@ import { findFreePosition } from "@/lib/field-geometry";
 import { resizeField } from "@/lib/field-resize";
 import { remapFieldSignerIds } from "@/lib/field-persist";
 import { signerForArrivingSuggestion, signerForConfirmedSuggestion } from "@/lib/suggestion-binding";
+import { matchFrequentSignerByName, type MatchableSigner } from "@/lib/frequent-signer-match";
 import { DeleteDocumentButton } from "@/components/delete-document-button";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
 import { BookmarkIcon, MENU_ITEM_CLASS, SaveIcon, MailIcon, ClockIcon, ShieldIcon } from "@/components/ui/menu-item";
@@ -275,7 +276,21 @@ export function FieldEditor({
   // + lib/suggestion-binding.ts).
   const [detectedParties, setDetectedParties] = useState<{ role: number; label: string }[]>([]);
   const [signerInputs, setSignerInputs] = useState<
-    { role: number; label: string; name: string; email: string; title: string | null; company: string | null }[]
+    {
+      role: number;
+      label: string;
+      name: string;
+      email: string;
+      title: string | null;
+      company: string | null;
+      // Phase 2 of the frequent-signers feature (frequent-signer-match.ts):
+      // set only when the email below was auto-filled from an exact,
+      // unambiguous name match against the org's saved contacts -- never
+      // from the document's own text (see the comment on email below).
+      // Cleared the moment the sender hand-edits the email, so the "matched"
+      // indicator in the panel never claims a provenance that's gone stale.
+      matchedFrequentSignerId: string | null;
+    }[]
   >([]);
   const pageRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const dragState = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
@@ -577,20 +592,43 @@ export function FieldEditor({
         // Name is seeded from the document when it states one — the scan is
         // already reading the preamble and signature blocks, so asking the
         // sender to retype a name that's sitting in the text is wasted work.
-        // Email is deliberately NEVER pre-filled, even if the document
-        // contains one: a name is visible and gets checked, whereas a
-        // plausible-but-wrong email is the one mistake here that sends the
-        // document to the wrong person, and nobody re-reads a field that
-        // already looks filled in.
+        // Email is deliberately NEVER pre-filled from the document's own
+        // text, even if one appears there: a name is visible and gets
+        // checked, whereas a plausible-but-wrong email is the one mistake
+        // here that sends the document to the wrong person, and nobody
+        // re-reads a field that already looks filled in.
+        //
+        // Phase 2 exception: if a party's name is an exact, unambiguous
+        // match against one of the org's own SAVED contacts (Settings >
+        // Frequent signers — a much higher-confidence signal than arbitrary
+        // document text, since the sender curated that list themselves),
+        // pre-fill that contact's email too. Best-effort — a failed fetch
+        // just means no matching happens this run, same as before this
+        // feature existed. See lib/frequent-signer-match.ts.
+        let frequentSigners: MatchableSigner[] = [];
+        if (parties.some((p) => (p.name ?? "").trim())) {
+          try {
+            const fsRes = await fetch("/api/frequent-signers");
+            const fsData = await fsRes.json().catch(() => ({}));
+            if (Array.isArray(fsData.signers)) frequentSigners = fsData.signers;
+          } catch {
+            // best-effort, see comment above
+          }
+        }
         setSignerInputs(
-          parties.map((p) => ({
-            role: p.role,
-            label: p.label,
-            name: p.name ?? "",
-            email: "",
-            title: p.title ?? null,
-            company: p.company ?? null,
-          }))
+          parties.map((p) => {
+            const name = p.name ?? "";
+            const match = name.trim() ? matchFrequentSignerByName(name, frequentSigners) : null;
+            return {
+              role: p.role,
+              label: p.label,
+              name,
+              email: match?.email ?? "",
+              title: p.title ?? null,
+              company: p.company ?? null,
+              matchedFrequentSignerId: match?.id ?? null,
+            };
+          })
         );
 
         // Scroll the sender to where the suggestions landed (usually the
@@ -736,7 +774,15 @@ export function FieldEditor({
   }
 
   function updateSignerInput(role: number, field: "name" | "email", value: string) {
-    setSignerInputs((prev) => prev.map((s) => (s.role === role ? { ...s, [field]: value } : s)));
+    setSignerInputs((prev) =>
+      prev.map((s) =>
+        s.role === role
+          ? // Hand-editing the email clears the "matched a saved contact"
+            // provenance flag — see the field's doc comment above.
+            { ...s, [field]: value, ...(field === "email" ? { matchedFrequentSignerId: null } : null) }
+          : s
+      )
+    );
   }
 
   // Creates a recipient for each detected party the sender gave an email to,
@@ -1852,10 +1898,24 @@ export function FieldEditor({
                         onChange={(e) => updateSignerInput(s.role, "email", e.target.value)}
                         type="email"
                         placeholder="email@example.com"
-                        className="h-7 w-40 min-w-0 flex-1 text-xs sm:w-44 sm:flex-none"
+                        className={cn(
+                          "h-7 w-40 min-w-0 flex-1 text-xs sm:w-44 sm:flex-none",
+                          // Distinct color from the (grey) name-provenance
+                          // note below — matching against a saved contact is
+                          // a stronger claim than "read from the document"
+                          // (see the email comment above runSuggestFields),
+                          // so it gets a visibly different treatment, not
+                          // the same muted styling.
+                          s.matchedFrequentSignerId && "border-violet-400 bg-violet-50 focus-visible:ring-violet-600"
+                        )}
                       />
                     </div>
                     {context && <p className="mt-0.5 pl-1 text-[11px] text-slate-400">{context}</p>}
+                    {s.matchedFrequentSignerId && (
+                      <p className="mt-0.5 pl-1 text-[11px] text-violet-600">
+                        Matched to a saved contact — check before sending
+                      </p>
+                    )}
                   </div>
                 );
               })}
@@ -1865,7 +1925,9 @@ export function FieldEditor({
                 document rather than chosen by the sender — so the provenance
                 has to be visible, or the one thing this feature could get
                 wrong sails through unnoticed. Only shown when something was
-                actually pre-filled. */}
+                actually pre-filled. Matched emails get their own per-row
+                note just above (violet, not grey) rather than folding into
+                this line — email is the higher-stakes field. */}
             {signerInputs.some((s) => s.name.trim()) && (
               <p className="mt-2 text-[11px] text-slate-400">
                 Names read from the document — check them before sending
