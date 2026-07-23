@@ -142,6 +142,8 @@ export function FieldEditor({
   initialInviteSubject,
   initialInviteMessage,
   initialExpiresAt,
+  initialSignerName,
+  initialSignerEmail,
 }: {
   documentId: string;
   // Shown in the editor's own header — the immersive editor hides the shared
@@ -174,6 +176,19 @@ export function FieldEditor({
   initialInviteMessage: string | null;
   // documents.expires_at (migration 0030) — null means no expiration.
   initialExpiresAt: string | null;
+  // Set only on the redirect from Magic Quote's finalize step (see
+  // magic-quote-form.tsx's handleFinalize + documents/[id]/page.tsx's
+  // ?signerName=/?signerEmail= searchParams), and only when the sender
+  // actually typed a Bill To email there — a real customer email typed
+  // moments ago is worth skipping the guided "Suggest fields" step for.
+  // Null/undefined for every other path into this page (a plain upload, AI
+  // Drafter, duplicate, or template), which behaves exactly as before. When
+  // only a name was typed (no email), these stay unset on purpose — see the
+  // showingDetectedSigners gate below, which now surfaces a single detected
+  // party too, so that case is handled by the normal Suggest-fields flow
+  // instead (the name reaches the AI via quote-to-pdf.ts's Print Name line).
+  initialSignerName?: string | null;
+  initialSignerEmail?: string | null;
 }) {
   const router = useRouter();
   const [selectedTool, setSelectedTool] = useState<FieldType | null>(null);
@@ -288,6 +303,8 @@ export function FieldEditor({
   // without this, any state change that re-runs the effect (e.g. the
   // suggestions themselves arriving) would re-trigger it in a loop.
   const autoSuggestAttempted = useRef(false);
+  // Same one-shot guard, for the initial-signer seeding effect below.
+  const initialSignerSeeded = useRef(false);
   // Set right after any pointer interaction that started on an existing field
   // (a tap or a drag to move it), so the click the browser fires next doesn't
   // bubble to the page and drop a brand-new field on top — the "clicking a
@@ -301,10 +318,16 @@ export function FieldEditor({
   const hasConfirmedRef = useRef(false);
 
   const confirmedFields = fields.filter((f) => !f.suggested);
-  // Whether the "This looks like it needs N signers" panel is on screen. Read
-  // by the panel itself and by the "+ Add recipient" glow, so the guided cue
-  // can never point at the manual path while the guided one is available.
-  const showingDetectedSigners = recipients.length === 0 && detectedParties.length >= 2;
+  // Whether the "This looks like it needs N signer(s)" panel is on screen.
+  // Read by the panel itself and by the "+ Add recipient" glow, so the
+  // guided cue can never point at the manual path while the guided one is
+  // available. Covers single-party documents too (an invoice, a quote, a
+  // one-signer contract) — this used to require 2+ detected parties, which
+  // meant a lone detected party's name (and any frequent-signer email match)
+  // was computed into signerInputs and then silently thrown away, forcing a
+  // sender to retype it via manual "+ Add recipient" even though the AI had
+  // already found it.
+  const showingDetectedSigners = recipients.length === 0 && detectedParties.length >= 1;
 
   // Effective owner of a confirmed field: its assigned signer, or the sole
   // recipient when there's exactly one (an unassigned field still reaches that
@@ -645,17 +668,51 @@ export function FieldEditor({
   // runs for orgs that have explicitly opted in. The manual "Suggest
   // fields" button works regardless of this setting either way.
   //
+  // Also skipped when a Magic Quote Bill To recipient is about to be
+  // seeded below (initialSignerEmail) — otherwise this effect and the
+  // seeding effect could both fire off the same "recipients.length === 0"
+  // render, since neither has committed its state update yet when the
+  // other runs.
   useEffect(() => {
     if (!autoSuggestOnUpload) return;
     if (!fieldsLoaded || autoSuggestAttempted.current) return;
-    if (fields.length > 0 || recipients.length > 0) return;
+    if (fields.length > 0 || recipients.length > 0 || initialSignerEmail) return;
     autoSuggestAttempted.current = true;
     // Deferred a tick — runSuggestFields' first line is a setState call,
     // and calling that synchronously from within an effect body trips
     // react-hooks/set-state-in-effect. Same deferral pattern used
     // elsewhere in this file/signing-view.tsx for the same reason.
     Promise.resolve().then(() => runSuggestFields());
-  }, [autoSuggestOnUpload, fieldsLoaded, fields.length, recipients.length, runSuggestFields]);
+  }, [autoSuggestOnUpload, fieldsLoaded, fields.length, recipients.length, initialSignerEmail, runSuggestFields]);
+
+  // Pre-fills the sole recipient from Magic Quote's Bill To fields (see
+  // documents/[id]/page.tsx and magic-quote-form.tsx's handleFinalize) — a
+  // Bill To email typed there arrives as ?signerName=/?signerEmail= on the
+  // redirect into this page. Only fires when an email is present: a name
+  // with no email is deliberately left for the normal "Suggest fields" flow
+  // instead (see showingDetectedSigners above), since a bare name isn't
+  // enough to safely create a real recipient. Same one-shot-on-a-clean-slate
+  // gating as the auto-suggest effect above: never overwrites a recipient a
+  // returning sender already added. Reuses addRecipient's exact Recipient
+  // shape/order_index convention.
+  useEffect(() => {
+    if (!fieldsLoaded || initialSignerSeeded.current) return;
+    if (recipients.length > 0 || !initialSignerEmail) return;
+    initialSignerSeeded.current = true;
+    const recipient: Recipient = {
+      id: `new-${crypto.randomUUID()}`,
+      name: (initialSignerName ?? "").trim(),
+      email: initialSignerEmail.trim(),
+      order_index: 0,
+      auth_required: false,
+    };
+    // Deferred a tick -- same react-hooks/set-state-in-effect workaround as
+    // the auto-suggest effect above.
+    Promise.resolve().then(() => {
+      setRecipients([recipient]);
+      setActiveRecipientId(recipient.id);
+    });
+  }, [fieldsLoaded, recipients.length, initialSignerName, initialSignerEmail]);
 
   // Auto-shows the per-recipient-auth lock tooltip once, ever, the first
   // time a recipient exists — covers mobile, which has no hover state to
@@ -1798,16 +1855,17 @@ export function FieldEditor({
           )}
         </div>
 
-        {/* "We detected N signers" — guided multi-party setup. Only from a
-            clean slate (no recipients yet) and only when the document is
-            multi-party; adding them here creates recipients in role order so
-            the role-tagged suggestions auto-bind. */}
+        {/* "We detected N signer(s)" — guided setup, single-party documents
+            included. Only from a clean slate (no recipients yet); adding
+            them here creates recipients in role order so the role-tagged
+            suggestions auto-bind. */}
         {showingDetectedSigners && (
           <div className="border-t border-slate-100 bg-amber-50/50 px-4 py-3 sm:px-6">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-sm font-medium text-slate-900">
-                  This looks like it needs {detectedParties.length} signers
+                  This looks like it needs {detectedParties.length}{" "}
+                  {detectedParties.length === 1 ? "signer" : "signers"}
                 </p>
                 <p className="text-xs text-slate-500">
                   Add an email for each — we&apos;ll route their fields automatically.

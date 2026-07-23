@@ -116,11 +116,22 @@ export function MagicQuoteForm({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Couldn't create the document.");
-      // No recipient pre-seeding (removed 2026-07-23) -- the sender presses
-      // "Suggested fields" on the field editor themselves, same as any other
-      // document; phase 2's name-match against frequent signers fills the
-      // email once a detected party's name matches a saved contact.
-      router.push(`/dashboard/documents/${data.id}`);
+      // If the sender typed a real Bill To email, carry it (and the name)
+      // straight into the field editor as ?signerName=/?signerEmail= --
+      // field-editor.tsx's seeding effect turns that into the sole
+      // recipient immediately, no "Suggest fields" click needed, since a
+      // customer email just typed into this exact form is about as
+      // trustworthy as recipient data gets. Name-only (no email) is left
+      // alone here on purpose: the field editor's normal Suggest-fields
+      // pass will pick the name back up from the PDF's own "Print Name:"
+      // line (see quote-to-pdf.ts) and offer it through the single-signer
+      // detected-party banner instead.
+      const email = billToEmail.trim();
+      const emailLooksValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+      const query = emailLooksValid
+        ? `?${new URLSearchParams({ signerName: billToName.trim(), signerEmail: email }).toString()}`
+        : "";
+      router.push(`/dashboard/documents/${data.id}${query}`);
     } catch (err) {
       setFinalizeError(err instanceof Error ? err.message : "Something went wrong.");
       setFinalizing(false);

@@ -16,10 +16,18 @@ import { StatusPill, DOCUMENT_STATUS_PILL } from "@/components/status-pill";
 
 export default async function DocumentEditorPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  // Set only on the redirect from Magic Quote's finalize step when the
+  // sender typed a Bill To email (see magic-quote-form.tsx's
+  // handleFinalize) — passed straight through to FieldEditor, which only
+  // acts on them when an email is present. Absent for every other path
+  // into this page (upload, AI Drafter, duplicate, template).
+  searchParams: Promise<{ signerName?: string; signerEmail?: string }>;
 }) {
   const { id } = await params;
+  const { signerName, signerEmail } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -319,6 +327,8 @@ export default async function DocumentEditorPage({
       initialInviteSubject={doc.invite_subject}
       initialInviteMessage={doc.invite_message}
       initialExpiresAt={doc.expires_at}
+      initialSignerName={signerName}
+      initialSignerEmail={signerEmail}
     />
   );
 }
