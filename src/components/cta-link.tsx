@@ -7,14 +7,11 @@ import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import type { CtaColor } from "@/flags";
 
-// Color classes for the CTA experiment. "black" intentionally matches the
-// `default` Button variant exactly — it's the no-accent-color control arm,
-// answering "does yellow itself help or hurt" rather than just "which
-// accent color wins."
+// Color classes for the CTA experiment. yellow-vs-blue only for now — see
+// src/flags.ts and marketing/cta-color-test.md for why "black" was dropped.
 const COLOR_CLASSES: Record<CtaColor, string> = {
   yellow: "bg-yellow-300 text-slate-900 hover:bg-yellow-400",
   blue: "bg-blue-600 text-white hover:bg-blue-700",
-  black: "bg-slate-900 text-white hover:bg-slate-700",
 };
 
 interface CtaLinkProps {

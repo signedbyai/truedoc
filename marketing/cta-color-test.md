@@ -24,20 +24,27 @@ Read it in the Vercel dashboard's Analytics → Events tab, or via
 
 ## 2. Button color test
 
-Three variants, deterministically assigned per visitor via `src/flags.ts`'s
-`cta-color` flag:
+**Narrowed to 2 variants on 2026-07-23** (started as 3 — see below).
+Deterministically assigned per visitor via `src/flags.ts`'s `cta-color`
+flag:
 
 - `yellow` — the current color, unchanged.
-- `blue` — `bg-blue-600`, a conventional SaaS primary-action color.
-- `black` — identical to the existing `default` Button variant. This is the
-  control arm: it isolates "does having a bright accent color help or hurt"
-  from "which accent color is best," which is closer to what was actually
-  asked (is yellow itself the problem).
+- `blue` — `bg-blue-600`, a conventional SaaS primary-action color, and the
+  color 4 of the 6 competitors surveyed below effectively use.
+
+**Why `black` got dropped:** it started as a 3-way test (`yellow` / `blue`
+/ `black`, the last one identical to the existing `default` Button variant
+— a no-accent control arm). At SignedBy's current traffic volume, a 3-way
+split was diluting signal too much to read anything in a reasonable
+timeframe, so Michael cut it back to a straight yellow-vs-blue test.
+`black` can be reintroduced later (`CTA_COLORS` in `flags.ts`, plus a
+`COLOR_CLASSES` entry in `cta-link.tsx`) once yellow-vs-blue has a clear
+enough answer that a 3rd bucket won't starve all three of signal.
 
 **Deliberately cookieless.** Per instruction, no cookie is set and nothing
 is written to `localStorage`. `identify()` in `flags.ts` derives a stable
 bucket from the request's own `x-forwarded-for` + `user-agent` headers,
-hashed and modded into one of the 3 colors — read-only, computed fresh each
+hashed and modded into one of the active colors — read-only, computed fresh each
 request, same privacy posture as Vercel Web Analytics itself (already
 documented as cookieless where it's mounted in `layout.tsx`). Tradeoff: a
 visitor's color can shift if their IP changes between sessions (new
@@ -85,8 +92,8 @@ Checked live CSS on each competitor's site (not just screenshots) for their prim
 | Adobe Acrobat Sign | Blue-indigo (brand color) | `#3B63FB` |
 | BoloSign | Violet | `#8B5CF6` |
 | **SignedBy — `yellow` (current)** | Yellow (`bg-yellow-300`) | `#FDE047` |
-| **SignedBy — `blue` (test variant)** | Blue (`bg-blue-600`) | `#2563EB` |
-| **SignedBy — `black` (test variant, control)** | Black/slate (`bg-slate-900`, matches `default` button) | `#0F172A` |
+| **SignedBy — `blue` (active test variant)** | Blue (`bg-blue-600`) | `#2563EB` |
+| **SignedBy — `black` (paused, was the control arm)** | Black/slate (`bg-slate-900`, matches `default` button) | `#0F172A` |
 
 SignedBy's `blue` variant lands in the same family as 4 of the 6 competitors above (DocuSign, SignNow, Dropbox Sign, Adobe Sign all cluster in the `#0061FE`–`#4C00FF` blue-indigo range) — so that variant is effectively "test the category-normal color." `yellow` and `black` are both outside every competitor's color, for different reasons: `yellow` is the highest-contrast/most attention-grabbing option in the set, `black` is the lowest-contrast, brand-neutral option (no accent color at all).
 
@@ -97,7 +104,7 @@ On the research side: the famous HubSpot/Performable red-vs-green test (~21% lif
 ## Ending the test
 
 Once a winner is picked: hardcode that color into `cta-link.tsx` (or set it
-as `ctaColorFlag`'s `defaultValue` and delete the other two from
+as `ctaColorFlag`'s `defaultValue` and drop the other one from
 `CTA_COLORS`), or just revert every `<CtaLink>` back to a plain
 `buttonVariants({ variant: "cta" })` `<Link>` if yellow wins outright.
 Delete `src/flags.ts` and the `flags` dependency if nothing else in the app
