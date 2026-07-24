@@ -3,6 +3,7 @@ import { getFromR2 } from "@/lib/r2";
 import { extractPdfText } from "@/lib/pdf-text";
 import { generateAIText, normalizeAIProvider, type AIProvider } from "@/lib/ai-provider";
 import { isSupportedSummaryLang, summaryLanguageLabel } from "@/lib/summary-languages";
+import { planHasFeature } from "@/lib/plan";
 
 type SummaryResult = { summary: string } | { error: string };
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -134,10 +135,10 @@ export async function getOrCreateDocumentSummary(documentId: string, lang: strin
   // being passed in by the caller.
   const { data: org } = await admin
     .from("organizations")
-    .select("ai_provider, ai_test_org")
+    .select("plan, ai_provider, ai_test_org")
     .eq("id", doc.org_id)
     .single();
-  const provider = normalizeAIProvider(org?.ai_provider, org?.ai_test_org ?? false);
+  const provider = normalizeAIProvider(org?.ai_provider, org?.ai_test_org ?? false, planHasFeature(org?.plan, "aiAnthropicProvider"));
 
   let englishSummary = doc.ai_summary as string | null;
   if (!englishSummary) {

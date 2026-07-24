@@ -4,6 +4,7 @@ import { getUserAndOrg } from "@/lib/org";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { extractQuoteLineItems } from "@/lib/quote-document";
 import { normalizeAIProvider } from "@/lib/ai-provider";
+import { planHasFeature } from "@/lib/plan";
 
 const bodySchema = z.object({
   description: z.string(),
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
 
   const { data: org } = await supabase
     .from("organizations")
-    .select("ai_provider, ai_test_org")
+    .select("plan, ai_provider, ai_test_org")
     .eq("id", orgId)
     .single();
 
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
 
   const result = await extractQuoteLineItems(
     parsed.data.description,
-    normalizeAIProvider(org?.ai_provider, org?.ai_test_org ?? false)
+    normalizeAIProvider(org?.ai_provider, org?.ai_test_org ?? false, planHasFeature(org?.plan, "aiAnthropicProvider"))
   );
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 422 });
