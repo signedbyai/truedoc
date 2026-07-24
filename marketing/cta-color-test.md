@@ -145,3 +145,26 @@ as `ctaColorFlag`'s `defaultValue` and drop the other one from
 `buttonVariants({ variant: "cta" })` `<Link>` if yellow wins outright.
 Delete `src/flags.ts` and the `flags` dependency if nothing else in the app
 ever adopts feature flags — no other code depends on it.
+
+## Result: purple won (concluded 2026-07-24)
+
+30-day read via the Vercel Analytics dashboard, filtering `flags/cta-color`
+by each value and cross-referencing the `Events` panel for `cta_click`:
+
+| Variant | Exposures | `cta_click` total | CTR |
+|---|---|---|---|
+| purple | 68 | 13 | ~19% |
+| blue | 39 | 1 | ~3% |
+| yellow | 28 | 0 | 0% |
+
+13 of the 14 total site-wide `cta_click` events over the window came from
+visitors bucketed into purple. Sample is still modest (14 total clicks) but
+the gap is stark enough to call — no ambiguity here.
+
+`ctaColorFlag.decide()` in `src/flags.ts` is now hardcoded to always return
+`"purple"` (`defaultValue` updated too). The `identify()` IP/UA hashing and
+bucket-assignment logic were removed since nothing is being split anymore.
+The flag itself, `CTA_COLORS`, and the `FlagValues` exposure wiring were
+left in place rather than deleted — cheap to keep, and it means a future
+challenger test doesn't need any of the plumbing rebuilt, just `decide()`
+changed back to a bucketing function.
