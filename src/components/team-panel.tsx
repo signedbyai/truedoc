@@ -31,6 +31,16 @@ export function TeamPanel({
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState("");
+
+  // Derived from the members list rather than a new prop — it already
+  // includes the signed-in user's own row, so no extra data fetch needed.
+  const currentMember = members.find((m) => m.user_id === currentUserId);
+  const isOwnerOrAdmin = currentMember?.role === "owner" || currentMember?.role === "admin";
+  // Admin-tier = owner + admin. Always >= 1 (the owner). "Make admin" only
+  // makes sense while this is 1 (an empty 2nd slot) — see
+  // ADMIN_ROLE_SCOPE.md / 0033_admin_role_management.sql for the cap.
+  const adminTierCount = members.filter((m) => m.role === "owner" || m.role === "admin").length;
 
   const seatsUsed = members.length + invites.length;
   const atLimit = seatLimit !== null && seatsUsed >= seatLimit;
@@ -69,6 +79,42 @@ export function TeamPanel({
     router.refresh();
   }
 
+  async function promote(id: string) {
+    setBusyId(id);
+    setActionError("");
+    try {
+      const res = await fetch(`/api/team/members/${id}/promote`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Couldn't make them an admin.");
+      router.refresh();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function transferSeat(id: string, targetLabel: string) {
+    // A self-demoting action the user can't easily undo themselves (they'd
+    // need the new holder to transfer it back) — worth a confirm, unlike
+    // removeMember/revokeInvite above which only affect someone else.
+    if (!window.confirm(`Transfer your ${currentMember?.role} role to ${targetLabel}? You'll become a regular member.`)) {
+      return;
+    }
+    setBusyId(id);
+    setActionError("");
+    try {
+      const res = await fetch(`/api/team/members/${id}/transfer`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Couldn't transfer your role.");
+      router.refresh();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function revokeInvite(id: string) {
     setBusyId(id);
     await fetch(`/api/team/invites/${id}`, { method: "DELETE" }).catch(() => {});
@@ -96,6 +142,7 @@ export function TeamPanel({
           {seatsUsed} of {seatLimit} seats used
         </p>
       )}
+      {actionError && <p className="text-sm text-red-600">{actionError}</p>}
       <ul className="divide-y divide-slate-100">
         {members.map((m) => (
           <li key={m.id} className="flex items-center justify-between gap-3 py-3">
@@ -113,15 +160,41 @@ export function TeamPanel({
               <p className="break-all text-sm font-medium text-slate-900">{m.email}</p>
               <p className="text-xs capitalize text-slate-500">{m.role}</p>
             </div>
-            {m.role !== "owner" && m.user_id !== currentUserId && (
-              <button
-                onClick={() => removeMember(m.id)}
-                disabled={busyId === m.id}
-                className="shrink-0 text-xs font-medium text-slate-500 hover:text-red-600"
-              >
-                Remove
-              </button>
-            )}
+            <div className="flex shrink-0 items-center gap-3">
+              {/* Only reachable when currentMember holds owner/admin, which
+                  implies m isn't currentMember (their role would be "member"
+                  here, not owner/admin) — no extra self-exclusion check
+                  needed beyond m.role === "member". */}
+              {isOwnerOrAdmin && m.role === "member" && (
+                <>
+                  {adminTierCount < 2 && (
+                    <button
+                      onClick={() => promote(m.id)}
+                      disabled={busyId === m.id}
+                      className="text-xs font-medium text-slate-500 hover:text-slate-900"
+                    >
+                      Make admin
+                    </button>
+                  )}
+                  <button
+                    onClick={() => transferSeat(m.id, m.email)}
+                    disabled={busyId === m.id}
+                    className="text-xs font-medium text-slate-500 hover:text-slate-900"
+                  >
+                    Transfer my {currentMember?.role} role
+                  </button>
+                </>
+              )}
+              {m.role !== "owner" && m.user_id !== currentUserId && (
+                <button
+                  onClick={() => removeMember(m.id)}
+                  disabled={busyId === m.id}
+                  className="text-xs font-medium text-slate-500 hover:text-red-600"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
           </li>
         ))}
         {invites.map((inv) => (
