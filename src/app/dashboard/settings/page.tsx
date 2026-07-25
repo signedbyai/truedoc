@@ -8,7 +8,6 @@ import { BrandingSettings } from "@/components/branding-settings";
 import { ApiKeySettings } from "@/components/api-key-settings";
 import { AutoSuggestSettings } from "@/components/auto-suggest-settings";
 import { FrequentSignersSettings } from "@/components/frequent-signers-settings";
-import { AIProviderSettings, AIProviderLocked } from "@/components/ai-provider-settings";
 
 // Grouped by concern, not by tier: Workspace (identity) → Automation & AI →
 // Integrations → Plan & team. Plan/seat management actually lives on separate
@@ -21,7 +20,7 @@ export default async function SettingsPage() {
 
   const { data: org } = await supabase
     .from("organizations")
-    .select("name, plan, logo_url, brand_color, api_key_prefix, auto_suggest_on_upload, ai_provider, ai_test_org")
+    .select("name, plan, logo_url, brand_color, api_key_prefix, auto_suggest_on_upload")
     .eq("id", orgId)
     .single();
 
@@ -29,7 +28,6 @@ export default async function SettingsPage() {
 
   const hasCustomBranding = planHasFeature(org.plan, "customBranding");
   const hasApiAccess = planHasFeature(org.plan, "apiAccess");
-  const hasAnthropicProvider = planHasFeature(org.plan, "aiAnthropicProvider");
   const planLabel = PLAN_LABEL[org.plan ?? "free"] ?? org.plan;
   const seatCap = teamMemberLimit(org.plan);
 
@@ -84,29 +82,6 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <AutoSuggestSettings initialEnabled={org.auto_suggest_on_upload} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>AI provider</CardTitle>
-            <CardDescription>
-              Which AI provider generates field suggestions, drafted documents, quotes, and summaries/translation.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {hasAnthropicProvider ? (
-              // Read the raw column directly rather than through
-              // normalizeAIProvider() — that function also honors
-              // ai_test_org's internal-only "deepseek" value, which this
-              // customer-facing picker doesn't offer as an option. Anything
-              // other than a literal "anthropic" displays as Mistral, the
-              // safe default; actual enforcement at AI-call time still goes
-              // through normalizeAIProvider() in each call site.
-              <AIProviderSettings initialProvider={org.ai_provider === "anthropic" ? "anthropic" : "mistral"} />
-            ) : (
-              <AIProviderLocked />
-            )}
           </CardContent>
         </Card>
 

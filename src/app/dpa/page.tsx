@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function DpaPage() {
   return (
-    <LegalPage title="Data Processing Addendum" effectiveDate="July 24, 2026">
+    <LegalPage title="Data Processing Addendum" effectiveDate="July 14, 2026">
       <p>
         This Data Processing Addendum (&ldquo;DPA&rdquo;) supplements the SignedBy{" "}
         <a href="/terms" className="underline">
@@ -55,8 +55,7 @@ export default function DpaPage() {
         addresses, user agent strings, and document hashes) needed for a legally defensible electronic signature;
         generate the final signed PDF and certificate of completion; and, for Customers using optional AI-assisted
         features, send relevant document text to an AI sub-processor for field-suggestion, drafting, or
-        summarization — Mistral AI by default, or Anthropic if a Customer on the Business plan has selected it in
-        workspace settings. Processing lasts for the duration of the
+        summarization — Mistral AI. Processing lasts for the duration of the
         Customer&apos;s use of the service and any applicable retention period described in our{" "}
         <a href="/privacy" className="underline">
           Privacy Policy
@@ -70,11 +69,7 @@ export default function DpaPage() {
         <li>Supabase — database hosting and authentication</li>
         <li>Cloudflare, Inc. (R2) — document file storage</li>
         <li>Resend — transactional email delivery</li>
-        <li>Mistral AI — default AI processing for optional field-suggestion, document-drafting, and summary features</li>
-        <li>
-          Anthropic, PBC — alternative AI processing for the same features, available only to a Customer on the
-          Business plan that selects it in workspace settings instead of Mistral
-        </li>
+        <li>Mistral AI — AI processing for optional field-suggestion, document-drafting, and summary features</li>
         <li>Stripe, Inc. — payment processing for subscriptions</li>
         <li>Vercel Inc. — application hosting</li>
       </ul>

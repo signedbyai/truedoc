@@ -63,16 +63,6 @@ const FEATURE_PLANS = {
   // distribution/analytics capability on top of core send-and-sign, not core
   // functionality itself. See src/app/g/[code]/route.ts.
   docGate: ["business"],
-  // Business: "AI provider — Anthropic" — lets an org switch the four AI
-  // call sites (field suggestion, drafting, Magic Quote, summary/
-  // translation) from the default Mistral to Anthropic. Gated per
-  // ADMIN_ROLE_SCOPE.md's Team-vs-Business split: this is an admin-gated
-  // *capability*, not part of the admin-role system itself (see
-  // src/components/team-panel.tsx). Requires /privacy + /dpa to disclose
-  // Anthropic as a Business-plan-selectable sub-processor — see those pages
-  // and src/lib/ai-provider.ts's normalizeAIProvider(). DeepSeek stays
-  // internal-testing-only regardless of plan; not exposed via this flag.
-  aiAnthropicProvider: ["business"],
 } as const;
 
 // Per-recipient authentication (a sender can require a signer to enter a
@@ -101,7 +91,6 @@ export const FEATURE_UPGRADE_PLAN: Record<Feature, PlanId> = {
   apiAccess: "business",
   paymentCollection: "business",
   docGate: "business",
-  aiAnthropicProvider: "business",
 };
 
 // Team member seat caps — matches the "Up to N users" pricing-cards.tsx

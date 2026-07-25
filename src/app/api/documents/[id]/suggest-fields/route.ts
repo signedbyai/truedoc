@@ -4,7 +4,6 @@ import { getFromR2 } from "@/lib/r2";
 import { suggestFields } from "@/lib/suggest-fields";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { normalizeAIProvider } from "@/lib/ai-provider";
-import { planHasFeature } from "@/lib/plan";
 
 // Stateless: computes suggestions and returns them, writes nothing to the
 // database. The field editor holds every suggestion as unconfirmed local
@@ -33,12 +32,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Document not found" }, { status: 404 });
   }
 
-  const { data: org } = await supabase
-    .from("organizations")
-    .select("plan, ai_provider, ai_test_org")
-    .eq("id", orgId)
-    .single();
-  const provider = normalizeAIProvider(org?.ai_provider, org?.ai_test_org ?? false, planHasFeature(org?.plan, "aiAnthropicProvider"));
+  const { data: org } = await supabase.from("organizations").select("ai_provider, ai_test_org").eq("id", orgId).single();
+  const provider = normalizeAIProvider(org?.ai_provider, org?.ai_test_org ?? false);
 
   let bytes: Buffer;
   try {

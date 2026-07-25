@@ -41,31 +41,12 @@ describe("normalizeAIProvider", () => {
     expect(normalizeAIProvider("", true)).toBe("mistral");
   });
 
-  // The guardrail: an org not on the ai_test_org allowlist AND without the
-  // Business-plan feature stays on Mistral no matter what ai_provider is set
-  // to — see supabase/migrations/0028 and plan.ts's aiAnthropicProvider.
-  it("forces mistral for a non-test, non-Business org even when ai_provider requests anthropic or deepseek", () => {
+  // The guardrail: an org not on the ai_test_org allowlist stays on Mistral
+  // no matter what ai_provider is set to — see supabase/migrations/0028.
+  it("forces mistral for a non-test org even when ai_provider requests anthropic or deepseek", () => {
     expect(normalizeAIProvider("anthropic", false)).toBe("mistral");
     expect(normalizeAIProvider("deepseek", false)).toBe("mistral");
     expect(normalizeAIProvider("mistral", false)).toBe("mistral");
-  });
-
-  // Phase 2 (2026-07-24): a real customer org reaches Anthropic through the
-  // Business-plan feature flag, passed in as the third param — independent
-  // of ai_test_org.
-  it("honors anthropic for a non-test org when the Business-plan flag is enabled", () => {
-    expect(normalizeAIProvider("anthropic", false, true)).toBe("anthropic");
-  });
-
-  it("still forces mistral for a non-test, non-Business org when the plan flag is explicitly false", () => {
-    expect(normalizeAIProvider("anthropic", false, false)).toBe("mistral");
-  });
-
-  // DeepSeek has no plan gate — it's only ever reachable via ai_test_org,
-  // regardless of the Business-plan flag, and stays internal-only.
-  it("never honors deepseek via the Business-plan flag, only via ai_test_org", () => {
-    expect(normalizeAIProvider("deepseek", false, true)).toBe("mistral");
-    expect(normalizeAIProvider("deepseek", true, false)).toBe("deepseek");
   });
 });
 

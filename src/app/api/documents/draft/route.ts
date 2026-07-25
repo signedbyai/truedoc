@@ -61,7 +61,7 @@ export async function POST(request: Request) {
   const result = await draftDocument(
     parsed.data.documentType,
     parsed.data.description,
-    normalizeAIProvider(org?.ai_provider, org?.ai_test_org ?? false, planHasFeature(org?.plan, "aiAnthropicProvider")),
+    normalizeAIProvider(org?.ai_provider, org?.ai_test_org ?? false),
     parsed.data.language,
     selfDisplayName(user)
   );
