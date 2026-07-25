@@ -75,7 +75,11 @@ belongs to (0, 1, …), or null if you can't confidently tell or there's only on
 
 Skip any name/title/company blank that's already filled in — if a real value already appears right after \
 "Name:", "Print Name:", "Title:", or "Company:" on the page (not just the bare label with nothing after it, and \
-not a placeholder like "___" or "[name]"), that spot is already done and does NOT need a field. Only genuinely \
+not a placeholder like "___" or "[name]"), that spot is already done and does NOT need a field. This applies just \
+as much when the label is translated into the document's own language rather than English — e.g. "Naam in \
+blokletters: Henry James", "Name in Druckbuchstaben: Henry James", or "Nom en lettres capitales : Henry James" \
+are all a filled-in name blank too, exactly like "Print Name: Henry James" would be. Judge this by whether a real \
+value follows the label, not by which language the label itself happens to be written in. Only genuinely \
 still-blank spots need one. A signature line and a date blank almost always still need fields even when a name \
 is already printed nearby on the same block — don't skip those just because a neighboring name is filled.
 
