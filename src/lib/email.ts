@@ -375,8 +375,15 @@ export async function sendCompletionEmail(opts: {
   documentTitle: string;
   documentId: string;
 }) {
+  // Points at the dashboard page rather than straight at the signed-file API
+  // route. The page already has its own "Download signed PDF" button (same
+  // /api/documents/[id]/signed-file endpoint), and a page load goes through
+  // the dashboard's normal auth handling first -- a direct link to the API
+  // route skips that, so clicking it from a browser/device with no live
+  // session dead-ends on a raw `{"error":"Not found"}` JSON response instead
+  // of redirecting to login. Found 2026-07-25 from a real screenshot of
+  // exactly that happening on mobile Safari via a Gmail link tap.
   const link = `${appUrl()}/dashboard/documents/${opts.documentId}`;
-  const downloadLink = `${appUrl()}/api/documents/${opts.documentId}/signed-file`;
 
   await getClient().emails.send({
     from: FROM,
@@ -385,8 +392,7 @@ export async function sendCompletionEmail(opts: {
     html: `
       <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
         <p><strong>${opts.documentTitle}</strong> has been signed by everyone and is now complete.</p>
-        ${ctaButton(downloadLink, "Download Signed PDF")}
-        <p style="color:#64748b;font-size:13px;"><a href="${link}" style="color:#64748b;">View in dashboard</a></p>
+        ${ctaButton(link, "View & Download Signed PDF")}
       </div>
     `,
   });
