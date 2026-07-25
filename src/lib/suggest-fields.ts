@@ -76,15 +76,12 @@ belongs to (0, 1, …), or null if you can't confidently tell or there's only on
 Skip any name/title/company blank that's already filled in — if a real value already appears right after \
 "Name:", "Print Name:", "Title:", or "Company:" on the page (not just the bare label with nothing after it, and \
 not a placeholder like "___" or "[name]"), that spot is already done and does NOT need a field. This applies just \
-as much when the label is translated into the document's own language rather than English — "Print Name: Henry \
-James" filled in looks like, for example, "Nombre en letra de imprenta: Henry James" (Spanish), "Nom en lettres \
-capitales : Henry James" (French), "Name in Druckbuchstaben: Henry James" (German), "Nome por extenso: Henry \
-James" (Portuguese), "Naam in blokletters: Henry James" (Dutch), or "Nome in stampatello: Henry James" \
-(Italian) — all six are a filled-in name blank too, in whatever language the rest of the document happens to be \
-in. Judge this by whether a real value follows the label, not by which language the label itself happens to be \
-written in. Only genuinely still-blank spots need one. A signature line and a date blank almost always still \
-need fields even when a name is already printed nearby on the same block — don't skip those just because a \
-neighboring name is filled.
+as much when the label is translated — e.g. "Naam in blokletters: Maria Jansen", "Nombre en letra de imprenta: \
+Carlos Ruiz", or "Nome in stampatello: Giulia Rossi" are all filled-in name blanks too, exactly like "Print \
+Name: Maria Jansen" would be. Judge this by whether a real value follows the label, not by which language the \
+label itself happens to be written in. Only genuinely still-blank spots need one. A signature line and a date \
+blank almost always still need fields even when a name is already printed nearby on the same block — don't \
+skip those just because a neighboring name is filled.
 
 For a "text" field, also set "purpose" to "name" when the blank is clearly for a person's printed or full name \
 (e.g. after "Print Name:", "Name:"), "title" for a job title (after "Title:"), or "company" for a company or \
