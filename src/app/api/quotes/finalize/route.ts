@@ -6,6 +6,7 @@ import { checkFreePlanDocCap } from "@/lib/plan";
 import { uploadToR2 } from "@/lib/r2";
 import { quoteToPdf } from "@/lib/quote-to-pdf";
 import { selfDisplayName } from "@/lib/frequent-signers";
+import { isSupportedDraftLang } from "@/lib/ai-draft-types";
 import {
   computeQuoteTotals,
   QUOTE_CURRENCY_SYMBOLS,
@@ -39,6 +40,11 @@ const bodySchema = z.object({
   notes: z.string().trim().max(MAX_NOTES_CHARS).optional().or(z.literal("")),
   taxRatePercent: z.number().finite().min(0).max(MAX_TAX_RATE_PERCENT),
   items: z.array(lineItemSchema).min(1).max(MAX_LINE_ITEMS),
+  // Optional — carried from the describe step's language picker through the
+  // review step's client state (see magic-quote-form.tsx). Falls back to
+  // English for a missing/unsupported code, same defensive precedent as
+  // POST /api/quotes/draft's language field.
+  language: z.string().optional(),
 });
 
 // Turns a (reviewed, possibly sender-edited) quote into a real document:
@@ -67,6 +73,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing or invalid quote details." }, { status: 400 });
   }
   const { title, currency, billToName, billToEmail, validUntil, notes, taxRatePercent, items } = parsed.data;
+  const language = isSupportedDraftLang(parsed.data.language ?? "") ? (parsed.data.language as string) : "en";
   // Silent "Prepared by" (2026-07-23) — always the signed-in user's own
   // name, no picker/client input for this. Appended to the "From" line.
   const preparedByName = selfDisplayName(user);
@@ -94,6 +101,7 @@ export async function POST(request: Request) {
       validUntilIso: validUntil || null,
       notes: notes || null,
       totals,
+      language,
     });
     pdfBytes = generated.bytes;
     pageCount = generated.pageCount;

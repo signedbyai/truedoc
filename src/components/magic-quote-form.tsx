@@ -11,6 +11,8 @@ import {
   type QuoteCurrencySymbol,
   type QuoteLineItem,
 } from "@/lib/quote-types";
+import { DRAFT_LANGUAGES, detectDraftLang } from "@/lib/ai-draft-types";
+import { ql, magicQuotePlaceholder } from "@/lib/quote-labels";
 
 // A space before the number for multi-letter symbols ("CHF 150.00"), none
 // for single-glyph ones ("$150.00") — matches quote-to-pdf.ts's formatAmount
@@ -43,6 +45,9 @@ export function MagicQuoteForm({
   const router = useRouter();
   const [step, setStep] = useState<"describe" | "review">("describe");
   const [description, setDescription] = useState("");
+  const [language, setLanguage] = useState(() =>
+    detectDraftLang(typeof navigator !== "undefined" ? navigator.language : undefined)
+  );
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState("");
 
@@ -82,7 +87,7 @@ export function MagicQuoteForm({
       const res = await fetch("/api/quotes/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description }),
+        body: JSON.stringify({ description, language }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Couldn't generate a quote.");
@@ -112,6 +117,7 @@ export function MagicQuoteForm({
           notes,
           taxRatePercent,
           items,
+          language,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -145,11 +151,11 @@ export function MagicQuoteForm({
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="quote-title">Quote title</Label>
+            <Label htmlFor="quote-title">{ql("quoteTitle", language)}</Label>
             <Input id="quote-title" value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="quote-currency">Currency</Label>
+            <Label htmlFor="quote-currency">{ql("currency", language)}</Label>
             <select
               id="quote-currency"
               value={currency}
@@ -167,11 +173,15 @@ export function MagicQuoteForm({
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="bill-to-name">Bill to (customer name)</Label>
+            <Label htmlFor="bill-to-name">
+              {ql("billTo", language)} ({ql("customerName", language)})
+            </Label>
             <Input id="bill-to-name" value={billToName} onChange={(e) => setBillToName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="bill-to-email">Customer email (optional)</Label>
+            <Label htmlFor="bill-to-email">
+              {ql("customerEmail", language)} ({ql("optional", language)})
+            </Label>
             <Input
               id="bill-to-email"
               type="email"
@@ -182,19 +192,21 @@ export function MagicQuoteForm({
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="valid-until">Valid until (optional)</Label>
+          <Label htmlFor="valid-until">
+            {ql("validUntil", language)} ({ql("optional", language)})
+          </Label>
           <Input id="valid-until" type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
         </div>
 
         <div className="space-y-1.5">
-          <Label>Line items</Label>
+          <Label>{ql("lineItems", language)}</Label>
           <div className="space-y-2 rounded-md border border-slate-200 p-3">
             {items.map((item, i) => (
               <div key={i} className="flex flex-wrap items-center gap-2">
                 <input
                   value={item.description}
                   onChange={(e) => updateItem(i, { description: e.target.value })}
-                  placeholder="Description"
+                  placeholder={ql("description", language)}
                   className="min-w-[10rem] flex-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
                 />
                 <input
@@ -203,7 +215,7 @@ export function MagicQuoteForm({
                   step="any"
                   value={item.quantity}
                   onChange={(e) => updateItem(i, { quantity: Number(e.target.value) || 0 })}
-                  aria-label="Quantity"
+                  aria-label={ql("quantity", language)}
                   className="w-16 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
                 />
                 <input
@@ -212,7 +224,7 @@ export function MagicQuoteForm({
                   step="any"
                   value={item.unitPrice}
                   onChange={(e) => updateItem(i, { unitPrice: Number(e.target.value) || 0 })}
-                  aria-label="Unit price"
+                  aria-label={ql("unitPrice", language)}
                   className="w-24 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
                 />
                 <span className="w-20 text-right text-sm text-slate-600">
@@ -221,7 +233,7 @@ export function MagicQuoteForm({
                 <button
                   type="button"
                   onClick={() => removeItem(i)}
-                  aria-label="Remove line item"
+                  aria-label={ql("removeLineItem", language)}
                   className="text-slate-400 hover:text-red-600"
                 >
                   ×
@@ -229,13 +241,15 @@ export function MagicQuoteForm({
               </div>
             ))}
             <Button type="button" variant="outline" onClick={addItem} className="w-full">
-              + Add line item
+              {ql("addLineItem", language)}
             </Button>
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="tax-rate">Tax rate % (optional)</Label>
+          <Label htmlFor="tax-rate">
+            {ql("taxRate", language)} % ({ql("optional", language)})
+          </Label>
           <Input
             id="tax-rate"
             type="number"
@@ -249,7 +263,9 @@ export function MagicQuoteForm({
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="quote-notes">Notes (optional)</Label>
+          <Label htmlFor="quote-notes">
+            {ql("notes", language)} ({ql("optional", language)})
+          </Label>
           <textarea
             id="quote-notes"
             value={notes}
@@ -261,17 +277,19 @@ export function MagicQuoteForm({
 
         <div className="space-y-1 rounded-md bg-slate-50 p-3 text-sm">
           <div className="flex justify-between text-slate-600">
-            <span>Subtotal</span>
+            <span>{ql("subtotal", language)}</span>
             <span>{formatAmount(currency, totals.subtotal)}</span>
           </div>
           {totals.taxRatePercent > 0 && (
             <div className="flex justify-between text-slate-600">
-              <span>Tax ({totals.taxRatePercent}%)</span>
+              <span>
+                {ql("tax", language)} ({totals.taxRatePercent}%)
+              </span>
               <span>{formatAmount(currency, totals.taxAmount)}</span>
             </div>
           )}
           <div className="flex justify-between text-base font-semibold text-slate-900">
-            <span>Total</span>
+            <span>{ql("total", language)}</span>
             <span>{formatAmount(currency, totals.total)}</span>
           </div>
         </div>
@@ -290,7 +308,7 @@ export function MagicQuoteForm({
             disabled={finalizing || !title.trim() || !hasValidItems}
             onClick={handleFinalize}
           >
-            {finalizing ? "Creating…" : "Create document"}
+            {finalizing ? ql("creating", language) : ql("createDocument", language)}
           </Button>
           <Button
             variant="outline"
@@ -301,7 +319,7 @@ export function MagicQuoteForm({
               setGenerateError("");
             }}
           >
-            Start over
+            {ql("startOver", language)}
           </Button>
         </div>
       </div>
@@ -318,13 +336,29 @@ export function MagicQuoteForm({
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="quote-description">Describe the job</Label>
+        <Label htmlFor="quote-language">Quote language</Label>
+        <select
+          id="quote-language"
+          value={language}
+          onChange={(e) => setLanguage(e.target.value)}
+          className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+        >
+          {DRAFT_LANGUAGES.map((l) => (
+            <option key={l.code} value={l.code}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="quote-description">{ql("describeJob", language)}</Label>
         <div className="ai-comet rounded-md">
           <textarea
             id="quote-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder={`e.g. iPhone 13 screen replacement for Alice, ${currencyPrefix}80 for the part, 1 hour labor at ${currencyPrefix}70/hr`}
+            placeholder={magicQuotePlaceholder(currencyPrefix, language)}
             rows={4}
             className="block w-full rounded-md border border-slate-300 p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
           />
@@ -338,12 +372,10 @@ export function MagicQuoteForm({
           invents a price) and the app itself computes every total, so this
           is an ordinary review-your-work reminder, not a legal-risk
           checkbox. See magic-quote-feature.md for the reasoning. */}
-      <p className="text-xs text-slate-500">
-        Review the line items and totals before sending — you&rsquo;re responsible for the final quote.
-      </p>
+      <p className="text-xs text-slate-500">{ql("reviewDisclaimer", language)}</p>
 
       <Button className="w-full" disabled={!description.trim() || generating} onClick={handleGenerate}>
-        {generating ? "Generating quote…" : "Generate quote"}
+        {generating ? ql("generatingQuote", language) : ql("generateQuote", language)}
       </Button>
     </div>
   );

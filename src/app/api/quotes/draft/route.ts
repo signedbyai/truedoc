@@ -7,6 +7,10 @@ import { normalizeAIProvider } from "@/lib/ai-provider";
 
 const bodySchema = z.object({
   description: z.string(),
+  // Optional — extractQuoteLineItems() itself falls back to English for a
+  // missing or unsupported code, same defensive precedent as
+  // POST /api/documents/draft's language field.
+  language: z.string().optional(),
 });
 
 // Stateless: generates starting line items from a plain-language job
@@ -41,7 +45,8 @@ export async function POST(request: Request) {
 
   const result = await extractQuoteLineItems(
     parsed.data.description,
-    normalizeAIProvider(org?.ai_provider, org?.ai_test_org ?? false)
+    normalizeAIProvider(org?.ai_provider, org?.ai_test_org ?? false),
+    parsed.data.language
   );
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 422 });

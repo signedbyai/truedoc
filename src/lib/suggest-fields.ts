@@ -63,7 +63,10 @@ company with a null name is normal and fine.
 
 Then find the field spots that need a signer to sign, initial, date, write something, or check a box — for \
 example a line after "Signature:", an "Initials" box, a blank after "Date:", a blank for a printed \
-name/title/company, or a checkbox next to an opt-in clause. Point x and y at roughly where the blank or box \
+name/title/company, or a checkbox next to an opt-in clause. These labels may appear translated into the \
+document's own language instead of English (e.g. "Firma:", "Signature :", "Unterschrift:") — treat the \
+translated form the same way you would the English one; don't require an exact English match. Point x and y at \
+roughly where the blank or box \
 itself is, using each line's w to find it: for a colon-terminated label like "Signature:" or "Date:" at (x, y, w), \
 the blank comes right AFTER the label, so place the field's x at that label's own x + w (plus a small gap of \
 about 0.01-0.02), never inside its x-to-x+w span and never before it — a field placed at or before the label's \

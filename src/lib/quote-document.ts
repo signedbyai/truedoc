@@ -1,5 +1,6 @@
 import { generateAIText, type AIProvider } from "@/lib/ai-provider";
 import { MAX_DESCRIPTION_CHARS, MAX_LINE_ITEMS, MAX_QUANTITY, MAX_UNIT_PRICE, type QuoteLineItem } from "@/lib/quote-types";
+import { draftLanguageLabel, isSupportedDraftLang } from "@/lib/ai-draft-types";
 
 export type QuoteDraftResult = { title: string; items: QuoteLineItem[] } | { error: string };
 
@@ -11,8 +12,9 @@ const MAX_TITLE_CHARS = 100;
 // creative writing, and every number it proposes gets re-validated and
 // arithmetic-checked by computeQuoteTotals() in quote-types.ts rather than
 // trusted outright, so it doesn't need the strongest/priciest model.
-const PROMPT = (description: string) => `You are turning a plain-language job description into a structured price \
-quote for a small business or solo tradesperson to review, edit, and send to a customer for approval.
+const PROMPT = (description: string, languageLabel: string) => `You are turning a plain-language job description \
+into a structured price quote for a small business or solo tradesperson to review, edit, and send to a customer \
+for approval.
 
 The user's description of the job:
 """
@@ -23,6 +25,8 @@ Instructions:
 - Break the job into individual line items (e.g. parts, labor, call-out fee, materials) — whatever the \
 description actually implies. A simple job can be a single line item.
 - For each line item, give a short plain-language description, a quantity, and a unit price.
+- Write the quote's title and every line item's description in ${languageLabel}, regardless of what language the \
+user's description above happens to be written in.
 - Use ONLY prices, rates, and quantities the user actually stated or clearly implied (e.g. "2 hours at $70/hr" is \
 quantity 2, unit price 70). If the user didn't give a price for something, set that line's unitPrice to 0 — never \
 invent a plausible-sounding number. The sender will review and fill in any missing prices themselves before \
@@ -34,8 +38,8 @@ only if the user's description actually named one.
 - If what's described isn't really a chargeable job/service that fits a simple line-item quote (e.g. it's not a \
 transaction at all, or it describes something illegal or clearly requiring a licensed professional's own pricing \
 judgment you shouldn't approximate, like a structural engineering assessment), do not produce a quote — instead \
-respond with exactly one line starting with the literal text "CANNOT_QUOTE: " (so the app can detect it), \
-followed by a short, plain explanation of why.
+respond with exactly one line starting with the literal, untranslated text "CANNOT_QUOTE: " (so the app can \
+detect it), followed by a short, plain explanation of why, written in ${languageLabel}.
 
 Respond with ONLY a JSON object (no markdown fences, no prose, no explanation before or after):
 {"title": "<short quote title>", "items": [{"description": "<line item>", "quantity": <number>, "unitPrice": <number>}]}`;
@@ -99,10 +103,16 @@ export function parseQuoteResponse(raw: string): { title: string; items: QuoteLi
 // pattern as draftDocument() and suggestFields().
 export async function extractQuoteLineItems(
   description: string,
-  provider: AIProvider = "mistral"
+  provider: AIProvider = "mistral",
+  // Defensive fallback to English, same precedent as draftDocument() — a
+  // bad/unsupported code (stale client, direct API call) shouldn't error,
+  // it should just quote in English.
+  language: string = "en"
 ): Promise<QuoteDraftResult> {
   const descriptionError = validateDescription(description);
   if (descriptionError) return { error: descriptionError };
+
+  const languageCode = isSupportedDraftLang(language) ? language : "en";
 
   let raw = "";
   try {
@@ -110,7 +120,7 @@ export async function extractQuoteLineItems(
       await generateAIText({
         provider,
         tier: "fast",
-        prompt: PROMPT(description.trim()),
+        prompt: PROMPT(description.trim(), draftLanguageLabel(languageCode)),
         maxTokens: 1500,
       })
     ).trim();

@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { isFieldLabelLine, wrapText, type GeneratedPdf } from "@/lib/text-to-pdf";
 import type { QuoteTotals } from "@/lib/quote-types";
+import { ql } from "@/lib/quote-labels";
 
 // A genuinely tabular layout (columns + a totals block), unlike
 // text-to-pdf.ts's plain wrapped-paragraph rendering — a quote needs real
@@ -74,6 +75,12 @@ export type QuoteRenderInput = {
   validUntilIso: string | null;
   notes: string | null;
   totals: QuoteTotals;
+  // Draft-language code (see ai-draft-types.ts's DRAFT_LANGUAGES) — shapes
+  // every static label this renderer draws (FROM, Bill to, Subtotal, the
+  // Signature/Print Name/Date block, etc.), independent of what language
+  // the AI-generated line items/title already came back in. Defaults to
+  // English at the call site (quotes/finalize/route.ts) for a missing value.
+  language: string;
 };
 
 // A space before the number for multi-letter symbols ("CHF 150.00"), none
@@ -138,8 +145,8 @@ export async function quoteToPdf(input: QuoteRenderInput): Promise<GeneratedPdf>
   // Amara Okafor's workspace") and the wrap is a hard line break, not
   // word-wrap, so it can never overflow into the next column regardless
   // of length.
-  function drawFromBlock(x: number, lines: string[]) {
-    page.drawText("FROM", { x, y, size: HEADER_LABEL_SIZE, font: boldFont, color: MUTED });
+  function drawFromBlock(x: number, label: string, lines: string[]) {
+    page.drawText(label.toUpperCase(), { x, y, size: HEADER_LABEL_SIZE, font: boldFont, color: MUTED });
     lines.forEach((line, i) => {
       page.drawText(line, { x, y: y - 14 - i * 13, size: HEADER_VALUE_SIZE, font, color: DARK });
     });
@@ -156,25 +163,39 @@ export async function quoteToPdf(input: QuoteRenderInput): Promise<GeneratedPdf>
   // than one concatenated line, see drawFromBlock above.
   const rightColX = MARGIN + DESC_COL_WIDTH / 2 + 40;
   const fromLines = input.preparedByName ? [input.preparedByName, input.fromName || "—"] : [input.fromName || "—"];
-  drawFromBlock(MARGIN, fromLines);
+  drawFromBlock(MARGIN, ql("from", input.language), fromLines);
   drawLabelValue(
     rightColX,
-    "Bill to",
+    ql("billTo", input.language),
     input.billToEmail ? `${input.billToName || "—"} (${input.billToEmail})` : input.billToName || "—"
   );
   // Same 26px gap below the value block as every other header row -- just
   // measured from wherever FROM's last line landed, which varies with
   // fromLines.length.
   y -= 40 + (fromLines.length - 1) * 13;
-  drawLabelValue(MARGIN, "Quote date", formatDate(input.quoteDateIso));
-  if (input.validUntilIso) drawLabelValue(rightColX, "Valid until", formatDate(input.validUntilIso));
+  drawLabelValue(MARGIN, ql("quoteDate", input.language), formatDate(input.quoteDateIso));
+  if (input.validUntilIso) drawLabelValue(rightColX, ql("validUntil", input.language), formatDate(input.validUntilIso));
   y -= 40;
 
   // Table header row
-  page.drawText("DESCRIPTION", { x: COL_DESC_X, y, size: TABLE_HEADER_SIZE, font: boldFont, color: MUTED });
-  rightAlignedText(page, "QTY", COL_QTY_RIGHT, y, TABLE_HEADER_SIZE, boldFont, MUTED);
-  rightAlignedText(page, "UNIT PRICE", COL_PRICE_RIGHT, y, TABLE_HEADER_SIZE, boldFont, MUTED);
-  rightAlignedText(page, "AMOUNT", COL_AMOUNT_RIGHT, y, TABLE_HEADER_SIZE, boldFont, MUTED);
+  page.drawText(ql("description", input.language).toUpperCase(), {
+    x: COL_DESC_X,
+    y,
+    size: TABLE_HEADER_SIZE,
+    font: boldFont,
+    color: MUTED,
+  });
+  rightAlignedText(page, ql("qty", input.language).toUpperCase(), COL_QTY_RIGHT, y, TABLE_HEADER_SIZE, boldFont, MUTED);
+  rightAlignedText(
+    page,
+    ql("unitPrice", input.language).toUpperCase(),
+    COL_PRICE_RIGHT,
+    y,
+    TABLE_HEADER_SIZE,
+    boldFont,
+    MUTED
+  );
+  rightAlignedText(page, ql("amount", input.language).toUpperCase(), COL_AMOUNT_RIGHT, y, TABLE_HEADER_SIZE, boldFont, MUTED);
   y -= 8;
   page.drawLine({ start: { x: MARGIN, y }, end: { x: RIGHT_EDGE, y }, thickness: 1, color: RULE });
   y -= 16;
@@ -201,23 +222,29 @@ export async function quoteToPdf(input: QuoteRenderInput): Promise<GeneratedPdf>
   page.drawLine({ start: { x: COL_PRICE_LEFT, y }, end: { x: RIGHT_EDGE, y }, thickness: 1, color: RULE });
   y -= 20;
 
-  page.drawText("Subtotal", { x: COL_PRICE_LEFT, y, size: TOTALS_SIZE, font, color: MUTED });
+  page.drawText(ql("subtotal", input.language), { x: COL_PRICE_LEFT, y, size: TOTALS_SIZE, font, color: MUTED });
   rightAlignedText(page, formatAmount(input.currency, input.totals.subtotal), COL_AMOUNT_RIGHT, y, TOTALS_SIZE, font);
   y -= 20;
 
   if (input.totals.taxRatePercent > 0) {
-    page.drawText(`Tax (${input.totals.taxRatePercent}%)`, { x: COL_PRICE_LEFT, y, size: TOTALS_SIZE, font, color: MUTED });
+    page.drawText(`${ql("tax", input.language)} (${input.totals.taxRatePercent}%)`, {
+      x: COL_PRICE_LEFT,
+      y,
+      size: TOTALS_SIZE,
+      font,
+      color: MUTED,
+    });
     rightAlignedText(page, formatAmount(input.currency, input.totals.taxAmount), COL_AMOUNT_RIGHT, y, TOTALS_SIZE, font);
     y -= 20;
   }
 
-  page.drawText("Total", { x: COL_PRICE_LEFT, y, size: TOTALS_TOTAL_SIZE, font: boldFont, color: DARK });
+  page.drawText(ql("total", input.language), { x: COL_PRICE_LEFT, y, size: TOTALS_TOTAL_SIZE, font: boldFont, color: DARK });
   rightAlignedText(page, formatAmount(input.currency, input.totals.total), COL_AMOUNT_RIGHT, y, TOTALS_TOTAL_SIZE, boldFont);
   y -= 32;
 
   if (input.notes && input.notes.trim()) {
     ensureSpace(40);
-    page.drawText("NOTES", { x: MARGIN, y, size: HEADER_LABEL_SIZE, font: boldFont, color: MUTED });
+    page.drawText(ql("notes", input.language).toUpperCase(), { x: MARGIN, y, size: HEADER_LABEL_SIZE, font: boldFont, color: MUTED });
     y -= 14;
     for (const wrapped of wrapText(input.notes.trim(), font, BODY_SIZE, RIGHT_EDGE - MARGIN)) {
       ensureSpace(ROW_LINE_HEIGHT);
@@ -236,7 +263,13 @@ export async function quoteToPdf(input: QuoteRenderInput): Promise<GeneratedPdf>
   // sender's own offer; only the recipient needs to accept it.
   y -= 20;
   ensureSpace(18 + SIGNATURE_LINE_HEIGHT * 3);
-  page.drawText("CLIENT ACCEPTANCE", { x: MARGIN, y, size: HEADER_LABEL_SIZE, font: boldFont, color: MUTED });
+  page.drawText(ql("clientAcceptance", input.language).toUpperCase(), {
+    x: MARGIN,
+    y,
+    size: HEADER_LABEL_SIZE,
+    font: boldFont,
+    color: MUTED,
+  });
   y -= 22;
   // Bill-to name (2026-07-23) is baked directly onto the Print Name line,
   // not just kept in the Bill To header above -- suggest-fields.ts's prompt
@@ -249,8 +282,9 @@ export async function quoteToPdf(input: QuoteRenderInput): Promise<GeneratedPdf>
   // the same loop AI-drafted documents already close via their own
   // placeholder-vs-real-name signature blocks. Falls back to a blank label
   // (unchanged prior behavior) when no Bill To name was entered.
-  const printNameLine = input.billToName.trim() ? `Print Name: ${input.billToName.trim()}` : "Print Name:";
-  for (const rawLine of ["Signature:", printNameLine, "Date:"]) {
+  const printNameLabel = ql("printName", input.language);
+  const printNameLine = input.billToName.trim() ? `${printNameLabel} ${input.billToName.trim()}` : printNameLabel;
+  for (const rawLine of [ql("signature", input.language), printNameLine, ql("date", input.language)]) {
     const wrapped = wrapText(rawLine, font, BODY_SIZE, RIGHT_EDGE - MARGIN);
     for (let i = 0; i < wrapped.length; i++) {
       // Only the label's own (last) wrapped line gets the bigger
