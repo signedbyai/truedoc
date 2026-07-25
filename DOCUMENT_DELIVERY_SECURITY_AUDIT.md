@@ -6,6 +6,9 @@ button, alongside two questions: could R2 CORS/hotlink settings be the cause, an
 signed-in users share a document link and bypass per-recipient security. This document
 covers both, plus a reproduction test and what established e-signature products do.
 
+See `DOCUMENT_ARCHITECTURE.md` for a maintained diagram of this same system, kept in sync
+with the code as it changes.
+
 ## TL;DR
 
 1. **A real, critical bug, confirmed and reproduced**: per-recipient email-OTP verification
