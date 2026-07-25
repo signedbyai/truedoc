@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSignerByToken } from "@/lib/signing";
+import { getSignerByToken, requireVerifiedSigner } from "@/lib/signing";
 import { getOrCreateDocumentSummary } from "@/lib/summarize-document";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
@@ -19,7 +19,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
 
   const result = await getSignerByToken(token);
   if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const { document } = result;
+  const { signer, document } = result;
+  const authGate = requireVerifiedSigner(signer);
+  if (authGate) return authGate;
 
   const lang = new URL(request.url).searchParams.get("lang") || "en";
   const outcome = await getOrCreateDocumentSummary(document.id, lang);

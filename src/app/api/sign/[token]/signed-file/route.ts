@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getFromR2 } from "@/lib/r2";
-import { getSignerByToken } from "@/lib/signing";
+import { getSignerByToken, requireVerifiedSigner } from "@/lib/signing";
 
 // Lets a signer download their own copy of the final signed PDF once the
 // document is complete, using the same token-scoped access as the other
@@ -9,7 +9,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   const { token } = await params;
   const result = await getSignerByToken(token);
   if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const { admin, document } = result;
+  const { admin, signer, document } = result;
+  const authGate = requireVerifiedSigner(signer);
+  if (authGate) return authGate;
 
   const { data: doc } = await admin
     .from("documents")

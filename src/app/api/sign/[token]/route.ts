@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSignerByToken } from "@/lib/signing";
+import { getSignerByToken, requireVerifiedSigner } from "@/lib/signing";
 import { visibleFieldsForSigner } from "@/lib/field-visibility";
 
 export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
@@ -7,6 +7,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
   const result = await getSignerByToken(token);
   if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const { admin, signer, document } = result;
+  const authGate = requireVerifiedSigner(signer);
+  if (authGate) return authGate;
 
   // Mark viewed the first time this link is opened (idempotent — only fires
   // from pending/sent, never regresses a signed/declined signer).

@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildSpeedStat, type SpeedStat } from "@/lib/speed-stat";
 
@@ -52,4 +53,30 @@ export async function getSignerByToken(token: string) {
   if (!document) return null;
 
   return { admin, signer, document };
+}
+
+/**
+ * Fix for the 2026-07-25 audit finding (DOCUMENT_DELIVERY_SECURITY_AUDIT.md):
+ * per-recipient email-OTP verification (signer.auth_required/auth_verified_at,
+ * PER_RECIPIENT_AUTH_SCOPE.md) used to be checked ONLY inside
+ * sign/[token]/page.tsx's render — none of the API routes that page's client
+ * components call re-checked it, so anyone holding a signer's raw
+ * signing_token could bypass the "Confirm it's you" code challenge entirely
+ * via direct API calls (confirmed with a real reproduction test).
+ *
+ * Every signer-facing API route that returns document content or lets the
+ * signer act — view, file, signed-file, summary, submit, decline, status,
+ * the page-view beacon, payment-click — MUST call this immediately after
+ * getSignerByToken() and return its result if non-null. The two exceptions
+ * are /auth/request and /auth/verify: those have to work BEFORE verification,
+ * since completing them is how a signer becomes verified in the first place.
+ * sign/[token]/page.tsx also doesn't call this — it needs the unverified
+ * signer's own data to render the SignerAuthGate screen, and already does
+ * the equivalent check inline for that one purpose.
+ */
+export function requireVerifiedSigner(signer: { auth_required: boolean; auth_verified_at: string | null }) {
+  if (signer.auth_required && !signer.auth_verified_at) {
+    return NextResponse.json({ error: "Verify your identity to continue.", authRequired: true }, { status: 401 });
+  }
+  return null;
 }

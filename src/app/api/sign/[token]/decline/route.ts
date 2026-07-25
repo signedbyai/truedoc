@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSignerByToken } from "@/lib/signing";
+import { getSignerByToken, requireVerifiedSigner } from "@/lib/signing";
 import { sendDeclineNotificationEmail } from "@/lib/email";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
@@ -22,6 +22,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   const result = await getSignerByToken(token);
   if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const { admin, signer, document } = result;
+  const authGate = requireVerifiedSigner(signer);
+  if (authGate) return authGate;
 
   if (signer.status === "signed") {
     return NextResponse.json({ error: "You've already signed this document." }, { status: 400 });

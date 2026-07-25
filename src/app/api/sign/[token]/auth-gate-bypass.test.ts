@@ -1,32 +1,27 @@
 import { describe, expect, it, vi } from "vitest";
 
-// CRITICAL SECURITY FINDING (audited 2026-07-25, see
+// Regression test for the 2026-07-25 audit finding (see
 // DOCUMENT_DELIVERY_SECURITY_AUDIT.md): per-recipient email-OTP verification
-// (signer.auth_required / auth_verified_at, PER_RECIPIENT_AUTH_SCOPE.md) is
-// enforced ONLY inside src/app/sign/[token]/page.tsx's server component — the
-// line `if (signer.auth_required && !signer.auth_verified_at) return
-// <SignerAuthGate .../>`. Every one of the underlying data API routes that
-// the signing page's own client components call (GET .../view, GET .../file,
-// GET .../signed-file, POST .../submit, POST .../decline, GET .../status, GET
-// .../summary, POST .../payment-click) calls the exact same getSignerByToken()
-// helper but never re-checks auth_required/auth_verified_at itself.
+// (signer.auth_required / auth_verified_at, PER_RECIPIENT_AUTH_SCOPE.md) used
+// to be enforced ONLY inside src/app/sign/[token]/page.tsx's server
+// component. Every one of the underlying data API routes that page's client
+// components call (GET .../ (view), GET .../file, GET .../signed-file, POST
+// .../submit, POST .../decline, GET .../status, GET .../summary, POST
+// .../payment-click) called the exact same getSignerByToken() helper but
+// never re-checked auth_required/auth_verified_at itself — so anyone with a
+// signer's raw signing_token could bypass the OTP challenge entirely via
+// direct API calls (curl, fetch, a script). Confirmed with a real
+// reproduction before the fix (both routes below returned 200 with real
+// data for an unverified signer).
 //
-// That means the OTP gate is a UI skin, not an access control: anyone who has
-// a signer's raw signing_token (whether they were sent it, guessed it, or it
-// was forwarded/shared) can call these routes directly — with curl, fetch, or
-// a script — and view the document, read the AI summary, and fully sign or
-// decline it, without ever completing the email code challenge the sender
-// explicitly turned on for that recipient.
-//
-// This test builds a signer fixture with auth_required: true and
-// auth_verified_at: null (an org that turned on per-recipient verification,
-// for a recipient who has NOT yet passed it) and calls the real route
-// handlers directly. It currently documents the bypass by asserting the
-// routes still return 200 with real data. Once the shared guard proposed in
-// the audit doc is added, these assertions should be flipped to expect a 401
-// so this becomes a regression test instead of a bug report.
+// Fixed by src/lib/signing.ts's requireVerifiedSigner(), called at the top
+// of every affected route right after getSignerByToken(). This test now
+// asserts the gate actually blocks an unverified signer (401) AND that a
+// verified signer still gets normal access (200) — so a future edit that
+// removes the guard, or a new route that forgets to add it, would be caught
+// here.
 
-const baseSigner = {
+const unverifiedSigner = {
   id: "signer-1",
   document_id: "doc-1",
   name: "Daniil Potapov",
@@ -38,6 +33,8 @@ const baseSigner = {
   auth_required: true,
   auth_verified_at: null as string | null,
 };
+
+const verifiedSigner = { ...unverifiedSigner, auth_verified_at: "2026-07-25T12:00:00.000Z" };
 
 const baseDocument = {
   id: "doc-1",
@@ -57,10 +54,9 @@ const baseDocument = {
 // `this` is thenable so `await admin.from(table).select(...).eq(...).single()`
 // resolves to whatever fixed row this table was configured with. Good enough
 // for the handful of admin.from(...) chains these routes make once
-// getSignerByToken has already returned — we're proving the auth gate is
-// missing, not exercising every downstream write. Keyed by table name since
-// e.g. file/route.ts needs a real `documents.file_path` row back, not an
-// empty default.
+// getSignerByToken has already returned. Keyed by table name since e.g.
+// file/route.ts needs a real `documents.file_path` row back, not an empty
+// default.
 function makeAdminStub(rowsByTable: Record<string, unknown> = {}) {
   return {
     from: (table: string) => {
@@ -80,14 +76,20 @@ function makeAdminStub(rowsByTable: Record<string, unknown> = {}) {
   };
 }
 
-vi.mock("@/lib/signing", () => ({
-  getSignerByToken: vi.fn(async () => ({
-    admin: makeAdminStub({ documents: { file_path: "org-1/doc-1/original.pdf" } }),
-    signer: { ...baseSigner },
-    document: { ...baseDocument },
-  })),
-  fetchSignerSpeedStat: vi.fn(async () => null),
-}));
+let currentSigner = unverifiedSigner;
+
+vi.mock("@/lib/signing", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/signing")>("@/lib/signing");
+  return {
+    ...actual,
+    getSignerByToken: vi.fn(async () => ({
+      admin: makeAdminStub({ documents: { file_path: "org-1/doc-1/original.pdf" } }),
+      signer: { ...currentSigner },
+      document: { ...baseDocument },
+    })),
+    fetchSignerSpeedStat: vi.fn(async () => null),
+  };
+});
 
 vi.mock("@/lib/r2", () => ({
   getFromR2: vi.fn(async () => ({
@@ -96,28 +98,82 @@ vi.mock("@/lib/r2", () => ({
   })),
 }));
 
-describe("per-recipient OTP gate — bypass via direct API calls", () => {
-  it("GET /api/sign/[token]/view returns the document's fields with no auth_verified_at check", async () => {
+// submit/route.ts and decline/route.ts check the rate limit BEFORE calling
+// getSignerByToken, and the real checkRateLimit() spins up a live Supabase
+// admin client — irrelevant to what this test is verifying, and it throws
+// in this environment with no Supabase env vars set. Stub it out so the
+// auth-gate check (which runs right after) is what's actually exercised.
+vi.mock("@/lib/rate-limit", () => ({
+  checkRateLimit: vi.fn(async () => true),
+  getClientIp: vi.fn(() => "127.0.0.1"),
+}));
+
+describe("per-recipient OTP gate — every route blocks an unverified signer", () => {
+  it("GET /api/sign/[token] (view) returns 401 for an unverified signer", async () => {
+    currentSigner = unverifiedSigner;
     const { GET } = await import("./route");
     const res = await GET(new Request("https://signedby.ai/api/sign/tok"), {
       params: Promise.resolve({ token: "tok" }),
     });
-    // This is the bug: an unverified recipient's raw signing_token is enough
-    // to read back the document title and field list, the same content the
-    // OTP gate exists to withhold until the code challenge passes.
+    expect(res.status).toBe(401);
+  });
+
+  it("GET /api/sign/[token]/file returns 401 for an unverified signer", async () => {
+    currentSigner = unverifiedSigner;
+    const { GET } = await import("./file/route");
+    const res = await GET(new Request("https://signedby.ai/api/sign/tok/file"), {
+      params: Promise.resolve({ token: "tok" }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("POST /api/sign/[token]/submit returns 401 for an unverified signer", async () => {
+    currentSigner = unverifiedSigner;
+    const { POST } = await import("./submit/route");
+    const res = await POST(
+      new Request("https://signedby.ai/api/sign/tok/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ consent: true, values: {} }),
+      }),
+      { params: Promise.resolve({ token: "tok" }) }
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("POST /api/sign/[token]/decline returns 401 for an unverified signer", async () => {
+    currentSigner = unverifiedSigner;
+    const { POST } = await import("./decline/route");
+    const res = await POST(
+      new Request("https://signedby.ai/api/sign/tok/decline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }),
+      { params: Promise.resolve({ token: "tok" }) }
+    );
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("per-recipient OTP gate — a verified signer keeps normal access", () => {
+  it("GET /api/sign/[token] (view) still returns 200 once auth_verified_at is set", async () => {
+    currentSigner = verifiedSigner;
+    const { GET } = await import("./route");
+    const res = await GET(new Request("https://signedby.ai/api/sign/tok"), {
+      params: Promise.resolve({ token: "tok" }),
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.document.title).toBe(baseDocument.title);
   });
 
-  it("GET /api/sign/[token]/file streams the actual PDF bytes with no auth_verified_at check", async () => {
+  it("GET /api/sign/[token]/file still streams the PDF once auth_verified_at is set", async () => {
+    currentSigner = verifiedSigner;
     const { GET } = await import("./file/route");
     const res = await GET(new Request("https://signedby.ai/api/sign/tok/file"), {
       params: Promise.resolve({ token: "tok" }),
     });
-    // The signer never saw the OTP screen resolve, yet the raw signed PDF
-    // bytes come back with a 200 and the right content type — the exact
-    // "8 expected pages" document a verified signer would see.
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toBe("application/pdf");
   });

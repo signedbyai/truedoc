@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSignerByToken } from "@/lib/signing";
+import { getSignerByToken, requireVerifiedSigner } from "@/lib/signing";
 import { planHasFeature } from "@/lib/plan";
 import { bodySchema } from "./schema";
 
@@ -14,6 +14,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   const result = await getSignerByToken(token);
   if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const { admin, signer, document } = result;
+  const authGate = requireVerifiedSigner(signer);
+  if (authGate) return authGate;
 
   const json = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);

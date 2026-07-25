@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSignerByToken } from "@/lib/signing";
+import { getSignerByToken, requireVerifiedSigner } from "@/lib/signing";
 
 // Best-effort tracking only — there's no way to know whether the signer
 // actually completed payment on the external site, just that they clicked
@@ -10,6 +10,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   const result = await getSignerByToken(token);
   if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const { admin, signer, document } = result;
+  const authGate = requireVerifiedSigner(signer);
+  if (authGate) return authGate;
 
   await admin.from("audit_events").insert({
     document_id: document.id,

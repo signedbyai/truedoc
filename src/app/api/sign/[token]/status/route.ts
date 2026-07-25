@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSignerByToken, fetchSignerSpeedStat } from "@/lib/signing";
+import { getSignerByToken, fetchSignerSpeedStat, requireVerifiedSigner } from "@/lib/signing";
 
 // Lightweight, read-only status check used by the signer client to recover
 // from a lost submit response: if the network drops on the way back from
@@ -12,6 +12,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   const result = await getSignerByToken(token);
   if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const { admin, signer, document } = result;
+  const authGate = requireVerifiedSigner(signer);
+  if (authGate) return authGate;
 
   const speedStat = signer.status === "signed" ? await fetchSignerSpeedStat(admin, signer.id) : null;
 

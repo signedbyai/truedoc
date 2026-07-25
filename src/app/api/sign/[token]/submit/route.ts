@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSignerByToken, fetchSignerSpeedStat } from "@/lib/signing";
+import { getSignerByToken, fetchSignerSpeedStat, requireVerifiedSigner } from "@/lib/signing";
 import { sendSignerInviteEmail, sendCompletionEmail, sendSignerDocGateEmail, appUrl } from "@/lib/email";
 import { generateSignedPdf } from "@/lib/generate-signed-pdf";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
@@ -20,6 +20,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   const result = await getSignerByToken(token);
   if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const { admin, signer, document } = result;
+  const authGate = requireVerifiedSigner(signer);
+  if (authGate) return authGate;
 
   if (signer.status === "signed") {
     // Idempotent replay. A signer whose submit succeeded server-side but
