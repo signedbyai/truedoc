@@ -275,13 +275,20 @@ Sources:
 
 ---
 
-## Summary / decisions needed from you
+## Summary / decisions — resolved 2026-07-25
 
-1. **Fix the OTP bypass (Finding 1)?** This is the one I'd treat as urgent — every org that's
-   turned on per-recipient verification currently has no real enforcement of it. I can build
-   the shared-guard fix across the 8 routes; say the word.
-2. **Add server-side retry-with-backoff to `getFromR2()` (Finding 3, #1)?** Small, low-risk,
-   directly matches the documented R2 behavior under load.
+1. **Fix the OTP bypass (Finding 1) — DONE.** `requireVerifiedSigner()` added to
+   `src/lib/signing.ts`, called right after `getSignerByToken()` in all 9 affected routes
+   (view, file, signed-file, summary, submit, decline, status, payment-click, page-view
+   beacon). `auth-gate-bypass.test.ts` flipped from documenting the bug to a regression test:
+   an unverified signer now gets 401 on view/file/submit/decline; a verified signer still
+   gets normal 200 access. tsc/eslint clean, full suite 442/442. Commit `2bc7d8a` on master,
+   not yet pushed.
+2. **Add server-side retry-with-backoff to `getFromR2()` (Finding 3, #1) — DONE.** Up to 3
+   attempts, 200ms base delay doubling, skips retrying a genuine NoSuchKey/NotFound. New
+   `r2.test.ts` covers the healthy path, one-transient-failure recovery, exhausting retries,
+   and not retrying a real missing object. tsc/eslint clean, full suite 446/446. Commit
+   `10e5803` on master, not yet pushed.
 3. **CORS/hotlink**: nothing to do — ruled out for this path, no action needed.
-4. **Mobile-carrier theory**: needs real-device testing to confirm or rule out, not a code
-   change on its own yet.
+4. **Mobile-carrier theory**: still needs real-device testing to confirm or rule out, not a
+   code change on its own.
