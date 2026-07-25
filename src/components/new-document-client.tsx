@@ -279,9 +279,18 @@ export function NewDocumentClient({
                   <p className="text-sm font-medium text-slate-900">{file.name}</p>
                 ) : (
                   <>
-                    <p className="text-sm font-medium text-slate-900">
-                      <span className="next-step-highlight">Click to choose a PDF, or drag one here</span>
-                    </p>
+                    {/* No next-step-highlight here on purpose (2026-07-25) — a
+                        dashed drop-zone with this copy already reads as an
+                        upload target without help, and the sweep only made
+                        this screen busier: it fired at the same time as the
+                        two ai-comet tab glows above, so three things
+                        animated for attention at once with nothing clearly
+                        primary. Dropping it here keeps next-step-highlight's
+                        "genuinely non-obvious" meaning intact for the sites
+                        that still use it (sign button, add recipient,
+                        docgate link) and leaves the AI tab glow as the one
+                        thing this screen draws the eye to. */}
+                    <p className="text-sm font-medium text-slate-900">Click to choose a PDF, or drag one here</p>
                     <p className="mt-1 text-xs text-slate-500">Up to 25MB</p>
                   </>
                 )}
