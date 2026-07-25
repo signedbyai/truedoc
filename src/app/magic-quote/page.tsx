@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FlagValues } from "flags/react";
 import { Logo } from "@/components/logo";
 import { CtaLink } from "@/components/cta-link";
+import { LanguageSupportRow } from "@/components/language-support-row";
 import { ctaColorFlag } from "@/flags";
 
 const TITLE = "Magic Quote — describe the job, get a line-item price quote | SignedBy";
@@ -44,6 +45,10 @@ const FAQ = [
   {
     q: "What currencies does it support?",
     a: "Magic Quote defaults to your local currency automatically and lets you switch to any of SignedBy's supported currencies before you send.",
+  },
+  {
+    q: "What languages does it support?",
+    a: "English, Spanish, French, German, Portuguese, Dutch, and Italian — pick a language on the describe step and everything switches, including the quote PDF itself (labels, signature block, and the AI-generated line items).",
   },
 ];
 
@@ -95,6 +100,7 @@ export default async function MagicQuotePage() {
           </CtaLink>
           <p className="text-xs text-slate-400">Free on every plan, including Free. No credit card required.</p>
         </div>
+        <LanguageSupportRow />
       </section>
 
       {/* Real product screenshot, not an illustration — same rationale as the
@@ -158,6 +164,9 @@ export default async function MagicQuotePage() {
         <CtaLink href={START_HREF} className="mt-5" color={ctaColor} page="magic-quote" position="footer">
           Start for free →
         </CtaLink>
+        <div className="mt-5">
+          <LanguageSupportRow />
+        </div>
       </section>
 
       <section className="mx-auto w-full max-w-3xl pb-12 px-6">
