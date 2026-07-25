@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { UploadCloud, Upload, Sparkles, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -160,7 +161,16 @@ export function NewDocumentClient({
                 : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
             )}
           >
-            Upload a file
+            {/* Icons on all three tabs (2026-07-25) so AI Drafter/Magic Quote
+                read as distinct from plain upload even without the ai-comet
+                glow — reduced-motion visitors only get a static ring, and
+                color/motion alone shouldn't be the only signal. Small
+                (h-3.5) and shrink-0 so they hold their size if a label
+                wraps on a narrow column. */}
+            <span className="inline-flex items-center justify-center gap-1.5">
+              <Upload className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+              Upload a file
+            </span>
           </button>
           {hasAiDraft ? (
             <button
@@ -179,7 +189,10 @@ export function NewDocumentClient({
                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
               )}
             >
-              AI Drafter
+              <span className="inline-flex items-center justify-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                AI Drafter
+              </span>
             </button>
           ) : (
             // Same shape/position as the real tab so the feature is still
@@ -195,7 +208,10 @@ export function NewDocumentClient({
                 "border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:text-slate-600"
               )}
             >
-              AI Drafter · Starter+
+              <span className="inline-flex items-center justify-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                AI Drafter · Starter+
+              </span>
             </a>
           )}
           {/* Free on every plan (2026-07-21) — no locked/upsell state needed,
@@ -213,7 +229,10 @@ export function NewDocumentClient({
                 : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
             )}
           >
-            Magic Quote
+            <span className="inline-flex items-center justify-center gap-1.5">
+              <Receipt className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+              Magic Quote
+            </span>
           </button>
         </div>
 
@@ -244,7 +263,10 @@ export function NewDocumentClient({
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle>New document</CardTitle>
+              {/* Was "New document" — identical to the page's own h1 right
+                  above it (2026-07-25). Matches the tab's own label instead,
+                  same as how the Magic Quote tab/card title already agree. */}
+              <CardTitle>Upload a file</CardTitle>
               <CardDescription>Upload a PDF, then place signature fields on the next screen.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -279,6 +301,10 @@ export function NewDocumentClient({
                   <p className="text-sm font-medium text-slate-900">{file.name}</p>
                 ) : (
                   <>
+                    {/* Icon above the copy (2026-07-25) — the standard
+                        Dropbox/Drive/Notion drop-zone shape, so the
+                        interaction reads before anyone parses the sentence. */}
+                    <UploadCloud className="mb-2 h-8 w-8 text-slate-400" strokeWidth={1.5} />
                     {/* No next-step-highlight here on purpose (2026-07-25) — a
                         dashed drop-zone with this copy already reads as an
                         upload target without help, and the sweep only made
