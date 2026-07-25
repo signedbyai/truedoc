@@ -9,6 +9,19 @@ describe("isFieldLabelLine", () => {
     }
   });
 
+  it("matches longer translated 'Print Name:' labels that exceed the old 24-char/3-word limit", () => {
+    // Regression test for 2026-07-25: found via code inspection while
+    // checking language coverage after a real Dutch Magic Quote test — the
+    // Dutch/German labels happen to fit the old 24-char/3-word limit, but
+    // Spanish (27 chars/5 words) and French (24 chars/4 words) don't. A
+    // blank (no name yet) line in either language was wrongly denied the
+    // extra field-placement spacing. See quote-labels.ts's printName
+    // translations.
+    for (const line of ["Nombre en letra de imprenta:", "Nom en lettres capitales :"]) {
+      expect(isFieldLabelLine(line), line).toBe(true);
+    }
+  });
+
   it("does not match body sentences or long headings that merely contain a colon", () => {
     for (const line of [
       "The following terms apply: the parties agree to the schedule below.",

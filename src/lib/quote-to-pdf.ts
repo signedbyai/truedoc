@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
-import { isFieldLabelLine, wrapText, type GeneratedPdf } from "@/lib/text-to-pdf";
+import { wrapText, type GeneratedPdf } from "@/lib/text-to-pdf";
 import type { QuoteTotals } from "@/lib/quote-types";
 import { ql } from "@/lib/quote-labels";
 
@@ -288,11 +288,26 @@ export async function quoteToPdf(input: QuoteRenderInput): Promise<GeneratedPdf>
     const wrapped = wrapText(rawLine, font, BODY_SIZE, RIGHT_EDGE - MARGIN);
     for (let i = 0; i < wrapped.length; i++) {
       // Only the label's own (last) wrapped line gets the bigger
-      // field-placement gap -- same rule text-to-pdf.ts uses, so an
-      // unusually long business name that fails isFieldLabelLine's length
-      // guard just wraps like normal paragraph text instead of mis-reserving
-      // room for a field on every wrapped segment.
-      const advance = isFieldLabelLine(rawLine) && i === wrapped.length - 1 ? SIGNATURE_LINE_HEIGHT : ROW_LINE_HEIGHT;
+      // field-placement gap. Unlike text-to-pdf.ts's freely AI-generated body
+      // text, these three lines are always one of quote-labels.ts's known
+      // labels (or that label plus the bill-to name) -- never ambiguous
+      // prose -- so there's nothing for isFieldLabelLine's heuristic to
+      // resolve, and always giving the last line the bigger advance is
+      // correct regardless of language.
+      //
+      // This used to run through isFieldLabelLine() the same way
+      // text-to-pdf.ts does, on the reasoning that an unusually long bill-to
+      // name should fall through to normal spacing since no field is needed
+      // there when a name's already filled in. But that heuristic's
+      // `label.length > 24` / `> 3 words` guards also rejected Spanish's and
+      // French's longer "Print Name:" translations even with NO name
+      // attached (2026-07-25) -- the blank-label case that genuinely does
+      // need a field got only ROW_LINE_HEIGHT instead of SIGNATURE_LINE_HEIGHT,
+      // risking a suggested field overlapping the Date line below it. Always
+      // giving the last wrapped line SIGNATURE_LINE_HEIGHT costs a little
+      // unneeded whitespace in the long-filled-name case, which is a much
+      // smaller problem than a field landing on top of text.
+      const advance = i === wrapped.length - 1 ? SIGNATURE_LINE_HEIGHT : ROW_LINE_HEIGHT;
       ensureSpace(advance);
       page.drawText(wrapped[i], { x: MARGIN, y, size: BODY_SIZE, font, color: DARK });
       y -= advance;

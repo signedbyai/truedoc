@@ -31,15 +31,25 @@ const PREPARED_BY_SIZE = 10;
 // signature-block field line ("Signature:", "Print Name: [Client Name]",
 // "Date:", or a translated equivalent). Deliberately conservative so body
 // sentences and long headings that merely contain a colon don't get the extra
-// spacing: the label must be a couple of words and nothing sentence-like may
-// follow the colon.
+// spacing: the label must be short and nothing sentence-like may follow the
+// colon.
+//
+// Label-side thresholds loosened 2026-07-25 (24 chars/3 words -> 40/6): a
+// translated "Print Name:" can run considerably longer than the English
+// original — Spanish's "Nombre en letra de imprenta:" is 27 chars/5 words,
+// past the original limit, so a blank (no-name-yet) line in that language
+// was wrongly denied the extra field-placement spacing below. The `after`
+// check (still 24 chars, still no sentence punctuation) is what actually
+// carries the weight of rejecting real prose — see the "does not match body
+// sentences" test below, where every false-positive case fails on `after`
+// containing a full sentence, not on the label-length guard alone.
 export function isFieldLabelLine(line: string): boolean {
   const t = line.trim();
   const idx = t.indexOf(":");
   if (idx < 1) return false;
   const label = t.slice(0, idx).trim();
   const after = t.slice(idx + 1).trim();
-  if (label.length > 24 || label.split(/\s+/).length > 3) return false;
+  if (label.length > 40 || label.split(/\s+/).length > 6) return false;
   if (after.length > 24 || /[.!?]/.test(after)) return false;
   return true;
 }
