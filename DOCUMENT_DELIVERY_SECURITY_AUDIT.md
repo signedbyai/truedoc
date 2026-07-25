@@ -63,6 +63,53 @@ Two things worth being explicit about, since this is the part you're being asked
 If that's an accurate description of what you intended, that's the part to explicitly sign
 off on — everything below is diagnosis built on top of this model being correct.
 
+### Endpoint used, and whether an AWS-compatible endpoint is needed
+
+`src/lib/r2.ts` already uses the AWS SDK v3 (`@aws-sdk/client-s3`,
+`@aws-sdk/s3-request-presigner`), pointed at R2's **S3-compatible API endpoint**:
+`https://{CLOUDFLARE_R2_ACCOUNT_ID}.r2.cloudflarestorage.com`, region `"auto"`,
+authenticated with an R2 API token's access-key/secret pair (`CLOUDFLARE_R2_ACCESS_KEY_ID`
+/ `CLOUDFLARE_R2_SECRET_ACCESS_KEY`). That's exactly the S3-compatible API the Gemini
+thread recommended over Cloudflare's REST management API (`api.cloudflare.com`) — this app
+was never using the REST API, so there's nothing to migrate. Two distinct operations
+against that one endpoint:
+
+- **Write (upload)**: `getSignedUploadUrl()` creates a presigned `PutObjectCommand` URL;
+  the browser `PUT`s the file straight to that URL. This is the only browser→R2 call in the
+  app.
+- **Read (view/download)**: `getFromR2()` runs a plain `GetObjectCommand` **server-side**
+  (using the account credentials directly, no presigning), buffers the whole object, and
+  the Next.js route hands those bytes back to the browser as its own same-origin response.
+  There's no presigned GET anywhere, and no route redirects the browser to an R2 URL.
+
+### CORS settings, extra headers, ETags — what's actually needed
+
+Given the above, **no R2 CORS changes, extra headers, or ETag exposure are needed for
+viewing/downloading documents** — that path is 100% same-origin from the browser's
+perspective (browser → signedby.ai → [server-side, no CORS applies] → R2), so CORS simply
+never enters into it.
+
+The **only** place CORS matters at all is the presigned-`PUT` upload, and the only thing it
+needs is: `AllowedOrigins` for `signedby.ai` (and `dev.signedby.ai`), `AllowedMethods:
+["PUT"]`, `AllowedHeaders: ["Content-Type"]` — because the presigned URL bakes in a
+specific `Content-Type`, and the upload client (`new-document-client.tsx`) sends
+`Content-Type: application/pdf` on the `PUT`, which has to match what was signed. I
+can't independently re-check the live bucket's CORS policy from here (no Cloudflare
+dashboard/API access in this sandbox — this was set via the dashboard, not tracked as
+code anywhere in the repo, and the README's Cloudflare section predates this feature and
+was never updated). But functionally: a CORS mismatch on a `PUT` fails **every single
+upload**, not intermittently — the browser blocks the response before your code ever sees
+it, and it would have shown up as "uploads never work," not as an occasional signer-side
+load failure. Since presigned uploads have been in production since 2026-07-16 without
+that kind of report, that's good indirect evidence CORS is already fine there — just not a
+substitute for you checking the actual dashboard rule if you want to be certain.
+
+On `ETag` specifically: some upload flows add `ExposeHeaders: ["ETag"]` so client code can
+read the `ETag` off the `PUT` response to verify the upload (common in multipart-upload
+tutorials). This app's upload code doesn't do that — `new-document-client.tsx` only checks
+`putRes.ok` (the HTTP status) and never reads any response header — so exposing `ETag`
+isn't required by anything here. Harmless if it's already set, not worth adding if it isn't.
+
 ---
 
 ## Finding 1: The OTP gate is UI-only (CRITICAL)
