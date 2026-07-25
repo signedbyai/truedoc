@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { UploadCloud, Upload, WandSparkles, Receipt } from "lucide-react";
+import { UploadCloud, Upload, Sparkles, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -190,7 +190,7 @@ export function NewDocumentClient({
               )}
             >
               <span className="inline-flex items-center justify-center gap-1.5">
-                <WandSparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
                 AI Drafter
               </span>
             </button>
@@ -209,7 +209,7 @@ export function NewDocumentClient({
               )}
             >
               <span className="inline-flex items-center justify-center gap-1.5">
-                <WandSparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
                 AI Drafter · Starter+
               </span>
             </a>
