@@ -53,6 +53,13 @@ block belongs to — match it to that party's label. The text after "Name:" is t
 after "Title:" is their "title". A name printed there is a real, stated name: use it. Do not leave "name" null \
 just because the signature line itself is blank — the printed name underneath is what you want.
 
+Signature blocks are often placed SIDE BY SIDE, two columns on the same page (one party's whole block on the \
+left half, the other's on the right half), rather than stacked one after another. When that happens, group each \
+line by which column it's actually in — use its x position, not the order lines happen to appear in the text \
+above — before matching "Name:"/"Title:" lines to a heading or blank. A "Name:" line only belongs to the party \
+whose heading and signature line share roughly the same x as that "Name:" line; two lines at very different x \
+values are in different columns and must not be paired just because one follows the other in reading order.
+
 "company" is the organization the party signs for, usually the entity named in the opening paragraph — in a \
 sentence of the form 'made between <entity A> ("the <label A>") and <entity B> ("the <label B>")', entity A is \
 the company for the party labelled A.
@@ -71,7 +78,9 @@ itself is, using each line's w to find it: for a colon-terminated label like "Si
 the blank comes right AFTER the label, so place the field's x at that label's own x + w (plus a small gap of \
 about 0.01-0.02), never inside its x-to-x+w span and never before it — a field placed at or before the label's \
 own x lands on top of the label text itself, which is wrong. For each field's "role", use the party number it \
-belongs to (0, 1, …), or null if you can't confidently tell or there's only one signer.
+belongs to (0, 1, …), or null if you can't confidently tell or there's only one signer — for a field inside a \
+side-by-side signature block, that's the party whose column (by x position, as above) the field's own label sits \
+in, not the party whose text happens to be nearest in reading order.
 
 Skip any name/title/company blank that's already filled in — if a real value already appears right after \
 "Name:", "Print Name:", "Title:", or "Company:" on the page (not just the bare label with nothing after it, and \
@@ -266,17 +275,25 @@ export function parseCandidates(raw: string, pageCount: number): Candidate[] {
   return out;
 }
 
-// Converts each "click point" candidate into an actual rect the same way
-// manual placement does in field-editor.tsx (centered box of the field
-// type's default size), then runs them through the same overlap-avoidance
-// used for manual/dragged fields (field-geometry.ts, already unit tested)
-// so multiple suggestions never stack on top of each other. Pure/sync so
-// it's cheaply testable without touching Anthropic or pdfjs.
+// Converts each candidate point into an actual rect, then runs it through
+// the same overlap-avoidance used for manual/dragged fields (field-
+// geometry.ts, already unit tested) so multiple suggestions never stack on
+// top of each other. Pure/sync so it's cheaply testable without touching
+// Anthropic or pdfjs.
+//
+// x is the box's LEFT edge, not its center — this must match the PROMPT
+// above, which tells the model to point x at "the label's own x + w", i.e.
+// where the blank itself starts. Treating that as a center (subtracting
+// half the field's width, as this used to do) walks the box's left edge
+// back toward — and for wide fields like signature (0.22) past — the
+// label's own x, landing right back on top of the text it was placed after
+// to avoid. y has no equivalent "starts after a label" instruction from the
+// model, so it's still treated as a vertical center on the line.
 export function placeCandidates(candidates: Candidate[]): FieldSuggestion[] {
   const placed: FieldSuggestion[] = [];
   for (const c of candidates) {
     const def = fieldDef(c.type);
-    const rawX = Math.min(Math.max(c.x - def.width / 2, 0), 1 - def.width);
+    const rawX = Math.min(Math.max(c.x, 0), 1 - def.width);
     const rawY = Math.min(Math.max(c.y - def.height / 2, 0), 1 - def.height);
     const free = findFreePosition(c.page, rawX, rawY, def.width, def.height, placed);
     placed.push({ page: c.page, type: c.type, x: free.x, y: free.y, width: def.width, height: def.height, role: c.role, purpose: c.purpose });

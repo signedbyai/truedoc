@@ -160,15 +160,32 @@ describe("parseParties", () => {
 });
 
 describe("placeCandidates", () => {
-  it("centers each field on its candidate click point using the type's default size", () => {
+  it("places each field's left edge at its candidate x, vertically centered on its candidate y, using the type's default size", () => {
     const candidates: Candidate[] = [{ page: 1, x: 0.5, y: 0.5, type: "checkbox", role: null, purpose: null }];
     const result = placeCandidates(candidates);
     expect(result).toHaveLength(1);
-    // checkbox default size is 0.03/0.03 — centered on (0.5, 0.5).
-    expect(result[0].x).toBeCloseTo(0.5 - 0.015);
+    // checkbox default size is 0.03/0.03 — left edge at x=0.5, vertically
+    // centered on y=0.5. x must NOT be shifted left by half the width: the
+    // PROMPT tells the model x is already where the blank starts (e.g. a
+    // label's own x + w), so treating it as a box center would walk the
+    // field back onto the label it was placed after — see placeCandidates.
+    expect(result[0].x).toBeCloseTo(0.5);
     expect(result[0].y).toBeCloseTo(0.5 - 0.015);
     expect(result[0].width).toBeCloseTo(0.03);
     expect(result[0].height).toBeCloseTo(0.03);
+  });
+
+  it("does not shift a field back onto the label it was placed after (the reported bug: c.x is already the label's end, not a box center to straddle)", () => {
+    // Simulates what the model is instructed to return for a "Signature:"
+    // label ending around x=0.37 (e.g. a label at x=0.25 with w=0.10, plus
+    // the prompt's small gap). The signature field is 0.22 wide — the
+    // widest field type — so the old center-on-x behavior would have
+    // pulled its left edge back to roughly 0.26, landing on top of the
+    // label text itself.
+    const labelEndX = 0.37;
+    const candidates: Candidate[] = [{ page: 1, x: labelEndX, y: 0.5, type: "signature", role: 0, purpose: null }];
+    const result = placeCandidates(candidates);
+    expect(result[0].x).toBeGreaterThanOrEqual(labelEndX);
   });
 
   it("keeps candidates on different pages independent even at the same coordinates", () => {
