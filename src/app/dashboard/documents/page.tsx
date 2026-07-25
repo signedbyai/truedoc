@@ -151,7 +151,7 @@ export default async function DocumentsPage({
                 "flex-1 rounded-lg px-2.5 sm:min-w-[10.5rem] sm:flex-none sm:px-3"
               )}
             >
-              Upload document<span className="hidden sm:inline"> →</span>
+              New document<span className="hidden sm:inline"> →</span>
             </Link>
           </div>
         </div>
@@ -163,7 +163,7 @@ export default async function DocumentsPage({
           </CardHeader>
           <CardContent>
             {/* Search, Status, Sort and Apply all sit at h-9 rounded-lg to match
-                the Upload document button above. They share a row, so a control
+                the New document button above. They share a row, so a control
                 that is 4px taller or squarer than its neighbour is visible
                 immediately. Overridden here rather than in ui/input.tsx: the
                 app-wide version of this change was tried in b0e3748 and rolled

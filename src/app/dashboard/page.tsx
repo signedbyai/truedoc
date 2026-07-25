@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { TimeGreeting } from "@/components/time-greeting";
 import { ReferralCard } from "@/components/referral-card";
 import { AttributionClaim } from "@/components/attribution-claim";
+import { NewDocumentButton } from "@/components/new-document-button";
 
 // Protected dashboard shell — middleware already redirects unauthenticated
 // requests to /login, this is a second server-side check as defense in depth.
@@ -270,7 +271,7 @@ export default async function DashboardPage() {
                 it stays a local override rather than a ui/button.tsx change.
 
                 Equal width, but reached two different ways. From sm up, a
-                shared min-w sized off the longer label ("Upload document →").
+                shared min-w sized off the longer label ("New document →").
                 On mobile, flex-1 instead: a fixed 10.5rem pair needs 344px and
                 the card only offers ~340px even on a 420pt phone, so the min-w
                 wrapped them onto separate lines. Splitting the row equally
@@ -283,7 +284,13 @@ export default async function DashboardPage() {
                 the same size as the rest of the UI, and the arrow is
                 decoration rather than meaning. They're two alternatives for
                 starting a document, and unequal boxes read as a primary with
-                an afterthought beside it. */}
+                an afterthought beside it.
+
+                The right-hand button is a client component (NewDocumentButton),
+                not a plain Link like the one on its left — it owns the
+                first-visit popover explaining AI Drafter/Magic Quote live
+                behind it now too. flex-1/sm:flex-none/sm:min-w live inside
+                that component so it still matches this Link's sizing exactly. */}
             <div className="flex w-full items-center gap-2 sm:w-auto">
               <Link
                 href="/dashboard/templates"
@@ -299,15 +306,7 @@ export default async function DashboardPage() {
                   competing yellows in one viewport cancel each other out.
                   Yellow is worth more kept scarce — it marks "Send for
                   signature", the irreversible step, and nothing else. */}
-              <Link
-                href="/dashboard/documents/new"
-                className={cn(
-                  buttonVariants({ size: "sm" }),
-                  "flex-1 rounded-lg px-2.5 sm:min-w-[10.5rem] sm:flex-none sm:px-3"
-                )}
-              >
-                Upload document<span className="hidden sm:inline"> →</span>
-              </Link>
+              <NewDocumentButton />
             </div>
           </CardHeader>
           <CardContent>
