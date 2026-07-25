@@ -1,5 +1,6 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, CopyObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { withTimeout } from "@/lib/with-timeout";
 
 // Cloudflare R2 is S3-API compatible, so the standard AWS SDK v3 client works
 // unmodified — just point it at R2's endpoint instead of AWS.
@@ -33,13 +34,28 @@ function bucket() {
 const READ_RETRY_ATTEMPTS = 3;
 const READ_RETRY_BASE_DELAY_MS = 200;
 
+// Bounds a single GetObjectCommand attempt. This is deliberately NOT relying
+// on the AWS SDK's own request-timeout config — that only fires for an
+// actual stalled *connection*, and (per the 2026-07-25 audit's follow-up)
+// the more useful failure mode to guard against is R2 simply taking a long
+// time to respond without erroring at all, which the SDK's own retry/timeout
+// machinery won't necessarily catch. withTimeout() is a plain setTimeout
+// race, so it catches both cases and is trivially unit-testable (see
+// with-timeout.test.ts) without needing real network sockets. 8s is
+// generous for what's normally a fast server-to-server hop; worst case with
+// all 3 attempts hanging is ~8s*3 + backoff — if that's ever a concern
+// against this route's actual Vercel function time budget, set an explicit
+// `maxDuration` on the calling route rather than shrinking this further.
+const READ_TIMEOUT_MS = 8000;
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // A missing object won't start existing on a second attempt — only retry
 // errors that plausibly represent a transient condition (network blip, R2's
-// own concurrency-related 5xx), not "this key genuinely doesn't exist."
+// own concurrency-related 5xx, or our own read timing out above), not "this
+// key genuinely doesn't exist."
 function isRetryableR2Error(err: unknown): boolean {
   const name = (err as { name?: string } | undefined)?.name;
   return name !== "NoSuchKey" && name !== "NotFound";
@@ -49,7 +65,7 @@ async function withReadRetry<T>(attempt: () => Promise<T>): Promise<T> {
   let lastErr: unknown;
   for (let i = 0; i < READ_RETRY_ATTEMPTS; i++) {
     try {
-      return await attempt();
+      return await withTimeout(attempt(), READ_TIMEOUT_MS);
     } catch (err) {
       lastErr = err;
       if (!isRetryableR2Error(err) || i === READ_RETRY_ATTEMPTS - 1) throw err;

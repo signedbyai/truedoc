@@ -12,6 +12,14 @@ import { speedStatShareText, type SpeedStat } from "@/lib/speed-stat";
 import { SIGNATURE_STYLES, renderTypedSignature } from "@/lib/signature-styles";
 import { SummaryMarkdown } from "@/lib/summary-markdown";
 import { SignerLoading, type LoadStage } from "@/components/signer-loading";
+import { withTimeout } from "@/lib/with-timeout";
+
+// A load stuck longer than this is treated the same as an outright failure
+// (see DOCUMENT_ARCHITECTURE.md and the 2026-07-25 audit's slow-connection
+// follow-up) — generous, since this is the signer's own connection (mobile,
+// possibly degraded) rather than the fast server-to-server R2 hop, but a
+// signer should never be stuck on the loading skeleton with no recourse.
+const PDF_LOAD_TIMEOUT_MS = 20000;
 
 type FieldType = "signature" | "initials" | "date" | "text" | "checkbox";
 
@@ -237,21 +245,27 @@ export function SigningView({
   const currentCardField = orderedFields[clampedCardIndex] ?? null;
 
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false; // true on real effect cleanup (unmount / token or reloadKey change)
+    // true once PDF_LOAD_TIMEOUT_MS has elapsed for THIS attempt — separate
+    // from `cancelled` because a timeout should still run the normal
+    // retry/error handling below, whereas a real cleanup should not.
+    let timedOut = false;
+    let activeLoadingTask: { destroy?: () => void } | undefined;
 
     async function render() {
       const pdfjsLib = await import("pdfjs-dist");
       // After the first await so these don't count as synchronous setState in
       // an effect body — resets any partial state from a prior (failed) attempt.
-      if (cancelled) return;
+      if (cancelled || timedOut) return;
       setPageCanvases([]);
       setLoadError(false);
       setLoading(true);
       setLoadStage("fetching");
       pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
       const loadingTask = pdfjsLib.getDocument({ url: `/api/sign/${token}/file` });
+      activeLoadingTask = loadingTask;
       const pdf = await loadingTask.promise;
-      if (cancelled) return;
+      if (cancelled || timedOut) return;
       // Document parsed, page count known — the bar can honestly move on.
       setLoadStage("parsing");
 
@@ -266,7 +280,7 @@ export function SigningView({
       // awaits the previous one, so pageCanvases stays correctly ordered
       // without needing a sort.
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-        if (cancelled) return;
+        if (cancelled || timedOut) return;
         const page = await pdf.getPage(pageNum);
         const viewport = page.getViewport({ scale: 1.5 });
         const canvas = document.createElement("canvas");
@@ -274,14 +288,22 @@ export function SigningView({
         canvas.height = viewport.height;
         const ctx = canvas.getContext("2d")!;
         await page.render({ canvas, canvasContext: ctx, viewport }).promise;
-        if (cancelled) return;
+        if (cancelled || timedOut) return;
         const rendered = { page: pageNum, dataUrl: canvas.toDataURL(), width: viewport.width, height: viewport.height };
         setPageCanvases((prev) => [...prev, rendered]);
         setLoading(false);
       }
     }
 
-    render().catch((err) => {
+    // Bounds the whole load (fetch + parse + render) to PDF_LOAD_TIMEOUT_MS —
+    // a load stuck longer than that is treated exactly like an outright
+    // failure below (same silent-retry-once-then-"Try again" path), instead
+    // of leaving the signer on the loading skeleton forever. See
+    // with-timeout.ts and the 2026-07-25 audit's slow-connection follow-up.
+    withTimeout(render(), PDF_LOAD_TIMEOUT_MS, () => {
+      timedOut = true;
+      activeLoadingTask?.destroy?.();
+    }).catch((err) => {
       console.error("Failed to render PDF", err);
       if (cancelled) return;
       if (!autoRetriedRef.current) {
@@ -293,11 +315,25 @@ export function SigningView({
       } else {
         setLoading(false);
         setLoadError(true);
+        // Best-effort visibility (2026-07-25 follow-up): the retry already
+        // failed too, so this is the point the signer actually sees
+        // "Couldn't load this document" — report it so it's not only ever
+        // visible in this browser's own console. Never awaited, never
+        // allowed to affect the signer's experience either way.
+        fetch(`/api/sign/${token}/client-error`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: err instanceof Error ? err.message : String(err),
+            stage: err instanceof Error ? err.name : undefined,
+          }),
+        }).catch(() => {});
       }
     });
 
     return () => {
       cancelled = true;
+      activeLoadingTask?.destroy?.();
     };
   }, [token, reloadKey]);
 

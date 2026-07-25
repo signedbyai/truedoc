@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 // Regression test for the retry-with-backoff added to getFromR2() (see
 // DOCUMENT_DELIVERY_SECURITY_AUDIT.md, Finding 3): R2 is documented to
@@ -78,5 +78,50 @@ describe("getFromR2 retry behavior", () => {
     const { getFromR2 } = await import("./r2");
     await expect(getFromR2("missing/key.pdf")).rejects.toThrow();
     expect(send).toHaveBeenCalledTimes(1);
+  });
+});
+
+// The "slow connection" scenario, as opposed to the "R2 errors outright"
+// scenarios above: send() never rejects at all, it just never resolves —
+// what a stalled read looks like on the wire. Without the read timeout this
+// would hang the whole request indefinitely (see with-timeout.test.ts for
+// the timeout mechanism itself, tested in isolation).
+describe("getFromR2 on a slow/stalled connection", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("times out a hung first attempt, retries, and succeeds once R2 responds", async () => {
+    let callCount = 0;
+    send.mockImplementation(() => {
+      callCount += 1;
+      if (callCount === 1) return new Promise(() => {}); // hangs forever
+      return Promise.resolve({ Body: fakeBody("recovered after a stall"), ContentType: "application/pdf" });
+    });
+    const { getFromR2 } = await import("./r2");
+    const pending = getFromR2("some/key.pdf");
+    // 8s read timeout on the hung first attempt, plus the backoff before
+    // attempt 2 (which then resolves immediately).
+    await vi.advanceTimersByTimeAsync(8000 + 200);
+    const result = await pending;
+    expect(result.body.toString()).toBe("recovered after a stall");
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives up within bounded time if R2 hangs on every attempt", async () => {
+    send.mockImplementation(() => new Promise(() => {}));
+    const { getFromR2 } = await import("./r2");
+    const pending = getFromR2("some/key.pdf");
+    const assertion = expect(pending).rejects.toThrow("Timed out");
+    // 3 attempts of an 8s read timeout each, plus backoff between them —
+    // this is the actual worst-case bound this fix guarantees, instead of
+    // the previous "hangs until Vercel's own platform timeout kills it."
+    await vi.advanceTimersByTimeAsync(8000 + 200 + 8000 + 400 + 8000);
+    await assertion;
+    expect(send).toHaveBeenCalledTimes(3);
   });
 });
