@@ -40,11 +40,13 @@ flowchart TD
             PAYR["payment-click/route.ts"]
             PVR["view/route.ts (dwell-time)"]
             VIEWR["route.ts (fields+doc)"]
+            CLIENTERR["client-error/route.ts"]
         end
 
         UPURL["api/documents/upload-url/route.ts"]
         ORGFILE["api/documents/[id]/file, signed-file, original-file"]
-        R2LIB["lib/r2.ts<br/>uploadToR2 / getSignedUploadUrl<br/>getFromR2 (3x retry-with-backoff)<br/>deleteFromR2 / copyInR2"]
+        R2LIB["lib/r2.ts<br/>uploadToR2 / getSignedUploadUrl<br/>getFromR2 (3x retry-with-backoff,<br/>8s read timeout)"]
+        TIMEOUTLIB["lib/with-timeout.ts<br/>shared timeout-race helper"]
     end
 
     subgraph Supa["Supabase"]
@@ -75,6 +77,7 @@ flowchart TD
     SV -- "POST" --> DECR
     SV -- "POST" --> PAYR
     SV -- "POST" --> PVR
+    SV -- "POST, only after giving up" --> CLIENTERR
 
     FILER --> SIGNLIB
     SIGNEDFR --> SIGNLIB
@@ -85,6 +88,11 @@ flowchart TD
     PAYR --> SIGNLIB
     PVR --> SIGNLIB
     VIEWR --> SIGNLIB
+    CLIENTERR --> SIGNLIB
+    CLIENTERR --> ADMIN
+
+    SV -- "bounds the whole load" --> TIMEOUTLIB
+    R2LIB -- "bounds each read attempt" --> TIMEOUTLIB
 
     FILER --> R2LIB
     SIGNEDFR --> R2LIB
@@ -107,9 +115,11 @@ flowchart TD
 | `page.tsx` | `src/app/sign/[token]/page.tsx` | Entry point for a signing link. Resolves the signer via `getSignerByToken`, renders the OTP gate, a dead-end status screen, or the signing UI. |
 | `signer-auth-gate.tsx` | `src/components/signer-auth-gate.tsx` | The "Confirm it's you" code-entry screen, shown only when `auth_required && !auth_verified_at`. |
 | `lib/signing.ts` | `src/lib/signing.ts` | `getSignerByToken()` (token → signer/document, admin client). `requireVerifiedSigner()` — the shared gate added 2026-07-25; every signer-facing data route must call this right after `getSignerByToken()`. |
-| Signer-facing data routes | `src/app/api/sign/[token]/{route,file,signed-file,summary,submit,decline,status,payment-click,view}/route.ts` | Everything the signing UI calls once rendered — reading fields, streaming the PDF, signing, declining, polling status. All gated by `requireVerifiedSigner`. |
+| Signer-facing data routes | `src/app/api/sign/[token]/{route,file,signed-file,summary,submit,decline,status,payment-click,view,client-error}/route.ts` | Everything the signing UI calls once rendered — reading fields, streaming the PDF, signing, declining, polling status, and (since 2026-07-25) reporting a client-side load failure. All gated by `requireVerifiedSigner`. |
 | `auth/request`, `auth/verify` | `src/app/api/sign/[token]/auth/{request,verify}/route.ts` | The two routes that must work **before** verification — they're how a signer becomes verified. Deliberately not gated by `requireVerifiedSigner`. |
-| `lib/r2.ts` | `src/lib/r2.ts` | All Cloudflare R2 access: `getSignedUploadUrl` (presigned PUT, the only browser↔R2 call), `getFromR2` (server-side `GetObjectCommand`, retries transient failures up to 3x since 2026-07-25), `uploadToR2`/`deleteFromR2`/`copyInR2`. |
+| `lib/r2.ts` | `src/lib/r2.ts` | All Cloudflare R2 access: `getSignedUploadUrl` (presigned PUT, the only browser↔R2 call), `getFromR2` (server-side `GetObjectCommand`, retries transient failures up to 3x, 8s read timeout per attempt since 2026-07-25), `uploadToR2`/`deleteFromR2`/`copyInR2`. |
+| `lib/with-timeout.ts` | `src/lib/with-timeout.ts` | Shared promise-vs-timer race, added 2026-07-25. Bounds `getFromR2`'s per-attempt read (server-side) and `signing-view.tsx`'s whole PDF load (client-side) so a stalled-but-not-erroring connection still fails and surfaces the existing retry/error UI, instead of hanging indefinitely. |
+| `client-error/route.ts` | `src/app/api/sign/[token]/client-error/route.ts` | Best-effort beacon (2026-07-25): `signing-view.tsx` POSTs here once it's given up on loading the PDF, logging an `audit_events` row (`client_load_error`, migration 0034) so a load failure is queryable instead of only ever visible in the signer's own browser console. |
 | `upload-url/route.ts` | `src/app/api/documents/upload-url/route.ts` | Issues the presigned PUT URL for a new upload (org-authenticated, rate-limited, plan-capped). |
 | Org-side file routes | `src/app/api/documents/[id]/{file,signed-file,original-file}/route.ts` | Same proxy pattern as the signer routes, but access is scoped by Supabase session + RLS (org membership) instead of a signing token. |
 
@@ -130,5 +140,20 @@ flowchart TD
   explicitly meant to run pre-verification (like the two `/auth/*` routes). This is exactly
   how the 2026-07-25 bug happened: routes were added independently over time with no single
   enforcement point.
+- **Full-buffer, one-shot document delivery (no HTTP Range/streaming support) is a deliberate
+  choice, not a gap.** Typical signable PDFs are small, pdf.js already renders pages
+  progressively into the UI as they parse, and adding real Range support would be a
+  meaningful lift for mostly-resumability benefit at this file size. Don't add it
+  speculatively — revisit only if file sizes grow materially.
+- **Neither hop had a timeout until 2026-07-25.** A stalled (not erroring, just silent) R2
+  read or PDF fetch would previously hang indefinitely, bounded only by Vercel's own
+  platform-level function timeout — an ungraceful kill with none of this app's own error
+  handling, retry, or logging ever running. `lib/with-timeout.ts` fixes this on both hops.
+- **Client-side load failures were completely invisible until `client-error/route.ts`
+  (2026-07-25).** Before this, the only trace of a signer's PDF failing to load was
+  `console.error` in that signer's own browser. There is still no third-party error-tracking
+  service (Sentry, etc.) wired into this app — `client_load_error` audit_events rows are
+  queryable via Supabase directly, not yet surfaced through any alerting.
 
-Last updated: 2026-07-25, alongside the OTP-bypass fix and the R2 read-retry fix.
+Last updated: 2026-07-25, alongside the OTP-bypass fix, the R2 read-retry fix, the
+slow-connection timeouts, and the client-error beacon.

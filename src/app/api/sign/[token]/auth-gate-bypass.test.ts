@@ -7,12 +7,16 @@ import { describe, expect, it, vi } from "vitest";
 // component. Every one of the underlying data API routes that page's client
 // components call (GET .../ (view), GET .../file, GET .../signed-file, POST
 // .../submit, POST .../decline, GET .../status, GET .../summary, POST
-// .../payment-click) called the exact same getSignerByToken() helper but
-// never re-checked auth_required/auth_verified_at itself — so anyone with a
-// signer's raw signing_token could bypass the OTP challenge entirely via
-// direct API calls (curl, fetch, a script). Confirmed with a real
-// reproduction before the fix (both routes below returned 200 with real
-// data for an unverified signer).
+// .../payment-click, POST .../client-error) called the exact same
+// getSignerByToken() helper but never re-checked auth_required/
+// auth_verified_at itself — so anyone with a signer's raw signing_token could
+// bypass the OTP challenge entirely via direct API calls (curl, fetch, a
+// script). Confirmed with a real reproduction before the fix (both routes
+// below returned 200 with real data for an unverified signer).
+//
+// Any NEW signer-facing /api/sign/[token]/... route must add a case here too
+// — this file is the single place that would catch a route forgetting the
+// guard, exactly how the original bug happened.
 //
 // Fixed by src/lib/signing.ts's requireVerifiedSigner(), called at the top
 // of every affected route right after getSignerByToken(). This test now
@@ -154,6 +158,20 @@ describe("per-recipient OTP gate — every route blocks an unverified signer", (
     );
     expect(res.status).toBe(401);
   });
+
+  it("POST /api/sign/[token]/client-error returns 401 for an unverified signer", async () => {
+    currentSigner = unverifiedSigner;
+    const { POST } = await import("./client-error/route");
+    const res = await POST(
+      new Request("https://signedby.ai/api/sign/tok/client-error", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: "boom" }),
+      }),
+      { params: Promise.resolve({ token: "tok" }) }
+    );
+    expect(res.status).toBe(401);
+  });
 });
 
 describe("per-recipient OTP gate — a verified signer keeps normal access", () => {
@@ -176,5 +194,19 @@ describe("per-recipient OTP gate — a verified signer keeps normal access", () 
     });
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toBe("application/pdf");
+  });
+
+  it("POST /api/sign/[token]/client-error still logs the event once auth_verified_at is set", async () => {
+    currentSigner = verifiedSigner;
+    const { POST } = await import("./client-error/route");
+    const res = await POST(
+      new Request("https://signedby.ai/api/sign/tok/client-error", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: "Timed out after 20000ms", stage: "TimeoutError" }),
+      }),
+      { params: Promise.resolve({ token: "tok" }) }
+    );
+    expect(res.status).toBe(200);
   });
 });
