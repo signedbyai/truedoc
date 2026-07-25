@@ -22,6 +22,45 @@ function bucket() {
   return process.env.CLOUDFLARE_R2_BUCKET_NAME!;
 }
 
+// R2 is documented to return intermittent 5xx errors under concurrent load
+// (see DOCUMENT_DELIVERY_SECURITY_AUDIT.md, Finding 3) — this is the most
+// likely real cause of signers occasionally seeing "Couldn't load this
+// document." getFromR2() previously made exactly one attempt and threw
+// straight through on any failure. A short retry-with-backoff turns a
+// transient blip into a slightly slower successful load instead of a hard
+// failure the client's own one-shot auto-retry (signing-view.tsx) might not
+// land outside of.
+const READ_RETRY_ATTEMPTS = 3;
+const READ_RETRY_BASE_DELAY_MS = 200;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// A missing object won't start existing on a second attempt — only retry
+// errors that plausibly represent a transient condition (network blip, R2's
+// own concurrency-related 5xx), not "this key genuinely doesn't exist."
+function isRetryableR2Error(err: unknown): boolean {
+  const name = (err as { name?: string } | undefined)?.name;
+  return name !== "NoSuchKey" && name !== "NotFound";
+}
+
+async function withReadRetry<T>(attempt: () => Promise<T>): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < READ_RETRY_ATTEMPTS; i++) {
+    try {
+      return await attempt();
+    } catch (err) {
+      lastErr = err;
+      if (!isRetryableR2Error(err) || i === READ_RETRY_ATTEMPTS - 1) throw err;
+      await sleep(READ_RETRY_BASE_DELAY_MS * 2 ** i);
+    }
+  }
+  // Unreachable (the loop above always returns or throws), but keeps
+  // TypeScript satisfied that every path returns or throws.
+  throw lastErr;
+}
+
 export async function uploadToR2(key: string, body: Buffer, contentType: string) {
   await getClient().send(
     new PutObjectCommand({
@@ -49,16 +88,22 @@ export async function getSignedUploadUrl(key: string, contentType: string, expir
   );
 }
 
-/** Returns the raw bytes for an object — used by the file proxy route. */
+/**
+ * Returns the raw bytes for an object — used by the file proxy route. Retries
+ * a transient failure a couple of times with a short backoff (see
+ * withReadRetry above) before giving up.
+ */
 export async function getFromR2(key: string) {
-  const result = await getClient().send(
-    new GetObjectCommand({ Bucket: bucket(), Key: key })
-  );
-  const byteArray = await result.Body!.transformToByteArray();
-  return {
-    body: Buffer.from(byteArray),
-    contentType: result.ContentType ?? "application/pdf",
-  };
+  return withReadRetry(async () => {
+    const result = await getClient().send(
+      new GetObjectCommand({ Bucket: bucket(), Key: key })
+    );
+    const byteArray = await result.Body!.transformToByteArray();
+    return {
+      body: Buffer.from(byteArray),
+      contentType: result.ContentType ?? "application/pdf",
+    };
+  });
 }
 
 /**
