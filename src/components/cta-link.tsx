@@ -28,15 +28,26 @@ interface CtaLinkProps {
   page: string;
   /** Which spot on the page, e.g. "hero", "footer". */
   position: string;
+  /**
+   * Optional — which layout/copy variant this CTA belongs to, for pages
+   * running their own separate test alongside the CTA color one (e.g. the
+   * homepage-variant flag in src/flags.ts: "current" vs "v20"). Same
+   * belt-and-suspenders reasoning as `color` below: FlagValues already
+   * annotates this event with the flag value automatically, but passing it
+   * as a plain event property too means results don't depend solely on the
+   * flags-in-DOM mechanism working correctly. Omitted entirely on pages with
+   * no variant test running, so existing call sites don't need to change.
+   */
+  variant?: string;
 }
 
-export function CtaLink({ href, children, className, size = "lg", color, page, position }: CtaLinkProps) {
+export function CtaLink({ href, children, className, size = "lg", color, page, position, variant }: CtaLinkProps) {
   return (
     <Link
       href={href}
       className={cn(buttonVariants({ size }), COLOR_CLASSES[color], className)}
       onClick={() => {
-        track("cta_click", { page, position, color, href });
+        track("cta_click", { page, position, color, href, ...(variant ? { variant } : {}) });
       }}
     >
       {children}
