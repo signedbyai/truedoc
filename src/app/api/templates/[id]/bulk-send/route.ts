@@ -4,6 +4,7 @@ import { getUserAndOrg } from "@/lib/org";
 import { planHasFeature } from "@/lib/plan";
 import { sendSignerInviteEmail } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { checkEmailDomainHasMx } from "@/lib/validate-email-domain";
 
 const recipientSchema = z.object({
   name: z.string().trim().max(200).optional().nullable(),
@@ -66,8 +67,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const senderName = org.name || user.email || "Someone";
   const createdDocumentIds: string[] = [];
+  // Each recipient here gets its own document created and sent immediately —
+  // unlike the single-document editor flow, there's no draft state to pause
+  // on, so this is a warn-after-the-fact list rather than a pre-send
+  // confirmation modal (see BOUNCE_TRACKING_SCOPE.md).
+  const domainWarnings: string[] = [];
 
   for (const recipient of parsed.data.recipients) {
+    const domainCheck = await checkEmailDomainHasMx(recipient.email);
+    if (!domainCheck.ok) domainWarnings.push(domainCheck.reason);
+
     const documentId = crypto.randomUUID();
     const title = template.name;
 
@@ -134,13 +143,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       { document_id: doc.id, event_type: "sent", metadata: { sent_by: user.id, bulk_send: true } },
     ]);
 
-    await sendSignerInviteEmail({
-      to: recipient.email,
-      signerName: recipient.name || null,
-      senderName,
-      documentTitle: title,
-      signingToken: signer.signing_token,
-    }).catch((err) => console.error("Bulk send: invite email failed", err));
+    try {
+      const { id: emailId, error: emailError } = await sendSignerInviteEmail({
+        to: recipient.email,
+        signerName: recipient.name || null,
+        senderName,
+        documentTitle: title,
+        signingToken: signer.signing_token,
+      });
+      await supabase
+        .from("signers")
+        .update({
+          last_email_id: emailId,
+          last_email_event: emailError ? "send_failed" : "sent",
+          last_email_event_at: new Date().toISOString(),
+        })
+        .eq("id", signer.id);
+    } catch (err) {
+      console.error("Bulk send: invite email failed", err);
+    }
 
     createdDocumentIds.push(doc.id);
   }
@@ -149,5 +170,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Couldn't create any documents. Try again." }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, count: createdDocumentIds.length, documentIds: createdDocumentIds });
+  return NextResponse.json({
+    success: true,
+    count: createdDocumentIds.length,
+    documentIds: createdDocumentIds,
+    ...(domainWarnings.length > 0 ? { domainWarnings } : {}),
+  });
 }

@@ -36,20 +36,32 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   }
   const senderName = org?.name || user.email || "Someone";
 
+  let emailId: string | null = null;
+  let emailError: unknown = null;
   try {
-    await sendReminderEmail({
+    const result = await sendReminderEmail({
       to: signer.email,
       signerName: signer.name,
       senderName,
       documentTitle: doc.title,
       signingToken: signer.signing_token,
     });
+    emailId = result.id;
+    emailError = result.error;
   } catch (err) {
     console.error("Reminder email failed", err);
     return NextResponse.json({ error: "Couldn't send the reminder — try again." }, { status: 500 });
   }
 
-  await supabase.from("signers").update({ last_reminder_at: new Date().toISOString() }).eq("id", signerId);
+  await supabase
+    .from("signers")
+    .update({
+      last_reminder_at: new Date().toISOString(),
+      last_email_id: emailId,
+      last_email_event: emailError ? "send_failed" : "sent",
+      last_email_event_at: new Date().toISOString(),
+    })
+    .eq("id", signerId);
 
   return NextResponse.json({ success: true });
 }

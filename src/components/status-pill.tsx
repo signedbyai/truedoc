@@ -85,6 +85,20 @@ export const SIGNER_STATUS_PILL: Record<string, { tone: StatusTone; label: strin
   declined: { tone: "red", label: "Declined" },
 };
 
+// Delivery-problem badge, shown ALONGSIDE the signer status pill above (not
+// instead of it) — signers.last_email_event (migration 0035) is deliberately
+// a separate column from signers.status, since a delivery problem is
+// orthogonal to signing progress. bounced/suppressed both mean the invite
+// never arrived at all, so they share the same user-facing label; a
+// complaint means it DID arrive (the recipient just marked it as spam),
+// which is a materially different, less urgent situation. See
+// BOUNCE_TRACKING_SCOPE.md.
+export const EMAIL_EVENT_BADGE: Record<string, { tone: StatusTone; label: string }> = {
+  bounced: { tone: "red", label: "Bounced" },
+  suppressed: { tone: "red", label: "Bounced" },
+  complained: { tone: "amber", label: "Marked as spam" },
+};
+
 // Document-level status → pill (the line under the title). Only "sent" — the
 // document is genuinely live/open — pulses; the settled states are still.
 export const DOCUMENT_STATUS_PILL: Record<

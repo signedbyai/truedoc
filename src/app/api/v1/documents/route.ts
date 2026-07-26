@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { authenticateApiRequest } from "@/lib/api-auth";
 import { sendSignerInviteEmail } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { checkEmailDomainHasMx } from "@/lib/validate-email-domain";
 
 const bodySchema = z.object({
   template_id: z.string().uuid(),
@@ -122,13 +123,34 @@ export async function POST(request: Request) {
     { document_id: doc.id, event_type: "sent", metadata: { via_api: true } },
   ]);
 
-  await sendSignerInviteEmail({
-    to: parsed.data.signer.email,
-    signerName: parsed.data.signer.name || null,
-    senderName: orgName,
-    documentTitle: template.name,
-    signingToken: signer.signing_token,
-  }).catch((err) => console.error("API v1: invite email failed", err));
+  // Informational only, never blocking — this is a synchronous API call with
+  // no one present to confirm "send anyway" the way the dashboard's editor
+  // can, so an invalid-looking domain still gets sent; the caller sees it in
+  // the response and can act on it themselves. See BOUNCE_TRACKING_SCOPE.md.
+  const domainCheck = await checkEmailDomainHasMx(parsed.data.signer.email);
 
-  return NextResponse.json({ id: doc.id, status: doc.status }, { status: 201 });
+  try {
+    const { id: emailId, error: emailError } = await sendSignerInviteEmail({
+      to: parsed.data.signer.email,
+      signerName: parsed.data.signer.name || null,
+      senderName: orgName,
+      documentTitle: template.name,
+      signingToken: signer.signing_token,
+    });
+    await admin
+      .from("signers")
+      .update({
+        last_email_id: emailId,
+        last_email_event: emailError ? "send_failed" : "sent",
+        last_email_event_at: new Date().toISOString(),
+      })
+      .eq("id", signer.id);
+  } catch (err) {
+    console.error("API v1: invite email failed", err);
+  }
+
+  return NextResponse.json(
+    { id: doc.id, status: doc.status, ...(domainCheck.ok ? {} : { domain_warning: domainCheck.reason }) },
+    { status: 201 }
+  );
 }

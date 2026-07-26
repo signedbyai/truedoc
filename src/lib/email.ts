@@ -96,7 +96,7 @@ export async function sendSignerInviteEmail(opts: {
       `
     : "";
 
-  await getClient().emails.send({
+  const result = await getClient().emails.send({
     from: FROM,
     to: opts.to,
     subject,
@@ -111,6 +111,14 @@ export async function sendSignerInviteEmail(opts: {
       </div>
     `,
   });
+
+  // Resend's SDK can report a failure (bad recipient, domain issue, quota)
+  // without throwing — this used to be silently discarded everywhere, which
+  // is exactly how an immediately-rejected send stayed invisible even before
+  // any async bounce webhook could fire. Callers use this to set
+  // signers.last_email_id/last_email_event — see BOUNCE_TRACKING_SCOPE.md.
+  if (result.error) console.error("sendSignerInviteEmail: Resend reported an error", result.error);
+  return { id: result.data?.id ?? null, error: result.error ?? null };
 }
 
 export async function sendReminderEmail(opts: {
@@ -123,7 +131,7 @@ export async function sendReminderEmail(opts: {
   const link = `${appUrl()}/sign/${opts.signingToken}`;
   const greeting = opts.signerName ? `Hi ${opts.signerName},` : "Hi,";
 
-  await getClient().emails.send({
+  const result = await getClient().emails.send({
     from: FROM,
     to: opts.to,
     subject: `Reminder: ${opts.documentTitle} is waiting for your signature`,
@@ -137,6 +145,13 @@ export async function sendReminderEmail(opts: {
       </div>
     `,
   });
+
+  // Same reasoning as sendSignerInviteEmail — a reminder that bounces needs
+  // signers.last_email_id updated too, otherwise a later bounce webhook for
+  // THIS send would have nothing to match against (it'd still point at the
+  // original invite). See BOUNCE_TRACKING_SCOPE.md.
+  if (result.error) console.error("sendReminderEmail: Resend reported an error", result.error);
+  return { id: result.data?.id ?? null, error: result.error ?? null };
 }
 
 export async function sendDeclineNotificationEmail(opts: {
@@ -158,6 +173,43 @@ export async function sendDeclineNotificationEmail(opts: {
       <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
         <p><strong>${who}</strong> declined to sign <strong>${opts.documentTitle}</strong>.</p>
         ${opts.reason ? `<p style="color:#334155;">Reason given: &ldquo;${opts.reason}&rdquo;</p>` : ""}
+        ${ctaButton(link, "View Document")}
+      </div>
+    `,
+  });
+}
+
+// Sent to the document owner when the Resend webhook (src/app/api/webhooks/
+// resend/route.ts) reports that a signer's invite never actually arrived —
+// same "let the sender know something happened without them" shape as
+// sendDeclineNotificationEmail above. Scoped to bounced/suppressed only (not
+// a spam complaint): those two mean the invite never reached the signer at
+// all, which is directly actionable (fix the address, resend); a complaint
+// means it DID arrive, so there's nothing to fix here — see
+// BOUNCE_TRACKING_SCOPE.md.
+export async function sendBounceNotificationEmail(opts: {
+  to: string;
+  documentTitle: string;
+  documentId: string;
+  signerName: string | null;
+  signerEmail: string;
+  reason: "bounced" | "suppressed";
+}) {
+  const link = `${appUrl()}/dashboard/documents/${opts.documentId}`;
+  const who = opts.signerName ? `${opts.signerName} (${opts.signerEmail})` : opts.signerEmail;
+  const explanation =
+    opts.reason === "bounced"
+      ? "couldn't be delivered — their mail server rejected it"
+      : "wasn't sent — this address has a recent history of failed deliveries";
+
+  await getClient().emails.send({
+    from: FROM,
+    to: opts.to,
+    subject: `The invite to ${who} for "${opts.documentTitle}" didn't arrive`,
+    html: `
+      <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <p>The signing invite sent to <strong>${who}</strong> for <strong>${opts.documentTitle}</strong> ${explanation}.</p>
+        <p style="color:#334155;">Check the address for a typo, then resend from the document.</p>
         ${ctaButton(link, "View Document")}
       </div>
     `,

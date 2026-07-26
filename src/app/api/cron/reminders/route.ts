@@ -13,6 +13,7 @@ type SignerRow = {
   signing_token: string;
   sent_at: string | null;
   last_reminder_at: string | null;
+  last_email_event: string | null;
   documents:
     | {
         id: string;
@@ -96,7 +97,7 @@ export async function GET(request: Request) {
   const { data, error } = await admin
     .from("signers")
     .select(
-      "id, name, email, signing_token, sent_at, last_reminder_at, documents(id, title, status, organizations(name, plan))"
+      "id, name, email, signing_token, sent_at, last_reminder_at, last_email_event, documents(id, title, status, organizations(name, plan))"
     )
     .in("status", ["sent", "viewed"])
     .limit(MAX_PER_RUN);
@@ -114,6 +115,13 @@ export async function GET(request: Request) {
     const doc = firstOf(row.documents);
     if (!doc || doc.status !== "sent") continue; // signed/declined/voided elsewhere, or data inconsistency
 
+    // A confirmed-dead address gets no more reminders — it can't help the
+    // signer (they never got the last one either) and just adds more bounce
+    // history against the sending domain's reputation. See
+    // BOUNCE_TRACKING_SCOPE.md; the sender already got a bounce notification
+    // and sees the dashboard badge, so this isn't a silent drop.
+    if (row.last_email_event === "bounced" || row.last_email_event === "suppressed") continue;
+
     const lastContact = row.last_reminder_at ?? row.sent_at;
     if (!lastContact) continue; // no record of when they were first notified — don't guess
 
@@ -124,14 +132,22 @@ export async function GET(request: Request) {
     const senderName = org?.name || "Someone";
 
     try {
-      await sendReminderEmail({
+      const { id: emailId, error: emailError } = await sendReminderEmail({
         to: row.email,
         signerName: row.name,
         senderName,
         documentTitle: doc.title,
         signingToken: row.signing_token,
       });
-      await admin.from("signers").update({ last_reminder_at: new Date().toISOString() }).eq("id", row.id);
+      await admin
+        .from("signers")
+        .update({
+          last_reminder_at: new Date().toISOString(),
+          last_email_id: emailId,
+          last_email_event: emailError ? "send_failed" : "sent",
+          last_email_event_at: new Date().toISOString(),
+        })
+        .eq("id", row.id);
       remindedCount++;
     } catch (err) {
       console.error("Reminder cron: send failed for signer", row.id, err);

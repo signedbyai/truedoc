@@ -214,7 +214,7 @@ export default async function DocumentEditorPage({
   if (doc.status === "sent" || doc.status === "declined" || doc.status === "voided") {
     const { data: signers } = await supabase
       .from("signers")
-      .select("id, name, email, status, signed_at, signing_token")
+      .select("id, name, email, status, signed_at, signing_token, last_email_event")
       .eq("document_id", id)
       .order("order_index", { ascending: true });
 

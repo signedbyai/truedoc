@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserAndOrg } from "@/lib/org";
 import { sendSignerInviteEmail } from "@/lib/email";
+import { checkEmailDomainHasMx } from "@/lib/validate-email-domain";
 
 const bodySchema = z.object({
   name: z.string().trim().max(200).optional().nullable(),
@@ -78,11 +79,16 @@ export async function PATCH(
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
+  // Informational only, never blocking — a correction is already a
+  // deliberate, one-off action, so this is a note rather than a confirm
+  // step. See BOUNCE_TRACKING_SCOPE.md.
+  const domainCheck = await checkEmailDomainHasMx(newEmail);
+
   if (wasAlreadyNotified) {
     const { data: org } = await supabase.from("organizations").select("name").eq("id", orgId).single();
     const senderName = org?.name || user.email || "Someone";
     try {
-      await sendSignerInviteEmail({
+      const { id: emailId, error: emailError } = await sendSignerInviteEmail({
         to: newEmail,
         signerName: newName,
         senderName,
@@ -92,6 +98,14 @@ export async function PATCH(
         inviteSubject: doc.invite_subject,
         inviteMessage: doc.invite_message,
       });
+      await supabase
+        .from("signers")
+        .update({
+          last_email_id: emailId,
+          last_email_event: emailError ? "send_failed" : "sent",
+          last_email_event_at: new Date().toISOString(),
+        })
+        .eq("id", signerId);
     } catch (err) {
       console.error("Corrected-recipient invite email failed", err);
       return NextResponse.json(
@@ -108,5 +122,9 @@ export async function PATCH(
     metadata: { old_email: signer.email, new_email: newEmail, old_name: signer.name, new_name: newName },
   });
 
-  return NextResponse.json({ success: true, resent: wasAlreadyNotified });
+  return NextResponse.json({
+    success: true,
+    resent: wasAlreadyNotified,
+    ...(domainCheck.ok ? {} : { domainWarning: domainCheck.reason }),
+  });
 }

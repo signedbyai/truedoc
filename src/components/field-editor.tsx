@@ -217,6 +217,11 @@ export function FieldEditor({
   // Pre-send "who signs where" sanity check — surfaced only when a recipient
   // has no fields to sign (the tell of a mis-placed or forgotten field).
   const [showSendReview, setShowSendReview] = useState(false);
+  // Pre-send domain sanity check (BOUNCE_TRACKING_SCOPE.md) — a warning, not
+  // a hard block like showSendReview above: the sender can send anyway, since
+  // an unusual-but-real mail setup can look identical to a typo from here.
+  // null = no warning pending; a non-empty array is the reasons to show.
+  const [domainWarnings, setDomainWarnings] = useState<string[] | null>(null);
   // Sender-editable privacy notice appended to the invite email (see
   // recipient-notice.ts + supabase/migrations/0027). Re-derived from
   // initialRecipientNotice on mount: '' means the sender explicitly turned
@@ -1105,7 +1110,7 @@ export function FieldEditor({
     setSaving(false);
   }
 
-  async function handleSend() {
+  async function handleSend(forceDespiteDomainWarnings = false) {
     if (recipients.length === 0) {
       setStatusMessage("Add at least one recipient before sending.");
       return;
@@ -1158,13 +1163,23 @@ export function FieldEditor({
           recipientNotice: noticeEnabled ? noticeText.trim() : "",
           inviteSubject: inviteSubject.trim(),
           inviteMessage: inviteMessage.trim(),
+          confirmDomainWarnings: forceDespiteDomainWarnings,
         }),
       });
+      const data = await res.json().catch(() => ({}));
+      // The send route returns this instead of actually sending when a
+      // recipient's domain looks invalid and confirmDomainWarnings wasn't
+      // set — nothing has gone out yet, so show it and let the sender
+      // decide, rather than silently sending into a likely bounce.
+      if (res.ok && Array.isArray(data.domainWarnings) && data.domainWarnings.length > 0 && !forceDespiteDomainWarnings) {
+        setDomainWarnings(data.domainWarnings);
+        setSending(false);
+        return;
+      }
       if (res.ok) {
         router.push("/dashboard");
         return; // keep the button disabled through navigation
       }
-      const data = await res.json().catch(() => ({}));
       setStatusMessage(data.error || "Couldn't send — try again.");
       setSending(false);
     } catch {
@@ -2381,6 +2396,35 @@ export function FieldEditor({
             </ul>
             <div className="mt-4 flex justify-end">
               <Button onClick={() => setShowSendReview(false)}>Go back and fix</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {domainWarnings && domainWarnings.length > 0 && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+            <p className="text-sm font-medium text-slate-900">One of these addresses might have a typo</p>
+            <ul className="mt-2 space-y-1 text-xs text-slate-600">
+              {domainWarnings.map((reason, i) => (
+                <li key={i}>{reason}</li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-slate-500">
+              Nothing has been sent yet. Double-check the address, or send anyway if it&apos;s correct.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDomainWarnings(null)}>
+                Go back and check
+              </Button>
+              <Button
+                onClick={() => {
+                  setDomainWarnings(null);
+                  handleSend(true);
+                }}
+              >
+                Send anyway
+              </Button>
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getUserAndOrg } from "@/lib/org";
 import { sendSignerInviteEmail } from "@/lib/email";
 import { signersWithoutFields } from "@/lib/field-visibility";
+import { checkEmailDomainHasMx } from "@/lib/validate-email-domain";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,6 +23,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     json && typeof json.inviteSubject === "string" ? json.inviteSubject.trim().slice(0, 200) || null : undefined;
   const inviteMessage =
     json && typeof json.inviteMessage === "string" ? json.inviteMessage.trim().slice(0, 2000) || null : undefined;
+  // A pre-send domain check the sender can override — see
+  // BOUNCE_TRACKING_SCOPE.md. First call omits/false this; if any recipient's
+  // domain looks invalid we return early with domainWarnings and don't send
+  // anything yet, so the field editor can show a "send anyway?" confirmation
+  // (same shape as the existing missing-fields review modal) before retrying
+  // with this set to true.
+  const confirmDomainWarnings = json?.confirmDomainWarnings === true;
 
   const { data: doc, error: docError } = await supabase
     .from("documents")
@@ -83,8 +91,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const firstTier = signers[0].order_index;
   const toNotify = signers.filter((s) => s.order_index === firstTier);
 
+  if (!confirmDomainWarnings) {
+    const checks = await Promise.all(toNotify.map((s) => checkEmailDomainHasMx(s.email)));
+    const domainWarnings = checks.filter((c) => !c.ok).map((c) => (c as { reason: string }).reason);
+    if (domainWarnings.length > 0) {
+      return NextResponse.json({ domainWarnings });
+    }
+  }
+
   for (const signer of toNotify) {
-    await sendSignerInviteEmail({
+    const { id: emailId, error: emailError } = await sendSignerInviteEmail({
       to: signer.email,
       signerName: signer.name,
       senderName,
@@ -94,6 +110,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       inviteSubject,
       inviteMessage,
     });
+    await supabase
+      .from("signers")
+      .update({
+        last_email_id: emailId,
+        last_email_event: emailError ? "send_failed" : "sent",
+        last_email_event_at: new Date().toISOString(),
+      })
+      .eq("id", signer.id);
   }
 
   await supabase

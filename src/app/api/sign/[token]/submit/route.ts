@@ -181,19 +181,36 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     const senderName = (org as unknown as { organizations?: { name?: string } })?.organizations?.name || "Someone";
 
     for (const nextSigner of nextUp) {
-      await sendSignerInviteEmail({
-        to: nextSigner.email,
-        signerName: nextSigner.name,
-        senderName,
-        documentTitle: org?.title || document.title,
-        signingToken: nextSigner.signing_token,
-        // Same notice every recipient on this document gets — set once at
-        // the initial send (see api/documents/[id]/send), not re-decided
-        // per signer.
-        recipientNotice: org?.recipient_notice,
-        inviteSubject: org?.invite_subject,
-        inviteMessage: org?.invite_message,
-      }).catch((err) => console.error("Invite email failed", err));
+      // No sender is present at this moment to confirm a domain warning
+      // (this fires automatically once the prior tier finishes) — the
+      // dashboard's bounced badge and the bounce-notification email already
+      // cover this signer after the fact, so this call site only captures
+      // the send result, no pre-send MX check. See BOUNCE_TRACKING_SCOPE.md.
+      try {
+        const { id: emailId, error: emailError } = await sendSignerInviteEmail({
+          to: nextSigner.email,
+          signerName: nextSigner.name,
+          senderName,
+          documentTitle: org?.title || document.title,
+          signingToken: nextSigner.signing_token,
+          // Same notice every recipient on this document gets — set once at
+          // the initial send (see api/documents/[id]/send), not re-decided
+          // per signer.
+          recipientNotice: org?.recipient_notice,
+          inviteSubject: org?.invite_subject,
+          inviteMessage: org?.invite_message,
+        });
+        await admin
+          .from("signers")
+          .update({
+            last_email_id: emailId,
+            last_email_event: emailError ? "send_failed" : "sent",
+            last_email_event_at: new Date().toISOString(),
+          })
+          .eq("id", nextSigner.id);
+      } catch (err) {
+        console.error("Invite email failed", err);
+      }
     }
 
     await admin

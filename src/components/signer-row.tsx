@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { CopySigningLinkButton } from "@/components/copy-signing-link-button";
 import { RemindSignerButton } from "@/components/remind-signer-button";
 import { formatEngagement } from "@/lib/page-view-tracking";
-import { StatusPill, SIGNER_STATUS_PILL } from "@/components/status-pill";
+import { StatusPill, SIGNER_STATUS_PILL, EMAIL_EVENT_BADGE } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 
 type Signer = {
@@ -16,6 +16,7 @@ type Signer = {
   status: string;
   signed_at: string | null;
   signing_token: string;
+  last_email_event?: string | null;
 };
 
 // One row in the document detail page's signer list. Pulled into its own
@@ -43,6 +44,10 @@ export function SignerRow({
   const [email, setEmail] = useState(signer.email);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Non-blocking — the correction already went through and the invite (if
+  // any) already sent; this just flags a possible typo the sender may want
+  // to double-check. See BOUNCE_TRACKING_SCOPE.md.
+  const [domainWarning, setDomainWarning] = useState("");
 
   const isNotifiable = docStatus === "sent" && (signer.status === "sent" || signer.status === "viewed");
   const canEdit = docStatus === "sent" && signer.status !== "signed";
@@ -64,6 +69,7 @@ export function SignerRow({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Couldn't update this recipient.");
+      setDomainWarning(typeof data.domainWarning === "string" ? data.domainWarning : "");
       setEditing(false);
       router.refresh();
     } catch (err) {
@@ -109,12 +115,27 @@ export function SignerRow({
                 <StatusPill tone="gray" label={signer.status} />
               );
             })()}
+            {signer.last_email_event &&
+              EMAIL_EVENT_BADGE[signer.last_email_event] &&
+              (() => {
+                const badge = EMAIL_EVENT_BADGE[signer.last_email_event!];
+                return <StatusPill tone={badge.tone} label={badge.label} />;
+              })()}
             {signer.signed_at && (
               <span className="text-xs text-slate-400">{new Date(signer.signed_at).toLocaleDateString()}</span>
             )}
           </span>
         </span>
       </div>
+
+      {domainWarning && (
+        <p className="text-xs text-amber-600">
+          {domainWarning}{" "}
+          <button onClick={() => setDomainWarning("")} className="underline hover:text-amber-700">
+            Dismiss
+          </button>
+        </p>
+      )}
 
       {editing && (
         <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
