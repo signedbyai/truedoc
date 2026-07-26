@@ -17,6 +17,7 @@ import { DuplicateDocumentButton } from "@/components/duplicate-document-button"
 import { BookmarkIcon, MENU_ITEM_CLASS, SaveIcon, MailIcon, ClockIcon, ShieldIcon } from "@/components/ui/menu-item";
 import { FIELD_TYPES, fieldDef, type FieldType } from "@/lib/field-types";
 import { defaultRecipientNotice } from "@/lib/recipient-notice";
+import { installMapUpsertPolyfill } from "@/lib/pdfjs-map-polyfill";
 
 type Field = {
   id: string;
@@ -488,8 +489,9 @@ export function FieldEditor({
     let cancelled = false;
 
     async function render() {
+      installMapUpsertPolyfill();
       const pdfjsLib = await import("pdfjs-dist");
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.polyfill.mjs";
 
       const loadingTask = pdfjsLib.getDocument({ url: `/api/documents/${documentId}/file` });
       const pdf = await loadingTask.promise;

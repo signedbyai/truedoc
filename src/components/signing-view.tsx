@@ -13,6 +13,7 @@ import { SIGNATURE_STYLES, renderTypedSignature } from "@/lib/signature-styles";
 import { SummaryMarkdown } from "@/lib/summary-markdown";
 import { SignerLoading, type LoadStage } from "@/components/signer-loading";
 import { withTimeout } from "@/lib/with-timeout";
+import { installMapUpsertPolyfill } from "@/lib/pdfjs-map-polyfill";
 
 // A load stuck longer than this is treated the same as an outright failure
 // (see DOCUMENT_ARCHITECTURE.md and the 2026-07-25 audit's slow-connection
@@ -253,6 +254,7 @@ export function SigningView({
     let activeLoadingTask: { destroy?: () => void } | undefined;
 
     async function render() {
+      installMapUpsertPolyfill();
       const pdfjsLib = await import("pdfjs-dist");
       // After the first await so these don't count as synchronous setState in
       // an effect body — resets any partial state from a prior (failed) attempt.
@@ -261,7 +263,7 @@ export function SigningView({
       setLoadError(false);
       setLoading(true);
       setLoadStage("fetching");
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.polyfill.mjs";
       const loadingTask = pdfjsLib.getDocument({ url: `/api/sign/${token}/file` });
       activeLoadingTask = loadingTask;
       const pdf = await loadingTask.promise;
