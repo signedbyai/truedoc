@@ -1290,8 +1290,17 @@ export function SigningView({
               else pageElsRef.current.delete(page);
             }}
             data-page={page}
-            className="relative border border-slate-300 bg-white shadow-sm"
-            style={{ width, height, maxWidth: "100%" }}
+            className="relative w-full border border-slate-300 bg-white shadow-sm"
+            // Sized by aspect-ratio (not a fixed height alongside maxWidth:
+            // 100%) so the page scales down correctly on a portrait phone
+            // screen narrower than its native rendered width, instead of the
+            // width shrinking to fit while the height stayed pinned at its
+            // full-size pixel value -- which visibly squished/stretched the
+            // text, exactly what made "View full document" unreadable in
+            // portrait and fine in landscape (same bug already fixed on the
+            // sender-side editor, see field-editor.tsx). maxWidth caps it at
+            // the PDF's native rendered size so it never upscales past that.
+            style={{ aspectRatio: `${width} / ${height}`, maxWidth: `${width}px` }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={dataUrl} alt={`Page ${page}`} className="pointer-events-none block h-full w-full select-none" />
