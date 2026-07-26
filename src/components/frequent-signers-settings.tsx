@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type FrequentSigner = { id: string; name: string; email: string; isSelf: boolean };
@@ -131,26 +132,49 @@ export function FrequentSignersSettings() {
           placeholder="Name"
           className="h-9 min-w-[8rem] flex-1 rounded-md border border-slate-300 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
         />
-        <input
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email"
-          type="email"
-          className="h-9 min-w-[10rem] flex-1 rounded-md border border-slate-300 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
-        />
+        <div className="relative min-w-[10rem] flex-1">
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+            type="email"
+            className="h-9 w-full rounded-md border border-slate-300 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+          />
+          {/* Floating dismissible popover, same shape as the referral gift
+              button's popover (referral-gift-button.tsx) — anchored under the
+              field it's about, not a full-page modal, since the contact is
+              already saved by the time this shows. */}
+          {domainWarning && (
+            <>
+              <button
+                type="button"
+                aria-hidden="true"
+                tabIndex={-1}
+                onClick={() => setDomainWarning("")}
+                className="fixed inset-0 z-40 cursor-default"
+              />
+              <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-900">Double-check this address</p>
+                  <button
+                    type="button"
+                    onClick={() => setDomainWarning("")}
+                    aria-label="Close"
+                    className="-mr-1 -mt-1 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-slate-600">{domainWarning}</p>
+              </div>
+            </>
+          )}
+        </div>
         <Button size="sm" disabled={adding || !name.trim() || !email.trim()} onClick={addSigner}>
           {adding ? "Adding…" : "Add"}
         </Button>
       </div>
       {addError && <p className="mt-2 text-xs text-red-600">{addError}</p>}
-      {domainWarning && (
-        <p className="mt-2 text-xs text-amber-600">
-          {domainWarning}{" "}
-          <button onClick={() => setDomainWarning("")} className="underline hover:text-amber-700">
-            Dismiss
-          </button>
-        </p>
-      )}
     </div>
   );
 }
