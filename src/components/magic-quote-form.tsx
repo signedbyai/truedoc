@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,6 +62,11 @@ export function MagicQuoteForm({
   const [items, setItems] = useState<QuoteLineItem[]>([]);
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState("");
+  // Non-blocking — see BOUNCE_TRACKING_SCOPE.md. This email doesn't send
+  // anything itself (it's only carried forward to pre-fill the recipient
+  // once the document reaches the field editor), so unlike the actual send
+  // flow this is a heads-up only; the real send re-checks it anyway.
+  const [billToDomainWarning, setBillToDomainWarning] = useState("");
 
   // Recomputed on every render from the current (possibly just-edited)
   // items/tax rate — the same pure function the finalize route uses
@@ -98,6 +104,28 @@ export function MagicQuoteForm({
       setGenerateError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setGenerating(false);
+    }
+  }
+
+  // Fires on blur, same trigger as the frequent-signers form
+  // (frequent-signers-settings.tsx) — a rough shape check first so a
+  // still-obviously-partial value tabbed away from by accident doesn't fire
+  // a lookup.
+  async function checkBillToEmailOnBlur() {
+    const value = billToEmail.trim();
+    if (!value || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return;
+    try {
+      const res = await fetch("/api/check-email-domain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: value }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok === false && typeof data.reason === "string") {
+        setBillToDomainWarning(data.reason);
+      }
+    } catch {
+      // Best-effort — the real send (documents/[id]/send) checks it again.
     }
   }
 
@@ -178,7 +206,7 @@ export function MagicQuoteForm({
             </Label>
             <Input id="bill-to-name" value={billToName} onChange={(e) => setBillToName(e.target.value)} />
           </div>
-          <div className="space-y-1.5">
+          <div className="relative space-y-1.5">
             <Label htmlFor="bill-to-email">
               {ql("customerEmail", language)} ({ql("optional", language)})
             </Label>
@@ -186,8 +214,39 @@ export function MagicQuoteForm({
               id="bill-to-email"
               type="email"
               value={billToEmail}
-              onChange={(e) => setBillToEmail(e.target.value)}
+              onChange={(e) => {
+                setBillToEmail(e.target.value);
+                setBillToDomainWarning(""); // stale as soon as they're editing again
+              }}
+              onBlur={checkBillToEmailOnBlur}
             />
+            {/* Same floating popover as frequent-signers/signer-correction/
+                bulk-send — see BOUNCE_TRACKING_SCOPE.md. */}
+            {billToDomainWarning && (
+              <>
+                <button
+                  type="button"
+                  aria-hidden="true"
+                  tabIndex={-1}
+                  onClick={() => setBillToDomainWarning("")}
+                  className="fixed inset-0 z-40 cursor-default"
+                />
+                <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-900">Double-check this address</p>
+                    <button
+                      type="button"
+                      onClick={() => setBillToDomainWarning("")}
+                      aria-label="Close"
+                      className="-mr-1 -mt-1 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-600">{billToDomainWarning}</p>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
