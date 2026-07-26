@@ -74,6 +74,30 @@ export function FrequentSignersSettings() {
     }
   }
 
+  // Fires when the sender tabs/clicks away from the email field, rather than
+  // waiting for the Add button — see BOUNCE_TRACKING_SCOPE.md. A rough shape
+  // check first so a still-obviously-partial value tabbed away from by
+  // accident doesn't fire a lookup; the Add button's own check (in
+  // addSigner, via the POST route) is still a backstop for any path that
+  // reaches it without a blur (autofill + Enter in an unusual browser flow).
+  async function checkDomainOnBlur() {
+    const value = email.trim();
+    if (!value || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return;
+    try {
+      const res = await fetch("/api/check-email-domain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: value }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok === false && typeof data.reason === "string") {
+        setDomainWarning(data.reason);
+      }
+    } catch {
+      // Best-effort — the Add button's own check still catches it.
+    }
+  }
+
   async function removeSigner(id: string) {
     setRemovingId(id);
     try {
@@ -135,7 +159,11 @@ export function FrequentSignersSettings() {
         <div className="relative min-w-[10rem] flex-1">
           <input
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setDomainWarning(""); // stale as soon as they're editing again
+            }}
+            onBlur={checkDomainOnBlur}
             placeholder="Email"
             type="email"
             className="h-9 w-full rounded-md border border-slate-300 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
