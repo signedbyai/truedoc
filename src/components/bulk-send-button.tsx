@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { parseRecipients } from "@/lib/parse-recipients";
 
@@ -11,6 +12,10 @@ export function BulkSendButton({ templateId }: { templateId: string }) {
   const [text, setText] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "done">("idle");
   const [message, setMessage] = useState("");
+  // Non-blocking — every document here already sent regardless (bulk-send
+  // has no per-recipient confirm step to pause on). Same popover shape as
+  // the frequent-signers/signer-correction ones. See BOUNCE_TRACKING_SCOPE.md.
+  const [domainWarnings, setDomainWarnings] = useState<string[]>([]);
 
   const recipients = parseRecipients(text);
 
@@ -22,6 +27,7 @@ export function BulkSendButton({ templateId }: { templateId: string }) {
     }
     setStatus("loading");
     setMessage("");
+    setDomainWarnings([]);
     try {
       const res = await fetch(`/api/templates/${templateId}/bulk-send`, {
         method: "POST",
@@ -32,6 +38,7 @@ export function BulkSendButton({ templateId }: { templateId: string }) {
       if (!res.ok) throw new Error(data.error || "Something went wrong.");
       setStatus("done");
       setMessage(`Sent to ${data.count} recipient${data.count === 1 ? "" : "s"}.`);
+      if (Array.isArray(data.domainWarnings)) setDomainWarnings(data.domainWarnings);
       router.refresh();
     } catch (err) {
       setStatus("error");
@@ -56,13 +63,49 @@ export function BulkSendButton({ templateId }: { templateId: string }) {
               One recipient per line — <code>email@company.com</code> or <code>Name &lt;email@company.com&gt;</code>.
               Each gets their own copy, sent immediately.
             </p>
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              rows={6}
-              placeholder={"jane@acme.com\nJohn Doe <john@acme.com>"}
-              className="mt-3 w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm text-slate-800 placeholder:text-slate-400"
-            />
+            <div className="relative mt-3">
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={6}
+                placeholder={"jane@acme.com\nJohn Doe <john@acme.com>"}
+                className="w-full rounded-md border border-slate-300 px-2.5 py-2 text-sm text-slate-800 placeholder:text-slate-400"
+              />
+              {/* Same popover shape as frequent-signers/signer-correction —
+                  see BOUNCE_TRACKING_SCOPE.md. Every recipient here already
+                  sent regardless, so this is a heads-up, not a decision. */}
+              {domainWarnings.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                    onClick={() => setDomainWarnings([])}
+                    className="fixed inset-0 z-40 cursor-default"
+                  />
+                  <div className="absolute left-0 top-full z-50 mt-2 w-full rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {domainWarnings.length === 1 ? "One address might have a typo" : "A few addresses might have typos"}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setDomainWarnings([])}
+                        aria-label="Close"
+                        className="-mr-1 -mt-1 text-slate-400 hover:text-slate-600"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <ul className="mt-1 space-y-1 text-xs text-slate-600">
+                      {domainWarnings.map((reason, i) => (
+                        <li key={i}>{reason}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              )}
+            </div>
             <p className="mt-1 text-xs text-slate-500">{recipients.length} recipient{recipients.length === 1 ? "" : "s"} detected</p>
             {status === "error" && <p className="mt-2 text-sm text-red-600">{message}</p>}
             {status === "done" && <p className="mt-2 text-sm text-emerald-600">{message}</p>}

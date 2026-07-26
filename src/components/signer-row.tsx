@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { CopySigningLinkButton } from "@/components/copy-signing-link-button";
 import { RemindSignerButton } from "@/components/remind-signer-button";
@@ -82,13 +83,43 @@ export function SignerRow({
   return (
     <li className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
-        <span>
+        <span className="relative inline-block">
           {signer.name ? `${signer.name} <${signer.email}>` : signer.email}
           {engagementLabel && <span className="ml-2 text-xs text-slate-400">· {engagementLabel}</span>}
           {showEngagementTease && (
             <Link href="/pricing" className="ml-2 text-xs text-slate-400 hover:text-slate-600">
               · Engagement tracking (Starter+)
             </Link>
+          )}
+          {/* Floating dismissible popover, same shape as the referral gift
+              button's popover (referral-gift-button.tsx) and the
+              frequent-signers add form — anchored near the address it's
+              about, not a full-width inline line. Non-blocking: the
+              correction already went through. See BOUNCE_TRACKING_SCOPE.md. */}
+          {domainWarning && (
+            <>
+              <button
+                type="button"
+                aria-hidden="true"
+                tabIndex={-1}
+                onClick={() => setDomainWarning("")}
+                className="fixed inset-0 z-40 cursor-default"
+              />
+              <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-900">Double-check this address</p>
+                  <button
+                    type="button"
+                    onClick={() => setDomainWarning("")}
+                    aria-label="Close"
+                    className="-mr-1 -mt-1 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-slate-600">{domainWarning}</p>
+              </div>
+            </>
           )}
         </span>
         <span className="flex items-center gap-2">
@@ -127,15 +158,6 @@ export function SignerRow({
           </span>
         </span>
       </div>
-
-      {domainWarning && (
-        <p className="text-xs text-amber-600">
-          {domainWarning}{" "}
-          <button onClick={() => setDomainWarning("")} className="underline hover:text-amber-700">
-            Dismiss
-          </button>
-        </p>
-      )}
 
       {editing && (
         <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
