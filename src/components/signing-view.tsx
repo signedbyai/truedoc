@@ -169,6 +169,7 @@ export function SigningView({
   const [done, setDone] = useState(false);
   const [documentCompleted, setDocumentCompleted] = useState(false);
   const [speedStat, setSpeedStat] = useState<SpeedStat | null>(null);
+  const [preparingSignedPdf, setPreparingSignedPdf] = useState(false);
   const [declined, setDeclined] = useState(false);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
@@ -800,6 +801,50 @@ export function SigningView({
     a.click();
   }
 
+  // Previously a plain <a href download> link -- on mobile that just drops
+  // the PDF into the browser's downloads/Files app, and sharing it from
+  // there (e.g. via Messages or email) means leaving this page, finding it,
+  // then re-attaching it elsewhere. Same fix as handleShareSpeedStat above:
+  // fetch the actual file and hand it to the OS share sheet where
+  // supported, so "send this signed copy to someone" is one tap. Falls back
+  // to a normal browser download (still via a real file, not a re-fetch) if
+  // share isn't supported or the fetch fails outright.
+  async function handleShareOrDownloadSignedPdf() {
+    const url = `/api/sign/${token}/signed-file`;
+    const filename = `${documentTitle.replace(/[^\w.\- ]/g, "")}-signed.pdf`;
+    setPreparingSignedPdf(true);
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error("Could not fetch signed PDF");
+      const blob = await resp.blob();
+      const file = new File([blob], filename, { type: "application/pdf" });
+
+      if (navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file] });
+          return;
+        } catch (err) {
+          // AbortError means the signer cancelled the share sheet -- respect
+          // that, don't surprise them with a download too.
+          if (err instanceof Error && err.name === "AbortError") return;
+        }
+      }
+
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      // Couldn't fetch or share at all -- fall back to the original
+      // behavior (a direct navigation to the download endpoint).
+      window.location.href = url;
+    } finally {
+      setPreparingSignedPdf(false);
+    }
+  }
+
   async function handleDecline() {
     setDeclining(true);
     setError("");
@@ -927,12 +972,14 @@ export function SigningView({
             </div>
           )}
           {documentCompleted && (
-            <a
-              href={`/api/sign/${token}/signed-file`}
-              className="mt-4 inline-block rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            <button
+              type="button"
+              onClick={handleShareOrDownloadSignedPdf}
+              disabled={preparingSignedPdf}
+              className="mt-4 inline-block rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
             >
-              Download signed PDF
-            </a>
+              {preparingSignedPdf ? "Preparing…" : "Download signed PDF"}
+            </button>
           )}
           {payment && (
             <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
