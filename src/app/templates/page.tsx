@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FlagValues } from "flags/react";
 import { Logo } from "@/components/logo";
 import { CtaLink } from "@/components/cta-link";
+import { LanguageSupportRow } from "@/components/language-support-row";
 import { ctaColorFlag } from "@/flags";
 import { TEMPLATE_PAGES } from "@/lib/template-pages";
 
@@ -69,9 +70,15 @@ export default async function TemplatesIndexPage() {
         <p className="mt-2 text-sm text-slate-600">
           Upload any PDF, or describe what you need and let AI draft a starting point.
         </p>
-        <CtaLink href="/login?intent=signup" className="mt-5" color={ctaColor} page="templates" position="footer">
-          Start for free →
-        </CtaLink>
+        <div className="mt-5 flex flex-col items-center gap-2">
+          <CtaLink href="/login?intent=signup" color={ctaColor} page="templates" position="footer">
+            Start for free →
+          </CtaLink>
+          <p className="text-xs text-slate-400">Free on every plan, including Free. No credit card required.</p>
+        </div>
+        <div className="mt-5">
+          <LanguageSupportRow />
+        </div>
       </section>
 
       <footer className="mt-auto border-t border-slate-100 px-6 py-8 text-center text-xs text-slate-400">
