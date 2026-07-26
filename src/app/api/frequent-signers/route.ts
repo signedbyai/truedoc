@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getUserAndOrg } from "@/lib/org";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { listFrequentSigners, MAX_NAME_CHARS, MAX_EMAIL_CHARS } from "@/lib/frequent-signers";
+import { checkEmailDomainHasMx } from "@/lib/validate-email-domain";
 
 const bodySchema = z.object({
   name: z.string().trim().min(1).max(MAX_NAME_CHARS),
@@ -39,6 +40,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Enter a valid name and email." }, { status: 400 });
   }
 
+  // Same warn-not-block treatment as the document send flow
+  // (BOUNCE_TRACKING_SCOPE.md) — but arguably matters MORE here: a typo saved
+  // as a frequent signer gets reused across every future document, not just
+  // one send, so it's worth flagging even though it doesn't block saving.
+  const domainCheck = await checkEmailDomainHasMx(parsed.data.email);
+
   const { data, error } = await supabase
     .from("frequent_signers")
     .insert({ org_id: orgId, name: parsed.data.name, email: parsed.data.email, is_self: false })
@@ -50,5 +57,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not save that contact." }, { status: 500 });
   }
 
-  return NextResponse.json({ signer: { id: data.id, name: data.name, email: data.email, isSelf: data.is_self } });
+  return NextResponse.json({
+    signer: { id: data.id, name: data.name, email: data.email, isSelf: data.is_self },
+    ...(domainCheck.ok ? {} : { domainWarning: domainCheck.reason }),
+  });
 }

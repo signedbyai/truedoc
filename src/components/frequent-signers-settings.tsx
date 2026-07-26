@@ -26,6 +26,11 @@ export function FrequentSignersSettings() {
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
+  // Non-blocking — the contact is already saved by the time this shows.
+  // Worth flagging here more than most places: a typo saved as a frequent
+  // signer gets reused across every future document, not just one send.
+  // See BOUNCE_TRACKING_SCOPE.md.
+  const [domainWarning, setDomainWarning] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -48,6 +53,7 @@ export function FrequentSignersSettings() {
     if (!name.trim() || !email.trim()) return;
     setAdding(true);
     setAddError("");
+    setDomainWarning("");
     try {
       const res = await fetch("/api/frequent-signers", {
         method: "POST",
@@ -57,6 +63,7 @@ export function FrequentSignersSettings() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Couldn't save that contact.");
       setSigners((prev) => [...(prev ?? []), data.signer]);
+      setDomainWarning(typeof data.domainWarning === "string" ? data.domainWarning : "");
       setName("");
       setEmail("");
     } catch (err) {
@@ -136,6 +143,14 @@ export function FrequentSignersSettings() {
         </Button>
       </div>
       {addError && <p className="mt-2 text-xs text-red-600">{addError}</p>}
+      {domainWarning && (
+        <p className="mt-2 text-xs text-amber-600">
+          {domainWarning}{" "}
+          <button onClick={() => setDomainWarning("")} className="underline hover:text-amber-700">
+            Dismiss
+          </button>
+        </p>
+      )}
     </div>
   );
 }
