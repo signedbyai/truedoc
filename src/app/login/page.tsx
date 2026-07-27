@@ -370,9 +370,8 @@ function LoginPageInner() {
                     name="email"
                     type="email"
                     required
-                    autoFocus
                     placeholder="Email address"
-                    className="transition-shadow focus-visible:border-yellow-400 focus-visible:ring-yellow-400 focus-visible:shadow-[0_0_0_3px_rgba(250,204,21,0.35)]"
+                    className="border-yellow-400 shadow-[0_0_0_3px_rgba(250,204,21,0.35)] focus-visible:border-yellow-400 focus-visible:ring-yellow-400 focus-visible:shadow-[0_0_0_3px_rgba(250,204,21,0.35)]"
                   />
                 </div>
                 {status === "error" && <p className="text-sm text-red-600">{message}</p>}
