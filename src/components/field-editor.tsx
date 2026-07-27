@@ -18,6 +18,7 @@ import { BookmarkIcon, MENU_ITEM_CLASS, SaveIcon, MailIcon, ClockIcon, ShieldIco
 import { FIELD_TYPES, fieldDef, type FieldType } from "@/lib/field-types";
 import { defaultRecipientNotice } from "@/lib/recipient-notice";
 import { installMapUpsertPolyfill } from "@/lib/pdfjs-map-polyfill";
+import { computeSignatureLayout, quantize, type SignatureLayout } from "@/lib/suggestion-shape";
 
 type Field = {
   id: string;
@@ -50,6 +51,20 @@ type Field = {
   // vs "Placeholder" tag below) so the sender isn't misled into thinking
   // this reflects an actual read of the document.
   placeholder?: boolean;
+  // Client-only, for FIELD_SUGGESTION_LEARNING_SCOPE.md's correction
+  // logging. origX/origY/origRole freeze the AI's original proposal at the
+  // moment a suggestion is created (~line 565 below) so the diff logged at
+  // confirm/delete time is exact rather than reconstructed from whatever the
+  // field's live x/y/signerId happen to be by then. wasAiSuggested survives
+  // confirmField clearing `suggested` (that flag only means "still
+  // pending"), so persist()'s sender-placed-field logging can tell a
+  // genuinely manual field apart from an AI suggestion that's since been
+  // accepted -- the latter is already fully logged at confirm time and must
+  // not be logged again as if it were manually placed.
+  origX?: number;
+  origY?: number;
+  origRole?: number | null;
+  wasAiSuggested?: boolean;
 };
 
 type Recipient = {
@@ -124,6 +139,23 @@ function localInputToIso(value: string): string {
   if (!value) return "";
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? "" : d.toISOString();
+}
+
+// Did the sender bind this field to a different recipient than the one the
+// AI's role pointed at? Only meaningful when the AI actually tagged a role
+// (origRole !== null) and the field ended up bound to a real recipient — an
+// untagged suggestion or a still-unassigned field has no AI claim to have
+// corrected. Module-level (not a method closing over component state) so it
+// has a stable identity and doesn't need to be a useCallback dependency.
+function computeRoleCorrected(
+  origRole: number | null | undefined,
+  finalSignerId: string | null,
+  recipients: Recipient[]
+): boolean {
+  if (origRole == null || finalSignerId === null) return false;
+  const bound = recipients.find((r) => r.id === finalSignerId);
+  if (!bound) return false;
+  return bound.order_index !== origRole;
 }
 
 export function FieldEditor({
@@ -278,6 +310,24 @@ export function FieldEditor({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [suggesting, setSuggesting] = useState(false);
   const [suggestError, setSuggestError] = useState("");
+
+  // FIELD_SUGGESTION_LEARNING_SCOPE.md's shape descriptor for whatever the
+  // most recent suggest-fields run found, computed once when suggestions
+  // land (see runSuggestFields below) and reused by every logging hook
+  // point rather than recomputed per field. `analyzed` mirrors `!unreadable`
+  // — logging is skipped entirely for a document that couldn't actually be
+  // analyzed (no shape to attribute a manual placement to, and nothing to
+  // have been "suggested" in the first place). Fields not yet logged from a
+  // sender-placed field are tracked separately (loggedSenderPlacedIdsRef
+  // below) so persist() — which can run many times per editing session via
+  // autosave — logs each one exactly once.
+  const [suggestionShape, setSuggestionShape] = useState<{
+    analyzed: boolean;
+    layout: SignatureLayout;
+    partyCount: number;
+    columnCount: number | null;
+  } | null>(null);
+  const loggedSenderPlacedIdsRef = useRef<Set<string>>(new Set());
 
   // "We detected N signers" guided setup: the suggest-fields pass returns the
   // distinct signing parties it found (with human labels). When a fresh
@@ -591,10 +641,33 @@ export function FieldEditor({
               purpose: s.purpose,
               suggested: true,
               placeholder: unreadable,
+              // Frozen at creation for FIELD_SUGGESTION_LEARNING_SCOPE.md's
+              // correction logging — see the Field type's comment.
+              origX: s.x,
+              origY: s.y,
+              origRole: s.role,
+              wasAiSuggested: true,
             };
           });
           return [...base, ...newSuggested];
         });
+
+        // Shape descriptor for this batch's logging — see the
+        // suggestionShape state comment above. Computed from signature-type
+        // suggestions only (the actual signature line per party, not a
+        // scattered date/text field); skipped entirely for an unreadable
+        // document, since there's no real suggestion attempt to compare
+        // anything against (FIELD_SUGGESTION_LEARNING_SCOPE.md's "Narrowed"
+        // decision).
+        const signatureGeom = suggestions
+          .filter((s) => s.type === "signature")
+          .map((s) => ({ page: s.page, x: s.x, y: s.y, role: s.role }));
+        const partyCountForShape = Array.isArray(data.parties) ? data.parties.length : 0;
+        setSuggestionShape(
+          unreadable
+            ? { analyzed: false, layout: "unknown", partyCount: 0, columnCount: null }
+            : { analyzed: true, partyCount: partyCountForShape, ...computeSignatureLayout(signatureGeom, partyCountForShape) }
+        );
 
         // Capture the distinct signing parties the model found, for the
         // "we detected N signers" guided setup (rendered only when the
@@ -878,6 +951,34 @@ export function FieldEditor({
     placeField(page, xFrac, yFrac);
   }
 
+  // Fire-and-forget POST for FIELD_SUGGESTION_LEARNING_SCOPE.md's Phase 1
+  // logging — never awaited by a caller, never blocks the editor. The server
+  // (see /api/suggestion-feedback/route.ts) always responds 200 regardless
+  // of what it actually did with the row (rate-limited, org opted out,
+  // insert failed) — there is nothing for the client to react to either way.
+  function logSuggestionFeedback(payload: {
+    origin: "ai_suggested" | "sender_placed";
+    fieldType: FieldType;
+    layout: SignatureLayout;
+    partyCount: number;
+    columnCount: number | null;
+    pageFractionX: number;
+    pageFractionY: number;
+    outcome: "kept" | "moved" | "deleted" | "role_changed" | null;
+    moved: boolean;
+    roleCorrected: boolean;
+    deltaX: number | null;
+    deltaY: number | null;
+  }) {
+    fetch("/api/suggestion-feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).catch(() => {
+      // Best-effort only — see FIELD_SUGGESTION_LEARNING_SCOPE.md.
+    });
+  }
+
   // Confirming a suggestion should mean the same thing everywhere: clear
   // `suggested`, snapping away from anything it now overlaps. Used by all
   // three ways to confirm one — tapping it in place, dragging it, and the
@@ -885,34 +986,69 @@ export function FieldEditor({
   // drag, `current.x/y` is already the live-dragged position (onMove keeps
   // it updated in state as the pointer moves), so this reads whatever the
   // field's current position is rather than needing it passed in.
+  //
+  // Also the single hook point for logging an ai_suggested correction (see
+  // FIELD_SUGGESTION_LEARNING_SCOPE.md) — reads `fields` directly (rather
+  // than only inside the setFields updater) so the precomputed signerId/free
+  // position can be reused for the log payload right after, without
+  // duplicating the resolution logic. This handler also runs on every drag
+  // release of an ALREADY-confirmed field (see handleFieldPointerDown), so
+  // logging is gated on `current.suggested` — only an actual suggestion
+  // transitioning to confirmed is a loggable correction.
   const confirmField = useCallback(
     (id: string) => {
-      setFields((prev) => {
-        const current = prev.find((f) => f.id === id);
-        if (!current) return prev;
-        const others = prev.filter((f) => f.id !== id);
-        const free = findFreePosition(current.page, current.x, current.y, current.width, current.height, others);
-        // Confirming also resolves ownership for a still-unassigned
-        // suggestion — selected chip first (same semantics as manual
-        // placement), then role match, then sole recipient. Previously this
-        // kept signerId null + templateRole set, which walked straight into
-        // the send-time orphan block with no way to fix it besides deleting
-        // the field (see lib/suggestion-binding.ts).
-        const signerId =
-          current.signerId ??
-          signerForConfirmedSuggestion({
-            templateRole: current.templateRole,
-            activeRecipientId,
-            recipients,
-          });
-        return prev.map((f) =>
+      const current = fields.find((f) => f.id === id);
+      if (!current) return;
+      const others = fields.filter((f) => f.id !== id);
+      const free = findFreePosition(current.page, current.x, current.y, current.width, current.height, others);
+      // Confirming also resolves ownership for a still-unassigned
+      // suggestion — selected chip first (same semantics as manual
+      // placement), then role match, then sole recipient. Previously this
+      // kept signerId null + templateRole set, which walked straight into
+      // the send-time orphan block with no way to fix it besides deleting
+      // the field (see lib/suggestion-binding.ts).
+      const signerId =
+        current.signerId ??
+        signerForConfirmedSuggestion({
+          templateRole: current.templateRole,
+          activeRecipientId,
+          recipients,
+        });
+
+      setFields((prev) =>
+        prev.map((f) =>
           f.id === id
             ? { ...f, x: free.x, y: free.y, suggested: false, signerId, templateRole: signerId ? null : f.templateRole }
             : f
-        );
-      });
+        )
+      );
+
+      if (current.suggested && suggestionShape?.analyzed) {
+        const origX = current.origX ?? current.x;
+        const origY = current.origY ?? current.y;
+        const dx = free.x - origX;
+        const dy = free.y - origY;
+        // A tiny findFreePosition nudge on a plain tap-to-confirm (no real
+        // drag) shouldn't count as "moved" — only a deliberate reposition.
+        const moved = Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01;
+        const roleCorrected = computeRoleCorrected(current.origRole, signerId, recipients);
+        logSuggestionFeedback({
+          origin: "ai_suggested",
+          fieldType: current.type,
+          layout: suggestionShape.layout,
+          partyCount: suggestionShape.partyCount,
+          columnCount: suggestionShape.columnCount,
+          pageFractionX: quantize(origX, 0.1),
+          pageFractionY: quantize(origY, 0.1),
+          outcome: roleCorrected ? "role_changed" : moved ? "moved" : "kept",
+          moved,
+          roleCorrected,
+          deltaX: moved ? quantize(dx, 0.02, -1, 1) : null,
+          deltaY: moved ? quantize(dy, 0.02, -1, 1) : null,
+        });
+      }
     },
-    [activeRecipientId, recipients]
+    [fields, activeRecipientId, recipients, suggestionShape]
   );
 
   // Pointer Events (not mouse-only) so this works for touch/iOS drags too,
@@ -1014,7 +1150,31 @@ export function FieldEditor({
   }
 
   function removeField(id: string) {
+    const current = fields.find((f) => f.id === id);
     setFields((prev) => prev.filter((f) => f.id !== id));
+
+    // Rejected outright — only loggable when it was still an unconfirmed
+    // suggestion at the moment of removal (see
+    // FIELD_SUGGESTION_LEARNING_SCOPE.md hook point 2). A confirmed field
+    // being deleted later is just ordinary editing, not a correction signal.
+    if (current?.suggested && suggestionShape?.analyzed) {
+      const origX = current.origX ?? current.x;
+      const origY = current.origY ?? current.y;
+      logSuggestionFeedback({
+        origin: "ai_suggested",
+        fieldType: current.type,
+        layout: suggestionShape.layout,
+        partyCount: suggestionShape.partyCount,
+        columnCount: suggestionShape.columnCount,
+        pageFractionX: quantize(origX, 0.1),
+        pageFractionY: quantize(origY, 0.1),
+        outcome: "deleted",
+        moved: false,
+        roleCorrected: false,
+        deltaX: null,
+        deltaY: null,
+      });
+    }
   }
 
   // Saves recipients first (so we have real signer ids), remaps fields to
@@ -1093,6 +1253,36 @@ export function FieldEditor({
           })),
         }),
       });
+
+      // Hook point 4 (FIELD_SUGGESTION_LEARNING_SCOPE.md): a truly
+      // sender-placed field (never an AI suggestion at all — see
+      // Field.wasAiSuggested) is the only way to see a false negative, a
+      // spot the AI should have suggested but didn't. Only logged when the
+      // document was actually analyzed (suggestionShape.analyzed — skips the
+      // unreadable-fallback case, which has no shape to attribute this to
+      // and no real suggestion attempt to compare against), and only once
+      // ever per field id, since persist() runs repeatedly via autosave.
+      if (res.ok && suggestionShape?.analyzed) {
+        for (const f of currentFields) {
+          if (f.wasAiSuggested) continue;
+          if (loggedSenderPlacedIdsRef.current.has(f.id)) continue;
+          loggedSenderPlacedIdsRef.current.add(f.id);
+          logSuggestionFeedback({
+            origin: "sender_placed",
+            fieldType: f.type,
+            layout: suggestionShape.layout,
+            partyCount: suggestionShape.partyCount,
+            columnCount: suggestionShape.columnCount,
+            pageFractionX: quantize(f.x, 0.1),
+            pageFractionY: quantize(f.y, 0.1),
+            outcome: null,
+            moved: false,
+            roleCorrected: false,
+            deltaX: null,
+            deltaY: null,
+          });
+        }
+      }
 
       return res.ok;
     } catch {

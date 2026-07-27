@@ -1,9 +1,10 @@
 # Field-suggestion correction logging — scope (Phase 1: data only)
 
-Status: **scoping, not built**. This defines what we'd log if we start collecting
-signal on AI field-suggestion accuracy. Nothing here changes suggestion behavior —
-it's the data-collection groundwork that a future retrieval/heuristic improvement
-(see the "self-learning" discussion, 2026-07-26) would need before it could exist.
+Status: **built and shipped, 2026-07-27** (migration 0036, `src/lib/suggestion-shape.ts`,
+`POST /api/suggestion-feedback`, the 4 hook points in `field-editor.tsx`). Nothing here
+changes suggestion behavior — it's the data-collection groundwork that a future
+retrieval/heuristic improvement (see the "self-learning" discussion, 2026-07-26) would
+need before it could exist.
 
 ## Goal / non-goal
 
@@ -109,19 +110,30 @@ this endpoint can be simpler than the signer-facing routes (no
 `requireVerifiedSigner`-equivalent needed — it's sender-side, behind the existing
 dashboard auth, and carries nothing to protect on top of that).
 
-## Decisions (2026-07-26)
+## Decisions (2026-07-26, reaffirmed and finalized 2026-07-27)
 
-1. **Privacy/legal framing** — covered by the current privacy policy's existing
-   product-improvement language. Michael is flagging this as an explicit item to
-   run past privacy/legal once SignedBy passes 100 beta customers, rather than
-   before this phase is built. Not a blocker for building the logging pipe now.
-2. **Opt-out** — a per-org settings toggle: "Allow SignedBy to use anonymized field
-   placement coordinates to improve the product." Lives in org settings alongside
-   the other org-level toggles (branding, auth defaults, etc.); when off, the
-   client simply never posts to the logging endpoint for that org. Default value
-   (on vs. off) still to confirm at build time — likely on-by-default given the
-   anonymized-by-design framing, but worth a final check against the privacy copy
-   before shipping.
+1. **Privacy/legal framing** — built on **legitimate-interest grounds**: this is
+   anonymized-by-design product-improvement telemetry needed to have a useful,
+   improving product, not personal data about a signer or sender, so it isn't
+   gated behind an explicit-consent bar the way e.g. per-recipient auth is.
+   Covered by the current privacy policy's existing product-improvement language.
+   Explicitly flagged (2026-07-27, direct instruction) as an item for a formal
+   privacy/legal review at the 100-beta-customer checkpoint — specifically to
+   work out what, if anything, about a wider beta rollout would trigger the need
+   for a real opt-out control — rather than a blocker before this phase or before
+   expanding the current beta trial. Not a blocker for building the logging pipe
+   now.
+2. **Opt-out** — built, but **dark** (2026-07-27, direct instruction): a per-org
+   boolean, `organizations.suggestion_feedback_opt_out` (migration 0036), enforced
+   server-side in `POST /api/suggestion-feedback` (an opted-out org's rows are
+   silently skipped, never inserted). Off (not opted out) by default for every
+   org, matching the legitimate-interest framing above. Deliberately **no UI
+   control anywhere yet** — same shape as `ai_test_org`, toggled only via direct
+   SQL for now. Whether/when to surface a real settings toggle (a starting-point
+   draft for the copy: "Allow SignedBy to use anonymized field placement
+   coordinates to improve the product" — not final) is exactly the kind of thing
+   the 100-customer privacy gate above should settle, alongside what specifically
+   would make an opt-out necessary rather than optional.
 3. **Scope of what's logged — expanded, then narrowed**: log every field
    placement, categorized by `origin: "ai_suggested" | "sender_placed"`, not just
    corrections to AI suggestions. (Named this way rather than `"suggested" |
