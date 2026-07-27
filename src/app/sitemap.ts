@@ -46,6 +46,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // message-match — same priority tier as the template pages.
     { url: `${BASE_URL}/ai-drafter`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE_URL}/magic-quote`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    // Audience-specific entry-point pages, added 2026-07-27 to test AU
+    // trades and US subcontractor market entry — same feature, localized
+    // framing and FAQ (see each page's own top-of-file comment).
+    { url: `${BASE_URL}/magic-quote/au-tradies`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE_URL}/magic-quote/us-subcontractors`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE_URL}/quiz`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE_URL}/verify`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
     // /privacy, /terms, /dpa, /referral-terms are intentionally excluded — noindexed
