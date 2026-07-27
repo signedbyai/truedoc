@@ -239,6 +239,25 @@ export function FieldEditor({
   const [fields, setFields] = useState<Field[]>([]);
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [activeRecipientId, setActiveRecipientId] = useState<string | null>(null);
+  // Mirrors of the two above, kept current via effect (not a direct
+  // render-body assignment — react-hooks/refs flags that). confirmField is
+  // called from onUp, a closure frozen at pointerdown time (see
+  // handleFieldPointerDown) -- if a recipient chip is clicked and a drag
+  // starts on its heels before React re-renders, confirmField's own
+  // closed-over `recipients`/`activeRecipientId` could still be the
+  // PREVIOUS values, causing the sole-recipient/role-match fallback in
+  // signerForConfirmedSuggestion to resolve differently (or to null) than it
+  // should -- the intermittent "field ended up unassigned" report
+  // (2026-07-28), the same closure-staleness class of bug as the drag
+  // snap-back fix above, just for signer resolution instead of position.
+  const recipientsRef = useRef(recipients);
+  useEffect(() => {
+    recipientsRef.current = recipients;
+  }, [recipients]);
+  const activeRecipientIdRef = useRef(activeRecipientId);
+  useEffect(() => {
+    activeRecipientIdRef.current = activeRecipientId;
+  }, [activeRecipientId]);
   const [showAddRecipient, setShowAddRecipient] = useState(false);
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
@@ -1049,12 +1068,17 @@ export function FieldEditor({
       // kept signerId null + templateRole set, which walked straight into
       // the send-time orphan block with no way to fix it besides deleting
       // the field (see lib/suggestion-binding.ts).
+      // Read via the ref mirrors, not the closed-over recipients/
+      // activeRecipientId directly — see the recipientsRef/
+      // activeRecipientIdRef declaration for why (the same
+      // frozen-at-pointerdown-time closure problem the liveOverride above
+      // fixes for position, here for signer resolution instead).
       const signerId =
         current.signerId ??
         signerForConfirmedSuggestion({
           templateRole: current.templateRole,
-          activeRecipientId,
-          recipients,
+          activeRecipientId: activeRecipientIdRef.current,
+          recipients: recipientsRef.current,
         });
 
       setFields((prev) =>
@@ -1073,7 +1097,7 @@ export function FieldEditor({
         // A tiny findFreePosition nudge on a plain tap-to-confirm (no real
         // drag) shouldn't count as "moved" — only a deliberate reposition.
         const moved = Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01;
-        const roleCorrected = computeRoleCorrected(current.origRole, signerId, recipients);
+        const roleCorrected = computeRoleCorrected(current.origRole, signerId, recipientsRef.current);
         logSuggestionFeedback({
           origin: "ai_suggested",
           fieldType: current.type,
@@ -1092,7 +1116,7 @@ export function FieldEditor({
         });
       }
     },
-    [fields, activeRecipientId, recipients, suggestionShape]
+    [fields, suggestionShape]
   );
 
   // Pointer Events (not mouse-only) so this works for touch/iOS drags too,
