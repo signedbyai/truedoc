@@ -362,7 +362,18 @@ export function FieldEditor({
     }[]
   >([]);
   const pageRefs = useRef<Record<number, HTMLDivElement | null>>({});
-  const dragState = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
+  // curX/curY track the live position as onMove updates it, synchronously,
+  // independent of React's setFields/render timing — see confirmField's
+  // liveOverride param for why this matters.
+  const dragState = useRef<{
+    id: string;
+    startX: number;
+    startY: number;
+    origX: number;
+    origY: number;
+    curX: number;
+    curY: number;
+  } | null>(null);
   // Guards the auto-suggest effect below to a single attempt per mount —
   // without this, any state change that re-runs the effect (e.g. the
   // suggestions themselves arriving) would re-trigger it in a loop.
@@ -1003,10 +1014,18 @@ export function FieldEditor({
   // Confirming a suggestion should mean the same thing everywhere: clear
   // `suggested`, snapping away from anything it now overlaps. Used by all
   // three ways to confirm one — tapping it in place, dragging it, and the
-  // explicit ✓ button — so they can never disagree with each other. For a
-  // drag, `current.x/y` is already the live-dragged position (onMove keeps
-  // it updated in state as the pointer moves), so this reads whatever the
-  // field's current position is rather than needing it passed in.
+  // explicit ✓ button — so they can never disagree with each other.
+  //
+  // `liveOverride` is passed only by a drag release (handleFieldPointerDown's
+  // onUp). It exists because this callback's own `fields` closure can be
+  // stale mid-drag: onUp is defined once, at pointerdown, so the confirmField
+  // reference it calls (and that reference's own closed-over `fields`) is
+  // whatever existed BEFORE the drag's onMove updates landed — reading
+  // current.x/y here without the override silently re-confirmed the field at
+  // its PRE-drag position (a real regression shipped 2026-07-27, fixed
+  // 2026-07-28). A plain tap or the ✓ button has no such staleness (nothing
+  // moved beforehand), so they call this with no override and current.x/y is
+  // already correct.
   //
   // Also the single hook point for logging an ai_suggested correction (see
   // FIELD_SUGGESTION_LEARNING_SCOPE.md) — reads `fields` directly (rather
@@ -1017,11 +1036,13 @@ export function FieldEditor({
   // logging is gated on `current.suggested` — only an actual suggestion
   // transitioning to confirmed is a loggable correction.
   const confirmField = useCallback(
-    (id: string) => {
+    (id: string, liveOverride?: { x: number; y: number }) => {
       const current = fields.find((f) => f.id === id);
       if (!current) return;
+      const liveX = liveOverride?.x ?? current.x;
+      const liveY = liveOverride?.y ?? current.y;
       const others = fields.filter((f) => f.id !== id);
-      const free = findFreePosition(current.page, current.x, current.y, current.width, current.height, others);
+      const free = findFreePosition(current.page, liveX, liveY, current.width, current.height, others);
       // Confirming also resolves ownership for a still-unassigned
       // suggestion — selected chip first (same semantics as manual
       // placement), then role match, then sole recipient. Previously this
@@ -1085,6 +1106,8 @@ export function FieldEditor({
       startY: e.clientY,
       origX: field.x,
       origY: field.y,
+      curX: field.x,
+      curY: field.y,
     };
 
     function onMove(moveEvent: PointerEvent) {
@@ -1095,21 +1118,18 @@ export function FieldEditor({
       const rect = container.getBoundingClientRect();
       const dx = (moveEvent.clientX - drag.startX) / rect.width;
       const dy = (moveEvent.clientY - drag.startY) / rect.height;
-      setFields((prev) =>
-        prev.map((f) =>
-          f.id === drag.id
-            ? {
-                ...f,
-                x: Math.min(Math.max(drag.origX + dx, 0), 1 - f.width),
-                y: Math.min(Math.max(drag.origY + dy, 0), 1 - f.height),
-              }
-            : f
-        )
-      );
+      const nextX = Math.min(Math.max(drag.origX + dx, 0), 1 - field.width);
+      const nextY = Math.min(Math.max(drag.origY + dy, 0), 1 - field.height);
+      // Kept in sync here, synchronously, alongside the visual setFields
+      // update below — see onUp for why confirmField needs this rather than
+      // its own `fields` snapshot.
+      drag.curX = nextX;
+      drag.curY = nextY;
+      setFields((prev) => prev.map((f) => (f.id === drag.id ? { ...f, x: nextX, y: nextY } : f)));
     }
 
     function onUp() {
-      const draggedId = dragState.current?.id;
+      const drag = dragState.current;
       dragState.current = null;
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
@@ -1120,16 +1140,25 @@ export function FieldEditor({
       // stops its own click, so this only matters for a drag that releases
       // off the field.
       suppressNextPageClick.current = true;
-      if (!draggedId) return;
+      if (!drag) return;
 
       // Any pointer interaction with a suggested field — a tap-in-place or
       // a drag to nudge it — counts as the sender reviewing and accepting
       // it, so this also clears `suggested` here rather than needing a
       // separate confirm control. Goes through the same confirmField() as
-      // the ✓ button and plain taps (position was already applied live by
-      // onMove for an actual drag), so all three ways to confirm a
+      // the ✓ button and plain taps, so all three ways to confirm a
       // suggestion end up in an identical end state.
-      confirmField(draggedId);
+      //
+      // Passes the live-tracked (curX, curY) explicitly rather than letting
+      // confirmField fall back to its own `fields` snapshot: this handler
+      // (onMove/onUp) is defined once, at pointerdown, and confirmField's
+      // closure over `fields` is whatever it was AT THAT MOMENT — before any
+      // of this drag's onMove updates landed. Without this override,
+      // confirmField would recompute the "free" position from the field's
+      // PRE-drag coordinates and silently confirm it back there, even
+      // though the drag visually moved it — the exact regression this
+      // fixes (2026-07-28).
+      confirmField(drag.id, { x: drag.curX, y: drag.curY });
     }
 
     window.addEventListener("pointermove", onMove);
