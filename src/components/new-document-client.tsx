@@ -172,13 +172,34 @@ export function NewDocumentClient({
               Upload a file
             </span>
           </button>
+          {/* Free on every plan (2026-07-21) — no locked/upsell state needed,
+              unlike the AI Drafter tab below. Moved ahead of AI Drafter
+              (2026-07-27) — order is now Upload, Magic Quote, AI Drafter. */}
+          <button
+            onClick={() => setMode("quote")}
+            className={cn(
+              MODE_TAB_CLASS,
+              // Same shared-comet rule as the AI Drafter tab below: glows
+              // only in the initial "upload" state, and hops to Magic
+              // Quote's own "Describe the job" box once chosen.
+              mode === "upload" && "ai-comet",
+              mode === "quote"
+                ? "border-slate-900 bg-slate-900 text-white"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+            )}
+          >
+            <span className="inline-flex items-center justify-center gap-1.5">
+              <Receipt className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+              Magic Quote
+            </span>
+          </button>
           {hasAiDraft ? (
             <button
               onClick={() => setMode("draft")}
               className={cn(
                 MODE_TAB_CLASS,
                 // Comet lives on this button only in the initial "upload"
-                // state, same as the Magic Quote tab below — choosing either
+                // state, same as the Magic Quote tab above — choosing either
                 // AI mode turns both off, not just the one clicked, since
                 // they're two answers to the same "which way in?" prompt.
                 // Once AI Drafter itself is chosen, the comet hops to the
@@ -214,26 +235,6 @@ export function NewDocumentClient({
               </span>
             </a>
           )}
-          {/* Free on every plan (2026-07-21) — no locked/upsell state needed,
-              unlike the AI Drafter tab above. */}
-          <button
-            onClick={() => setMode("quote")}
-            className={cn(
-              MODE_TAB_CLASS,
-              // Same shared-comet rule as the AI Drafter tab above: glows
-              // only in the initial "upload" state, and hops to Magic
-              // Quote's own "Describe the job" box once chosen.
-              mode === "upload" && "ai-comet",
-              mode === "quote"
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-            )}
-          >
-            <span className="inline-flex items-center justify-center gap-1.5">
-              <Receipt className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-              Magic Quote
-            </span>
-          </button>
         </div>
 
         {mode === "quote" ? (
