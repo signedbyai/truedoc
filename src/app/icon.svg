@@ -1,5 +1,6 @@
-<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-  <rect x="3" y="3" width="114" height="114" rx="26" fill="#ffffff" stroke="#e2e8f0" stroke-width="3"/>
-  <text x="60" y="88" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif"
-        font-weight="800" font-size="84" fill="#000000" text-anchor="middle">S</text>
+<svg viewBox="0 0 480 480" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="480" height="480" rx="144" ry="144" fill="#FDE047"/>
+  <g transform="translate(240 240) skewX(-24)">
+    <rect x="-37.2" y="-92" width="74.4" height="184" fill="#000000"/>
+  </g>
 </svg>
