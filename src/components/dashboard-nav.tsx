@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Home, FileText, Copy, Users, MoreHorizontal, Settings, CreditCard, LogOut, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { Logo } from "@/components/logo";
+import Image from "next/image";
 import { OrgSwitcher } from "@/components/org-switcher";
 import { ReferralGiftButton } from "@/components/referral-gift-button";
 import { FeedbackButton } from "@/components/feedback-button";
@@ -129,7 +129,7 @@ export function DashboardNav({
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex items-center gap-8">
             <Link href="/dashboard" aria-label="SignedBy home">
-              <Logo />
+              <Image src="/brand/signedby-lockup-yellow-badge-micro-small.png" alt="SignedBy" width={230} height={64} className="h-7 w-auto" priority />
             </Link>
             <nav className="flex items-center gap-6">
               {PRIMARY.map((s) => {
@@ -255,7 +255,7 @@ export function DashboardNav({
         }
       >
         <Link href="/dashboard" aria-label="SignedBy home">
-          <Logo />
+          <Image src="/brand/signedby-lockup-yellow-badge-micro-small.png" alt="SignedBy" width={230} height={64} className="h-7 w-auto" priority />
         </Link>
         <div className="flex items-center gap-1">
           <ReferralGiftButton variant="icon" />

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
-import { Logo } from "@/components/logo";
+import Image from "next/image";
 
 const TITLE = "Security & compliance — SignedBy";
 const DESCRIPTION =
@@ -78,7 +78,7 @@ export default function SecurityPage() {
     <main className="flex min-h-screen flex-col bg-white">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
         <Link href="/" className="hover:opacity-80">
-          <Logo />
+          <Image src="/brand/signedby-lockup-yellow-badge-beta-micro-small.png" alt="SignedBy" width={266} height={64} className="h-7 w-auto" priority />
         </Link>
         <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
           Sign in

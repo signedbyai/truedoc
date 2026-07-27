@@ -1,13 +1,13 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState, useTransition } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
-import { Logo } from "@/components/logo";
 import { sanitizeNextPath } from "@/lib/safe-redirect";
 import { sendMagicLink, signInWithPassword, sendPasswordReset, verifyLoginCode } from "./actions";
 
@@ -244,7 +244,7 @@ function LoginPageInner() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-12">
       <Link href="/" className="mb-8">
-        <Logo withBeta={false} />
+        <Image src="/brand/signedby-lockup-yellow-badge-beta-micro-small.png" alt="SignedBy" width={266} height={64} className="h-7 w-auto" priority />
       </Link>
 
       <div className="w-full max-w-sm rounded-xl border border-slate-200/60 bg-white p-8 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">

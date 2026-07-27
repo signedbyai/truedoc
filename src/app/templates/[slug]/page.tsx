@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FlagValues } from "flags/react";
-import { Logo } from "@/components/logo";
+import Image from "next/image";
 import { CtaLink } from "@/components/cta-link";
 import { ctaColorFlag } from "@/flags";
 import { TEMPLATE_PAGES, findTemplatePage } from "@/lib/template-pages";
@@ -74,7 +74,7 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
 
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-6">
         <Link href="/">
-          <Logo />
+          <Image src="/brand/signedby-lockup-yellow-badge-beta-micro-small.png" alt="SignedBy" width={266} height={64} className="h-7 w-auto" priority />
         </Link>
         <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
           Sign in

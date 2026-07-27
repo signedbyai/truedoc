@@ -3,7 +3,7 @@ import Link from "next/link";
 import { FlagValues } from "flags/react";
 import { getUserAndOrg } from "@/lib/org";
 import { PricingCards } from "@/components/pricing-cards";
-import { Logo } from "@/components/logo";
+import Image from "next/image";
 import { getRequestCurrency } from "@/lib/currency.server";
 import { ctaColorFlag } from "@/flags";
 
@@ -39,7 +39,7 @@ export default async function PricingPage() {
         <div className="mb-10 text-center">
           <Link href="/" className="inline-flex items-center gap-2 text-slate-500 hover:opacity-80">
             <span aria-hidden className="text-sm font-medium">←</span>
-            <Logo withBeta={false} />
+            <Image src="/brand/signedby-lockup-yellow-badge-beta-micro-small.png" alt="SignedBy" width={266} height={64} className="h-7 w-auto" priority />
           </Link>
           <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-900">Simple pricing</h1>
           <p className="mt-2 text-sm text-slate-600">No per-seat tax. Cancel anytime.</p>

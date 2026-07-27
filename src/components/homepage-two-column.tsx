@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Logo } from "@/components/logo";
 import { CtaLink } from "@/components/cta-link";
 import type { CtaColor } from "@/flags";
 import { formatPrice, type Currency } from "@/lib/currency";
@@ -28,7 +27,7 @@ export function HomepageTwoColumn({ currency, ctaColor }: { currency: Currency; 
           its hero is a narrower centred column that doesn't need the extra
           width). */}
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
-        <Logo />
+        <Image src="/brand/signedby-lockup-yellow-badge-beta-micro-small.png" alt="SignedBy" width={266} height={64} className="h-7 w-auto" priority />
         <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
           Sign in
         </Link>
