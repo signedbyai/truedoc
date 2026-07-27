@@ -3,7 +3,7 @@ import { getUserAndOrg } from "@/lib/org";
 import { getFromR2 } from "@/lib/r2";
 import { suggestFields } from "@/lib/suggest-fields";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { normalizeAIProvider } from "@/lib/ai-provider";
+import { normalizeAIProvider, modelForProvider } from "@/lib/ai-provider";
 
 // Stateless: computes suggestions and returns them, writes nothing to the
 // database. The field editor holds every suggestion as unconfirmed local
@@ -34,6 +34,11 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
   const { data: org } = await supabase.from("organizations").select("ai_provider, ai_test_org").eq("id", orgId).single();
   const provider = normalizeAIProvider(org?.ai_provider, org?.ai_test_org ?? false);
+  // Returned alongside the suggestions so the field editor can tag its
+  // FIELD_SUGGESTION_LEARNING_SCOPE.md correction logging with which
+  // provider/model actually produced this batch — see the
+  // suggestion_feedback migration for what that is (and isn't) good for.
+  const model = modelForProvider(provider, "fast");
 
   let bytes: Buffer;
   try {
@@ -46,7 +51,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
   try {
     const { suggestions, unreadable, parties } = await suggestFields(bytes, doc.page_count, provider);
-    return NextResponse.json({ suggestions, unreadable, parties });
+    return NextResponse.json({ suggestions, unreadable, parties, provider, model });
   } catch (err) {
     console.error("Field suggestion failed", err);
     return NextResponse.json({ error: "Couldn't generate suggestions right now." }, { status: 500 });

@@ -1,10 +1,34 @@
 # Field-suggestion correction logging — scope (Phase 1: data only)
 
 Status: **built and shipped, 2026-07-27** (migration 0036, `src/lib/suggestion-shape.ts`,
-`POST /api/suggestion-feedback`, the 4 hook points in `field-editor.tsx`). Nothing here
-changes suggestion behavior — it's the data-collection groundwork that a future
-retrieval/heuristic improvement (see the "self-learning" discussion, 2026-07-26) would
-need before it could exist.
+`POST /api/suggestion-feedback`, the 4 hook points in `field-editor.tsx`; `provider`/
+`model` columns added same day, migration 0037). Nothing here changes suggestion
+behavior — it's the data-collection groundwork that a future retrieval/heuristic
+improvement (see the "self-learning" discussion, 2026-07-26) would need before it
+could exist.
+
+**Important framing, direct from a 2026-07-27 conversation:** this data does not make
+the AI model itself smarter — there is no fine-tuning/retraining loop here, and none is
+planned. What it enables is a human deciding, with real numbers instead of one
+screenshot, where to invest in the deterministic `placeCandidates()` geometry code or
+the prompt's few-shot examples — the same two levers already named below. Every
+resulting change ships as ordinary code, applied globally to every org, never a
+per-customer model.
+
+**Provider/model breakdown (added 2026-07-27):** `suggestion_feedback.provider` and
+`.model` (nullable, migration 0037) let this data be sliced by which AI actually
+produced the suggestion — e.g. is Mistral's suggestion quality improving over time, or
+does one provider get corrected less than another. Two honest limits: (1) Mistral is
+the only provider live for real customers today (Anthropic/DeepSeek are internal-
+testing-only, see `ai-provider.ts`), so most production rows will show `mistral`
+regardless — a real head-to-head needs either the internal test-org allowlist or
+deliberately routed traffic; (2) `model` is the requested alias
+(`ai-provider.ts`'s `modelForProvider()`, e.g. `"mistral-small-latest"`), not
+necessarily the concrete version a rolling alias actually served that call — Mistral's
+response isn't parsed for a server-echoed resolved model id, so "did this provider get
+better" can show up as a `created_at` trend but can't always be pinned to a specific
+underlying version bump for Mistral specifically. Anthropic/DeepSeek already pin exact
+model strings, so this asymmetry is Mistral-specific.
 
 ## Goal / non-goal
 

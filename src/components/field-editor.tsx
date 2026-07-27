@@ -19,6 +19,7 @@ import { FIELD_TYPES, fieldDef, type FieldType } from "@/lib/field-types";
 import { defaultRecipientNotice } from "@/lib/recipient-notice";
 import { installMapUpsertPolyfill } from "@/lib/pdfjs-map-polyfill";
 import { computeSignatureLayout, quantize, type SignatureLayout } from "@/lib/suggestion-shape";
+import type { AIProvider } from "@/lib/ai-provider";
 
 type Field = {
   id: string;
@@ -326,6 +327,13 @@ export function FieldEditor({
     layout: SignatureLayout;
     partyCount: number;
     columnCount: number | null;
+    // Which AI provider/model produced this batch (see the suggest-fields
+    // route) — lets suggestion_feedback rows be broken down by provider,
+    // e.g. is Mistral's suggestion quality improving over time. Present
+    // whenever the route resolved a provider at all, even for an unreadable
+    // result — harmless since analyzed=false already skips logging there.
+    provider: AIProvider | null;
+    model: string | null;
   } | null>(null);
   const loggedSenderPlacedIdsRef = useRef<Set<string>>(new Set());
 
@@ -663,10 +671,21 @@ export function FieldEditor({
           .filter((s) => s.type === "signature")
           .map((s) => ({ page: s.page, x: s.x, y: s.y, role: s.role }));
         const partyCountForShape = Array.isArray(data.parties) ? data.parties.length : 0;
+        const shapeProvider: AIProvider | null =
+          data.provider === "anthropic" || data.provider === "mistral" || data.provider === "deepseek"
+            ? data.provider
+            : null;
+        const shapeModel: string | null = typeof data.model === "string" ? data.model : null;
         setSuggestionShape(
           unreadable
-            ? { analyzed: false, layout: "unknown", partyCount: 0, columnCount: null }
-            : { analyzed: true, partyCount: partyCountForShape, ...computeSignatureLayout(signatureGeom, partyCountForShape) }
+            ? { analyzed: false, layout: "unknown", partyCount: 0, columnCount: null, provider: shapeProvider, model: shapeModel }
+            : {
+                analyzed: true,
+                partyCount: partyCountForShape,
+                ...computeSignatureLayout(signatureGeom, partyCountForShape),
+                provider: shapeProvider,
+                model: shapeModel,
+              }
         );
 
         // Capture the distinct signing parties the model found, for the
@@ -969,6 +988,8 @@ export function FieldEditor({
     roleCorrected: boolean;
     deltaX: number | null;
     deltaY: number | null;
+    provider: AIProvider | null;
+    model: string | null;
   }) {
     fetch("/api/suggestion-feedback", {
       method: "POST",
@@ -1045,6 +1066,8 @@ export function FieldEditor({
           roleCorrected,
           deltaX: moved ? quantize(dx, 0.02, -1, 1) : null,
           deltaY: moved ? quantize(dy, 0.02, -1, 1) : null,
+          provider: suggestionShape.provider,
+          model: suggestionShape.model,
         });
       }
     },
@@ -1173,6 +1196,8 @@ export function FieldEditor({
         roleCorrected: false,
         deltaX: null,
         deltaY: null,
+        provider: suggestionShape.provider,
+        model: suggestionShape.model,
       });
     }
   }
@@ -1280,6 +1305,8 @@ export function FieldEditor({
             roleCorrected: false,
             deltaX: null,
             deltaY: null,
+            provider: suggestionShape.provider,
+            model: suggestionShape.model,
           });
         }
       }

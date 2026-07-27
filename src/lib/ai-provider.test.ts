@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { normalizeAIProvider, generateAIText } from "./ai-provider";
+import { normalizeAIProvider, generateAIText, modelForProvider } from "./ai-provider";
 
 const { mockCreate } = vi.hoisted(() => ({ mockCreate: vi.fn() }));
 vi.mock("./anthropic", () => ({ getAnthropic: () => ({ messages: { create: mockCreate } }) }));
@@ -47,6 +47,17 @@ describe("normalizeAIProvider", () => {
     expect(normalizeAIProvider("anthropic", false)).toBe("mistral");
     expect(normalizeAIProvider("deepseek", false)).toBe("mistral");
     expect(normalizeAIProvider("mistral", false)).toBe("mistral");
+  });
+});
+
+describe("modelForProvider", () => {
+  it("matches the model each generateWith* function actually requests, per provider and tier", () => {
+    expect(modelForProvider("anthropic", "fast")).toBe("claude-haiku-4-5-20251001");
+    expect(modelForProvider("anthropic", "quality")).toBe("claude-sonnet-5");
+    expect(modelForProvider("mistral", "fast")).toBe("mistral-small-latest");
+    expect(modelForProvider("mistral", "quality")).toBe("mistral-large-latest");
+    expect(modelForProvider("deepseek", "fast")).toBe("deepseek-v4-flash");
+    expect(modelForProvider("deepseek", "quality")).toBe("deepseek-v4-pro");
   });
 });
 

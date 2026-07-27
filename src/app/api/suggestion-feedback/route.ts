@@ -56,6 +56,8 @@ export async function POST(request: Request) {
       role_corrected: parsed.data.roleCorrected,
       delta_x: parsed.data.deltaX,
       delta_y: parsed.data.deltaY,
+      provider: parsed.data.provider,
+      model: parsed.data.model,
     });
   } catch (err) {
     console.error("suggestion_feedback insert failed", err);

@@ -81,6 +81,25 @@ const DEEPSEEK_MODELS: Record<AITier, string> = {
   quality: "deepseek-v4-pro",
 };
 
+const MODELS_BY_PROVIDER: Record<AIProvider, Record<AITier, string>> = {
+  anthropic: ANTHROPIC_MODELS,
+  mistral: MISTRAL_MODELS,
+  deepseek: DEEPSEEK_MODELS,
+};
+
+// Which literal model string a given (provider, tier) pair resolves to —
+// for logging/analytics (e.g. FIELD_SUGGESTION_LEARNING_SCOPE.md's
+// suggestion_feedback.model), not for the actual API call itself (each
+// generateWith* function below reads its own *_MODELS map directly, this
+// just mirrors that same lookup for callers who only need the name). Note
+// this is the REQUESTED model/alias, not necessarily the concrete version a
+// rolling alias (Mistral's "-latest") actually served that call — see the
+// suggestion_feedback migration's comment for the caveat this creates for
+// tracking Mistral's improvement over time specifically.
+export function modelForProvider(provider: AIProvider, tier: AITier): string {
+  return MODELS_BY_PROVIDER[provider][tier];
+}
+
 const DEEPSEEK_BASE_URL = "https://api.deepseek.com/anthropic";
 
 // DeepSeek is reached with the same @anthropic-ai/sdk client used for real

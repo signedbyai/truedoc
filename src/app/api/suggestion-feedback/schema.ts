@@ -15,4 +15,6 @@ export const bodySchema = z.object({
   roleCorrected: z.boolean(),
   deltaX: z.number().min(-1).max(1).nullable(),
   deltaY: z.number().min(-1).max(1).nullable(),
+  provider: z.enum(["anthropic", "mistral", "deepseek"]).nullable(),
+  model: z.string().min(1).max(100).nullable(),
 });
