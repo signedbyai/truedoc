@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -100,6 +101,24 @@ function LoginPageInner() {
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
   }, []);
+
+  // Move focus to the first pin box the moment the code-entry screen
+  // appears, so a person can start typing the 6-digit code immediately
+  // without having to click into it first.
+  //
+  // Depends on isPending too, not just sentEmail: the boxes render with
+  // disabled={isPending}, and a disabled input silently refuses .focus()
+  // calls (no error, it just does nothing). sendMagicLink's transition can
+  // land sentEmail and the pending-clear in separate commits, so if this
+  // effect only re-ran on sentEmail, it could fire once while the box was
+  // still disabled and never get another chance. Re-running it whenever
+  // isPending changes too means it retries the moment the box becomes
+  // focusable.
+  useEffect(() => {
+    if (sentEmail && !isPending) {
+      otpRefs.current[0]?.focus();
+    }
+  }, [sentEmail, isPending]);
 
   function resetStatus() {
     setStatus("idle");
@@ -249,12 +268,24 @@ function LoginPageInner() {
 
       <div className="w-full max-w-sm rounded-xl border border-slate-200/60 bg-white p-8 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
         <div className="mb-6 text-center">
-          <h1 className="text-xl font-semibold text-slate-900">
-            {isSignup ? "Create your account" : "Welcome back"}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {isSignup ? "Free to start — no credit card required." : "Sign in to continue to SignedBy."}
-          </p>
+          {sentEmail ? (
+            <>
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-50">
+                <Lock className="h-5 w-5 text-yellow-600" aria-hidden="true" />
+              </div>
+              <h1 className="text-xl font-semibold text-slate-900">Confirmation code</h1>
+              <p className="mt-1 text-sm text-slate-500">Enter the code from your email.</p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-xl font-semibold text-slate-900">
+                {isSignup ? "Create your account" : "Welcome back"}
+              </h1>
+              <p className="mt-1 text-sm text-slate-500">
+                {isSignup ? "Free to start — no credit card required." : "Sign in to continue to SignedBy."}
+              </p>
+            </>
+          )}
         </div>
 
         {view === "email" ? (
@@ -262,35 +293,45 @@ function LoginPageInner() {
             {sentEmail ? (
               <div className="space-y-4">
                 <p className="text-center text-sm text-slate-600">
-                  We sent a code to <span className="font-medium text-slate-900">{sentEmail}</span>. Enter it below,
-                  or click the sign-in link in that same email.
+                  Code sent to <span className="font-medium text-slate-900">{sentEmail}</span>
                 </p>
-                <div className="flex justify-center gap-2">
-                  {otpDigits.map((digit, i) => (
-                    <input
-                      key={i}
-                      ref={(el) => {
-                        otpRefs.current[i] = el;
-                      }}
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      pattern="[0-9]*"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleOtpChange(i, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                      onPaste={handleOtpPaste}
-                      disabled={isPending}
-                      aria-label={`Digit ${i + 1} of 6`}
-                      className="h-12 w-10 rounded-md border border-slate-300 text-center text-lg font-semibold text-slate-900 focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 disabled:opacity-50"
-                    />
-                  ))}
+                <div className="space-y-2">
+                  <p className="text-center text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Confirmation code
+                  </p>
+                  <div className="flex justify-center gap-2">
+                    {otpDigits.map((digit, i) => (
+                      <input
+                        key={i}
+                        ref={(el) => {
+                          otpRefs.current[i] = el;
+                        }}
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        pattern="[0-9]*"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleOtpChange(i, e.target.value)}
+                        onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                        onPaste={handleOtpPaste}
+                        disabled={isPending}
+                        aria-label={`Digit ${i + 1} of 6`}
+                        className="h-12 w-10 rounded-md border border-slate-300 text-center text-lg font-semibold text-slate-900 transition-shadow focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:shadow-[0_0_12px_rgba(250,204,21,0.55)] disabled:opacity-50"
+                      />
+                    ))}
+                  </div>
                 </div>
+                <p className="text-center text-xs text-slate-400">Or click the sign-in link in that same email.</p>
                 {isPending && <p className="text-center text-xs text-slate-400">Verifying…</p>}
                 {status === "error" && <p className="text-center text-sm text-red-600">{message}</p>}
                 {resendNotice && <p className="text-center text-xs text-emerald-600">{resendNotice}</p>}
+
+                <div className="flex items-center gap-3 pt-1">
+                  <div className="h-px flex-1 bg-slate-200" />
+                </div>
+
                 <p className="text-center text-xs text-slate-500">
-                  Didn&apos;t get it?{" "}
+                  Didn&apos;t receive the code?{" "}
                   <button
                     type="button"
                     onClick={handleResendCode}
@@ -324,7 +365,14 @@ function LoginPageInner() {
                   <Label htmlFor="email" className="sr-only">
                     Email
                   </Label>
-                  <Input id="email" name="email" type="email" required placeholder="Email address" />
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    placeholder="Email address"
+                    className="transition-shadow focus-visible:border-yellow-400 focus-visible:ring-yellow-400 focus-visible:shadow-[0_0_0_3px_rgba(250,204,21,0.35)]"
+                  />
                 </div>
                 {status === "error" && <p className="text-sm text-red-600">{message}</p>}
                 <Button type="submit" className="w-full" disabled={isPending}>
