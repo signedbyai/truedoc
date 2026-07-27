@@ -272,7 +272,15 @@ export function MagicQuoteForm({
                   type="number"
                   min={0}
                   step="any"
-                  value={item.quantity}
+                  // `|| ""` (not the bare number) — a controlled number input
+                  // whose value is exactly 0 can never be cleared otherwise:
+                  // backspacing to empty computes right back to 0 below, and
+                  // since that's the same value the field already had, React
+                  // resets the DOM back to "0" instead of leaving it blank to
+                  // type over. Showing "" for 0 lets an actual empty state
+                  // exist on screen; the underlying value stays a real 0
+                  // either way (see updateItem/computeQuoteTotals).
+                  value={item.quantity || ""}
                   onChange={(e) => updateItem(i, { quantity: Number(e.target.value) || 0 })}
                   aria-label={ql("quantity", language)}
                   className="w-16 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
@@ -281,7 +289,7 @@ export function MagicQuoteForm({
                   type="number"
                   min={0}
                   step="any"
-                  value={item.unitPrice}
+                  value={item.unitPrice || ""}
                   onChange={(e) => updateItem(i, { unitPrice: Number(e.target.value) || 0 })}
                   aria-label={ql("unitPrice", language)}
                   className="w-24 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
@@ -315,7 +323,12 @@ export function MagicQuoteForm({
             min={0}
             max={100}
             step="any"
-            value={taxRatePercent}
+            // Same "|| ''" fix as the quantity/unit-price inputs above —
+            // this field defaults to 0, so it's the one senders actually hit
+            // this on: backspacing the pre-filled "0" recomputed right back
+            // to 0 and React snapped the field back to "0" every time,
+            // making it impossible to type a real rate at all.
+            value={taxRatePercent || ""}
             onChange={(e) => setTaxRatePercent(Number(e.target.value) || 0)}
             className="w-32"
           />
