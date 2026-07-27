@@ -26,7 +26,10 @@ export const ctaColorFlag = flag<CtaColor>({
 // Small non-cryptographic string hash (djb2 variant) — pure JS, no
 // node:crypto, so this runs fine in either the Node or Edge runtime. Same
 // implementation the (now-concluded) CTA color test used — see git history
-// on this file (acd1b52) if that one is ever needed again too.
+// on this file (acd1b52) if that one is ever needed again too. Currently
+// unused while the homepage layout test below is paused (2026-07-27) — kept
+// rather than deleted since resuming that test needs it back immediately.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function hashString(input: string): number {
   let hash = 5381;
   for (let i = 0; i < input.length; i++) {
@@ -67,13 +70,20 @@ export type HomepageVariant = (typeof HOMEPAGE_VARIANTS)[number];
 export const homepageVariantFlag = flag<HomepageVariant>({
   key: "homepage-variant",
   identify,
-  decide({ entities }) {
-    const key = entities?.visitorKey ?? "anonymous";
-    const bucket = hashString(key) % HOMEPAGE_VARIANTS.length;
-    return HOMEPAGE_VARIANTS[bucket];
+  decide() {
+    // PAUSED 2026-07-27 — always "current" for everyone. Original
+    // hash-bucket split commented out below (not deleted) so the test can
+    // resume by uncommenting + removing this early return, rather than
+    // rebuilding the bucketing logic from scratch.
+    return "current";
+    // decide({ entities }) {
+    //   const key = entities?.visitorKey ?? "anonymous";
+    //   const bucket = hashString(key) % HOMEPAGE_VARIANTS.length;
+    //   return HOMEPAGE_VARIANTS[bucket];
+    // }
   },
   defaultValue: "current",
   description:
-    "Homepage layout test: current centred single-column hero vs the v20 two-column layout (product shot above the fold) previously kept on dev as a preview.",
+    "Homepage layout test: current centred single-column hero vs the v20 two-column layout (product shot above the fold) previously kept on dev as a preview. PAUSED 2026-07-27 — decide() short-circuits to \"current\" for everyone.",
   options: HOMEPAGE_VARIANTS.map((value) => ({ value })),
 });

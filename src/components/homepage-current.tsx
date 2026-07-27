@@ -134,7 +134,7 @@ export function HomepageCurrent({ currency, ctaColor }: { currency: Currency; ct
           position="hero"
           variant="current"
         >
-          Send your first document free →
+          Start for free →
         </CtaLink>
         <p className="mt-3 text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
       </section>
