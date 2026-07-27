@@ -52,8 +52,10 @@ export function HomepageTwoColumn({ currency, ctaColor }: { currency: Currency; 
             <span aria-hidden>→</span>
           </Link>
           <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-slate-900 sm:text-5xl">
-            E-signatures, without the{" "}
-            <span className="whitespace-nowrap border-b-[5px] border-yellow-300 pb-0.5">per-seat tax</span>
+            {/* Underline moved onto "E-signatures" 2026-07-27, matching
+                homepage-current.tsx (was on "per-seat tax"). */}
+            <span className="whitespace-nowrap border-b-[5px] border-yellow-300 pb-0.5">E-signatures</span>, without
+            the per-seat tax
           </h1>
           <p className="mt-4 max-w-md text-lg text-slate-600">
             SignedBy is a fast, affordable alternative for e-Signatures — built for solo professionals

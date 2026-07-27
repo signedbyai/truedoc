@@ -81,30 +81,22 @@ export function HomepageCurrent({ currency, ctaColor }: { currency: Currency; ct
           <span className="hidden sm:inline">— see the math</span>
           <span aria-hidden>→</span>
         </Link>
-        {/* Highlighter moved onto "per-seat tax". It was previously on
-            "Sign documents." at the end of the paragraph — a phrase that
-            isn't the differentiator and isn't in the headline, so the motif
-            was decorating rather than emphasising. SignNow does the same
-            thing with an underline on its headline; this is that, on the
-            words that actually distinguish us. */}
+        {/* Highlighter moved onto "E-signatures" 2026-07-27 (was on
+            "per-seat tax" before that, and "Sign documents." before that).
+            Leads with what the product is rather than the differentiator —
+            SignNow does the same thing with an underline on the front of its
+            headline. */}
         <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-slate-900 sm:text-5xl">
-          E-signatures, without the{" "}
           {/* Underline, not a filled block. The fill competed with the CTA
               directly below it — same yellow, similar area, so the one thing we
               want pressed wasn't visibly the loudest. An underline keeps the
-              highlighter motif on the differentiator while using a fraction of
-              the ink, which leaves the filled yellow rectangle unambiguously
-              the button. Matches the nav's active indicator too. */}
-          {/* whitespace-nowrap so the phrase can never split. Without it the
-              headline broke at the hyphen and stranded "per-" alone on the
-              first line with its own short underline stub, which reads as a
-              rendering fault rather than emphasis. The headline now breaks
-              after "the" instead, which is a better break anyway.
-
-              Safe from overflow: at the mobile text-4xl size the phrase needs
-              ~233px and even a 320px viewport leaves 272px inside the padding;
-              desktop text-5xl needs ~311px against 720px. */}
-          <span className="whitespace-nowrap border-b-[5px] border-yellow-300 pb-0.5">per-seat tax</span>
+              highlighter motif on the word while using a fraction of the ink,
+              which leaves the filled yellow rectangle unambiguously the
+              button. Matches the nav's active indicator too.
+              whitespace-nowrap so "E-signatures" can't break at its own
+              hyphen mid-word. */}
+          <span className="whitespace-nowrap border-b-[5px] border-yellow-300 pb-0.5">E-signatures</span>, without
+          the per-seat tax
         </h1>
         {/* Full explanatory version, restored 2026-07-19 after being cut to
             one line. The one-liner was modelled on Lemonade's six-word
