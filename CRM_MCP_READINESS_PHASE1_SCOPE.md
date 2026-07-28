@@ -1,15 +1,16 @@
 # CRM/middleware readiness — Phase 1 scope
 
-Status: **scoping, not built**. Four asks: close the current v1 API's real
-gaps, build core outbound webhooks, expose a few core event triggers, and
-connect the API to Make (EU-based, GDPR-friendly no-code middleware, the
-explicit target rather than Zapier).
+Status: **scoping, decisions locked in, not built yet**. Four asks: close the
+current v1 API's real gaps, build core outbound webhooks, expose a few core
+event triggers, and connect the API to Make (EU-based, GDPR-friendly no-code
+middleware, the explicit target rather than Zapier). Build order decided in
+"Decisions" below: multi-signer support first — say the word when ready to
+start.
 
-One naming note before the plan: "MCP" here is read as shorthand for
-**m**iddleware **c**onnector **p**latform (Make, and by extension Zapier-style
-tools), not Anthropic's Model Context Protocol — everything below is REST +
-webhooks, not an MCP server. Flagged as an open question at the bottom in
-case that's not what was meant.
+One naming note: "MCP" here is confirmed to mean **m**iddleware **c**onnector
+**p**latform (Make, and by extension Zapier-style tools), not Anthropic's
+Model Context Protocol — everything below is REST + webhooks, not an MCP
+server.
 
 ## What exists today
 
@@ -199,18 +200,20 @@ worth confirming that reasoning holds before shipping, not just asserting it.
 - Creating documents from an arbitrary uploaded PDF via API (template-based
   only, per Part A's reasoning).
 
+## Decisions (2026-07-28)
+
+1. "MCP" = middleware/connector platform reading confirmed — this is a
+   REST + webhooks scope, not a Model Context Protocol server.
+2. **Build order: multi-signer support (Part A #4) first**, ahead of the
+   smaller API gaps and the webhook work.
+3. **Webhook secret is always visible/re-copyable in Settings**, not a
+   one-time reveal like the API key — matches the reasoning in Part B (the
+   org needs to keep referencing it whenever they reconfigure Make).
+4. **Not yet decided:** one webhook URL per org vs. supporting several
+   simultaneous destinations. Left open — the one-URL shape in Part B is
+   still just the phase-1 default until this is settled, not a final call.
+
 ## Open questions
 
-1. Confirm the "MCP" reading above — middleware/connector platforms (Make,
-   Zapier-style), not an actual Model Context Protocol server? These are
-   very different builds.
-2. Multi-signer support (Part A #4) is the biggest single piece of work here
-   — worth sequencing it first since it's the most valuable, or fine to land
-   it alongside the smaller gaps in one pass?
-3. Webhook secret display — shown once at creation like the API key, or
-   always visible/re-copyable in Settings (recommended, given the org needs
-   to reference it whenever they reconfigure Make)?
-4. Any objection to the one-URL-per-org shape for webhooks (matches the
-   existing one-key-per-org API pattern), or is supporting several
-   simultaneous webhook destinations (e.g. one for Make, one for a different
-   tool) needed from day one?
+None blocking a build decision, other than #4 above if it turns out to
+matter before webhooks are built.
