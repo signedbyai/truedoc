@@ -124,31 +124,26 @@ New endpoint, e.g. `GET /api/quotes/export?from=...&to=...&summary=1`:
 2. For each, fetch the signed PDF bytes from R2 (same helper
    `getFromR2`/signed-file logic already used elsewhere, reused not
    duplicated) and add to a zip under the filename format above.
-3. If `summary=1`: compute count, `sum(quote_subtotal)`, `sum(quote_tax_
-   amount)`, `sum(quote_subtotal + quote_tax_amount)` server-side in the same
-   query (cheap — these are now real indexed numeric columns, not something
-   pulled from PDFs), render a one-page summary (reuse the existing PDF-
-   generation stack already used for quotes/signed docs, `pdf-lib`) and add it
-   to the zip as e.g. `_summary.pdf`, or as `summary.csv` alongside the PDFs —
-   worth asking which format is more useful before building.
+3. If `summary=1`: group the completed quotes by `quote_currency` and compute,
+   per currency, count/`sum(quote_subtotal)`/`sum(quote_tax_amount)`/
+   `sum(quote_subtotal + quote_tax_amount)` server-side (cheap — these are now
+   real indexed numeric columns, not something pulled from PDFs). Write one
+   row per currency to a `summary.csv` added to the zip (columns: currency,
+   completed count, subtotal, tax, total) — not a bundled PDF page.
 4. Stream the zip back. Needs an actual zip library — nothing in `package.json`
    does this today; the standard low-dependency choice is `archiver` (Node
    streams a zip without buffering the whole thing in memory, matters once an
    org has hundreds of completed quotes).
-5. Entry point: a "Download all completed quotes" action somewhere in the
-   dashboard — exact placement (documents list filter? a dedicated `/quotes`
-   view?) not yet decided; Magic Quote documents aren't visually distinguished
-   from other documents in the dashboard today either, which is a related gap
-   worth closing at the same time (`is_magic_quote` badge/filter on the
-   existing documents list).
+5. Entry point: a "Download completed Magic Quotes" card at the bottom of
+   `/dashboard/documents`, below the Results list — mirrors the "Find a
+   document" search card already at the top of that page, with its own from/
+   to date inputs and a download button. Magic Quote documents aren't visually
+   distinguished from other documents in that list today either, which is a
+   related gap worth closing at the same time (`is_magic_quote` badge/filter),
+   though not required for this feature to work.
 
 ## Explicitly out of scope for v1
 
-- Mixed-currency orgs: if an org has completed quotes in more than one
-  currency (the picker supports 4), a single summary total is meaningless —
-  either the report needs to group by currency, or v1 restricts the export to
-  one currency at a time. Needs a decision before building, not an
-  afterthought.
 - Any changes to the currently-unpersisted subtotal/tax breakdown for quotes
   finalized *before* this ships — those older completed quotes would have
   `quote_subtotal`/`quote_tax_amount` as `null` and either need excluding from
@@ -157,16 +152,24 @@ New endpoint, e.g. `GET /api/quotes/export?from=...&to=...&summary=1`:
 - Scheduled/recurring exports (e.g. "email me last month's completed quotes on
   the 1st") — the ask was on-demand only.
 
+## Decisions (2026-07-28)
+
+1. **Sequence number** — assign at completion, not creation, per the
+   recommendation above.
+2. **Summary format** — CSV alongside the PDFs in the zip (`summary.csv`), not
+   a bundled PDF page.
+3. **Mixed currency** — group by currency. An org with completed quotes in
+   more than one currency gets one summary row (count/subtotal/tax/total) per
+   currency rather than a single blended number, and the export itself still
+   contains every completed quote's PDF regardless of currency — only the
+   summary rollup is grouped.
+4. **Entry point placement** — at the bottom of `/dashboard/documents`,
+   mirroring the "Find a document" card that already sits at the top: a
+   "Download completed Magic Quotes" card below the Results list, with its own
+   from/to date inputs and a download button. Keeps the existing search/
+   filter/results flow untouched and puts the new action in a single
+   predictable place rather than inline per-row or in a separate page.
+
 ## Open questions
 
-1. Assign the sequence number at quote **completion** (recommended above) or
-   at **creation**?
-2. Summary as a PDF page bundled in the zip, or a `.csv`/`.xlsx` alongside the
-   PDFs? Recommend adding a plain CSV, since "the total sum amount" reads like
-   something Michael's customers may want to drop straight into a spreadsheet,
-   not just eyeball on a PDF page.
-3. Mixed-currency handling for the summary totals — group by currency, or
-   restrict the export to one currency per run?
-4. Where does "Download all completed quotes" live in the dashboard, and
-   should completed Magic Quotes get their own filtered view there regardless
-   of this export feature?
+None outstanding — ready to build when you give the go-ahead.
