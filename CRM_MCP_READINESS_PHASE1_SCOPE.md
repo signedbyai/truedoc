@@ -244,3 +244,122 @@ worth confirming that reasoning holds before shipping, not just asserting it.
 
 None outstanding — ready to build when you give the go-ahead, starting
 with multi-signer support per decision #2.
+
+## Beyond Phase 1 — target integration prioritization (2026-07-28)
+
+Requested list, prioritized: **Make, Pipedrive, HubSpot, Airtable, Notion,
+Brevo, Folk, CentralStationCRM, Tribe, weclapp, DATEV.** Reasoning below —
+this is a scoping/research pass only, nothing here is built or committed to
+a phase number yet.
+
+### The central fact that reorders the whole list
+
+Make isn't one item to weigh against the others — once Phase 1 ships, it's
+the distribution layer for *most* of the rest of this list, for free.
+Confirmed by checking each platform's own current automation-connector
+story: HubSpot, Pipedrive, Brevo, Airtable, and Notion (which shipped real
+webhook support in January and expanded it in March 2026) are all
+already-mature Make/Zapier-connected apps, and Folk ships both a Zapier
+connector and its own REST API with webhook subscriptions. A customer on
+any of these can wire up SignedBy today, the moment the Phase 1 webhook
+ships, by building their own Make scenario — no SignedBy-specific
+engineering required for that path to exist. So the real prioritization
+question for everything except DATEV isn't "build vs. don't build," it's
+"is Make-mediated access good enough indefinitely, or does this one
+platform's audience/reach justify a dedicated native app later for a nicer,
+directly-listed experience?"
+
+### Tier 1 — served by Make on day one; native app only if volume justifies it later
+
+1. **Pipedrive** — Estonian, EU-based, sales CRM built for small teams and
+   solo founders — about as close a match to SignedBy's own customer profile
+   (per the Reddit r/freelance / r/consulting / r/SaaS targeting already
+   running) as anything on this list, and a natural fit next to the Magic
+   Quote feature specifically (quote → CRM deal). Confirmed webhook/app
+   platform is mature (webhooks v2, app-scoped webhooks, marketplace apps).
+   Ranked above HubSpot despite smaller absolute reach because of audience
+   fit and a comparatively lighter certification bar.
+2. **HubSpot** — the single biggest reach on this list, and a real developer
+   platform, but marketplace-app certification is a heavier lift in 2026
+   specifically: OAuth-only apps, a security questionnaire, three installs
+   across different accounts before listing, mandatory recertification
+   cycles. Worth doing eventually given HubSpot's market share; not a quick
+   win, and Make-mediated access covers the gap in the meantime.
+3. **Airtable** and **Notion** — not CRMs, but this is exactly how
+   SignedBy's actual audience (freelancers/consultants) often run a CRM in
+   practice — a database, not a dedicated tool. Both have mature, real
+   webhook support now (Airtable's has existed for years; Notion's shipped
+   in 2026). Neither needs a "native app" in the marketplace-listing sense —
+   this audience self-serves via Make or a direct API call — so the cost
+   here is close to zero once Make ships: a couple of example recipes/docs,
+   not new SignedBy code.
+4. **Brevo** — French/EU, combines CRM + email/marketing automation,
+   confirmed real webhook infrastructure across its sales/marketing/
+   transactional products. Solid EU-market fit, moderate reach; ranked below
+   the above because it's less central to a contract-signing workflow
+   specifically (more of a marketing-adjacent tool than a deal-tracking one).
+5. **Folk** — small, EU-based (French), aimed at exactly SignedBy's
+   freelancer/agency audience. Confirmed to have shipped its own REST API
+   with webhook subscriptions in 2025/2026 alongside its existing Zapier
+   connector, so it's covered by Make (or even direct API) already. Low
+   absolute reach — good audience fit, not worth dedicated engineering yet.
+
+### Tier 2 — right audience, too small for dedicated work, confirm Make coverage before assuming it
+
+6. **CentralStationCRM** — German/Cologne, built for small businesses and
+   freelancers specifically, a strong ICP match. Confirmed to have a mature
+   Zapier presence (8,000-app reach through Zapier); did **not** find
+   confirmation of a native Make connector specifically — worth checking
+   directly before assuming Make alone covers it, since Zapier and Make
+   don't automatically share a connector catalogue.
+7. **Tribe** (tribecrm.eu) — a European no-code CRM aimed at SMBs, with its
+   own invoicing/quoting feature (a plausible complement to SignedBy's Magic
+   Quote). Smaller and newer than the others here; couldn't confirm a
+   Zapier or Make connector either way — flagged as unverified rather than
+   assumed, given how small/new this product is.
+
+Both belong on the list for ICP fit, not reach — low priority for dedicated
+SignedBy-side work regardless, since even a from-scratch integration here
+would be cheap (small, modern REST APIs) if it's ever worth doing.
+
+### Tier 3 — genuinely different category, evaluate independently
+
+8. **weclapp** — German cloud ERP/CRM, has a real documented public REST
+   API (not certified/gated). More of a full-business-operations tool than
+   a CRM, so its user base skews toward established SMEs rather than solo
+   freelancers — a plausible "grow into" target if DACH-market traction
+   increases, sitting a notch above Tier 2 in seriousness but with no
+   confirmed Make/Zapier shortcut, so it would likely need a light, direct
+   integration against weclapp's own API rather than relying on Make.
+9. **DATEV** — deliberately last, and not because it's low-value: DATEV is
+   close to mandatory infrastructure for German tax advisors and a large
+   share of German SMEs, so real credibility here could matter a lot in
+   that specific market. But it's categorically unlike everything else on
+   this list — no Make/Zapier shortcut exists at all, and DATEV's own
+   documentation describes two paths: an unaffiliated "DATEV interface
+   provider" route (usable, but excluded from marketplace/certification
+   benefits) or becoming a certified **DATEV Marketplace Partner**, which
+   involves a consultant-guided onboarding and technical certification
+   process, not a self-serve API key. This is a multi-month, likely-costed
+   undertaking on a different track from the rest of this list — worth
+   pursuing only once there's a real, specific demand signal from
+   German-accounting-adjacent customers, not as a default "next" step.
+
+### Net recommendation
+
+Ship Phase 1 (Make) first — it's already scoped and, per the above, does
+most of the work for 6+ of these 11 platforms immediately. Revisit this
+list for a dedicated Phase 2 pick (Pipedrive is the strongest single
+candidate) once Make is live and there's real usage data on which
+Make-mediated integrations customers are actually building — that data
+should inform the next pick more than this analysis alone can.
+
+**Sources checked (2026-07-28):** Notion's 2026 webhook release
+(developers.notion.com, fazm.ai), Airtable's webhooks API
+(support.airtable.com), Pipedrive's webhooks v2 changelog
+(developers.pipedrive.com), HubSpot's 2026 marketplace certification
+requirements (developers.hubspot.com), Brevo's webhooks documentation
+(developers.brevo.com), Folk's developer API (developer.folk.app via
+breakcold.com/apideck.com summaries), CentralStationCRM's Zapier listing
+(zapier.com), weclapp's API docs (weclapp.com/api), DATEV's interface/
+partner program pages (datev.de), and Tribe CRM's own site (tribecrm.eu).
