@@ -104,21 +104,35 @@ plan changes).
 3. No objection to me updating the live Stripe billing portal configuration
    directly via the API.
 
+## Placement correction (2026-07-28, same day)
+
+Originally shipped as its own "Billing & tax" card in Settings, with a
+`ManageBillingButton` labeled "Download invoices & add VAT number". Michael
+flagged that this belongs in the Billing menu instead — right, and on
+reflection it was worse than just misplaced: that button and the existing
+"Manage billing" button on `/dashboard/billing` hit the *identical*
+`/api/billing/portal` route and land on the *identical* Stripe-hosted page.
+Two buttons to one destination invites "do these go to different places?"
+confusion, so the fix isn't relocating the card, it's removing it — the
+capability is folded into the existing "Manage billing" button on the
+Billing page by extending that button's description text, rather than
+adding a second click target anywhere.
+
 ## What shipped
 
-- `src/components/manage-billing-button.tsx` — took an optional `label` prop
-  (defaults to "Manage billing", so the existing `/dashboard/billing` caller
-  is unchanged) instead of a hardcoded string, so it can be reused with
-  different call-to-action copy.
-- `src/app/dashboard/settings/page.tsx` — new "Billing & tax" card, placed
-  directly above "Plan & team". Uses the same `ManageBillingButton` (so it
-  opens the identical Stripe-hosted portal, no new route), labeled "Download
-  invoices & add VAT number", gated on `org.stripe_customer_id` the same way
-  the existing billing page already gates its button — a still-on-Free org
-  sees "Available once you're on a paid plan." instead of a dead button. Adds
-  a one-line note in the card description that changes apply to future
-  invoices, not ones already issued (the retroactivity caveat from the scope
-  above).
+- `src/app/dashboard/billing/page.tsx` — the existing "Current plan" card's
+  description, right next to the pre-existing `ManageBillingButton`, gained
+  a sentence (shown only when `org?.stripe_customer_id` — i.e. only when the
+  button itself is visible): "Manage billing to update your payment method,
+  download invoices, or add a VAT/tax number." No new button, no new card —
+  this is the one and only entry point to the portal now, same as before.
+- `src/app/dashboard/settings/page.tsx` — the standalone "Billing & tax" card
+  (and its now-unused `stripe_customer_id` select column) was removed.
+  Settings still signposts to `/dashboard/billing` via the existing
+  "Plan & team" card, unchanged from before this feature.
+- `src/components/manage-billing-button.tsx` — the `label` prop added for
+  the (now-removed) Settings card was reverted; back to a fixed "Manage
+  billing" label, since nothing needs a second label anymore.
 - `scripts/update-stripe-portal-config.js` (new) — one-off script using the
   already-installed `stripe` SDK. Reads the account's current default portal
   configuration and merges in `invoice_history.enabled: true` and

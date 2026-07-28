@@ -65,6 +65,14 @@ export default async function BillingPage({
                   : currentPlan === "free"
                     ? "Upgrade anytime — no card required until you do."
                     : "Managed via Stripe."}
+                {/* "Manage billing" opens the same Stripe-hosted portal for
+                    all of this — payment method, invoice history, and (once
+                    the portal's customer_update feature is configured — see
+                    INVOICE_VAT_SETTINGS_SCOPE.md) a VAT/tax number and
+                    billing name/address. One button, not a second one
+                    elsewhere in the app pointing at the identical place. */}
+                {org?.stripe_customer_id &&
+                  " Manage billing to update your payment method, download invoices, or add a VAT/tax number."}
               </CardDescription>
             </div>
             {org?.stripe_customer_id && <ManageBillingButton />}

@@ -8,7 +8,6 @@ import { BrandingSettings } from "@/components/branding-settings";
 import { ApiKeySettings } from "@/components/api-key-settings";
 import { AutoSuggestSettings } from "@/components/auto-suggest-settings";
 import { FrequentSignersSettings } from "@/components/frequent-signers-settings";
-import { ManageBillingButton } from "@/components/manage-billing-button";
 
 // Grouped by concern, not by tier: Workspace (identity) → Automation & AI →
 // Integrations → Plan & team. Plan/seat management actually lives on separate
@@ -21,7 +20,7 @@ export default async function SettingsPage() {
 
   const { data: org } = await supabase
     .from("organizations")
-    .select("name, plan, logo_url, brand_color, api_key_prefix, auto_suggest_on_upload, stripe_customer_id")
+    .select("name, plan, logo_url, brand_color, api_key_prefix, auto_suggest_on_upload")
     .eq("id", orgId)
     .single();
 
@@ -122,23 +121,6 @@ export default async function SettingsPage() {
               // upgrade box. The Plan & team card below is the one place that
               // routes people to billing.
               <p className="text-xs text-slate-500">API access is available on the Business plan.</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Billing &amp; tax</CardTitle>
-            <CardDescription>
-              Download past invoices for your records, or add your VAT/tax number and billing name and address —
-              these apply to future invoices, not ones already issued.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {org.stripe_customer_id ? (
-              <ManageBillingButton label="Download invoices & add VAT number" />
-            ) : (
-              <p className="text-xs text-slate-500">Available once you&apos;re on a paid plan.</p>
             )}
           </CardContent>
         </Card>

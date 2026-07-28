@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-export function ManageBillingButton({ label = "Manage billing" }: { label?: string }) {
+export function ManageBillingButton() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -26,7 +26,7 @@ export function ManageBillingButton({ label = "Manage billing" }: { label?: stri
   return (
     <div>
       <Button variant="outline" onClick={openPortal} disabled={loading}>
-        {loading ? "Opening…" : label}
+        {loading ? "Opening…" : "Manage billing"}
       </Button>
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>
