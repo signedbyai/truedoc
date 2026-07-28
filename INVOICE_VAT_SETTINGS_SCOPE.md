@@ -1,8 +1,9 @@
 # Settings: download last invoice + optional VAT number — scope
 
-Status: **scoping, not built**. Ask: a place in Settings for a customer to
-download their last SignedBy invoice for their own tax reporting, and to
-enter an optional VAT number.
+Status: **built 2026-07-28** (Settings entry point + portal-configuration
+script). One manual step remains — see "Still to do" at the bottom. Ask: a
+place in Settings for a customer to download their last SignedBy invoice for
+their own tax reporting, and to enter an optional VAT number.
 
 ## What already exists (this changes the shape of the build a lot)
 
@@ -95,15 +96,58 @@ which hasn't come up as a concern so far (the existing "Manage billing"
 button already sends customers to the same Stripe-hosted portal today for
 plan changes).
 
-## Open questions
+## Decisions (2026-07-28)
 
-1. Go with the portal-reuse approach (recommended), or the fully in-house
-   build?
-2. If portal-reuse: besides `tax_id`, should `name`/`address` also be
-   customer-editable there? A VAT number without a matching billing name/
-   address on the invoice header is unusual for an accountant to accept —
-   worth allowing both, or leaving name/address as-is and only opening up
-   `tax_id`?
-3. Any objection to me updating the live Stripe billing portal configuration
-   directly via the API once this is approved, or would you rather review
-   the exact config values first?
+1. Portal reuse (recommended above) — confirmed.
+2. `name`/`address` also made customer-editable alongside `tax_id`, not just
+   `tax_id` alone.
+3. No objection to me updating the live Stripe billing portal configuration
+   directly via the API.
+
+## What shipped
+
+- `src/components/manage-billing-button.tsx` — took an optional `label` prop
+  (defaults to "Manage billing", so the existing `/dashboard/billing` caller
+  is unchanged) instead of a hardcoded string, so it can be reused with
+  different call-to-action copy.
+- `src/app/dashboard/settings/page.tsx` — new "Billing & tax" card, placed
+  directly above "Plan & team". Uses the same `ManageBillingButton` (so it
+  opens the identical Stripe-hosted portal, no new route), labeled "Download
+  invoices & add VAT number", gated on `org.stripe_customer_id` the same way
+  the existing billing page already gates its button — a still-on-Free org
+  sees "Available once you're on a paid plan." instead of a dead button. Adds
+  a one-line note in the card description that changes apply to future
+  invoices, not ones already issued (the retroactivity caveat from the scope
+  above).
+- `scripts/update-stripe-portal-config.js` (new) — one-off script using the
+  already-installed `stripe` SDK. Reads the account's current default portal
+  configuration and merges in `invoice_history.enabled: true` and
+  `customer_update: { enabled: true, allowed_updates: ["tax_id", "name",
+  "address"] }`, preserving every other existing feature on that
+  configuration untouched (payment method update, subscription cancel,
+  etc. — whatever's already configured). Creates a new configuration only if
+  none exists yet.
+- Verified: `tsc --noEmit`, `eslint` (both changed files clean), full vitest
+  suite (496 tests, all passing, no regressions).
+
+## Still to do — one step only Michael can run
+
+The script above **could not be run from the sandbox this was built in**:
+outbound requests to `api.stripe.com` are blocked by the sandbox's network
+proxy (`curl https://api.stripe.com/...` returns `403 from proxy after
+CONNECT`) — this is the same class of restriction noted before for other
+third-party APIs, not specific to this change. Everything else about this
+feature (the Settings UI, the button, the gating) is already live once
+deployed; only the Stripe-side configuration change is outstanding.
+
+Run once, from a machine with normal internet access:
+
+```
+cd signedby-app
+export $(grep STRIPE_SECRET_KEY .env.local | tr -d ' ')
+node scripts/update-stripe-portal-config.js
+```
+
+It prints the resulting `features` object on success. Safe to re-run — it
+merges rather than overwrites, so running it twice is a no-op the second
+time.
