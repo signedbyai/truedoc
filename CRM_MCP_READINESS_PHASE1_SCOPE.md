@@ -77,33 +77,55 @@ field placement via API or an AI-suggest call) and every CRM/e-sign
 integration convention (Zapier's DocuSign/PandaDoc apps included) is
 template-based for exactly this reason. Worth a future phase, not this one.
 
-## Part B — Core outbound webhooks
+## Part B — Core outbound webhooks (multi-destination)
 
-**Schema** (new migration): `webhook_endpoints` — `org_id` (one row per org,
-same one-per-org shape as the existing API key, not a list), `url text`,
-`secret text` (see note below on why this one is stored differently from the
-API key), `enabled boolean default true`, `created_at`.
+**Schema** (new migration): `webhook_endpoints` — **many rows per org**, not
+one. `id`, `org_id`, `url text`, `secret text` (per-endpoint, see below),
+`enabled boolean default true`, `created_at`, plus a short `label text`
+(nullable — "Make: deal sync", "Internal audit log", so a Settings list of
+several endpoints is legible instead of a wall of bare URLs).
 
-**Why the secret isn't hashed like the API key:** the API key is a
-credential *we* verify (org calls us — we only ever need to check a hash).
-A webhook secret is the reverse: *we* sign, *the org's* receiving system
-verifies — they need to be able to see the secret to configure their
-verification step, indefinitely, the same way Stripe's dashboard always
-shows your webhook signing secret rather than a one-time reveal. Stored in
-clear text in the same way `documents.file_path` or any other operational
-column is — not a bigger exposure than the URL itself, which the org chose
-to give us.
+**Why per-endpoint secrets, not one org-wide secret:** with multiple
+destinations, a per-endpoint secret means one leaked/compromised endpoint
+(e.g. an old Make scenario nobody uses anymore) doesn't require rotating the
+secret for every other destination too — matches how Stripe issues a
+distinct signing secret per registered webhook endpoint, not one per
+account.
 
-**Delivery:** `POST` to the stored URL, JSON body, header
-`X-SignedBy-Signature: sha256=<hmac>` (HMAC-SHA256 over the raw body using
-`secret`, same pattern Stripe/Resend use, so any platform that *does* verify
-signatures — not just Make — can). Fire-and-forget with a short timeout (5s)
-and one retry after a brief delay; failures logged to `console.error` only
-for phase 1, no delivery-log table or retry queue — matches the proportionate-
-v1 reasoning already used for bounce tracking (real infrastructure only once
-usage shows it's needed, not preemptively). No new dependency — plain
-`fetch()`, nothing else in this codebase does outbound webhooks yet but
-nothing exotic is needed for a single POST.
+**Why secrets aren't hashed like the API key:** the API key is a credential
+*we* verify (org calls us — we only ever need to check a hash). A webhook
+secret is the reverse: *we* sign, *the org's* receiving system verifies —
+they need to be able to see it to configure their verification step,
+indefinitely, the same way Stripe's dashboard always shows a webhook's
+signing secret rather than a one-time reveal. Stored in clear text in the
+same way `documents.file_path` or any other operational column is — not a
+bigger exposure than the URL itself, which the org chose to give us.
+
+**Delivery:** on each of the four trigger events, `POST` to **every enabled
+endpoint on that org**, independently — one HTTP call per endpoint, each
+signed with that endpoint's own `secret` via `X-SignedBy-Signature:
+sha256=<hmac>` (HMAC-SHA256 over the raw body, same pattern Stripe/Resend
+use). One endpoint being down or slow must not affect delivery to the
+others — dispatched independently (e.g. `Promise.allSettled`, not a
+sequential loop that could stall). Fire-and-forget with a short timeout (5s)
+and one retry per endpoint after a brief delay; failures logged to
+`console.error` only for phase 1, no delivery-log table or retry queue —
+matches the proportionate-v1 reasoning already used for bounce tracking
+(real infrastructure only once usage shows it's needed, not preemptively).
+No new dependency — plain `fetch()`.
+
+**Settings UI implication, now bigger than originally scoped:** a single
+URL+secret field becomes a real list — add endpoint, view/copy each
+endpoint's secret, enable/disable, remove. Not a large build on its own
+(same CRUD shape as `FrequentSignersSettings` already on that page), but
+worth naming since it's more UI than the single-field version would've
+needed.
+
+Per-endpoint event-type filtering (e.g. "this endpoint only wants
+`document.completed`, not all four") is **not** part of this decision — every
+enabled endpoint still receives all four trigger events for phase 1. The
+schema above happens to make that a natural follow-on (an `events text[]`
+column on the same table) if it's wanted later, but it's not being built now.
 
 **Where dispatch gets called from:** directly at the four existing
 `audit_events` insert sites for the event types below (submit/route.ts ×2,
@@ -191,12 +213,14 @@ worth confirming that reasoning holds before shipping, not just asserting it.
 - A native Make (or Zapier) app in either marketplace.
 - A real MCP (Model Context Protocol) server — genuinely different work if
   that's actually what's wanted; see the open question below.
-- Multiple webhook URLs per org, or per-event subscription filtering (all
-  four events go to the one configured URL for now).
-- Per-API-key scopes/permissions, or multiple keys per org.
+- Per-endpoint event-type subscription filtering (every enabled endpoint
+  gets all four trigger events for now — see Part B for why the schema
+  still leaves room for this later).
+- Per-API-key scopes/permissions, or multiple keys per org (webhooks are
+  now multi-destination per the decision below; API keys are not).
 - A persistent webhook delivery log / manual-redelivery UI, or a real retry
-  queue — fire-and-forget-plus-one-retry only, revisit once volume shows
-  silent failures are actually a problem.
+  queue — fire-and-forget-plus-one-retry per endpoint only, revisit once
+  volume shows silent failures are actually a problem.
 - Creating documents from an arbitrary uploaded PDF via API (template-based
   only, per Part A's reasoning).
 
@@ -209,11 +233,14 @@ worth confirming that reasoning holds before shipping, not just asserting it.
 3. **Webhook secret is always visible/re-copyable in Settings**, not a
    one-time reveal like the API key — matches the reasoning in Part B (the
    org needs to keep referencing it whenever they reconfigure Make).
-4. **Not yet decided:** one webhook URL per org vs. supporting several
-   simultaneous destinations. Left open — the one-URL shape in Part B is
-   still just the phase-1 default until this is settled, not a final call.
+4. **Multi-destination webhook architecture** — `webhook_endpoints` is a
+   list per org (many rows), not a single URL/secret pair. Part B above is
+   rewritten around this: per-endpoint secrets, independent dispatch per
+   endpoint, and a real add/remove/enable list in Settings rather than one
+   field. This is a materially bigger build than the single-URL version —
+   worth knowing going in, not a surprise mid-build.
 
 ## Open questions
 
-None blocking a build decision, other than #4 above if it turns out to
-matter before webhooks are built.
+None outstanding — ready to build when you give the go-ahead, starting
+with multi-signer support per decision #2.
