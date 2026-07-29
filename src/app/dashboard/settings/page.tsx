@@ -8,6 +8,7 @@ import { BrandingSettings } from "@/components/branding-settings";
 import { ApiKeySettings } from "@/components/api-key-settings";
 import { AutoSuggestSettings } from "@/components/auto-suggest-settings";
 import { FrequentSignersSettings } from "@/components/frequent-signers-settings";
+import { WebhookSettings } from "@/components/webhook-settings";
 
 // Grouped by concern, not by tier: Workspace (identity) → Automation & AI →
 // Integrations → Plan & team. Plan/seat management actually lives on separate
@@ -114,6 +115,41 @@ export default async function SettingsPage() {
 {`curl https://signedby.ai/api/v1/documents/<document-id> \\
   -H "Authorization: Bearer sb_live_..."`}
                   </pre>
+                  <p className="mt-3 font-medium text-slate-900">Multi-party document (2+ signers)</p>
+                  <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
+{`curl -X POST https://signedby.ai/api/v1/documents \\
+  -H "Authorization: Bearer sb_live_..." \\
+  -H "Content-Type: application/json" \\
+  -d '{"template_id":"<template-id>","signers":[
+    {"role":0,"email":"buyer@acme.com","name":"Buyer"},
+    {"role":1,"email":"seller@acme.com","name":"Seller"}
+  ]}'`}
+                  </pre>
+                  <p className="mt-3 font-medium text-slate-900">List documents &amp; templates</p>
+                  <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
+{`curl "https://signedby.ai/api/v1/documents?status=completed&limit=20" \\
+  -H "Authorization: Bearer sb_live_..."
+curl https://signedby.ai/api/v1/templates \\
+  -H "Authorization: Bearer sb_live_..."`}
+                  </pre>
+                  <p className="mt-3 font-medium text-slate-900">Download the signed PDF, or void a document</p>
+                  <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
+{`curl https://signedby.ai/api/v1/documents/<document-id>/signed-file \\
+  -H "Authorization: Bearer sb_live_..." -o signed.pdf
+curl -X POST https://signedby.ai/api/v1/documents/<document-id>/void \\
+  -H "Authorization: Bearer sb_live_..."`}
+                  </pre>
+                </div>
+
+                <div className="border-t border-slate-100 pt-4">
+                  <p className="text-sm font-medium text-slate-900">Webhooks</p>
+                  <p className="mt-0.5 text-xs text-slate-600">
+                    Get notified the moment a document is viewed, signed, completed, or declined — e.g. attach the
+                    signed PDF to a CRM deal via Make.
+                  </p>
+                  <div className="mt-3">
+                    <WebhookSettings />
+                  </div>
                 </div>
               </div>
             ) : (

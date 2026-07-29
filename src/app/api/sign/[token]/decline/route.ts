@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getSignerByToken, requireVerifiedSigner } from "@/lib/signing";
 import { sendDeclineNotificationEmail } from "@/lib/email";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { scheduleWebhookEvent } from "@/lib/webhooks";
 
 const bodySchema = z.object({
   reason: z.string().trim().max(500).optional(),
@@ -51,6 +52,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     ip_address: ip,
     user_agent: userAgent,
     metadata: reason ? { reason } : {},
+  });
+
+  // Outbound webhook (CRM_MCP_READINESS_PHASE1_SCOPE.md Part C).
+  scheduleWebhookEvent(document.org_id, "document.declined", {
+    document_id: document.id,
+    title: document.title,
+    status: "declined",
+    signer: { email: signer.email, name: signer.name },
   });
 
   const { data: doc } = await admin.from("documents").select("owner_id, title").eq("id", document.id).single();
