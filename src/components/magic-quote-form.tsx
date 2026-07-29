@@ -368,20 +368,17 @@ export function MagicQuoteForm({
 
         {finalizeError && <p className="text-sm text-red-600">{finalizeError}</p>}
 
-        {/* Stacked full-width on mobile so a long "Create document" label
-            never squeezes "Start over" into an awkwardly narrow sliver or
-            an uneven second row — sm: and up switches back to a single row
-            with Create taking the remaining space. Same pattern as
-            ai-draft-form.tsx's review-step buttons, kept in sync so a
-            three-button vs two-button set doesn't wrap differently. */}
+        {/* Start over (secondary) comes first/left, Create document
+            (primary) comes last/right and grows into the remaining space —
+            continues the eye's path down from the right-aligned Total above
+            it, straight into the primary CTA, instead of landing on the
+            escape hatch first. Stacked full-width on mobile so a long
+            "Create document" label never squeezes "Start over" into an
+            awkwardly narrow sliver — sm: and up switches back to a single
+            row. Same pattern as ai-draft-form.tsx's review-step buttons,
+            kept in sync so a three-button vs two-button set doesn't wrap
+            differently. */}
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <Button
-            className="w-full sm:w-auto sm:flex-1"
-            disabled={finalizing || !title.trim() || !hasValidItems}
-            onClick={handleFinalize}
-          >
-            {finalizing ? ql("creating", language) : ql("createDocument", language)}
-          </Button>
           <Button
             variant="outline"
             className="w-full sm:w-auto"
@@ -392,6 +389,13 @@ export function MagicQuoteForm({
             }}
           >
             {ql("startOver", language)}
+          </Button>
+          <Button
+            className="w-full sm:w-auto sm:flex-1"
+            disabled={finalizing || !title.trim() || !hasValidItems}
+            onClick={handleFinalize}
+          >
+            {finalizing ? ql("creating", language) : `${ql("createDocument", language)} →`}
           </Button>
         </div>
       </div>
@@ -447,7 +451,7 @@ export function MagicQuoteForm({
       <p className="text-xs text-slate-500">{ql("reviewDisclaimer", language)}</p>
 
       <Button className="w-full" disabled={!description.trim() || generating} onClick={handleGenerate}>
-        {generating ? ql("generatingQuote", language) : ql("generateQuote", language)}
+        {generating ? ql("generatingQuote", language) : `${ql("generateQuote", language)} →`}
       </Button>
     </div>
   );

@@ -125,21 +125,17 @@ export function AiDraftForm({
 
         {finalizeError && <p className="text-sm text-red-600">{finalizeError}</p>}
 
-        {/* Stacked full-width on mobile: with three buttons here (one more
+        {/* Secondary actions (Regenerate, Start over) come first/left,
+            Create document (primary) comes last/right and grows into the
+            remaining space, matching magic-quote-form.tsx's review-step
+            buttons — the eye lands on the primary CTA last, not first.
+            Stacked full-width on mobile: with three buttons here (one more
             than Magic Quote's two), a single flex-wrap row wrapped
             unpredictably depending on label length -- "Creating…" fit all
             three on one row while "Create document" pushed "Start over"
             onto its own uneven row. sm: and up switches back to a single
-            row with Create taking the remaining space, matching
-            magic-quote-form.tsx's review-step buttons. */}
+            row with Create taking the remaining space. */}
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <Button
-            className="w-full sm:w-auto sm:flex-1"
-            disabled={finalizing || !draftTitle.trim() || !draftBody.trim()}
-            onClick={handleFinalize}
-          >
-            {finalizing ? "Creating…" : "Create document"}
-          </Button>
           <Button
             variant="outline"
             className="w-full sm:w-auto"
@@ -158,6 +154,13 @@ export function AiDraftForm({
             }}
           >
             Start over
+          </Button>
+          <Button
+            className="w-full sm:w-auto sm:flex-1"
+            disabled={finalizing || !draftTitle.trim() || !draftBody.trim()}
+            onClick={handleFinalize}
+          >
+            {finalizing ? "Creating…" : "Create document →"}
           </Button>
         </div>
       </div>

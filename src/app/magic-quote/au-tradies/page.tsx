@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { Zap } from "lucide-react";
 import { FlagValues } from "flags/react";
 import { CtaLink } from "@/components/cta-link";
 import { LanguageSupportRow } from "@/components/language-support-row";
@@ -105,7 +106,8 @@ export default async function MagicQuoteAuTradiesPage() {
       <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-5 px-6 py-10 text-center">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Magic Quote for Australian tradies</p>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          Say the job. Get a proper quote — GST and all.
+          Say the job. Get a proper quote — GST and all. Fast.{" "}
+          <Zap className="inline-block h-6 w-6 -translate-y-0.5 fill-yellow-400 text-yellow-400 sm:h-7 sm:w-7" aria-hidden="true" />
         </h1>
         <p className="max-w-xl text-base text-slate-600">
           Skip the job-management subscription. Describe the job in plain English and Magic Quote pulls out the line
