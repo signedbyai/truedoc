@@ -106,7 +106,7 @@ export default async function MagicQuoteUsSubcontractorsPage() {
         </p>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
           Describe the job. Get a bid-ready quote. Fast.{" "}
-          <Zap className="inline-block h-6 w-6 -translate-y-0.5 fill-yellow-400 text-yellow-400 sm:h-7 sm:w-7" aria-hidden="true" />
+          <Zap className="inline-block h-6 w-6 -translate-y-0.5 fill-yellow-300 text-yellow-300 sm:h-7 sm:w-7" aria-hidden="true" />
         </h1>
         <p className="max-w-xl text-base text-slate-600">
           Skip the enterprise bid-management platform. Describe the scope in plain language and Magic Quote pulls

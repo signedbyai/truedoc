@@ -83,7 +83,7 @@ export default async function MagicQuotePage() {
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Magic Quote</p>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
           Describe the job. Get a real price quote. Fast.{" "}
-          <Zap className="inline-block h-6 w-6 -translate-y-0.5 fill-yellow-400 text-yellow-400 sm:h-7 sm:w-7" aria-hidden="true" />
+          <Zap className="inline-block h-6 w-6 -translate-y-0.5 fill-yellow-300 text-yellow-300 sm:h-7 sm:w-7" aria-hidden="true" />
         </h1>
         <p className="max-w-xl text-base text-slate-600">
           Skip the spreadsheet. Describe what you&apos;re quoting and Magic Quote pulls out the line items and prices
