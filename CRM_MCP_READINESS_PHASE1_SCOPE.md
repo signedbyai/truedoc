@@ -303,16 +303,33 @@ directly-listed experience?"
    with webhook subscriptions in 2025/2026 alongside its existing Zapier
    connector, so it's covered by Make (or even direct API) already. Low
    absolute reach — good audience fit, not worth dedicated engineering yet.
+6. **Attio** (added 2026-07-28, not in the original 11) — London-based,
+   well-funded ($141M total, $52M Series B led by GV), 5,000+ paying
+   customers, fastest-growing of anything on this list. Confirmed to have a
+   first-party Make app (`apps.make.com/attio`, not just a Zapier bridge) —
+   covered by Phase 1 the same as the rest of this tier — and confirmed to
+   have its own internal "Workflows" automation builder with HTTP action
+   blocks, meaning a technical Attio customer could call SignedBy's API
+   directly from inside Attio itself, no Make required at all. The one real
+   caveat: Attio's own positioning ("AI-native CRM for go-to-market
+   builders") and customer base (Lovable, Modal, Replicate — funded tech
+   startups) skew toward a more sophisticated, better-resourced buyer than
+   SignedBy's current beachhead (freelancers/consultants/small business).
+   Not a mismatch — funded startups sign plenty of contracts — just a
+   different tier than the rest of this list, so it lands in Tier 1 on
+   technical merit (mature API/webhooks both directions, self-serve-savvy
+   audience) rather than on ICP fit. Worth tracking, not worth a dedicated
+   native app ahead of Pipedrive/HubSpot.
 
 ### Tier 2 — right audience, too small for dedicated work, confirm Make coverage before assuming it
 
-6. **CentralStationCRM** — German/Cologne, built for small businesses and
+7. **CentralStationCRM** — German/Cologne, built for small businesses and
    freelancers specifically, a strong ICP match. Confirmed to have a mature
    Zapier presence (8,000-app reach through Zapier); did **not** find
    confirmation of a native Make connector specifically — worth checking
    directly before assuming Make alone covers it, since Zapier and Make
    don't automatically share a connector catalogue.
-7. **Tribe** (tribecrm.eu) — a European no-code CRM aimed at SMBs, with its
+8. **Tribe** (tribecrm.eu) — a European no-code CRM aimed at SMBs, with its
    own invoicing/quoting feature (a plausible complement to SignedBy's Magic
    Quote). Smaller and newer than the others here; couldn't confirm a
    Zapier or Make connector either way — flagged as unverified rather than
@@ -324,14 +341,14 @@ would be cheap (small, modern REST APIs) if it's ever worth doing.
 
 ### Tier 3 — genuinely different category, evaluate independently
 
-8. **weclapp** — German cloud ERP/CRM, has a real documented public REST
+9. **weclapp** — German cloud ERP/CRM, has a real documented public REST
    API (not certified/gated). More of a full-business-operations tool than
    a CRM, so its user base skews toward established SMEs rather than solo
    freelancers — a plausible "grow into" target if DACH-market traction
    increases, sitting a notch above Tier 2 in seriousness but with no
    confirmed Make/Zapier shortcut, so it would likely need a light, direct
    integration against weclapp's own API rather than relying on Make.
-9. **DATEV** — deliberately last, and not because it's low-value: DATEV is
+10. **DATEV** — deliberately last, and not because it's low-value: DATEV is
    close to mandatory infrastructure for German tax advisors and a large
    share of German SMEs, so real credibility here could matter a lot in
    that specific market. But it's categorically unlike everything else on
@@ -348,7 +365,7 @@ would be cheap (small, modern REST APIs) if it's ever worth doing.
 ### Net recommendation
 
 Ship Phase 1 (Make) first — it's already scoped and, per the above, does
-most of the work for 6+ of these 11 platforms immediately. Revisit this
+most of the work for 7+ of these 12 platforms immediately. Revisit this
 list for a dedicated Phase 2 pick (Pipedrive is the strongest single
 candidate) once Make is live and there's real usage data on which
 Make-mediated integrations customers are actually building — that data
@@ -358,7 +375,9 @@ should inform the next pick more than this analysis alone can.
 (developers.notion.com, fazm.ai), Airtable's webhooks API
 (support.airtable.com), Pipedrive's webhooks v2 changelog
 (developers.pipedrive.com), HubSpot's 2026 marketplace certification
-requirements (developers.hubspot.com), Brevo's webhooks documentation
+requirements (developers.hubspot.com), Attio's developer platform and
+Make app (docs.attio.com, apps.make.com/attio) and funding/customer
+base (eu-startups.com, thesaasnews.com), Brevo's webhooks documentation
 (developers.brevo.com), Folk's developer API (developer.folk.app via
 breakcold.com/apideck.com summaries), CentralStationCRM's Zapier listing
 (zapier.com), weclapp's API docs (weclapp.com/api), DATEV's interface/
