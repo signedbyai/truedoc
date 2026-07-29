@@ -1,9 +1,11 @@
 # Browser quick-actions + Gmail send — scope
 
-Status: **scoping, not built**. Follow-on from looking at Apollo's Chrome
-extension: not a copy of Apollo's "works on every website" pattern (wrong
-fit — see below), but the narrower, precedented version: a status/quick-
-action Chrome extension plus a Gmail "send via SignedBy" integration.
+Status: **scoping, not built. Decided: Part A (Chrome extension) only for
+now — Part B (Gmail Add-on) deferred**, per direct decision. Follow-on from
+looking at Apollo's Chrome extension: not a copy of Apollo's "works on
+every website" pattern (wrong fit — see below), but the narrower,
+precedented version. Part B's writeup is kept below for when it's picked
+up later, but nothing in it is in scope for the current build.
 
 ## Why Apollo's exact pattern doesn't map (recap)
 
@@ -61,7 +63,10 @@ Google Workspace Marketplace), two review processes, not one.
 - Manifest V3, `action` popup + a service worker for the API calls only.
   Host permission limited to SignedBy's own API domain.
 
-## Part B — Gmail Workspace Add-on ("Send via SignedBy")
+## Part B — Gmail Workspace Add-on ("Send via SignedBy") — DEFERRED, not in scope now
+
+Kept here for context/future reference only. Not being built alongside
+Part A.
 
 - From an email with a PDF attachment (or from compose), an action that
   sends that specific PDF for signature — recipient defaulted from the
@@ -121,19 +126,16 @@ a real product call — flagged as an open question, not assumed either way.
 - Mobile Safari/Firefox extension equivalents — Chrome + the Workspace
   Add-on (which does reach Gmail's mobile apps on its own) only, this phase.
 
+## Decisions
+
+1. **Scope is Part A only.** Part B (Gmail Add-on) is deferred — not
+   sequenced "later this phase," just off the table until it's separately
+   picked up. Nothing in Part A depends on it, so this doesn't block
+   anything below.
+
 ## Open questions
 
-1. Sequencing: build Part A (Chrome extension, narrow, low-risk, no new API
-   gaps) first and treat Part B (Gmail Add-on) as a distinctly later phase
-   — my recommendation, since B reopens the arbitrary-upload gap and
-   Google's Add-on review process, both real unknowns to size — or same
-   phase?
-2. Given Part B needs it anyway, does this change the "not this phase"
-   call on arbitrary-PDF-upload-via-API from the CRM/Make scope, or should
-   that stay deferred and Part B just be built directly (not through the
-   public v1 API) instead?
-3. Personal access token: Business-tier-gated like the API key, or
-   available more broadly?
-4. Worth confirming which exact Gmail Add-on scope tier Part B would need
-   before committing to it, given that determines how big Google's review
-   process actually is?
+1. Personal access token (Part C — still a real prerequisite for Part A on
+   its own, this isn't specific to Part B): Business-tier-gated like the
+   existing API key, or available more broadly since this is more "a
+   different surface for everyday actions" than "integration tooling"?
