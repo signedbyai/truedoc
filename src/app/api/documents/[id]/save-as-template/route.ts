@@ -50,7 +50,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const { data: fields } = await supabase
     .from("document_fields")
-    .select("type, page, x, y, width, height, required, signer_id")
+    .select("type, page, x, y, width, height, required, signer_id, template_role")
     .eq("document_id", id)
     .order("created_at", { ascending: true });
 
@@ -66,7 +66,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     width: f.width,
     height: f.height,
     required: f.required,
-    role: f.signer_id ? roleBySignerId.get(f.signer_id) ?? null : null,
+    // Bug found 2026-07-30 via CRM Phase 1 smoke testing: a field with no
+    // signer_id isn't necessarily generic/unassigned -- it may still be a
+    // pending "Party N" slot (template_role set) that was never claimed by
+    // adding a recipient to THIS document (e.g. a document created via "Use
+    // template" and saved again as a template without ever adding
+    // recipients). Falling straight to `null` here silently dropped that
+    // role tag, producing a template whose editor still showed "Party 1/2"
+    // labels but whose actual field_map had role: null everywhere -- which
+    // then made every field invisible on any 2+-signer send (see
+    // field-visibility.ts: an unassigned field only falls back to "show
+    // it anyway" when there's exactly one signer). Falling back to the
+    // field's own template_role preserves that pending tag instead of
+    // discarding it.
+    role: f.signer_id ? roleBySignerId.get(f.signer_id) ?? null : f.template_role ?? null,
   }));
 
   const { data: template, error } = await supabase
