@@ -451,7 +451,7 @@ export function MagicQuoteForm({
       <p className="text-xs text-slate-500">{ql("reviewDisclaimer", language)}</p>
 
       <Button className="w-full" disabled={!description.trim() || generating} onClick={handleGenerate}>
-        {generating ? ql("generatingQuote", language) : `${ql("generateQuote", language)} →`}
+        {generating ? ql("generatingQuote", language) : ql("generateQuote", language)}
       </Button>
     </div>
   );
