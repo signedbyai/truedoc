@@ -136,7 +136,7 @@ export default async function MagicQuoteAuTradiesPage() {
             src="/hero-magic-quote.png"
             alt="Magic Quote review screen showing an AI-generated line-item quote with editable line items and computed totals"
             width={592}
-            height={946}
+            height={972}
             priority
             sizes="(max-width: 640px) 90vw, 384px"
             className="h-auto w-full"
