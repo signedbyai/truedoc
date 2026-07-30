@@ -45,7 +45,7 @@ export async function getSignerByToken(token: string) {
   const { data: document } = await admin
     .from("documents")
     .select(
-      "id, title, page_count, org_id, owner_id, status, payment_link_url, payment_label, docgate_url, docgate_label, open_notifications"
+      "id, title, page_count, org_id, owner_id, status, payment_link_url, payment_label, docgate_url, docgate_label, open_notifications, expires_at"
     )
     .eq("id", signer.document_id)
     .single();
@@ -53,6 +53,21 @@ export async function getSignerByToken(token: string) {
   if (!document) return null;
 
   return { admin, signer, document };
+}
+
+// Found 2026-07-30: a document could still be opened and signed minutes
+// after its expires_at passed, because the ONLY thing that ever flips a
+// "sent" document to the 'expired' terminal status was the daily reminders
+// cron (src/app/api/cron/reminders/route.ts) — a document expiring at 09:00
+// stayed fully signable until that cron's next run, up to ~24h later. Every
+// signer-facing route that gates on `document.status === "expired"` needs to
+// ALSO treat a past-due expires_at as expired immediately, not just wait for
+// the cron to catch up — this shared check is what both
+// sign/[token]/page.tsx and sign/[token]/submit/route.ts call, so the two
+// can't drift out of sync with each other the way page.tsx and the old
+// api/sign/[token]/route.ts drifted on the viewed-webhook bug.
+export function isPastExpiration(document: { status: string; expires_at: string | null }): boolean {
+  return document.status === "sent" && Boolean(document.expires_at) && new Date(document.expires_at!) <= new Date();
 }
 
 /**

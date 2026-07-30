@@ -253,7 +253,10 @@ export async function sendVerificationCodeEmail(opts: {
   await getClient().emails.send({
     from: FROM,
     to: opts.to,
-    subject: `Your verification code for "${opts.documentTitle}"`,
+    // The code itself is in the subject line (not just the body) so it's
+    // readable straight from a notification banner or inbox preview without
+    // opening the email — the whole point of a short-lived OTP is speed.
+    subject: `${opts.code} is your verification code for "${opts.documentTitle}"`,
     html: `
       <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
         <p>${greeting}</p>

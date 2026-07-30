@@ -47,6 +47,17 @@ const bodySchema = z
     // clears it" shape as the dashboard's PUT /expiration route, though in
     // practice a caller would just omit the field entirely to leave it unset.
     expires_at: z.union([z.string().trim().datetime(), z.literal("")]).optional(),
+    // Customize invite email (recipient_notice/invite_subject/invite_message,
+    // migration 0029) — free on every plan, the same "Customize invite
+    // email" fields the dashboard's field editor modal sets on
+    // POST /documents/[id]/send. Previously API-created documents always
+    // sent with the generic default subject/body, with no way to override
+    // either — added 2026-07-30 after a direct question surfaced this gap.
+    // No "empty means default" distinction needed here the way the dashboard
+    // route has it: omitting the field entirely already means "use the
+    // default," since this is a brand-new document, not an edit.
+    invite_subject: z.string().trim().max(200).optional(),
+    invite_message: z.string().trim().max(2000).optional(),
   })
   .refine((data) => Boolean(data.signer) !== Boolean(data.signers), {
     message:
@@ -193,6 +204,8 @@ export async function POST(request: Request) {
       docgate_url: template.docgate_url,
       docgate_label: template.docgate_label,
       expires_at: parsed.data.expires_at || null,
+      invite_subject: parsed.data.invite_subject || null,
+      invite_message: parsed.data.invite_message || null,
     })
     .select("id, status, expires_at")
     .single();
@@ -264,6 +277,8 @@ export async function POST(request: Request) {
           senderName: orgName,
           documentTitle: template.name,
           signingToken: signer.signing_token,
+          inviteSubject: parsed.data.invite_subject,
+          inviteMessage: parsed.data.invite_message,
         });
         await admin
           .from("signers")
@@ -354,6 +369,8 @@ export async function POST(request: Request) {
       senderName: orgName,
       documentTitle: template.name,
       signingToken: signer.signing_token,
+      inviteSubject: parsed.data.invite_subject,
+      inviteMessage: parsed.data.invite_message,
     });
     await admin
       .from("signers")

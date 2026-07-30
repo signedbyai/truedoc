@@ -133,6 +133,16 @@ export default async function SettingsPage() {
   -d '{"template_id":"<template-id>","expires_at":"2026-08-15T00:00:00Z",
        "signer":{"email":"jane@acme.com","auth_required":true}}'`}
                   </pre>
+                  <p className="mt-3 font-medium text-slate-900">Customize the invite email&apos;s subject &amp; message</p>
+                  <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
+{`curl -X POST https://signedby.ai/api/v1/documents \\
+  -H "Authorization: Bearer sb_live_..." \\
+  -H "Content-Type: application/json" \\
+  -d '{"template_id":"<template-id>",
+       "invite_subject":"Please sign your Acme onboarding form",
+       "invite_message":"Thanks for joining — just one form to go.",
+       "signer":{"email":"jane@acme.com"}}'`}
+                  </pre>
                   <p className="mt-3 font-medium text-slate-900">List documents &amp; templates</p>
                   <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
 {`curl "https://signedby.ai/api/v1/documents?status=completed&limit=20" \\

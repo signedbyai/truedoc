@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSignerByToken, fetchSignerSpeedStat, requireVerifiedSigner } from "@/lib/signing";
+import { getSignerByToken, fetchSignerSpeedStat, requireVerifiedSigner, isPastExpiration } from "@/lib/signing";
 import { sendSignerInviteEmail, sendCompletionEmail, sendSignerDocGateEmail, appUrl } from "@/lib/email";
 import { generateSignedPdf } from "@/lib/generate-signed-pdf";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
@@ -21,6 +21,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   const result = await getSignerByToken(token);
   if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const { admin, signer, document } = result;
+
+  // Defense in depth, same reasoning as requireVerifiedSigner's own doc
+  // comment: sign/[token]/page.tsx blocks an expired document at render
+  // time, but this route is reachable directly too, and a document whose
+  // expires_at just passed may not have been flipped to 'expired' yet by
+  // either the page's self-heal or the daily cron. Self-heal here as well
+  // rather than trusting the caller to have hit the page first.
+  if (isPastExpiration(document)) {
+    await admin.from("documents").update({ status: "expired" }).eq("id", document.id);
+    await admin.from("audit_events").insert({ document_id: document.id, event_type: "expired" });
+    return NextResponse.json(
+      { error: "This document's expiration date has passed and it can no longer be signed." },
+      { status: 410 }
+    );
+  }
+
   const authGate = requireVerifiedSigner(signer);
   if (authGate) return authGate;
 

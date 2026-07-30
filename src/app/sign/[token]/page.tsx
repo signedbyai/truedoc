@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
-import { getSignerByToken } from "@/lib/signing";
+import { getSignerByToken, isPastExpiration } from "@/lib/signing";
 import { sendSignerOpenedEmail } from "@/lib/email";
 import { scheduleWebhookEvent } from "@/lib/webhooks";
 import { SigningView } from "@/components/signing-view";
@@ -119,7 +119,17 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
     );
   }
 
-  if (document.status === "expired") {
+  // Covers both the normal case (the daily cron already flipped this to
+  // 'expired') and the race the cron alone can't close: a document whose
+  // expires_at just passed but hasn't been swept yet. Self-heal right here
+  // instead of just rendering around it, so the sender's dashboard and the
+  // next webhook/audit trail reflect it immediately rather than waiting up
+  // to a day for the cron's next run. See isPastExpiration's comment.
+  if (document.status === "expired" || isPastExpiration(document)) {
+    if (document.status !== "expired") {
+      await admin.from("documents").update({ status: "expired" }).eq("id", document.id);
+      await admin.from("audit_events").insert({ document_id: document.id, event_type: "expired" });
+    }
     return (
       <StatusScreen
         title="This link has expired"
