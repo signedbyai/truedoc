@@ -75,6 +75,9 @@ function Endpoint({
 
 const FOOTER_LINKS = (
   <p className="mt-2 space-x-4">
+    <Link href="/console" className="hover:text-slate-600">
+      Console (AI agents)
+    </Link>
     <Link href="/vs/signnow" className="hover:text-slate-600">
       SignedBy vs SignNow
     </Link>

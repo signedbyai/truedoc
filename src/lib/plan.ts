@@ -63,6 +63,15 @@ const FEATURE_PLANS = {
   // distribution/analytics capability on top of core send-and-sign, not core
   // functionality itself. See src/app/g/[code]/route.ts.
   docGate: ["business"],
+  // Pro+: console.signedby.ai metered API access (CONSOLE_AI_SIGNING_SCOPE.md).
+  // Deliberately the same tier list as `templates` — the real requirement is
+  // "has a template to send," which is what makes API document creation
+  // possible at all, not a separate business decision about who "deserves"
+  // API access. Business orgs already get unlimited included access via
+  // `apiAccess` above; this is the metered, lower-barrier path for orgs that
+  // don't have (or want) Business. See src/lib/api-auth.ts for how the two
+  // gates combine at request time.
+  consoleAccess: ["starter", "team", "business"],
 } as const;
 
 // Per-recipient authentication (a sender can require a signer to enter a
@@ -91,6 +100,7 @@ export const FEATURE_UPGRADE_PLAN: Record<Feature, PlanId> = {
   apiAccess: "business",
   paymentCollection: "business",
   docGate: "business",
+  consoleAccess: "starter",
 };
 
 // Team member seat caps — matches the "Up to N users" pricing-cards.tsx

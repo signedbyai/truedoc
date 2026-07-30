@@ -5,6 +5,7 @@ import { authenticateApiRequest } from "@/lib/api-auth";
 import { sendSignerInviteEmail } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { checkEmailDomainHasMx } from "@/lib/validate-email-domain";
+import { recordConsoleUsage } from "@/lib/console-usage";
 
 // Per-recipient authentication (PER_RECIPIENT_AUTH_SCOPE.md) — free on every
 // plan, not gated separately from apiAccess itself, same as the dashboard's
@@ -131,7 +132,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const auth = await authenticateApiRequest(request);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { orgId, orgName } = auth;
+  const { orgId, orgName, metered } = auth;
 
   const rateOk = await checkRateLimit(`api-v1-documents:${orgId}`, 60, 3600);
   if (!rateOk) return NextResponse.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });
@@ -301,6 +302,12 @@ export async function POST(request: Request) {
         toNotify.map((s) => s.id)
       );
 
+    // Console metering (CONSOLE_AI_SIGNING_SCOPE.md): Business orgs are
+    // unmetered (see api-auth.ts), so this only tracks usage for Pro/Team
+    // orgs using the metered console path. Fire-and-forget — never blocks a
+    // real send, see console-usage.ts.
+    if (metered) void recordConsoleUsage(orgId);
+
     return NextResponse.json(
       {
         id: doc.id,
@@ -383,6 +390,9 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error("API v1: invite email failed", err);
   }
+
+  // Console metering — see the comment on the multi-party path above.
+  if (metered) void recordConsoleUsage(orgId);
 
   return NextResponse.json(
     {

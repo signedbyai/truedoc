@@ -32,6 +32,17 @@ describe("planHasFeature", () => {
     }
   });
 
+  // console.signedby.ai (CONSOLE_AI_SIGNING_SCOPE.md): same tier list as
+  // templates, deliberately — see the comment in plan.ts. Business orgs also
+  // pass this, but api-auth.ts treats them as unmetered via apiAccess
+  // instead, so this test only needs to confirm the gate itself.
+  it("gates consoleAccess to starter, team, and business (same as templates)", () => {
+    expect(planHasFeature("free", "consoleAccess")).toBe(false);
+    expect(planHasFeature("starter", "consoleAccess")).toBe(true);
+    expect(planHasFeature("team", "consoleAccess")).toBe(true);
+    expect(planHasFeature("business", "consoleAccess")).toBe(true);
+  });
+
   it("treats a missing/null plan as free", () => {
     expect(planHasFeature(null, "teamMembers")).toBe(false);
     expect(planHasFeature(undefined, "apiAccess")).toBe(false);

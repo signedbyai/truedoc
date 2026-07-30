@@ -3,12 +3,21 @@ import { extractApiKey, hashApiKey } from "@/lib/api-key";
 import { planHasFeature } from "@/lib/plan";
 
 export type ApiAuthResult =
-  | { ok: true; orgId: string; orgName: string }
+  | { ok: true; orgId: string; orgName: string; metered: boolean }
   | { ok: false; status: number; error: string };
 
 // Authenticates a /api/v1/* request against an org's stored API key hash.
 // Also re-checks the plan at request time (not just at key-generation time)
 // so a downgrade takes effect immediately rather than only on regeneration.
+//
+// Two ways in, per CONSOLE_AI_SIGNING_SCOPE.md: Business orgs (`apiAccess`)
+// get unlimited included access, same as before this existed — `metered` is
+// false for them, and callers should never bill their usage. Pro/Team orgs
+// (`consoleAccess`) get in too, but `metered` is true — the caller (the
+// document-send route) is responsible for reporting that usage; see
+// src/lib/console-usage.ts. A caller that ignores `metered` entirely just
+// gets the old Business-only behavior, so this is additive, not a breaking
+// change to any existing route.
 export async function authenticateApiRequest(request: Request): Promise<ApiAuthResult> {
   const key = extractApiKey(request);
   if (!key) {
@@ -23,9 +32,17 @@ export async function authenticateApiRequest(request: Request): Promise<ApiAuthR
     .single();
 
   if (!org) return { ok: false, status: 401, error: "Invalid API key." };
-  if (!planHasFeature(org.plan, "apiAccess")) {
-    return { ok: false, status: 402, error: "API access requires the Business plan." };
+
+  const hasUnlimitedAccess = planHasFeature(org.plan, "apiAccess");
+  const hasMeteredAccess = planHasFeature(org.plan, "consoleAccess");
+  if (!hasUnlimitedAccess && !hasMeteredAccess) {
+    return {
+      ok: false,
+      status: 402,
+      error:
+        "API access requires the Pro plan (metered, via console.signedby.ai) or the Business plan (unlimited, included).",
+    };
   }
 
-  return { ok: true, orgId: org.id, orgName: org.name };
+  return { ok: true, orgId: org.id, orgName: org.name, metered: !hasUnlimitedAccess };
 }
