@@ -157,6 +157,9 @@ export default async function VsBoloSignPage() {
           <Link href="/templates" className="hover:text-slate-600">
             Free templates
           </Link>
+          <Link href="/developers" className="hover:text-slate-600">
+            API docs
+          </Link>
           <Link href="/pricing" className="hover:text-slate-600">
             Pricing
           </Link>

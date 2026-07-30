@@ -173,8 +173,17 @@ curl -X POST https://signedby.ai/api/v1/documents/<document-id>/void \\
             ) : (
               // Plain gate line only, same as the Workspace card — no dashed
               // upgrade box. The Plan & team card below is the one place that
-              // routes people to billing.
-              <p className="text-xs text-slate-500">API access is available on the Business plan.</p>
+              // routes people to billing. Links to the public docs
+              // (PUBLIC_API_DOCS_SCOPE.md) rather than dead-ending here —
+              // previously a non-Business user had zero visibility into what
+              // they'd actually be buying.
+              <p className="text-xs text-slate-500">
+                API access is available on the Business plan.{" "}
+                <Link href="/developers" className="font-medium text-slate-700 underline hover:text-slate-900">
+                  See what&apos;s possible in the docs
+                </Link>
+                .
+              </p>
             )}
           </CardContent>
         </Card>

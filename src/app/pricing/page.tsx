@@ -46,6 +46,14 @@ export default async function PricingPage() {
         </div>
 
         <PricingCards isLoggedIn={Boolean(ctx)} currentPlan={currentPlan} initialCurrency={currency} ctaColor={ctaColor} />
+
+        <p className="mt-8 text-center text-sm text-slate-500">
+          Business also includes a full REST API and outbound webhooks —{" "}
+          <Link href="/developers" className="font-medium text-slate-700 underline hover:text-slate-900">
+            see the API docs
+          </Link>
+          .
+        </p>
       </div>
     </main>
   );
