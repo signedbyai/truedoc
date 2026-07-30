@@ -77,7 +77,7 @@ export default async function ConsolePage() {
             <Image src="/brand/signedby-lockup-yellow-badge-beta-micro-small.png" alt="SignedBy" width={266} height={64} className="h-6 w-auto" priority />
           </span>
         </Link>
-        <Link href="/login" className="text-sm font-medium text-slate-300 hover:text-white">
+        <Link href="/login?next=/dashboard/console" className="text-sm font-medium text-slate-300 hover:text-white">
           Sign in
         </Link>
       </header>
@@ -98,7 +98,7 @@ export default async function ConsolePage() {
             create, send, and track documents on its own — no separate developer plan, metered only on what you
             actually send.
           </p>
-          <CtaLink href="/login?intent=signup" color={ctaColor} page="console" position="hero">
+          <CtaLink href="/login?intent=signup&next=/dashboard/console" color={ctaColor} page="console" position="hero">
             Start for free →
           </CtaLink>
           <p className="text-xs text-slate-500">
@@ -185,7 +185,7 @@ export default async function ConsolePage() {
       <section className="mx-auto w-full max-w-3xl border-t border-white/10 px-6 py-16 text-center">
         <h2 className="text-2xl font-semibold text-slate-100">Ready to wire it up?</h2>
         <p className="mt-2 text-slate-400">Sign up free, then upgrade to Pro whenever you&apos;re ready for an API key.</p>
-        <CtaLink href="/login?intent=signup" className="mt-6" color={ctaColor} page="console" position="footer">
+        <CtaLink href="/login?intent=signup&next=/dashboard/console" className="mt-6" color={ctaColor} page="console" position="footer">
           Start for free →
         </CtaLink>
       </section>
