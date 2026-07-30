@@ -11,16 +11,15 @@ const TITLE = "SignedBy API — wire e-signature into your CRM or app";
 const DESCRIPTION =
   "REST API and outbound webhooks, included in the $29/mo Business plan — no separate developer plan. Create and send documents from your CRM, get notified on sign/complete, and connect via Make.";
 
-// See the note on /vs/signnow: a page overriding metadata must point back at
-// the shared opengraph image or it inherits none.
-const SHARED_IMAGE = ["/opengraph-image"];
-
+// This page has its own opengraph-image.tsx (route-scoped, next to this
+// file) — same as /magic-quote, openGraph/twitter here omit `images`
+// entirely and let Next auto-merge the file-based convention image.
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: "/developers" },
-  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/developers", images: SHARED_IMAGE },
-  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: SHARED_IMAGE },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/developers" },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
 function CodeBlock({ children }: { children: string }) {
