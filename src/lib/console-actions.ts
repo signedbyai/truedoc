@@ -30,6 +30,20 @@ type TemplateFieldMapEntry = {
 
 export type ConsoleActionError = { ok: false; error: string; status: number };
 
+/** Pure validation/normalization, split out from sendDocumentAction so it's
+ *  unit-testable without a Supabase client (same extract-the-pure-part
+ *  precedent as resolveActiveOrgId in org.ts). Accepts anything a chat
+ *  model might plausibly produce for "when does this expire" and either
+ *  normalizes it to a real ISO datetime or reports why it couldn't. */
+export function parseExpiresAt(expiresAt: string | null | undefined): { ok: true; iso: string | null } | { ok: false; error: string } {
+  if (!expiresAt) return { ok: true, iso: null };
+  const parsed = new Date(expiresAt);
+  if (Number.isNaN(parsed.getTime())) {
+    return { ok: false, error: "Couldn't understand that expiration date — use a full date like 2026-09-30." };
+  }
+  return { ok: true, iso: parsed.toISOString() };
+}
+
 async function loadOrgAndTemplate(orgId: string, templateId: string) {
   const admin = createAdminClient();
   const { data: org } = await admin.from("organizations").select("name, owner_id").eq("id", orgId).single();
@@ -46,15 +60,33 @@ async function loadOrgAndTemplate(orgId: string, templateId: string) {
  *  `bulk_send`. If `metered` is true, checks the org's spend cap BEFORE
  *  creating anything, and records usage after a successful send. Callers
  *  are responsible for confirming with the user before calling this for
- *  real (see the chat backend's confirm-before-send guardrail). */
+ *  real (see the chat backend's confirm-before-send guardrail).
+ *
+ *  `expiresAt`/`authRequired`/`inviteSubject`/`inviteMessage` (2026-07-31)
+ *  mirror the existing `/api/v1/documents` route's optional fields
+ *  byte-for-byte (same column names, same "omit means default" semantics,
+ *  same 200/2000-char caps on the invite text) — console was previously
+ *  the only send path with no way to set any of them at all. `recipientNotice`
+ *  deliberately NOT included: it's dashboard-only even on the richer v1
+ *  API, not something to newly invent here. */
 export async function sendDocumentAction(params: {
   orgId: string;
   templateId: string;
   signerEmail: string;
   signerName?: string | null;
   metered: boolean;
+  expiresAt?: string | null;
+  authRequired?: boolean;
+  inviteSubject?: string | null;
+  inviteMessage?: string | null;
 }): Promise<{ ok: true; documentId: string; domainWarning?: string } | ConsoleActionError> {
-  const { orgId, templateId, signerEmail, signerName, metered } = params;
+  const { orgId, templateId, signerEmail, signerName, metered, expiresAt, authRequired, inviteSubject, inviteMessage } = params;
+
+  const expiresAtResult = parseExpiresAt(expiresAt);
+  if (!expiresAtResult.ok) return { ok: false, error: expiresAtResult.error, status: 400 };
+  const expiresAtIso = expiresAtResult.iso;
+  const inviteSubjectTrimmed = inviteSubject?.trim().slice(0, 200) || null;
+  const inviteMessageTrimmed = inviteMessage?.trim().slice(0, 2000) || null;
 
   if (metered) {
     const cap = await checkConsoleCap(orgId);
@@ -82,6 +114,9 @@ export async function sendDocumentAction(params: {
       file_path: template.base_file_path,
       original_filename: `${template.name}.pdf`,
       page_count: template.page_count,
+      expires_at: expiresAtIso,
+      invite_subject: inviteSubjectTrimmed,
+      invite_message: inviteMessageTrimmed,
     })
     .select("id")
     .single();
@@ -99,6 +134,7 @@ export async function sendDocumentAction(params: {
       order_index: 0,
       status: "sent",
       sent_at: new Date().toISOString(),
+      auth_required: authRequired ?? false,
     })
     .select("id, signing_token")
     .single();
@@ -135,6 +171,8 @@ export async function sendDocumentAction(params: {
       senderName: org.name,
       documentTitle: template.name,
       signingToken: signer.signing_token,
+      inviteSubject: inviteSubjectTrimmed,
+      inviteMessage: inviteMessageTrimmed,
     });
     await admin
       .from("signers")
@@ -159,17 +197,23 @@ export async function sendDocumentAction(params: {
  *  independent document — same shape as the existing dashboard bulk-send
  *  feature. Stops partway through (rather than failing the whole batch)
  *  if the spend cap is hit mid-run, reporting exactly how many sent before
- *  that happened. */
+ *  that happened. `expiresAt`/`authRequired`/`inviteSubject`/`inviteMessage`
+ *  (2026-07-31) apply identically to every recipient in the batch — one
+ *  set of send settings per bulk-send call, not per-recipient. */
 export async function bulkSendAction(params: {
   orgId: string;
   templateId: string;
   recipients: { email: string; name?: string | null }[];
   metered: boolean;
+  expiresAt?: string | null;
+  authRequired?: boolean;
+  inviteSubject?: string | null;
+  inviteMessage?: string | null;
 }): Promise<
   | { ok: true; sent: { documentId: string; email: string }[]; skippedCapReached: string[] }
   | ConsoleActionError
 > {
-  const { orgId, templateId, recipients, metered } = params;
+  const { orgId, templateId, recipients, metered, expiresAt, authRequired, inviteSubject, inviteMessage } = params;
   if (recipients.length === 0) return { ok: false, error: "No recipients provided.", status: 400 };
   if (recipients.length > 200) return { ok: false, error: "Bulk send is capped at 200 recipients per call.", status: 400 };
 
@@ -190,6 +234,10 @@ export async function bulkSendAction(params: {
       signerEmail: recipient.email,
       signerName: recipient.name,
       metered,
+      expiresAt,
+      authRequired,
+      inviteSubject,
+      inviteMessage,
     });
     if (result.ok) sent.push({ documentId: result.documentId, email: recipient.email });
     // A single bad recipient (e.g. template lookup race) doesn't need its

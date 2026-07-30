@@ -23,7 +23,16 @@ const SYSTEM_PROMPT =
   "You are SignedBy Console, an assistant that sends, tracks, and manages e-signature documents on the user's " +
   "SignedBy account by calling the tools provided. Only take an action the user has clearly asked for. Never " +
   "invent a template_id or document_id — call list_templates or list_documents first if you don't already have " +
-  "the right id from earlier in the conversation. Keep replies short and concrete.";
+  "the right id from earlier in the conversation. Keep replies short and concrete.\n\n" +
+  "Before sending a document (send_document or bulk_send), briefly ask once whether the user wants an " +
+  "expiration date and whether the recipient(s) should have to verify their email with a one-time code before " +
+  "signing — but don't block on an answer. If they don't say, proceed with no expiration and no verification " +
+  "(the defaults). If they answer inline in the same message as the send request (e.g. 'send it, no " +
+  "expiration needed'), don't ask again, just use what they said.\n\n" +
+  "For bulk_send, recipients can be pasted in a lot of shapes — one email per line, comma-separated, or " +
+  "'email, name' pairs. If a pasted list is genuinely ambiguous (e.g. you can't tell where one entry ends and " +
+  "the next begins), ask the user to paste it as one recipient per line, optionally 'email, name'. Don't ask " +
+  "this proactively before they've pasted anything — only when what they gave you doesn't parse cleanly.";
 
 const TOOLS = [
   {
@@ -37,6 +46,23 @@ const TOOLS = [
           template_id: { type: "string" },
           signer_email: { type: "string" },
           signer_name: { type: "string" },
+          expires_at: {
+            type: "string",
+            description:
+              "Optional. ISO 8601 datetime the document expires at (e.g. 2026-09-30T00:00:00Z). Omit for no expiration.",
+          },
+          auth_required: {
+            type: "boolean",
+            description: "Optional. If true, the signer must verify their email with a one-time code before they can sign. Defaults to false.",
+          },
+          invite_subject: {
+            type: "string",
+            description: "Optional. Custom subject line for the invite email, up to 200 characters. Omit to use the default.",
+          },
+          invite_message: {
+            type: "string",
+            description: "Optional. Custom message body for the invite email, up to 2000 characters. Omit to use the default.",
+          },
         },
         required: ["template_id", "signer_email"],
       },
@@ -58,6 +84,24 @@ const TOOLS = [
               properties: { email: { type: "string" }, name: { type: "string" } },
               required: ["email"],
             },
+          },
+          expires_at: {
+            type: "string",
+            description:
+              "Optional. ISO 8601 datetime every document in this batch expires at. Omit for no expiration. Applies to the whole batch, not per recipient.",
+          },
+          auth_required: {
+            type: "boolean",
+            description:
+              "Optional. If true, every recipient must verify their email with a one-time code before they can sign. Defaults to false. Applies to the whole batch, not per recipient.",
+          },
+          invite_subject: {
+            type: "string",
+            description: "Optional. Custom subject line for the invite email, up to 200 characters, same for the whole batch.",
+          },
+          invite_message: {
+            type: "string",
+            description: "Optional. Custom message body for the invite email, up to 2000 characters, same for the whole batch.",
           },
         },
         required: ["template_id", "recipients"],
@@ -152,6 +196,10 @@ async function executeTool(orgId: string, metered: boolean, name: string, args: 
         signerEmail: String(args.signer_email ?? ""),
         signerName: typeof args.signer_name === "string" ? args.signer_name : null,
         metered,
+        expiresAt: typeof args.expires_at === "string" ? args.expires_at : null,
+        authRequired: args.auth_required === true,
+        inviteSubject: typeof args.invite_subject === "string" ? args.invite_subject : null,
+        inviteMessage: typeof args.invite_message === "string" ? args.invite_message : null,
       });
     case "bulk_send":
       return bulkSendAction({
@@ -159,6 +207,10 @@ async function executeTool(orgId: string, metered: boolean, name: string, args: 
         templateId: String(args.template_id ?? ""),
         recipients: Array.isArray(args.recipients) ? (args.recipients as { email: string; name?: string }[]) : [],
         metered,
+        expiresAt: typeof args.expires_at === "string" ? args.expires_at : null,
+        authRequired: args.auth_required === true,
+        inviteSubject: typeof args.invite_subject === "string" ? args.invite_subject : null,
+        inviteMessage: typeof args.invite_message === "string" ? args.invite_message : null,
       });
     case "check_status":
       return checkStatusAction(orgId, String(args.document_id ?? ""));
@@ -176,12 +228,34 @@ async function executeTool(orgId: string, metered: boolean, name: string, args: 
   }
 }
 
-function describeConfirmAction(name: string, args: Record<string, unknown>): string {
+/** Summarizes expires_at/auth_required/invite_subject/invite_message so
+ *  the confirm step always shows what's actually about to happen, not
+ *  just who it's going to — a silent default (no expiration, no
+ *  verification) is still worth stating explicitly rather than leaving
+ *  the user to guess. */
+export function describeSendSettings(args: Record<string, unknown>): string {
+  const parts: string[] = [];
+  if (typeof args.expires_at === "string" && args.expires_at) {
+    const parsed = new Date(args.expires_at);
+    parts.push(Number.isNaN(parsed.getTime()) ? "expires (date unclear)" : `expires ${parsed.toLocaleDateString()}`);
+  } else {
+    parts.push("no expiration");
+  }
+  parts.push(args.auth_required === true ? "recipient must verify email to sign" : "no email verification required");
+  if (typeof args.invite_subject === "string" && args.invite_subject.trim()) parts.push("custom invite subject");
+  if (typeof args.invite_message === "string" && args.invite_message.trim()) parts.push("custom invite message");
+  return parts.join(", ");
+}
+
+export function describeConfirmAction(name: string, args: Record<string, unknown>): string {
   if (name === "send_document") {
-    return `Send this template to ${String(args.signer_email ?? "the specified signer")}?`;
+    return `Send this template to ${String(args.signer_email ?? "the specified signer")}? (${describeSendSettings(args)})`;
   }
   const count = Array.isArray(args.recipients) ? args.recipients.length : 0;
-  return `This will send the template to ${count} recipient${count === 1 ? "" : "s"} as separate documents. Confirm?`;
+  return (
+    `This will send the template to ${count} recipient${count === 1 ? "" : "s"} as separate documents ` +
+    `(${describeSendSettings(args)}). Confirm?`
+  );
 }
 
 export type ConsoleChatTurnResult =

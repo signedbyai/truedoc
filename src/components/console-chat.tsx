@@ -115,7 +115,8 @@ export function ConsoleChat() {
             <span className="font-mono text-lg text-neutral-600">&gt;_</span>
             <p className="max-w-xs text-sm text-neutral-500">
               Ask console to send a document, bulk-send a list, check status, or void something — e.g. &ldquo;send the
-              NDA template to jane@acme.com&rdquo;.
+              NDA template to jane@acme.com&rdquo;. For a bulk send, paste one recipient per line (email, or
+              &ldquo;email, name&rdquo;).
             </p>
           </div>
         )}
