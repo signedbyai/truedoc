@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { FlagValues } from "flags/react";
 import Image from "next/image";
 import { CtaLink } from "@/components/cta-link";
 import { ctaColorFlag } from "@/flags";
+import { isConsoleHost, consoleUrl } from "@/lib/console-host";
 
 const TITLE = "SignedBy Console — use your favorite AI to send signing requests";
 const DESCRIPTION =
@@ -65,6 +67,21 @@ const FOOTER_LINKS = (
 export default async function ConsolePage() {
   const ctaColor = await ctaColorFlag();
 
+  // This page renders two ways: rewritten to console.signedby.ai's root
+  // (see middleware.ts) and directly at signedby.ai/console (kept for SEO
+  // — see the canonical/openGraph url above). On the subdomain, relative
+  // links already stay there. Reached via the main domain, though, "Sign
+  // in"/"Start for free" need to actually jump the browser off to
+  // console.signedby.ai — per direct instruction 2026-07-30, the whole
+  // point of the subdomain-separation work is that the console app is
+  // reached by really leaving signedby.ai, not by an internal route that
+  // happens to render similar content.
+  const onConsoleHost = isConsoleHost((await headers()).get("host"));
+  const loginHref = onConsoleHost ? "/login?next=/app" : consoleUrl("/login?next=/app");
+  const signupHref = onConsoleHost
+    ? "/login?intent=signup&next=/app"
+    : consoleUrl("/login?intent=signup&next=/app");
+
   return (
     <main className="flex min-h-screen flex-col bg-slate-950">
       <FlagValues values={{ "cta-color": ctaColor }} />
@@ -77,7 +94,7 @@ export default async function ConsolePage() {
             <Image src="/brand/signedby-lockup-yellow-badge-beta-micro-small.png" alt="SignedBy" width={266} height={64} className="h-6 w-auto" priority />
           </span>
         </Link>
-        <Link href="/login?next=/console/app" className="text-sm font-medium text-slate-300 hover:text-white">
+        <Link href={loginHref} className="text-sm font-medium text-slate-300 hover:text-white">
           Sign in
         </Link>
       </header>
@@ -98,7 +115,7 @@ export default async function ConsolePage() {
             create, send, and track documents on its own — no separate developer plan, metered only on what you
             actually send.
           </p>
-          <CtaLink href="/login?intent=signup&next=/console/app" color={ctaColor} page="console" position="hero">
+          <CtaLink href={signupHref} color={ctaColor} page="console" position="hero">
             Start for free →
           </CtaLink>
           <p className="text-xs text-slate-500">
@@ -185,7 +202,7 @@ export default async function ConsolePage() {
       <section className="mx-auto w-full max-w-3xl border-t border-white/10 px-6 py-16 text-center">
         <h2 className="text-2xl font-semibold text-slate-100">Ready to wire it up?</h2>
         <p className="mt-2 text-slate-400">Sign up free, then upgrade to Pro whenever you&apos;re ready for an API key.</p>
-        <CtaLink href="/login?intent=signup&next=/console/app" className="mt-6" color={ctaColor} page="console" position="footer">
+        <CtaLink href={signupHref} className="mt-6" color={ctaColor} page="console" position="footer">
           Start for free →
         </CtaLink>
       </section>

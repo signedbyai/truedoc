@@ -34,15 +34,17 @@ const PRIMARY: Section[] = [
 // Console (CONSOLE_UX_SCOPE.md) is Pro+ only, so it's appended conditionally
 // in the component below rather than living in the static PRIMARY array —
 // a Free-plan org never sees the tab at all, rather than seeing it and
-// hitting a gate. Moved to its own shell at /console/app 2026-07-30 (see
-// src/app/console/app/layout.tsx) — this entry just links out to it, it's
-// no longer a same-shell "section" in the DashboardNav sense, but kept in
-// this list for whenever showConsole flips back on.
+// hitting a gate. Moved off to its own subdomain 2026-07-30 (see
+// src/lib/console-host.ts) — this entry is a real cross-host link out to
+// it, not a same-shell "section" in the DashboardNav sense anymore, but
+// kept in this list for whenever showConsole flips back on. `match` never
+// fires since usePathname() can't equal an off-site URL — that's correct,
+// this tab should never render as "active" while looking at the dashboard.
 const CONSOLE_SECTION: Section = {
   label: "Console",
-  href: "/console/app",
+  href: "https://console.signedby.ai/app",
   icon: MessageSquare,
-  match: (p) => p.startsWith("/console/app"),
+  match: () => false,
 };
 
 function initials(name: string | null, email: string): string {

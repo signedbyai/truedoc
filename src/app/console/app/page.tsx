@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getUserAndOrg } from "@/lib/org";
 import { planHasFeature } from "@/lib/plan";
 import { getConsoleBillingState } from "@/lib/console-usage";
 import { ConsoleChat } from "@/components/console-chat";
 import { ConsoleUsagePanel } from "@/components/console-usage-panel";
+import { consoleAppNextPath } from "@/lib/console-host";
 
 // /console/app (moved from /dashboard/console 2026-07-30 — see
 // src/app/console/app/layout.tsx for why) — the actual interactive
@@ -25,7 +27,10 @@ import { ConsoleUsagePanel } from "@/components/console-usage-panel";
 // need to reskin either component for this move.
 export default async function ConsoleAppPage() {
   const ctx = await getUserAndOrg();
-  if (!ctx) redirect("/login?next=/console/app");
+  if (!ctx) {
+    const nextPath = consoleAppNextPath((await headers()).get("host"));
+    redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+  }
   const { supabase, orgId } = ctx;
 
   const { data: org } = await supabase

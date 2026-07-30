@@ -8,19 +8,23 @@ import { isDevAccessAllowed } from "@/lib/dev-access";
 // product). Michael's direction (2026-07-30): make the console feel like a
 // separate "control zone" rather than just another dashboard page, closer
 // to how console.anthropic.com is a structurally distinct app from
-// claude.ai — but as a same-deployment route change (not a full subdomain
-// split) for now, per his own "let's see if this works before I revert to
-// a fully separate subdomain" framing. If that reversal ever happens, this
-// file is the thing that gets deleted in favor of routing
-// console.signedby.ai's whole path space at the middleware level instead
-// of just "/" (see src/middleware.ts's CONSOLE_HOST comment).
+// claude.ai. First cut was a same-deployment route change only
+// (/console/app); same day, after testing, upgraded to the real thing —
+// console.signedby.ai now serves this whole shell as its own subdomain
+// (see src/middleware.ts's "/app" rewrite and src/lib/console-host.ts).
+// This file's route is still physically /console/app internally, reached
+// at console.signedby.ai/app externally.
 //
-// Chrome is intentionally minimal: logo top-left (links back to
-// /dashboard — "jump back into the main app" was the explicit ask) plus an
-// explicit text link doing the same, dark bg-slate-950 to match the
-// console.signedby.ai marketing page's 2026-07-30 redesign so the two dark
-// surfaces (logged-out pitch, logged-in app) feel like one continuous
-// product instead of a jarring light/dark handoff on sign-in.
+// Chrome is intentionally minimal: logo top-left (links back to the main
+// app) plus an explicit text link doing the same, dark bg-slate-950 to
+// match the console.signedby.ai marketing page's 2026-07-30 redesign so
+// the two dark surfaces (logged-out pitch, logged-in app) feel like one
+// continuous product instead of a jarring light/dark handoff on sign-in.
+// Both links point at the absolute https://signedby.ai/dashboard rather
+// than the relative /dashboard — a real jump off the console subdomain
+// back to the main app's own home, not an internal route that happens to
+// render there. Safe to do without forcing a second sign-in because the
+// auth cookie is now scoped to all of *.signedby.ai (see cookie-domain.ts).
 export default async function ConsoleAppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getUserAndOrg();
   if (!ctx) return <>{children}</>;
@@ -50,7 +54,7 @@ export default async function ConsoleAppLayout({ children }: { children: React.R
   return (
     <div className="min-h-screen bg-slate-950">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-5">
-        <Link href="/dashboard" className="flex items-center gap-2.5">
+        <Link href="https://signedby.ai/dashboard" className="flex items-center gap-2.5">
           <span className="inline-flex rounded-md bg-white px-2 py-1">
             <Image
               src="/brand/signedby-lockup-yellow-badge-beta-micro-small.png"
@@ -65,7 +69,7 @@ export default async function ConsoleAppLayout({ children }: { children: React.R
             console
           </span>
         </Link>
-        <Link href="/dashboard" className="text-sm font-medium text-slate-400 hover:text-white">
+        <Link href="https://signedby.ai/dashboard" className="text-sm font-medium text-slate-400 hover:text-white">
           ← Back to dashboard
         </Link>
       </header>
