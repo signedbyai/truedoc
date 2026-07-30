@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getUserAndOrg } from "@/lib/org";
 import { isDevAccessAllowed } from "@/lib/dev-access";
 
@@ -56,20 +57,21 @@ export default async function ConsoleAppLayout({ children }: { children: React.R
     <div className="min-h-screen bg-neutral-950">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-5">
         <Link href="https://signedby.ai/dashboard" className="flex items-center gap-3">
-          {/* White-on-clear lockup — direct instruction 2026-07-31, no
-              existing brand asset is a white knockout (both PNGs in
-              /public/brand are the black-wordmark/yellow-badge version, made
-              for light backgrounds), so this recreates the same shape
-              in-place rather than wrapping the PNG in a white chip like the
-              /console marketing page still does. Badge keeps the same
-              rounded-square + slash mark, just inverted: white square, dark
-              slash, sitting straight on bg-neutral-950 with no background box. */}
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white">
-            <span className="text-base font-bold leading-none text-slate-900">/</span>
-          </span>
-          <span className="text-lg font-bold leading-none text-white">
-            SignedBy<span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Beta</span>
-          </span>
+          {/* White-on-clear lockup, the real asset (2026-07-31): found in
+              brand-assets/lockup/micro-small/ after Michael flagged this
+              file wasn't being used — a code-recreated version was drawn
+              in-place here first because /public/brand only had the
+              black-wordmark/yellow-badge PNGs, made for light backgrounds.
+              Swapped to the actual white-knockout PNG now that it's copied
+              into /public/brand. */}
+          <Image
+            src="/brand/signedby-lockup-white-beta-micro-small-transparent.png"
+            alt="SignedBy"
+            width={266}
+            height={64}
+            className="h-6 w-auto"
+            priority
+          />
           <span className="rounded-full border border-yellow-300/35 bg-yellow-300/10 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-yellow-300">
             console
           </span>

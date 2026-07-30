@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { FlagValues } from "flags/react";
@@ -109,16 +110,18 @@ export default async function ConsolePage() {
       <FlagValues values={{ "cta-color": ctaColor }} />
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
         <Link href="/" className="flex items-center gap-3">
-          {/* White-on-clear lockup, same as console/app/layout.tsx
+          {/* White-on-clear lockup, same real asset as console/app/layout.tsx
               (2026-07-31) — was previously the black-wordmark PNG wrapped in
-              a white chip; switched for consistency with the app shell now
-              that both are dark surfaces the user moves between. */}
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white">
-            <span className="text-base font-bold leading-none text-slate-900">/</span>
-          </span>
-          <span className="text-lg font-bold leading-none text-white">
-            SignedBy<span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Beta</span>
-          </span>
+              a white chip, then briefly a code-recreated white version until
+              this actual white-knockout PNG was found in brand-assets/. */}
+          <Image
+            src="/brand/signedby-lockup-white-beta-micro-small-transparent.png"
+            alt="SignedBy"
+            width={266}
+            height={64}
+            className="h-6 w-auto"
+            priority
+          />
         </Link>
         <Link href={loginHref} className="text-sm font-medium text-slate-300 hover:text-white">
           Sign in
