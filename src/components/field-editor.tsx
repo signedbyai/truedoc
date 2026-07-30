@@ -1660,7 +1660,7 @@ export function FieldEditor({
                         <BookmarkIcon />
                         Save as template
                         <span className="ml-auto rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">
-                          Starter+
+                          Pro+
                         </span>
                       </a>
                     )}
@@ -1975,7 +1975,7 @@ export function FieldEditor({
                     <BookmarkIcon />
                     Save as template
                     <span className="ml-auto rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500">
-                      Starter+
+                      Pro+
                     </span>
                   </a>
                 )}

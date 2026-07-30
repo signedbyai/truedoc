@@ -25,7 +25,7 @@ const PLANS: {
   },
   {
     id: "starter",
-    name: "Starter",
+    name: "Pro",
     blurb: "For solo professionals",
     features: ["Unlimited documents", "1 user", "Templates & reminders", "AI-drafted documents", "Engagement tracking"],
   },
@@ -33,7 +33,7 @@ const PLANS: {
     id: "team",
     name: "Team",
     blurb: "Up to 3 users",
-    features: ["Everything in Starter", "Shared templates", "Bulk send", "Custom branding (logo & color)"],
+    features: ["Everything in Pro", "Shared templates", "Bulk send", "Custom branding (logo & color)"],
   },
   {
     id: "business",

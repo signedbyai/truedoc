@@ -15,7 +15,7 @@
 // gated teaser — both because a genuinely useful page is what ranks, and
 // because it's the honest version of "free template": you can read and use
 // the example without an account. The CTA is for customizing it to your
-// own situation with AI, which is accurately described as a Starter-plan
+// own situation with AI, which is accurately described as a Pro-plan
 // feature (see each page's cta copy) — never oversold as free, since a
 // fresh Free-plan signup does NOT get AI drafting (see plan.ts's aiDraft
 // gate). Getting that wrong on a public page would be a promise the product

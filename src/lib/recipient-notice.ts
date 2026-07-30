@@ -7,7 +7,7 @@
 // the field editor, not legal advice.
 //
 // The page-view-tracking clause only applies to orgs entitled to that
-// feature (Starter+, see plan.ts's `pageViewTracking`) -- a Free-plan
+// feature (Pro+, see plan.ts's `pageViewTracking`) -- a Free-plan
 // sender's recipients aren't actually tracked per page, so the default text
 // shouldn't claim they are. Callers pass `hasPageViewTracking` from
 // `planHasFeature(orgPlan, "pageViewTracking")`.

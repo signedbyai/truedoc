@@ -35,15 +35,15 @@ const PRICING_ROWS: Row[] = [
 ];
 
 const FEATURE_ROWS: Row[] = [
-  { label: "AI-drafted documents from a plain-language description", signedby: "Included (Starter+)", competitor: "Not offered" },
+  { label: "AI-drafted documents from a plain-language description", signedby: "Included (Pro+)", competitor: "Not offered" },
   { label: "AI-assisted field placement on upload", signedby: "Included, all plans", competitor: "Not offered" },
   { label: "AI-drafted quotes from a plain-language description", signedby: "Included, all plans — becomes a signable document instantly", competitor: "Not offered" },
-  { label: "Per-page signer engagement tracking (dwell time per page)", signedby: "Included (Starter+)", competitor: "Basic status only (sent/viewed/completed)" },
+  { label: "Per-page signer engagement tracking (dwell time per page)", signedby: "Included (Pro+)", competitor: "Basic status only (sent/viewed/completed)" },
   { label: "Mobile signing UX", signedby: "Field-by-field guided mode", competitor: "Standard pinch-and-zoom PDF view" },
   { label: "Public document-hash verification page", signedby: "Included, no login needed", competitor: "Not offered" },
   { label: "Company / primary AI processing location", signedby: "Netherlands (EU); Mistral AI (France) by default", competitor: "United States" },
   { label: "Audit trail, ESIGN/UETA compliance", signedby: "Included", competitor: "Included" },
-  { label: "Templates and bulk send", signedby: "Templates on Starter+, bulk send on Team+", competitor: "Included on Business Premium+" },
+  { label: "Templates and bulk send", signedby: "Templates on Pro+, bulk send on Team+", competitor: "Included on Business Premium+" },
   { label: "API access + outbound webhooks", signedby: "Included in Business ($29/mo) — multi-signer create, list/void, signed-file download, webhooks", competitor: "Not on Business or Business Premium at any price — Enterprise tier only (~$30/user/mo annual), or a separate API-only plan starting at $146/mo" },
 ];
 

@@ -9,7 +9,7 @@
 //   signer's FIRST open of their link (sign/[token]/page.tsx), so free
 //   orgs get first-open recency.
 // - document_page_views.last_viewed_at — the engagement tracker's rolling
-//   timestamp (Starter+ only, flushed every 10s while a signer reads), so
+//   timestamp (Pro+ only, flushed every 10s while a signer reads), so
 //   paid orgs get true "2 minutes ago" freshness.
 
 /** Latest of a set of ISO timestamps; null when nothing usable. */

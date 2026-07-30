@@ -66,7 +66,7 @@ export type QuoteRenderInput = {
   // Sender-identity-picker.tsx's "Prepared by" (Team/Business orgs) — the
   // picked team member's own name, appended to the "From" line so a quote
   // shows both the org and the specific person who prepared it. Null on
-  // Free/Starter orgs (the picker never renders there, nothing to append)
+  // Free/Pro orgs (the picker never renders there, nothing to append)
   // and whenever the sender leaves it unset.
   preparedByName: string | null;
   billToName: string;

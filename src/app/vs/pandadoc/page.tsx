@@ -36,15 +36,15 @@ const PRICING_ROWS: Row[] = [
 ];
 
 const FEATURE_ROWS: Row[] = [
-  { label: "AI-drafted documents from a plain-language description", signedby: "Included (Starter+), any document type, $7/mo flat", competitor: "AI document/proposal generation offered, positioned around sales workflows and CRM data — confirm current plan requirements directly with PandaDoc" },
+  { label: "AI-drafted documents from a plain-language description", signedby: "Included (Pro+), any document type, $7/mo flat", competitor: "AI document/proposal generation offered, positioned around sales workflows and CRM data — confirm current plan requirements directly with PandaDoc" },
   { label: "AI-assisted field placement on upload", signedby: "Included, all plans", competitor: "Not offered as a plain upload-and-place flow" },
   { label: "AI-drafted quotes from a plain-language description", signedby: "Included, all plans — becomes a signable document instantly, math computed by code not AI", competitor: "Quote/proposal documents with pricing tables are core to PandaDoc's product — closer overlap than the rest of this comparison; confirm current plan requirements directly with PandaDoc" },
-  { label: "Per-page signer engagement tracking (dwell time per page)", signedby: "Included (Starter+)", competitor: "Document-level tracking/analytics on paid tiers" },
+  { label: "Per-page signer engagement tracking (dwell time per page)", signedby: "Included (Pro+)", competitor: "Document-level tracking/analytics on paid tiers" },
   { label: "Mobile signing UX", signedby: "Field-by-field guided mode", competitor: "Standard pinch-and-zoom PDF view" },
   { label: "Public document-hash verification page", signedby: "Included, no login needed", competitor: "Not offered" },
   { label: "Company / primary AI processing location", signedby: "Netherlands (EU); Mistral AI (France) by default", competitor: "United States" },
   { label: "Audit trail, ESIGN/UETA compliance", signedby: "Included", competitor: "Included" },
-  { label: "Templates and bulk send", signedby: "Templates on Starter+, bulk send on Team+", competitor: "Included, mainly aimed at sales/proposal teams" },
+  { label: "Templates and bulk send", signedby: "Templates on Pro+, bulk send on Team+", competitor: "Included, mainly aimed at sales/proposal teams" },
   { label: "API access + outbound webhooks", signedby: "Included in Business ($29/mo) — multi-signer create, list/void, signed-file download, webhooks", competitor: "Enterprise tier only, custom pricing — a jump up from the $49/user/mo Business plan; webhooks also Enterprise-gated" },
 ];
 

@@ -52,7 +52,7 @@ export const VALUE_PROPS: { label: string; path: string }[] = [
 
 export const PRICING: { name: string; id: PlanKey; blurb: string }[] = [
   { name: "Free", id: "free", blurb: "3 documents/mo, 1 user" },
-  { name: "Starter", id: "starter", blurb: "Unlimited documents, 1 user" },
+  { name: "Pro", id: "starter", blurb: "Unlimited documents, 1 user" },
   { name: "Team", id: "team", blurb: "Up to 3 users, custom branding" },
   { name: "Business", id: "business", blurb: "Up to 5 users, API access" },
 ];

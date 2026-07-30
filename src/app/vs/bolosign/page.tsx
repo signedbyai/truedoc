@@ -33,10 +33,10 @@ const PRICING_ROWS: Row[] = [
 const FEATURE_ROWS: Row[] = [
   { label: "No-login email signing for recipients", signedby: "Yes — single-use link, sign in the browser", competitor: "Yes — shareable link or QR code, no login" },
   { label: "Get started without a sales call", signedby: "Yes — sign up and send in minutes", competitor: "Yes — self-serve signup, 7-day free trial, no card required" },
-  { label: "AI-drafted documents from a plain-language description", signedby: "Included (Starter+)", competitor: "Not offered — their AI (\"Map PDF AI\") auto-places fields on a PDF you upload; it doesn't generate a new document from a description" },
+  { label: "AI-drafted documents from a plain-language description", signedby: "Included (Pro+)", competitor: "Not offered — their AI (\"Map PDF AI\") auto-places fields on a PDF you upload; it doesn't generate a new document from a description" },
   { label: "AI-assisted field placement on upload", signedby: "Included, all plans", competitor: "Included — Map PDF AI auto-detects field type and position, ~95% accuracy on the first pass per their own claims" },
   { label: "AI-drafted quotes from a plain-language description", signedby: "Included, all plans — becomes a signable document instantly", competitor: "Not offered" },
-  { label: "Per-page signer engagement tracking (dwell time)", signedby: "Included (Starter+)", competitor: "Form-level analytics on Team+, not per-page dwell time" },
+  { label: "Per-page signer engagement tracking (dwell time)", signedby: "Included (Pro+)", competitor: "Form-level analytics on Team+, not per-page dwell time" },
   { label: "Public document-hash verification page", signedby: "Included, no login needed", competitor: "Not advertised — a tamper-proof trust seal on completed contracts instead" },
   { label: "Bulk send", signedby: "Team+ ($14/mo)", competitor: "Team+ ($49/mo)" },
   { label: "API access + outbound webhooks", signedby: "Included in Business ($29/mo), self-serve — multi-signer create, list/void, signed-file download, webhooks", competitor: "Separate $72/mo API plan (up to 200 documents, then $0.50 each) — not included in the tiers above" },

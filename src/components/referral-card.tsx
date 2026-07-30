@@ -146,7 +146,7 @@ export function ReferralCard() {
 
             <h2 className="mt-4 text-lg font-semibold text-slate-900">Give a month, get a month</h2>
             <p className="mx-auto mt-1 max-w-xs text-sm text-slate-600">
-              Share your link. When someone signs up and subscribes, they get their first month of Starter free — and
+              Share your link. When someone signs up and subscribes, they get their first month of Pro free — and
               so do you.
               {rewardedCount > 0 && (
                 <span className="font-medium text-slate-900">

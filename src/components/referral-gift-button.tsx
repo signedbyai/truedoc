@@ -114,7 +114,7 @@ export function ReferralGiftButton({ variant = "icon" }: { variant?: "icon" | "l
               </button>
             </div>
             <p className="mt-1 text-xs text-slate-600">
-              When someone signs up with your link and subscribes, they get their first month of Starter free — and so
+              When someone signs up with your link and subscribes, they get their first month of Pro free — and so
               do you.
             </p>
             <div className="mt-3 flex gap-2">

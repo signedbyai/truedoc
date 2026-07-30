@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     .single();
   if (!planHasFeature(org?.plan, "aiDraft")) {
     return NextResponse.json(
-      { error: "AI-drafted documents are a Starter plan feature. Upgrade to describe and draft documents.", upgrade: true },
+      { error: "AI-drafted documents are a Pro plan feature. Upgrade to describe and draft documents.", upgrade: true },
       { status: 402 }
     );
   }

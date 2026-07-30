@@ -49,7 +49,7 @@ export default function AiDrafterOpengraphImage() {
         </div>
         <div style={{ marginTop: 40, display: "flex", flexDirection: "column", fontSize: 28, fontWeight: 500, color: "#475569" }}>
           <span>Freelance agreements, NDAs, waivers &amp; more.</span>
-          <span style={{ marginTop: 6 }}>7 languages. Included on Starter, $7/mo.</span>
+          <span style={{ marginTop: 6 }}>7 languages. Included on Pro, $7/mo.</span>
         </div>
         <div
           style={{

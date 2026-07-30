@@ -40,7 +40,7 @@ export default function ReferralTermsPage() {
       <p>
         Share your referral link. When someone creates a new SignedBy workspace through that link and
         that workspace makes its first paid subscription payment, both workspaces receive one free
-        month of the Starter plan, applied as a 100% discount to a single billing period.
+        month of the Pro plan, applied as a 100% discount to a single billing period.
       </p>
       <p>
         The reward is tied to a real payment rather than to signup, so a referral that never becomes a

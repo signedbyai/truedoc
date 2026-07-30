@@ -88,7 +88,7 @@ export function SignerRow({
           {engagementLabel && <span className="ml-2 text-xs text-slate-400">· {engagementLabel}</span>}
           {showEngagementTease && (
             <Link href="/pricing" className="ml-2 text-xs text-slate-400 hover:text-slate-600">
-              · Engagement tracking (Starter+)
+              · Engagement tracking (Pro+)
             </Link>
           )}
           {/* Floating dismissible popover, same shape as the referral gift
@@ -129,7 +129,7 @@ export function SignerRow({
               <RemindSignerButton documentId={documentId} signerId={signer.id} />
             ) : (
               <Link href="/pricing" className="text-xs text-slate-400 hover:text-slate-600">
-                Send reminder (Starter+)
+                Send reminder (Pro+)
               </Link>
             ))}
           {canEdit && !editing && (

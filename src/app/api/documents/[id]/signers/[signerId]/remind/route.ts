@@ -30,7 +30,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const { data: org } = await supabase.from("organizations").select("name, plan").eq("id", orgId).single();
   if (!planHasFeature(org?.plan, "reminders")) {
     return NextResponse.json(
-      { error: "Reminders are a Starter plan feature. Upgrade to send reminders.", upgrade: true },
+      { error: "Reminders are a Pro plan feature. Upgrade to send reminders.", upgrade: true },
       { status: 402 }
     );
   }

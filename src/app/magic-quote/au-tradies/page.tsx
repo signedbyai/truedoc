@@ -57,7 +57,7 @@ const FAQ = [
   },
   {
     q: "What plan do I need?",
-    a: "None — Magic Quote is free on every plan, including Free. Sending the finished quote for signature follows the same document limits as any other SignedBy document (3/month on Free, unlimited on Starter+).",
+    a: "None — Magic Quote is free on every plan, including Free. Sending the finished quote for signature follows the same document limits as any other SignedBy document (3/month on Free, unlimited on Pro+).",
   },
   {
     q: "What currency does it use?",

@@ -27,7 +27,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
   if (!planHasFeature(org?.plan, "templates")) {
     return NextResponse.json(
-      { error: "Templates are a Starter plan feature. Upgrade to save documents as templates.", upgrade: true },
+      { error: "Templates are a Pro plan feature. Upgrade to save documents as templates.", upgrade: true },
       { status: 402 }
     );
   }

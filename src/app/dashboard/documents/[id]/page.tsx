@@ -60,7 +60,7 @@ export default async function DocumentEditorPage({
   // case of it coming back undefined. Available on every plan.
   const autoSuggestOnUpload = orgRecord?.auto_suggest_on_upload ?? false;
 
-  // Per-signer engagement summary (Starter+ only -- see plan.ts). Kept as a
+  // Per-signer engagement summary (Pro+ only -- see plan.ts). Kept as a
   // plain signer_id -> summary map so both the "completed" and "sent"
   // branches below can look a signer up the same way regardless of which
   // signer-list shape they render.
@@ -171,7 +171,7 @@ export default async function DocumentEditorPage({
                       {engagementLabel && <span className="ml-2 text-xs text-slate-400">· {engagementLabel}</span>}
                       {!hasPageViewTracking && (
                         <Link href="/pricing" className="ml-2 text-xs text-slate-400 hover:text-slate-600">
-                          · Engagement tracking (Starter+)
+                          · Engagement tracking (Pro+)
                         </Link>
                       )}
                     </span>

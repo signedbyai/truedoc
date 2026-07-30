@@ -41,13 +41,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Template not found" }, { status: 404 });
   }
 
-  // Templates require at least the Starter plan. Since Free orgs are blocked
+  // Templates require at least the Pro plan. Since Free orgs are blocked
   // here, the old "free plan monthly document cap" check below them is now
   // unreachable and was removed.
   const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
   if (!planHasFeature(org?.plan, "templates")) {
     return NextResponse.json(
-      { error: "Templates are a Starter plan feature. Upgrade to use templates.", upgrade: true },
+      { error: "Templates are a Pro plan feature. Upgrade to use templates.", upgrade: true },
       { status: 402 }
     );
   }

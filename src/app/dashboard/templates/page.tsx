@@ -31,10 +31,10 @@ export default async function TemplatesPage() {
               <div className="rounded-md border border-dashed border-slate-300 p-4 text-center">
                 <p className="text-sm font-medium text-slate-900">Templates &amp; reminders</p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Saving templates and sending reminders is available on the Starter plan and up.
+                  Saving templates and sending reminders is available on the Pro plan and up.
                 </p>
                 <Link href="/pricing" className={buttonVariants({ size: "default", className: "mt-3" })}>
-                  Upgrade to Starter
+                  Upgrade to Pro
                 </Link>
               </div>
             </CardContent>

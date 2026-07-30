@@ -27,4 +27,4 @@ export function referralCouponId(): string | undefined {
   return process.env.STRIPE_REFERRAL_COUPON || undefined;
 }
 
-export const REFERRAL_REWARD_LABEL = "1 month of Starter, free";
+export const REFERRAL_REWARD_LABEL = "1 month of Pro, free";

@@ -22,7 +22,7 @@ import type { DraftDocumentType } from "@/lib/ai-draft-types";
 // min-w-[8rem] flex row, which added up to wider than a narrow phone
 // screen and pushed the third tab past the card's edge. text-center keeps
 // a short label centered in its column; text-xs/px-2 (vs. sm:text-sm/px-3)
-// give the longest label ("AI Drafter · Starter+") more room to fit
+// give the longest label ("AI Drafter · Pro+") more room to fit
 // without wrapping on the narrowest columns.
 const MODE_TAB_CLASS =
   "w-full rounded-md border px-2 py-1.5 text-center text-xs font-medium transition-colors sm:px-3 sm:text-sm";
@@ -218,7 +218,7 @@ export function NewDocumentClient({
           ) : (
             // Same shape/position as the real tab so the feature is still
             // discoverable, but reads as locked rather than clickable —
-            // matches the "Save as template (Starter+)" pattern in
+            // matches the "Save as template (Pro+)" pattern in
             // field-editor.tsx. Links straight to /pricing rather than
             // switching into a mode the account can't use (the API would
             // just reject it — see POST /api/documents/draft).
@@ -231,7 +231,7 @@ export function NewDocumentClient({
             >
               <span className="inline-flex items-center justify-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                AI Drafter · Starter+
+                AI Drafter · Pro+
               </span>
             </a>
           )}

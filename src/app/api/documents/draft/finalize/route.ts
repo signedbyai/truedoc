@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
   if (!planHasFeature(org?.plan, "aiDraft")) {
     return NextResponse.json(
-      { error: "AI-drafted documents are a Starter plan feature. Upgrade to create this document.", upgrade: true },
+      { error: "AI-drafted documents are a Pro plan feature. Upgrade to create this document.", upgrade: true },
       { status: 402 }
     );
   }

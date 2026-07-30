@@ -8,7 +8,7 @@ import { AI_DRAFT_DISCLAIMER, DOCUMENT_TYPES, DRAFT_LANGUAGES } from "@/lib/ai-d
 
 const TITLE = "AI Drafter — describe a contract, get a real first draft | SignedBy";
 const DESCRIPTION =
-  "Describe the agreement you need in plain language and SignedBy's AI Drafter writes a real starting document — freelance agreements, NDAs, waivers, and more, in 7 languages. Included on the Starter plan, $7/mo.";
+  "Describe the agreement you need in plain language and SignedBy's AI Drafter writes a real starting document — freelance agreements, NDAs, waivers, and more, in 7 languages. Included on the Pro plan, $7/mo.";
 
 // This route has its own colocated opengraph-image.tsx, so -- unlike
 // /vs/* and /templates/[slug], which have no image file of their own and
@@ -37,7 +37,7 @@ const FAQ = [
   },
   {
     q: "What plan do I need?",
-    a: "AI Drafter is included on the Starter plan ($7/mo, unlimited documents). Signing up itself is free, and the Free plan can still send documents you write yourself or upload — the AI drafting step is what needs Starter.",
+    a: "AI Drafter is included on the Pro plan ($7/mo, unlimited documents). Signing up itself is free, and the Free plan can still send documents you write yourself or upload — the AI drafting step is what needs Pro.",
   },
   {
     q: "What languages does it support?",
@@ -97,7 +97,7 @@ export default async function AiDrafterPage() {
             Start for free →
           </CtaLink>
           <p className="text-xs text-slate-400">
-            AI Drafter is included on the Starter plan ($7/mo). Signing up is free.
+            AI Drafter is included on the Pro plan ($7/mo). Signing up is free.
           </p>
         </div>
       </section>
@@ -154,7 +154,7 @@ export default async function AiDrafterPage() {
       <section className="mx-auto w-full max-w-3xl px-6 py-10 text-center">
         <h2 className="text-2xl font-semibold text-slate-900">Try AI Drafter</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Free to sign up. AI Drafter itself is included on Starter, $7/mo — unlimited documents, one user.
+          Free to sign up. AI Drafter itself is included on Pro, $7/mo — unlimited documents, one user.
         </p>
         <CtaLink href={START_HREF} className="mt-5" color={ctaColor} page="ai-drafter" position="footer">
           Start for free →

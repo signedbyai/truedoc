@@ -36,10 +36,10 @@ const PRICING_ROWS: Row[] = [
 ];
 
 const FEATURE_ROWS: Row[] = [
-  { label: "AI-drafted documents from a plain-language description", signedby: "Included (Starter+)", competitor: "Not in standard eSignature plans (separate higher-tier IAM platform)" },
+  { label: "AI-drafted documents from a plain-language description", signedby: "Included (Pro+)", competitor: "Not in standard eSignature plans (separate higher-tier IAM platform)" },
   { label: "AI-assisted field placement on upload", signedby: "Included, all plans", competitor: "Not offered in standard eSignature plans" },
   { label: "AI-drafted quotes from a plain-language description", signedby: "Included, all plans — becomes a signable document instantly", competitor: "Not offered — no quoting/estimating tool in standard eSignature plans" },
-  { label: "Per-page signer engagement tracking (dwell time per page)", signedby: "Included (Starter+)", competitor: "Not included in standard eSignature plans" },
+  { label: "Per-page signer engagement tracking (dwell time per page)", signedby: "Included (Pro+)", competitor: "Not included in standard eSignature plans" },
   { label: "Mobile signing UX", signedby: "Field-by-field guided mode", competitor: "Standard pinch-and-zoom PDF view" },
   { label: "Public document-hash verification page", signedby: "Included, no login needed", competitor: "Not offered" },
   { label: "Company / primary AI processing location", signedby: "Netherlands (EU); Mistral AI (France) by default", competitor: "United States" },

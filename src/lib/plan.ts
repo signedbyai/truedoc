@@ -12,17 +12,17 @@ export type PlanId = "free" | "starter" | "team" | "business";
 // up" pattern as checkFreePlanDocCap below).
 export const PLAN_LABEL: Record<string, string> = {
   free: "Free",
-  starter: "Starter",
+  starter: "Pro",
   team: "Team",
   business: "Business",
 };
 
 const FEATURE_PLANS = {
-  // Starter: "Templates & reminders" — saving/using templates and both
+  // Pro: "Templates & reminders" — saving/using templates and both
   // manual + automatic signer reminders.
   templates: ["starter", "team", "business"],
   reminders: ["starter", "team", "business"],
-  // Starter: "AI-drafted documents" — the plain-language-ask drafting
+  // Pro: "AI-drafted documents" — the plain-language-ask drafting
   // feature. Gated here (unlike document-summary/field-suggestion, which
   // stay free) because it's the one feature calling the pricier Sonnet
   // model instead of Haiku, and it's a convenience/productivity feature
@@ -31,7 +31,7 @@ const FEATURE_PLANS = {
   // call (src/app/api/documents/draft/route.ts), not just finalize, since
   // that's where the actual Anthropic cost is incurred.
   aiDraft: ["starter", "team", "business"],
-  // Starter: per-page view-time/engagement tracking on a document a signer
+  // Pro: per-page view-time/engagement tracking on a document a signer
   // is reviewing (see supabase/migrations/0017_document_page_views.sql and
   // src/app/api/sign/[token]/view/route.ts). Same tier as templates/
   // aiDraft — a productivity/insight layer on top of core send-and-sign,

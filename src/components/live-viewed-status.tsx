@@ -12,7 +12,7 @@ import { formatRelativeTime } from "@/lib/last-viewed";
 // pings the pill decays back to the static "Last viewed Xm ago".
 //
 // Only subscribes when `live` (the org's pageViewTracking entitlement,
-// Starter+) — free orgs' signers never generate pings anyway (the view
+// Pro+) — free orgs' signers never generate pings anyway (the view
 // route no-ops), so for them this renders the static recency line and
 // opens no socket. Requires migration 0020 (adds the table to the
 // supabase_realtime publication); until that's applied the pill simply

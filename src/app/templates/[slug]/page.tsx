@@ -47,10 +47,10 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
   const ctaColor = await ctaColorFlag();
 
   // The honest version of "use this template with AI": AI drafting is a
-  // Starter-plan feature (see plan.ts's aiDraft gate), so this can't promise
+  // Pro-plan feature (see plan.ts's aiDraft gate), so this can't promise
   // free AI customization to a brand-new signup. Signing up and pasting the
   // example text into a document is free on every plan; the AI-assisted
-  // rewrite is what needs Starter. ?type= preselects the right template in
+  // rewrite is what needs Pro. ?type= preselects the right template in
   // the AI Drafter once they get there either way (see
   // dashboard/documents/new/page.tsx).
   const useTemplateHref = `/login?intent=signup&next=${encodeURIComponent(
@@ -94,7 +94,7 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
             Use this template — free →
           </CtaLink>
           <p className="text-xs text-slate-400">
-            Sign up free to send it. AI-assisted customization is included on the Starter plan ($7/mo).
+            Sign up free to send it. AI-assisted customization is included on the Pro plan ($7/mo).
           </p>
         </div>
       </section>
