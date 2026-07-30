@@ -67,6 +67,30 @@ export function planFromPriceId(priceId: string | null | undefined): PlanId | nu
   return null;
 }
 
+// Console metered billing (CONSOLE_AI_SIGNING_SCOPE.md) — a separate,
+// usage-based Price per currency, NOT part of PLAN_PRICE_IDS above. Unlike
+// the flat-rate plan prices (picked once at checkout time from a
+// request-time cookie/geo), this price gets attached to an org's *existing*
+// subscription after the fact, on their first metered console API call — so
+// there's no "fall back to USD" here the way priceIdFor has: a subscription
+// item must share its subscription's actual billing currency, and attaching
+// a USD-denominated item to a EUR subscription would just fail at Stripe's
+// API, not silently bill the wrong amount. See console-usage.ts's
+// ensureConsoleSubscriptionItem, which reads the currency live off the
+// org's Stripe subscription rather than guessing at it, and deliberately
+// returns null (skips Stripe reporting, keeps the local usage count only)
+// when that currency's price isn't configured yet, instead of falling back.
+export const CONSOLE_METERED_PRICE_IDS: Record<Currency, string | undefined> = {
+  USD: process.env.STRIPE_PRICE_CONSOLE_METERED,
+  EUR: process.env.STRIPE_PRICE_CONSOLE_METERED_EUR,
+  GBP: process.env.STRIPE_PRICE_CONSOLE_METERED_GBP,
+  CHF: process.env.STRIPE_PRICE_CONSOLE_METERED_CHF,
+};
+
+export function consoleMeteredPriceIdFor(currency: string): string | undefined {
+  return CONSOLE_METERED_PRICE_IDS[currency as Currency];
+}
+
 export function appUrl() {
   return (process.env.NEXT_PUBLIC_APP_URL || "https://signedby.ai").replace(/\/$/, "");
 }
