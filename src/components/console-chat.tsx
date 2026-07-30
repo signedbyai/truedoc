@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowUp, Paperclip, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // The console chat pane (CONSOLE_UX_SCOPE.md #2). Talks to
@@ -18,12 +19,35 @@ type Bubble =
   | { role: "user"; content: string }
   | { role: "assistant"; content: string; confirm?: { tool: string; arguments: Record<string, unknown> } };
 
+// Bulk-send recipient lists can arrive as an uploaded file (2026-07-31)
+// instead of pasted text — deliberately NOT reusing parse-recipients.ts's
+// regex parser (that only understands "email" / "Name <email>" per line,
+// used by the dashboard's bulk-send-button.tsx textarea). Here the raw file
+// text is handed to the model as a normal chat message instead, same as if
+// the user had pasted it — Mistral already does its own flexible parsing of
+// whatever shape the list is in (comma-separated, "email, name", CSV
+// columns, etc.), so there's no second parser to keep in sync. Selecting a
+// file just stages+sends that chat turn; the actual send still can't happen
+// without the separate Confirm click on the bulk_send tool call, so this
+// is safe to auto-send as a message.
+const MAX_BULK_FILE_BYTES = 256 * 1024; // generous for a few hundred lines, well under Mistral's context limit
+const MAX_BULK_FILE_LINES = 200; // matches bulkSendAction's own cap — fail fast client-side instead of a round trip
+
 export function ConsoleChat() {
   const router = useRouter();
   const [messages, setMessages] = useState<Bubble[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Only the freeform "ask the model something" call is abortable — not
+  // confirmAction below. Once a confirmed send/bulk_send is actually
+  // in flight, documents may already be getting created/emailed
+  // server-side; aborting the client fetch wouldn't stop that and would
+  // just leave the UI out of sync with what really happened, so "stop"
+  // deliberately only covers the safe-to-interrupt case (the model still
+  // deciding what to do), never the point of no return.
+  const abortRef = useRef<AbortController | null>(null);
 
   function historyForApi(bubbles: Bubble[]) {
     return bubbles
@@ -31,19 +55,22 @@ export function ConsoleChat() {
       .map((b) => ({ role: b.role, content: b.content }));
   }
 
-  async function send() {
-    const text = input.trim();
+  async function send(overrideText?: string) {
+    const text = (overrideText ?? input).trim();
     if (!text || loading) return;
     const next: Bubble[] = [...messages, { role: "user", content: text }];
     setMessages(next);
     setInput("");
     setLoading(true);
     setError("");
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const res = await fetch("/api/console/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: historyForApi(next) }),
+        signal: controller.signal,
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.type === "error") {
@@ -55,11 +82,20 @@ export function ConsoleChat() {
       } else {
         setMessages((cur) => [...cur, { role: "assistant", content: data.content }]);
       }
-    } catch {
-      setError("Couldn't reach the console assistant.");
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setMessages((cur) => [...cur, { role: "assistant", content: "Stopped." }]);
+      } else {
+        setError("Couldn't reach the console assistant.");
+      }
     } finally {
       setLoading(false);
+      abortRef.current = null;
     }
+  }
+
+  function stop() {
+    abortRef.current?.abort();
   }
 
   async function confirmAction(bubbleIndex: number, confirm: { tool: string; arguments: Record<string, unknown> }) {
@@ -99,6 +135,36 @@ export function ConsoleChat() {
     });
   }
 
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // clear so selecting the same file again still fires onChange
+    if (!file || loading) return;
+    setError("");
+
+    const looksTextLike = /\.(csv|txt)$/i.test(file.name) || file.type === "" || file.type.startsWith("text/");
+    if (!looksTextLike) {
+      setError('Please attach a .csv or .txt file — a plain list of recipient emails, one per line (optionally with a name).');
+      return;
+    }
+    if (file.size > MAX_BULK_FILE_BYTES) {
+      setError("That file's too large for a bulk send — try trimming the list to a couple hundred rows.");
+      return;
+    }
+
+    const text = (await file.text()).trim();
+    const lineCount = text.split("\n").filter((l) => l.trim()).length;
+    if (lineCount === 0) {
+      setError("That file doesn't seem to have any recipients in it.");
+      return;
+    }
+    if (lineCount > MAX_BULK_FILE_LINES) {
+      setError(`That file has ${lineCount} rows — bulk send is capped at ${MAX_BULK_FILE_LINES} recipients per batch. Trim it and try again.`);
+      return;
+    }
+
+    void send(`Here's a recipient list from "${file.name}" for a bulk send:\n\n${text}`);
+  }
+
   return (
     // Borderless canvas + a pill-shaped input bar, not a bordered white
     // card — direct visual reference 2026-07-31 (a screenshot of Claude's
@@ -116,7 +182,8 @@ export function ConsoleChat() {
             <p className="max-w-xs text-sm text-neutral-500">
               Ask console to send a document, bulk-send a list, check status, or void something — e.g. &ldquo;send the
               NDA template to jane@acme.com&rdquo;. For a bulk send, paste one recipient per line (email, or
-              &ldquo;email, name&rdquo;).
+              &ldquo;email, name&rdquo;) — or attach a .csv/.txt file with the{" "}
+              <Paperclip className="inline h-3 w-3 -translate-y-px" aria-hidden="true" /> icon below.
             </p>
           </div>
         )}
@@ -152,6 +219,17 @@ export function ConsoleChat() {
       {error && <p className="px-1 pt-2 text-xs text-red-400">{error}</p>}
 
       <div className="mt-3 flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900 px-3 py-2.5">
+        <input ref={fileInputRef} type="file" accept=".csv,.txt,text/csv,text/plain" onChange={handleFileSelected} className="hidden" />
+        <button
+          type="button"
+          aria-label="Attach a recipient list for bulk send"
+          title="Attach a recipient list (.csv or .txt) for bulk send"
+          disabled={loading}
+          onClick={() => fileInputRef.current?.click()}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-white/10 hover:text-white disabled:opacity-50"
+        >
+          <Paperclip className="h-4 w-4" />
+        </button>
         <input
           type="text"
           value={input}
@@ -166,9 +244,37 @@ export function ConsoleChat() {
           placeholder="Ask console to send, check, or bulk-send a document"
           className="flex-1 bg-transparent text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none"
         />
-        <Button type="button" variant="cta" size="sm" disabled={loading || !input.trim()} onClick={send}>
-          Send
-        </Button>
+        {loading && abortRef.current ? (
+          // Only reachable while send()'s own request is in flight — see the
+          // comment on abortRef above for why confirmAction's loading state
+          // never lands here.
+          <button
+            type="button"
+            aria-label="Stop"
+            title="Stop"
+            onClick={stop}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/15"
+          >
+            <Square className="h-4 w-4 fill-current" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label="Send"
+            title="Send"
+            disabled={!input.trim()}
+            onClick={() => send()}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-yellow-300 text-slate-900 hover:bg-yellow-200 disabled:opacity-40 disabled:hover:bg-yellow-300"
+          >
+            <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
+          </button>
+        )}
+      </div>
+
+      <div className="mt-2 flex justify-end">
+        <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-neutral-500">
+          Mistral
+        </span>
       </div>
     </div>
   );
