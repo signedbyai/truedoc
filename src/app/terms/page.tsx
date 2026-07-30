@@ -146,7 +146,18 @@ export default function TermsPage() {
         for terms governing personal data we process on your behalf.
       </p>
 
-      <h2>8. Service availability</h2>
+      <h2>8. API access and webhooks</h2>
+      <p>
+        If you configure API access or a webhook endpoint (a URL you provide to receive automated notifications
+        about your documents, for example via Make or a similar tool), that endpoint is your own choice of where to
+        send your own document metadata — it is not a SignedBy sub-processor. You are responsible for the security,
+        availability, and compliance (including under applicable data protection law) of any endpoint you configure,
+        and for any downstream system you connect it to. SignedBy signs each webhook delivery with a secret unique to
+        that endpoint so you can verify it came from us; keeping that secret confidential is also your
+        responsibility.
+      </p>
+
+      <h2>9. Service availability</h2>
       <p>
         We aim to keep SignedBy available and reliable but do not guarantee uninterrupted access. The service is
         provided on an &ldquo;as is&rdquo; and &ldquo;as available&rdquo; basis, without warranties of any kind,
@@ -154,7 +165,7 @@ export default function TermsPage() {
         non-infringement, to the maximum extent permitted by law.
       </p>
 
-      <h2>9. Limitation of liability</h2>
+      <h2>10. Limitation of liability</h2>
       <p>
         To the maximum extent permitted by law, SignedBy will not be liable for any indirect, incidental, special,
         consequential, or punitive damages, or any loss of profits, revenue, data, or goodwill, arising from your use
@@ -162,28 +173,28 @@ export default function TermsPage() {
         the amount you paid us in the twelve months preceding the claim.
       </p>
 
-      <h2>10. Indemnification</h2>
+      <h2>11. Indemnification</h2>
       <p>
         You agree to indemnify and hold SignedBy harmless from any claims, damages, or expenses (including
         reasonable attorneys&apos; fees) arising from your use of the service, the documents you send through it, or
         your violation of these Terms.
       </p>
 
-      <h2>11. Termination</h2>
+      <h2>12. Termination</h2>
       <p>
         You may stop using SignedBy and close your account at any time. We may suspend or terminate your access if
         you materially breach these Terms and do not cure the breach after notice, or as needed to comply with law
         or protect the service and other users.
       </p>
 
-      <h2>12. Changes to these Terms</h2>
+      <h2>13. Changes to these Terms</h2>
       <p>
         We may update these Terms from time to time. If we make material changes, we will provide reasonable notice,
         such as by email or an in-product notice, before the changes take effect. Continued use of SignedBy after
         changes take effect constitutes acceptance of the updated Terms.
       </p>
 
-      <h2>13. Governing law</h2>
+      <h2>14. Governing law</h2>
       <p>
         These Terms are governed by the laws of the Netherlands, without regard to conflict-of-law principles. Any
         dispute arising out of or in connection with these Terms will be submitted to the exclusive jurisdiction of
@@ -191,7 +202,7 @@ export default function TermsPage() {
         the right to bring a claim in your own country of residence.
       </p>
 
-      <h2>14. Contact</h2>
+      <h2>15. Contact</h2>
       <p>Questions about these Terms can be sent to support@signedby.ai.</p>
     </LegalPage>
   );

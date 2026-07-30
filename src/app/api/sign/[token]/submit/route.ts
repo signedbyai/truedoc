@@ -5,6 +5,7 @@ import { generateSignedPdf } from "@/lib/generate-signed-pdf";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { computeSigningOutcome } from "@/lib/signing-routing";
 import { visibleFieldsForSigner } from "@/lib/field-visibility";
+import { scheduleWebhookEvent } from "@/lib/webhooks";
 import { bodySchema } from "./schema";
 
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
@@ -109,6 +110,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     },
   ]);
 
+  // Outbound webhook (CRM_MCP_READINESS_PHASE1_SCOPE.md Part C).
+  // document.status here is whatever it was before this request (almost
+  // always "sent") — the separate document.completed dispatch below covers
+  // the fully-done case.
+  scheduleWebhookEvent(document.org_id, "document.signed", {
+    document_id: document.id,
+    title: document.title,
+    status: document.status,
+    signer: { email: signer.email, name: signer.name },
+  });
+
   // Figure out what's next: advance to the next routing tier, or complete.
   const { data: allSigners } = await admin
     .from("signers")
@@ -126,6 +138,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       .insert({ document_id: document.id, event_type: "completed" })
       .select("id")
       .single();
+
+    // Outbound webhook (CRM_MCP_READINESS_PHASE1_SCOPE.md Part C) — the
+    // headline trigger this phase exists for ("mark deal closed-won",
+    // "attach signed PDF" via the new v1 signed-file route). No `signer`
+    // field, matching the locked payload shape: this event isn't about any
+    // one recipient.
+    scheduleWebhookEvent(document.org_id, "document.completed", {
+      document_id: document.id,
+      title: document.title,
+      status: "completed",
+    });
 
     try {
       const { hash } = await generateSignedPdf(document.id);

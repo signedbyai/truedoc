@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSignerByToken, requireVerifiedSigner } from "@/lib/signing";
 import { visibleFieldsForSigner } from "@/lib/field-visibility";
+import { scheduleWebhookEvent } from "@/lib/webhooks";
 
 export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -22,6 +23,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       user_agent: request.headers.get("user-agent"),
     });
     signer.status = "viewed";
+
+    // Outbound webhook (CRM_MCP_READINESS_PHASE1_SCOPE.md Part C). Scheduled
+    // to run once the response has already gone back to the signer —
+    // dispatch must never add latency to opening the document. See
+    // scheduleWebhookEvent's doc comment for why this isn't a bare
+    // un-awaited call or a direct after() call.
+    scheduleWebhookEvent(document.org_id, "document.viewed", {
+      document_id: document.id,
+      title: document.title,
+      status: document.status,
+      signer: { email: signer.email, name: signer.name },
+    });
   }
 
   const { data: fields } = await admin
