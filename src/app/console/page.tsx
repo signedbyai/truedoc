@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { FlagValues } from "flags/react";
 import Image from "next/image";
 import { CtaLink } from "@/components/cta-link";
 import { ctaColorFlag } from "@/flags";
 import { isConsoleHost, consoleUrl } from "@/lib/console-host";
+import { getUserAndOrg } from "@/lib/org";
+import { planHasFeature } from "@/lib/plan";
 
 const TITLE = "SignedBy Console — use your favorite AI to send signing requests";
 const DESCRIPTION =
@@ -81,6 +84,26 @@ export default async function ConsolePage() {
   const signupHref = onConsoleHost
     ? "/login?intent=signup&next=/app"
     : consoleUrl("/login?intent=signup&next=/app");
+
+  // Skip the pitch for someone who's already signed in and already has
+  // access — direct instruction (2026-07-31): typing console.signedby.ai
+  // while already logged in (the cookie is shared across *.signedby.ai,
+  // see cookie-domain.ts) shouldn't dead-end on the CTA page they've
+  // already converted from. Scoped to the console host only — reached via
+  // signedby.ai/console instead, this stays the stable, crawlable
+  // marketing page (see the canonical/openGraph url above), same as
+  // before. Also scoped to orgs that actually have access: a logged-in
+  // Free-plan org still sees the upsell pitch rather than bouncing straight
+  // to a page that would just redirect them to Settings.
+  if (onConsoleHost) {
+    const ctx = await getUserAndOrg();
+    if (ctx) {
+      const { data: org } = await ctx.supabase.from("organizations").select("plan").eq("id", ctx.orgId).single();
+      if (org && (planHasFeature(org.plan, "apiAccess") || planHasFeature(org.plan, "consoleAccess"))) {
+        redirect("/app");
+      }
+    }
+  }
 
   return (
     <main className="flex min-h-screen flex-col bg-slate-950">
