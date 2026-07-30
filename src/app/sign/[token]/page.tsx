@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { getSignerByToken } from "@/lib/signing";
 import { sendSignerOpenedEmail } from "@/lib/email";
+import { scheduleWebhookEvent } from "@/lib/webhooks";
 import { SigningView } from "@/components/signing-view";
 import { SignerAuthGate } from "@/components/signer-auth-gate";
 import { planHasFeature } from "@/lib/plan";
@@ -146,6 +147,20 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
       document_id: document.id,
       signer_id: signer.id,
       event_type: "viewed",
+    });
+
+    // Outbound webhook (CRM_MCP_READINESS_PHASE1_SCOPE.md Part C). Found
+    // missing 2026-07-30: the CRM build wired this event into
+    // api/sign/[token]/route.ts's GET handler, not realizing this page
+    // (a Server Component) has its own separate "mark viewed" copy of the
+    // same logic and is what the signing flow actually renders through —
+    // that route.ts handler is legacy/unreachable. `signed`/`completed`
+    // fired fine (those routes are still live); `viewed` silently never did.
+    scheduleWebhookEvent(document.org_id, "document.viewed", {
+      document_id: document.id,
+      title: document.title,
+      status: document.status,
+      signer: { email: signer.email, name: signer.name },
     });
 
     // "Signer just opened your document" sender email (V3 #8). Guaranteed
