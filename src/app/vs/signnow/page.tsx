@@ -44,7 +44,7 @@ const FEATURE_ROWS: Row[] = [
   { label: "Company / primary AI processing location", signedby: "Netherlands (EU); Mistral AI (France) by default", competitor: "United States" },
   { label: "Audit trail, ESIGN/UETA compliance", signedby: "Included", competitor: "Included" },
   { label: "Templates and bulk send", signedby: "Templates on Starter+, bulk send on Team+", competitor: "Included on Business Premium+" },
-  { label: "API access", signedby: "Business ($29/mo)", competitor: "Enterprise tier (~$30/user/mo annual)" },
+  { label: "API access + outbound webhooks", signedby: "Included in Business ($29/mo) — multi-signer create, list/void, signed-file download, webhooks", competitor: "Not on Business or Business Premium at any price — Enterprise tier only (~$30/user/mo annual), or a separate API-only plan starting at $146/mo" },
 ];
 
 function CompareTable({ title, rows }: { title: string; rows: Row[] }) {

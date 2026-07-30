@@ -45,6 +45,7 @@ const FEATURE_ROWS: Row[] = [
   { label: "Company / primary AI processing location", signedby: "Netherlands (EU); Mistral AI (France) by default", competitor: "United States" },
   { label: "Audit trail, ESIGN/UETA compliance", signedby: "Included", competitor: "Included" },
   { label: "Payment collection", signedby: "Business ($29/mo)", competitor: "Business Pro ($40-65/user/mo)" },
+  { label: "API access + outbound webhooks", signedby: "Included in Business ($29/mo) — multi-signer create, list/void, signed-file download, webhooks", competitor: "Not included in any standard eSignature plan — requires a separate, envelope-volume-priced Developer plan" },
 ];
 
 function CompareTable({ title, rows }: { title: string; rows: Row[] }) {

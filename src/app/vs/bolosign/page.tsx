@@ -39,7 +39,7 @@ const FEATURE_ROWS: Row[] = [
   { label: "Per-page signer engagement tracking (dwell time)", signedby: "Included (Starter+)", competitor: "Form-level analytics on Team+, not per-page dwell time" },
   { label: "Public document-hash verification page", signedby: "Included, no login needed", competitor: "Not advertised — a tamper-proof trust seal on completed contracts instead" },
   { label: "Bulk send", signedby: "Team+ ($14/mo)", competitor: "Team+ ($49/mo)" },
-  { label: "API access", signedby: "Business ($29/mo), self-serve", competitor: "\"Custom development using our API\" — listed as Contact Us on every published tier" },
+  { label: "API access + outbound webhooks", signedby: "Included in Business ($29/mo), self-serve — multi-signer create, list/void, signed-file download, webhooks", competitor: "Separate $72/mo API plan (up to 200 documents, then $0.50 each) — not included in the tiers above" },
   { label: "Native CRM integrations (HubSpot, Pipedrive, etc.)", signedby: "Not offered — REST API only (Business)", competitor: "Included on Enterprise (HubSpot, Pipedrive, GoHighLevel)" },
   { label: "Security certifications", signedby: "ESIGN/UETA + GDPR; EU hosting, open DPA/sub-processor list", competitor: "SOC 2 Type II, ISO 27001:2022, eIDAS, GDPR, CCPA; HIPAA available as a $49/mo add-on" },
 ];

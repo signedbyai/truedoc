@@ -36,6 +36,7 @@ const FEATURE_ROWS: Row[] = [
   { label: "AI-assisted field placement on upload", signedby: "Included, all plans", competitor: "Not offered" },
   { label: "AI-drafted quotes from a plain-language description", signedby: "Included, all plans — becomes a signable document instantly", competitor: "Not offered — Hix's modules are document requests, questionnaires, and VAT reminders, not quoting" },
   { label: "Native integrations with accounting/payroll software", signedby: "REST API (Business); no native bookkeeping integrations", competitor: "2000+ integrations (AFAS, Exact Online, Nextens, SnelStart…) — its core strength" },
+  { label: "API access + outbound webhooks", signedby: "Included in Business ($29/mo), self-serve — multi-signer create, list/void, signed-file download, webhooks", competitor: "Yes — public REST API with webhooks (60 requests/min); pricing not published, quoted per firm" },
   { label: "Per-page signer engagement tracking (dwell time)", signedby: "Included (Starter+)", competitor: "Status tracking only (signed / outstanding / reminders)" },
   { label: "Public document-hash verification page", signedby: "Included, no login needed", competitor: "Not advertised (encrypted storage + audit trail)" },
   { label: "Scope", signedby: "Focused e-signature tool", competitor: "Broader client-comms suite — signing is one module (also doc requests, questionnaires, VAT reminders)" },
