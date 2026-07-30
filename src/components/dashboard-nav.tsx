@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Home, FileText, Copy, Users, MoreHorizontal, Settings, CreditCard, LogOut, X } from "lucide-react";
+import { Home, FileText, Copy, Users, MessageSquare, MoreHorizontal, Settings, CreditCard, LogOut, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Image from "next/image";
 import { OrgSwitcher } from "@/components/org-switcher";
@@ -31,6 +31,17 @@ const PRIMARY: Section[] = [
   { label: "Team", href: "/dashboard/team", icon: Users, match: (p) => p.startsWith("/dashboard/team") },
 ];
 
+// Console (CONSOLE_UX_SCOPE.md) is Pro+ only, so it's appended conditionally
+// in the component below rather than living in the static PRIMARY array —
+// a Free-plan org never sees the tab at all, rather than seeing it and
+// hitting a gate.
+const CONSOLE_SECTION: Section = {
+  label: "Console",
+  href: "/dashboard/console",
+  icon: MessageSquare,
+  match: (p) => p.startsWith("/dashboard/console"),
+};
+
 function initials(name: string | null, email: string): string {
   if (name) {
     const parts = name.trim().split(/\s+/);
@@ -50,15 +61,18 @@ export function DashboardNav({
   activeOrgId,
   userEmail,
   firstName,
+  showConsole,
 }: {
   orgs: NavOrg[];
   activeOrgId: string;
   userEmail: string;
   firstName: string | null;
+  showConsole: boolean;
 }) {
   const pathname = usePathname();
   const [accountOpen, setAccountOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const sections = showConsole ? [...PRIMARY, CONSOLE_SECTION] : PRIMARY;
 
   // Auto-hide the top bar on both breakpoints: slide it away when scrolling
   // down, bring it back on any upward flick (and always show near the very
@@ -132,7 +146,7 @@ export function DashboardNav({
               <Image src="/brand/signedby-lockup-yellow-badge-micro-small.png" alt="SignedBy" width={230} height={64} className="h-7 w-auto" priority />
             </Link>
             <nav className="flex items-center gap-6">
-              {PRIMARY.map((s) => {
+              {sections.map((s) => {
                 const active = s.match(pathname);
                 return (
                   <Link
@@ -270,7 +284,7 @@ export function DashboardNav({
         className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden"
       >
         <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-slate-200 bg-white/95 px-2 py-1.5 shadow-[0_6px_20px_rgba(15,23,41,0.16)] backdrop-blur">
-          {PRIMARY.map((s) => {
+          {sections.map((s) => {
             const active = s.match(pathname);
             const Icon = s.icon;
             return (

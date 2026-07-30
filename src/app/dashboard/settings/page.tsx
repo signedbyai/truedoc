@@ -29,6 +29,8 @@ export default async function SettingsPage() {
 
   const hasCustomBranding = planHasFeature(org.plan, "customBranding");
   const hasApiAccess = planHasFeature(org.plan, "apiAccess");
+  const hasConsoleAccess = planHasFeature(org.plan, "consoleAccess");
+  const hasAnyApiAccess = hasApiAccess || hasConsoleAccess;
   const planLabel = PLAN_LABEL[org.plan ?? "free"] ?? org.plan;
   const seatCap = teamMemberLimit(org.plan);
 
@@ -92,12 +94,22 @@ export default async function SettingsPage() {
             <CardDescription>
               {hasApiAccess
                 ? "Wire SignedBy into your CRM, app, or onboarding flow. Use the key below to create, send, and track documents from your own code."
-                : "Wire SignedBy into your CRM, app, or onboarding flow — create, send, and track documents without anyone opening a browser. Copy the API URL and generate the key here."}
+                : hasConsoleAccess
+                  ? "Metered API access via console.signedby.ai — 20 free document-sends a month, then billed per document. Use the key below, or try the chat-driven console instead."
+                  : "Wire SignedBy into your CRM, app, or onboarding flow — create, send, and track documents without anyone opening a browser. Copy the API URL and generate the key here."}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {hasApiAccess ? (
+            {hasAnyApiAccess ? (
               <div className="space-y-4">
+                {hasConsoleAccess && !hasApiAccess && (
+                  <p className="text-xs text-slate-500">
+                    <Link href="/dashboard/console" className="font-medium text-slate-700 underline hover:text-slate-900">
+                      Open the console
+                    </Link>{" "}
+                    for a chat interface, usage meter, and spend cap instead of writing curl by hand.
+                  </p>
+                )}
                 <ApiKeySettings apiKeyPrefix={org.api_key_prefix} />
                 {/* Shown inline (not collapsed) — for a Business customer who
                     came here to wire up the API, the examples are the point of
@@ -178,7 +190,7 @@ curl -X POST https://signedby.ai/api/v1/documents/<document-id>/void \\
               // previously a non-Business user had zero visibility into what
               // they'd actually be buying.
               <p className="text-xs text-slate-500">
-                API access is available on the Business plan.{" "}
+                API access is available on the Pro plan (metered) or Business plan (unlimited).{" "}
                 <Link href="/developers" className="font-medium text-slate-700 underline hover:text-slate-900">
                   See what&apos;s possible in the docs
                 </Link>

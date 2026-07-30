@@ -489,6 +489,32 @@ export async function sendPlanUpgradeEmail(opts: { to: string; planLabel: string
   });
 }
 
+// 80%-of-cap console spend warning (CONSOLE_UX_SCOPE.md) — fired at most
+// once per billing period by maybeSendConsoleCapWarning in console-usage.ts.
+// Goes to the org owner, not every member, matching the existing
+// owner-only pattern for billing-adjacent notices.
+export async function sendConsoleCapWarningEmail(opts: {
+  to: string;
+  orgName: string;
+  billCents: number;
+  capCents: number;
+}) {
+  const bill = (opts.billCents / 100).toFixed(2);
+  const cap = (opts.capCents / 100).toFixed(2);
+  await getClient().emails.send({
+    from: FROM,
+    to: opts.to,
+    subject: `${opts.orgName}'s console usage is nearing its spend cap`,
+    html: `
+      <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <p>Your console usage this billing period has reached <strong>$${bill}</strong> of your <strong>$${cap}</strong> spend cap.</p>
+        <p>Once the cap is reached, further console sends (chat, API, or bulk send) pause automatically until the cap is raised, turned off, or the period rolls over.</p>
+        ${ctaButton(`${appUrl()}/dashboard/console`, "Review your console usage")}
+      </div>
+    `,
+  });
+}
+
 // Internal "someone sent feedback" email to the team, from the in-app feedback
 // widget (the nav message-bubble icon). replyTo is the user's address so the
 // team can just hit reply. FEEDBACK_TO_EMAIL overrides the default recipient.

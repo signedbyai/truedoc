@@ -1,6 +1,7 @@
 import { getUserAndOrg } from "@/lib/org";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { isDevAccessAllowed } from "@/lib/dev-access";
+import { planHasFeature } from "@/lib/plan";
 
 // Shared shell for every /dashboard route. Renders the one navigation bar
 // (top on desktop, floating pill on mobile) around all pages — replacing the
@@ -38,9 +39,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const firstName =
     ((user.user_metadata?.full_name || user.user_metadata?.name || "") as string).split(" ")[0] || null;
 
+  // Console (CONSOLE_UX_SCOPE.md) is Pro+ — same apiAccess/consoleAccess
+  // combination the console page itself gates on. orgs already carries
+  // `plan` from getUserAndOrg, so no extra query needed here.
+  const activeOrg = orgs.find((o) => o.id === orgId);
+  const showConsole =
+    !!activeOrg && (planHasFeature(activeOrg.plan, "apiAccess") || planHasFeature(activeOrg.plan, "consoleAccess"));
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <DashboardNav orgs={orgs} activeOrgId={orgId} userEmail={user.email ?? ""} firstName={firstName} />
+      <DashboardNav orgs={orgs} activeOrgId={orgId} userEmail={user.email ?? ""} firstName={firstName} showConsole={showConsole} />
       <div data-dashboard-content className="pb-24 md:pb-0">
         {children}
       </div>

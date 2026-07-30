@@ -1,5 +1,23 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe, consoleMeteredPriceIdFor } from "@/lib/stripe";
+import { sendConsoleCapWarningEmail } from "@/lib/email";
+
+// Pricing constants (CONSOLE_AI_SIGNING_SCOPE.md, CONSOLE_UX_SCOPE.md) — the
+// same 20 free sends/month + $0.25/doc figures already shown on
+// console/page.tsx, centralized here so the cap math, the usage panel, and
+// the pitch page never drift apart. Deliberately USD-denominated for the
+// cap/bill-so-far math regardless of the org's actual Stripe billing
+// currency (EUR/GBP/CHF) — the cap is a local safety guardrail and display
+// figure, not itself a Stripe-billed amount (the real invoice still uses
+// the org's correct currency Price, via consoleMeteredPriceIdFor). Good
+// enough for a v1 spend cap; a future pass could localize the cap's own
+// currency if that mismatch ever confuses a non-USD org.
+export const CONSOLE_FREE_ALLOWANCE = 20;
+export const CONSOLE_OVERAGE_CENTS = 25;
+
+// 80% of the cap is the warning threshold (CONSOLE_UX_SCOPE.md's "Decided"
+// section) — fires once per billing period via console_cap_warning_sent_at.
+const CONSOLE_CAP_WARNING_THRESHOLD = 0.8;
 
 // Console AI signing-ops product (CONSOLE_AI_SIGNING_SCOPE.md) — metered
 // usage tracking + billing for Pro/Team orgs calling POST /api/v1/documents
@@ -77,13 +95,19 @@ export async function recordConsoleUsage(orgId: string): Promise<void> {
       .eq("id", orgId)
       .single();
 
+    const newCount = (org?.console_usage_current_period ?? 0) + 1;
     await admin
       .from("organizations")
       .update({
-        console_usage_current_period: (org?.console_usage_current_period ?? 0) + 1,
+        console_usage_current_period: newCount,
         console_first_used_at: org?.console_first_used_at ?? new Date().toISOString(),
       })
       .eq("id", orgId);
+
+    // Fire the 80%-of-cap warning at most once per billing period — never
+    // blocks the send this is attached to (see the outer fire-and-forget
+    // caller), and never throws past this try/catch.
+    void maybeSendConsoleCapWarning(orgId, newCount);
   } catch (err) {
     console.error("Console usage tracking (local counter) failed", { orgId, err });
   }
@@ -119,4 +143,126 @@ export async function recordConsoleUsage(orgId: string): Promise<void> {
   } catch (err) {
     console.error("Console usage Stripe reporting failed", { orgId, err });
   }
+}
+
+export type ConsoleBillingState = {
+  unitsUsed: number;
+  freeAllowance: number;
+  billableUnits: number;
+  billCents: number;
+  capEnabled: boolean;
+  capCents: number;
+  capReached: boolean;
+  warningThresholdReached: boolean;
+};
+
+/** Pure calculation, split out so it's unit-testable without a DB round
+ *  trip — same "extract the pure part" precedent as org.ts's
+ *  resolveActiveOrgId. */
+export function computeConsoleBillingState(input: {
+  unitsUsed: number;
+  capEnabled: boolean;
+  capCents: number;
+}): ConsoleBillingState {
+  const billableUnits = Math.max(0, input.unitsUsed - CONSOLE_FREE_ALLOWANCE);
+  const billCents = billableUnits * CONSOLE_OVERAGE_CENTS;
+  return {
+    unitsUsed: input.unitsUsed,
+    freeAllowance: CONSOLE_FREE_ALLOWANCE,
+    billableUnits,
+    billCents,
+    capEnabled: input.capEnabled,
+    capCents: input.capCents,
+    capReached: input.capEnabled && billCents >= input.capCents,
+    warningThresholdReached: input.capEnabled && billCents >= input.capCents * CONSOLE_CAP_WARNING_THRESHOLD,
+  };
+}
+
+/** Reads the org's current metered usage/cap and returns the computed
+ *  billing state — the single source both the /dashboard/console panel
+ *  and the pre-send cap check read from. Always reads the local counter,
+ *  never Stripe (see recordConsoleUsage's comment on why: Stripe's meter
+ *  aggregation isn't real-time). */
+export async function getConsoleBillingState(orgId: string): Promise<ConsoleBillingState> {
+  const admin = createAdminClient();
+  const { data: org } = await admin
+    .from("organizations")
+    .select("console_usage_current_period, console_spend_cap_enabled, console_spend_cap_cents")
+    .eq("id", orgId)
+    .single();
+
+  return computeConsoleBillingState({
+    unitsUsed: org?.console_usage_current_period ?? 0,
+    capEnabled: org?.console_spend_cap_enabled ?? true,
+    capCents: org?.console_spend_cap_cents ?? 2500,
+  });
+}
+
+/** Pre-send guard for metered console actions (chat, bulk-send, the public
+ *  API) — call BEFORE the send happens, unlike recordConsoleUsage (which
+ *  is fire-and-forget, called after). Business/unmetered orgs should never
+ *  call this at all; callers gate on the `metered` flag first. */
+export async function checkConsoleCap(orgId: string): Promise<{ allowed: true } | { allowed: false; reason: string }> {
+  const state = await getConsoleBillingState(orgId);
+  if (state.capReached) {
+    return {
+      allowed: false,
+      reason: `Console spend cap reached ($${(state.capCents / 100).toFixed(2)} this period). Raise or turn off the cap in the console to keep sending.`,
+    };
+  }
+  return { allowed: true };
+}
+
+/** Fires the 80%-of-cap warning email at most once per billing period.
+ *  Called from recordConsoleUsage right after the counter increments —
+ *  `newCount` is passed in rather than re-read, so this reflects the send
+ *  that just happened rather than a stale read. Never throws past its own
+ *  try/catch; a failed warning email should never affect anything else. */
+async function maybeSendConsoleCapWarning(orgId: string, newCount: number): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const { data: org } = await admin
+      .from("organizations")
+      .select("name, owner_id, console_spend_cap_enabled, console_spend_cap_cents, console_cap_warning_sent_at")
+      .eq("id", orgId)
+      .single();
+    if (!org || !org.console_spend_cap_enabled || org.console_cap_warning_sent_at) return;
+
+    const state = computeConsoleBillingState({
+      unitsUsed: newCount,
+      capEnabled: org.console_spend_cap_enabled,
+      capCents: org.console_spend_cap_cents,
+    });
+    if (!state.warningThresholdReached) return;
+
+    const { data: ownerData } = await admin.auth.admin.getUserById(org.owner_id);
+    const ownerEmail = ownerData?.user?.email;
+    if (!ownerEmail) return;
+
+    await sendConsoleCapWarningEmail({
+      to: ownerEmail,
+      orgName: org.name,
+      billCents: state.billCents,
+      capCents: state.capCents,
+    });
+
+    await admin
+      .from("organizations")
+      .update({ console_cap_warning_sent_at: new Date().toISOString() })
+      .eq("id", orgId);
+  } catch (err) {
+    console.error("Console cap warning email failed", { orgId, err });
+  }
+}
+
+/** Resets the per-period counter and warning flag — called from the
+ *  invoice.payment_succeeded webhook handler at each new billing cycle.
+ *  console_cap_intro_seen_at is deliberately NOT touched here (lifetime
+ *  flag, not per-period — see migration 0040). */
+export async function resetConsolePeriod(orgId: string): Promise<void> {
+  const admin = createAdminClient();
+  await admin
+    .from("organizations")
+    .update({ console_usage_current_period: 0, console_cap_warning_sent_at: null })
+    .eq("id", orgId);
 }

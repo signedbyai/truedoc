@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe, planFromPriceId } from "@/lib/stripe";
 import { referralCouponId } from "@/lib/referral";
 import { sendPlanUpgradeEmail } from "@/lib/email";
+import { resetConsolePeriod } from "@/lib/console-usage";
 
 // Stripe webhooks arrive unauthenticated (verified by signature instead), so
 // this route uses the service-role admin client throughout — same pattern as
@@ -83,6 +84,19 @@ export async function POST(request: Request) {
         const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
         if (!customerId) break;
         await rewardReferrerOnFirstPayment(admin, stripe, customerId);
+
+        // Console usage-counter reset (CONSOLE_UX_SCOPE.md) — every
+        // successful invoice marks a new billing period starting, so this
+        // is where console_usage_current_period and the per-period cap-
+        // warning flag reset. Harmless no-op for orgs that never used the
+        // console (counter's already 0). Runs on every paid invoice, not
+        // just console-specific ones, since any renewal is a new period.
+        const { data: orgForReset } = await admin
+          .from("organizations")
+          .select("id")
+          .eq("stripe_customer_id", customerId)
+          .single();
+        if (orgForReset) await resetConsolePeriod(orgForReset.id);
         break;
       }
 
