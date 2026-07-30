@@ -148,6 +148,19 @@ export function HomepageTwoColumn({ currency, ctaColor }: { currency: Currency; 
             ))}
           </div>
         </div>
+        {/* EU trust badges — see the matching note in homepage-current.tsx;
+            kept identical across both A/B variants. */}
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+          <span className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600">
+            EU-based company
+          </span>
+          <Link
+            href="/security"
+            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+          >
+            GDPR-compliant · EEA data residency
+          </Link>
+        </div>
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-6 py-12">

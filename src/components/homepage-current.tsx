@@ -242,6 +242,23 @@ export function HomepageCurrent({ currency, ctaColor }: { currency: Currency; ct
             ))}
           </div>
         </div>
+        {/* EU trust badges (EU_TRUST_CERTIFICATIONS_SCOPE.md) — both claims
+            are already true and documented on /security and /dpa (EEA-based
+            processing, SPRK10 B.V. as the Dutch legal entity), so this is
+            just surfacing existing facts, not a new commitment. Deliberately
+            plain bordered pills, not the bold dark CTA-adjacent pill style
+            above, since these are supporting proof, not a competing action. */}
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+          <span className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600">
+            EU-based company
+          </span>
+          <Link
+            href="/security"
+            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+          >
+            GDPR-compliant · EEA data residency
+          </Link>
+        </div>
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-6 py-12">
