@@ -509,7 +509,7 @@ export async function sendConsoleCapWarningEmail(opts: {
       <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
         <p>Your console usage this billing period has reached <strong>$${bill}</strong> of your <strong>$${cap}</strong> spend cap.</p>
         <p>Once the cap is reached, further console sends (chat, API, or bulk send) pause automatically until the cap is raised, turned off, or the period rolls over.</p>
-        ${ctaButton(`${appUrl()}/dashboard/console`, "Review your console usage")}
+        ${ctaButton(`${appUrl()}/console/app`, "Review your console usage")}
       </div>
     `,
   });

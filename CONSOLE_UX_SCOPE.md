@@ -159,9 +159,10 @@ is only the access gate now, not a metering exemption.
 Scoped narrowly to the console surfaces (chat, `/api/console/chat`, and
 the new `/api/v1/documents/bulk-send` endpoint) — the pre-existing plain
 `/api/v1/documents` API (Business's older, separately-marketed "API
-access included" perk) is untouched and stays unmetered for Business,
-since that predates console and wasn't part of this instruction. Flagged
-to Michael as a judgment call worth confirming explicitly.
+access included" perk, the CRM-integration-focused endpoint) is untouched
+and stays unmetered for Business. **Confirmed correct, 2026-07-30** —
+explicitly not metering that endpoint was the right call; it stays a
+flat-fee Business perk, separate from console's per-document pricing.
 
 ## Status: scope complete
 
