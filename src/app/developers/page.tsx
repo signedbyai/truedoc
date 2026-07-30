@@ -3,12 +3,13 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { FlagValues } from "flags/react";
 import Image from "next/image";
+import { Zap } from "lucide-react";
 import { CtaLink } from "@/components/cta-link";
 import { ctaColorFlag } from "@/flags";
 
-const TITLE = "SignedBy API — build document signing into your product";
+const TITLE = "SignedBy API — wire e-signature into your CRM or app";
 const DESCRIPTION =
-  "REST API and outbound webhooks, included in the $29/mo Business plan — no separate developer plan. Create and send documents, get notified on sign/complete, and connect via Make.";
+  "REST API and outbound webhooks, included in the $29/mo Business plan — no separate developer plan. Create and send documents from your CRM, get notified on sign/complete, and connect via Make.";
 
 // See the note on /vs/signnow: a page overriding metadata must point back at
 // the shared opengraph image or it inherits none.
@@ -121,10 +122,14 @@ export default async function DevelopersPage() {
       </header>
 
       <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-6 py-16 text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Build on SignedBy</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+          Build on SignedBy. Fast.{" "}
+          <Zap className="inline-block h-8 w-8 -translate-y-0.5 fill-yellow-300 text-yellow-300 sm:h-9 sm:w-9" aria-hidden="true" />
+        </h1>
         <p className="max-w-xl text-lg text-slate-600">
-          A REST API and outbound webhooks for creating, sending, and tracking documents from your own code — included
-          in the $29/mo Business plan, not a separate metered developer product like most e-signature APIs.
+          A REST API and outbound webhooks for wiring SignedBy into your CRM, app, or onboarding flow — create and
+          send documents, get notified the moment one&apos;s signed, and sync it all back automatically. Included in
+          the $29/mo Business plan, not a separate metered developer product like most e-signature APIs.
         </p>
         <CtaLink href="/login?intent=signup" color={ctaColor} page="developers" position="hero">
           Start for free →
