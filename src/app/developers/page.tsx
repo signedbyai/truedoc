@@ -137,6 +137,77 @@ export default async function DevelopersPage() {
         <p className="text-xs text-slate-400">No credit card required — 3 free documents every month to try it.</p>
       </section>
 
+      {/* Hero shot, same composition as the homepage's (see homepage-current.tsx's
+          comment for the full reasoning): a wide "product" frame with the
+          signer's phone overlapping its bottom-right corner. The homepage's
+          version shows the field editor, since that's the sender's half of the
+          product; this page's audience is a developer, so the equivalent frame
+          is a real API call and its response, not the editor — the phone half
+          is identical to the homepage's, reused as-is, since the signer's
+          experience is the same no matter how the document was created.
+          Rendered as a styled terminal rather than a screenshot: there's no
+          actual "terminal app UI" to photograph for proof the way there is a
+          real editor to screenshot, and the request/response text itself
+          (copied verbatim from the endpoint reference below) is the proof. */}
+      <section className="mx-auto w-full max-w-5xl px-6 pb-12 sm:pr-12">
+        <div className="relative mx-auto max-w-[40rem]">
+          <div className="w-[82%] overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)] sm:w-full">
+            <div className="flex items-center gap-1.5 border-b border-slate-800 px-4 py-3">
+              <span className="h-2.5 w-2.5 rounded-full bg-red-500/70" aria-hidden="true" />
+              <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" aria-hidden="true" />
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/70" aria-hidden="true" />
+            </div>
+            <pre className="overflow-x-auto p-5 font-mono text-[11px] leading-relaxed text-slate-300 sm:text-xs">
+              <code>
+                <span className="text-slate-500">$ </span>
+                <span className="text-slate-100">curl -X POST https://signedby.ai/api/v1/documents \</span>
+                {"\n  "}
+                <span className="text-slate-100">-H &quot;Authorization: Bearer sb_live_...&quot; \</span>
+                {"\n  "}
+                <span className="text-slate-100">
+                  -d &apos;&#123;&quot;template_id&quot;:&quot;3c78a1e4-...&quot;,&quot;signer&quot;:&#123;&quot;email&quot;:&quot;jane@acme.com&quot;&#125;&#125;&apos;
+                </span>
+                {"\n\n"}
+                <span className="text-slate-500">{"{"}</span>
+                {"\n  "}
+                <span className="text-sky-400">&quot;id&quot;</span>
+                <span className="text-slate-500">: </span>
+                <span className="text-emerald-400">&quot;7fdd90eb-9152-4031-a767-c0632126dc53&quot;</span>
+                <span className="text-slate-500">,</span>
+                {"\n  "}
+                <span className="text-sky-400">&quot;status&quot;</span>
+                <span className="text-slate-500">: </span>
+                <span className="text-yellow-300">&quot;sent&quot;</span>
+                {"\n"}
+                <span className="text-slate-500">{"}"}</span>
+              </code>
+            </pre>
+          </div>
+          <div className="absolute -bottom-6 right-0 w-[30%] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:-right-6 sm:w-[28%] lg:-right-10 lg:w-[30%]">
+            <Image
+              src="/hero-signer-mobile.png"
+              alt="The signer's side of the same API call: a handwritten signature drawn in the signature pad on a phone, with a yellow slide-to-sign bar ready to submit"
+              width={1236}
+              height={2370}
+              sizes="(min-width: 1024px) 12rem, (min-width: 640px) 11rem, 30vw"
+              className="h-auto w-full"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl px-6 pb-4 text-center">
+        <p className="text-sm text-slate-600">
+          Already works with <strong>Pipedrive</strong>, <strong>HubSpot</strong>, <strong>Airtable</strong>,{" "}
+          <strong>Notion</strong>, <strong>Attio</strong>, <strong>Brevo</strong>, and 1,500+ other apps via Make —
+          see the <Link href="#pipedrive" className="underline">Pipedrive walkthrough</Link> below.
+        </p>
+        <p className="mt-2 text-xs text-slate-400">
+          Each is a trademark of its respective owner; SignedBy is not affiliated with or endorsed by any of them —
+          they&apos;re reachable via Make&apos;s own connectors to each, not a native SignedBy integration.
+        </p>
+      </section>
+
       <section className="mx-auto w-full max-w-3xl px-6 pb-8">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl border border-slate-200 p-5">
