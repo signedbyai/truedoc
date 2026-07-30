@@ -56,9 +56,6 @@ export default async function LandingPage() {
           <Link href="/developers" className="hover:text-slate-600">
             API docs
           </Link>
-          <Link href="/console" className="hover:text-slate-600">
-            Console
-          </Link>
           <Link href="/security" className="hover:text-slate-600">
             Security
           </Link>
