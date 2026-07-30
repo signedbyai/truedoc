@@ -42,9 +42,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Console (CONSOLE_UX_SCOPE.md) is Pro+ — same apiAccess/consoleAccess
   // combination the console page itself gates on. orgs already carries
   // `plan` from getUserAndOrg, so no extra query needed here.
+  //
+  // Hardcoded false for now (2026-07-30, direct instruction): Michael wants
+  // /dashboard/console findable only by going straight to
+  // console.signedby.ai while it's still early, not surfaced in the nav —
+  // same reasoning as the marketing-page link removal earlier that day.
+  // The real gating logic below is left in place, just not used yet, so
+  // re-enabling this is a one-line change once it's ready to promote.
   const activeOrg = orgs.find((o) => o.id === orgId);
-  const showConsole =
+  const eligibleForConsole =
     !!activeOrg && (planHasFeature(activeOrg.plan, "apiAccess") || planHasFeature(activeOrg.plan, "consoleAccess"));
+  void eligibleForConsole;
+  const showConsole = false;
 
   return (
     <div className="min-h-screen bg-slate-50">

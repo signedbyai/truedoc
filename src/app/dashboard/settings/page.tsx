@@ -95,21 +95,18 @@ export default async function SettingsPage() {
               {hasApiAccess
                 ? "Wire SignedBy into your CRM, app, or onboarding flow. Use the key below to create, send, and track documents from your own code."
                 : hasConsoleAccess
-                  ? "Metered API access via console.signedby.ai — 20 free document-sends a month, then billed per document. Use the key below, or try the chat-driven console instead."
+                  ? "Metered API access — 20 free document-sends a month, then billed per document. Use the key below to create, send, and track documents from your own code."
                   : "Wire SignedBy into your CRM, app, or onboarding flow — create, send, and track documents without anyone opening a browser. Copy the API URL and generate the key here."}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {hasAnyApiAccess ? (
               <div className="space-y-4">
-                {hasConsoleAccess && !hasApiAccess && (
-                  <p className="text-xs text-slate-500">
-                    <Link href="/dashboard/console" className="font-medium text-slate-700 underline hover:text-slate-900">
-                      Open the console
-                    </Link>{" "}
-                    for a chat interface, usage meter, and spend cap instead of writing curl by hand.
-                  </p>
-                )}
+                {/* No link to /dashboard/console here for now — Michael wants
+                    it discoverable only by going directly to
+                    console.signedby.ai while it's still early, same as the
+                    marketing-page links removed 2026-07-30. Re-add once
+                    it's ready to promote. */}
                 <ApiKeySettings apiKeyPrefix={org.api_key_prefix} />
                 {/* Shown inline (not collapsed) — for a Business customer who
                     came here to wire up the API, the examples are the point of
