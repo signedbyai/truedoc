@@ -224,6 +224,23 @@ worth confirming that reasoning holds before shipping, not just asserting it.
 - Creating documents from an arbitrary uploaded PDF via API (template-based
   only, per Part A's reasoning).
 
+## Addendum (2026-07-30): expiration + per-recipient auth added to the API
+
+Shipped to production alongside the rest of Phase 1. Michael asked directly
+whether `expires_at` (DOCUMENT_EXPIRATION_FEATURE.md) or `auth_required`
+(PER_RECIPIENT_AUTH_SCOPE.md) were reachable via the public API — neither
+was, on either the create or read side, since both features had only ever
+been wired into the dashboard. Closed the gap by reusing the existing
+columns/enforcement as-is (no new migration, no new plan gate — both remain
+free on every plan, same as the dashboard versions):
+
+- `POST /api/v1/documents` accepts optional `expires_at` (ISO datetime) at
+  the top level, and optional `auth_required` (boolean) per signer, on both
+  the legacy single-`signer` and multi-party `signers` shapes.
+- `GET /api/v1/documents` and `GET /api/v1/documents/[id]` return
+  `expires_at` on the document and `auth_required`/`auth_verified` (a
+  boolean, not the raw timestamp) per signer.
+
 ## Decisions (2026-07-28)
 
 1. "MCP" = middleware/connector platform reading confirmed — this is a

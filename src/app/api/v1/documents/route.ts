@@ -6,9 +6,17 @@ import { sendSignerInviteEmail } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { checkEmailDomainHasMx } from "@/lib/validate-email-domain";
 
+// Per-recipient authentication (PER_RECIPIENT_AUTH_SCOPE.md) — free on every
+// plan, not gated separately from apiAccess itself, same as the dashboard's
+// signers route (src/app/api/documents/[id]/signers/route.ts). Added
+// 2026-07-30 after a direct question surfaced that the API couldn't set this
+// at all, on either the single- or multi-party path.
+const AUTH_REQUIRED_FIELD = { auth_required: z.boolean().optional().default(false) };
+
 const legacySignerSchema = z.object({
   name: z.string().trim().max(200).optional().nullable(),
   email: z.string().trim().toLowerCase().email(),
+  ...AUTH_REQUIRED_FIELD,
 });
 
 // Multi-party signer, keyed to the same role numbers already on
@@ -20,6 +28,7 @@ const roleSignerSchema = z.object({
   role: z.number().int().min(0).max(19),
   name: z.string().trim().max(200).optional().nullable(),
   email: z.string().trim().toLowerCase().email(),
+  ...AUTH_REQUIRED_FIELD,
 });
 
 const bodySchema = z
@@ -30,6 +39,14 @@ const bodySchema = z
     // existing integrations). `signers` is the new multi-party path.
     signer: legacySignerSchema.optional(),
     signers: z.array(roleSignerSchema).min(1).max(20).optional(),
+    // Document expiration (DOCUMENT_EXPIRATION_FEATURE.md) — free on every
+    // plan, enforced by the existing reminders cron
+    // (src/app/api/cron/reminders/route.ts) exactly like the dashboard-set
+    // version; this just gives the API a way to set it at creation time
+    // instead of requiring a follow-up dashboard visit. Same "empty string
+    // clears it" shape as the dashboard's PUT /expiration route, though in
+    // practice a caller would just omit the field entirely to leave it unset.
+    expires_at: z.union([z.string().trim().datetime(), z.literal("")]).optional(),
   })
   .refine((data) => Boolean(data.signer) !== Boolean(data.signers), {
     message:
@@ -72,7 +89,7 @@ export async function GET(request: Request) {
   const admin = createAdminClient();
   let query = admin
     .from("documents")
-    .select("id, title, status, created_at, updated_at", { count: "exact" })
+    .select("id, title, status, created_at, updated_at, expires_at", { count: "exact" })
     .eq("org_id", auth.orgId)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
@@ -175,8 +192,9 @@ export async function POST(request: Request) {
       payment_label: template.payment_label,
       docgate_url: template.docgate_url,
       docgate_label: template.docgate_label,
+      expires_at: parsed.data.expires_at || null,
     })
-    .select("id, status")
+    .select("id, status, expires_at")
     .single();
   if (docError || !doc) {
     console.error("API v1: create document failed", docError);
@@ -195,9 +213,10 @@ export async function POST(request: Request) {
           email: s.email,
           name: s.name || null,
           order_index: s.role,
+          auth_required: s.auth_required,
         }))
       )
-      .select("id, email, name, order_index, signing_token");
+      .select("id, email, name, order_index, signing_token, auth_required");
     if (signersError || !createdSigners) {
       console.error("API v1: create signers failed", signersError);
       return NextResponse.json({ error: "Couldn't add the signers." }, { status: 500 });
@@ -271,7 +290,13 @@ export async function POST(request: Request) {
       {
         id: doc.id,
         status: doc.status,
-        signers: createdSigners.map((s) => ({ id: s.id, role: s.order_index, email: s.email })),
+        expires_at: doc.expires_at,
+        signers: createdSigners.map((s) => ({
+          id: s.id,
+          role: s.order_index,
+          email: s.email,
+          auth_required: s.auth_required,
+        })),
         ...(domainWarnings.length > 0 ? { domain_warnings: domainWarnings } : {}),
       },
       { status: 201 }
@@ -288,8 +313,9 @@ export async function POST(request: Request) {
       order_index: 0,
       status: "sent",
       sent_at: new Date().toISOString(),
+      auth_required: parsed.data.signer!.auth_required,
     })
-    .select("id, signing_token")
+    .select("id, signing_token, auth_required")
     .single();
   if (signerError || !signer) {
     console.error("API v1: create signer failed", signerError);
@@ -342,7 +368,13 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json(
-    { id: doc.id, status: doc.status, ...(domainCheck.ok ? {} : { domain_warning: domainCheck.reason }) },
+    {
+      id: doc.id,
+      status: doc.status,
+      expires_at: doc.expires_at,
+      auth_required: signer.auth_required,
+      ...(domainCheck.ok ? {} : { domain_warning: domainCheck.reason }),
+    },
     { status: 201 }
   );
 }
