@@ -3,7 +3,6 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { FlagValues } from "flags/react";
-import Image from "next/image";
 import { CtaLink } from "@/components/cta-link";
 import { ctaColorFlag } from "@/flags";
 import { isConsoleHost, consoleUrl } from "@/lib/console-host";
@@ -109,12 +108,16 @@ export default async function ConsolePage() {
     <main className="flex min-h-screen flex-col bg-slate-950">
       <FlagValues values={{ "cta-color": ctaColor }} />
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
-        <Link href="/">
-          {/* Logo's wordmark is solid black — wrapped in a light chip
-              rather than shipping a new asset, since this is the only dark
-              header on the site. */}
-          <span className="inline-flex rounded-md bg-white px-2 py-1">
-            <Image src="/brand/signedby-lockup-yellow-badge-beta-micro-small.png" alt="SignedBy" width={266} height={64} className="h-6 w-auto" priority />
+        <Link href="/" className="flex items-center gap-3">
+          {/* White-on-clear lockup, same as console/app/layout.tsx
+              (2026-07-31) — was previously the black-wordmark PNG wrapped in
+              a white chip; switched for consistency with the app shell now
+              that both are dark surfaces the user moves between. */}
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white">
+            <span className="text-base font-bold leading-none text-slate-900">/</span>
+          </span>
+          <span className="text-lg font-bold leading-none text-white">
+            SignedBy<span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Beta</span>
           </span>
         </Link>
         <Link href={loginHref} className="text-sm font-medium text-slate-300 hover:text-white">

@@ -100,30 +100,45 @@ export function ConsoleChat() {
   }
 
   return (
-    <div className="flex min-h-[420px] flex-col rounded-xl border border-slate-200 bg-white p-4">
-      <p className="mb-3 text-sm font-medium text-slate-900">Console chat</p>
-
-      <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
+    // Borderless canvas + a pill-shaped input bar, not a bordered white
+    // card — direct visual reference 2026-07-31 (a screenshot of Claude's
+    // own chat interface: near-black bg, no card around the conversation
+    // itself, dark-gray user bubbles instead of white/bright ones,
+    // assistant text with no bubble at all, and a distinct rounded input
+    // bar only at the bottom). Matched as closely as this component's
+    // extra requirements (Confirm/Cancel buttons on some assistant turns,
+    // an error line) allow.
+    <div className="flex min-h-[460px] flex-col">
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-1">
         {messages.length === 0 && (
-          <p className="text-sm text-slate-400">
-            Ask console to send a document, bulk-send a list, check status, or void something — e.g. &ldquo;send the
-            NDA template to jane@acme.com&rdquo;.
-          </p>
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+            <span className="font-mono text-lg text-neutral-600">&gt;_</span>
+            <p className="max-w-xs text-sm text-neutral-500">
+              Ask console to send a document, bulk-send a list, check status, or void something — e.g. &ldquo;send the
+              NDA template to jane@acme.com&rdquo;.
+            </p>
+          </div>
         )}
         {messages.map((m, i) =>
           m.role === "user" ? (
-            <div key={i} className="ml-auto max-w-[85%] rounded-xl bg-slate-900 px-3 py-2 text-sm text-white">
+            <div key={i} className="ml-auto max-w-[85%] rounded-2xl bg-neutral-800 px-4 py-2.5 text-sm text-white">
               {m.content}
             </div>
           ) : (
-            <div key={i} className="mr-auto max-w-[90%] rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-800">
+            <div key={i} className="mr-auto max-w-[90%] text-sm leading-relaxed text-neutral-200">
               {m.content}
               {m.confirm && (
                 <div className="mt-2 flex gap-2">
-                  <Button type="button" size="sm" disabled={loading} onClick={() => confirmAction(i, m.confirm!)}>
+                  <Button type="button" variant="cta" size="sm" disabled={loading} onClick={() => confirmAction(i, m.confirm!)}>
                     Confirm send
                   </Button>
-                  <Button type="button" size="sm" variant="ghost" disabled={loading} onClick={() => cancelAction(i)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={loading}
+                    onClick={() => cancelAction(i)}
+                    className="bg-transparent text-neutral-400 hover:bg-white/10 hover:text-white"
+                  >
                     Cancel
                   </Button>
                 </div>
@@ -133,9 +148,9 @@ export function ConsoleChat() {
         )}
       </div>
 
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {error && <p className="px-1 pt-2 text-xs text-red-400">{error}</p>}
 
-      <div className="mt-3 flex gap-2 border-t border-slate-100 pt-3">
+      <div className="mt-3 flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900 px-3 py-2.5">
         <input
           type="text"
           value={input}
@@ -148,9 +163,9 @@ export function ConsoleChat() {
           }}
           disabled={loading}
           placeholder="Ask console to send, check, or bulk-send a document"
-          className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+          className="flex-1 bg-transparent text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none"
         />
-        <Button type="button" size="sm" disabled={loading || !input.trim()} onClick={send}>
+        <Button type="button" variant="cta" size="sm" disabled={loading || !input.trim()} onClick={send}>
           Send
         </Button>
       </div>

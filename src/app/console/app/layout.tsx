@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { getUserAndOrg } from "@/lib/org";
 import { isDevAccessAllowed } from "@/lib/dev-access";
 
@@ -16,11 +15,13 @@ import { isDevAccessAllowed } from "@/lib/dev-access";
 // at console.signedby.ai/app externally.
 //
 // Chrome is intentionally minimal: logo top-left (links back to the main
-// app) plus an explicit text link doing the same, dark bg-slate-950 to
-// match the console.signedby.ai marketing page's 2026-07-30 redesign so
-// the two dark surfaces (logged-out pitch, logged-in app) feel like one
-// continuous product instead of a jarring light/dark handoff on sign-in.
-// Both links point at the absolute https://signedby.ai/dashboard rather
+// app) plus an explicit text link doing the same. Background is
+// bg-neutral-950 (2026-07-31, direct reference: a screenshot of Claude's
+// own chat interface — near-black/neutral rather than the marketing
+// page's navy-tinted bg-slate-950) since this is the interactive app
+// specifically, not the pitch page; slightly different shade from
+// console.signedby.ai's marketing page by design, both still read as one
+// dark product. Both links point at the absolute https://signedby.ai/dashboard rather
 // than the relative /dashboard — a real jump off the console subdomain
 // back to the main app's own home, not an internal route that happens to
 // render there. Safe to do without forcing a second sign-in because the
@@ -35,7 +36,7 @@ export default async function ConsoleAppLayout({ children }: { children: React.R
   // no-op outside of DEV_ACCESS_ALLOWLIST being set (i.e. production today).
   if (!isDevAccessAllowed(user.email)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
+      <div className="flex min-h-screen items-center justify-center bg-neutral-950 px-4">
         <div className="w-full max-w-sm rounded-xl border border-white/10 bg-white/[0.03] p-8 text-center">
           <h1 className="text-lg font-semibold text-slate-100">Private preview</h1>
           <p className="mt-2 text-sm text-slate-400">
@@ -52,18 +53,22 @@ export default async function ConsoleAppLayout({ children }: { children: React.R
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-neutral-950">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-5">
-        <Link href="https://signedby.ai/dashboard" className="flex items-center gap-2.5">
-          <span className="inline-flex rounded-md bg-white px-2 py-1">
-            <Image
-              src="/brand/signedby-lockup-yellow-badge-beta-micro-small.png"
-              alt="SignedBy"
-              width={266}
-              height={64}
-              className="h-6 w-auto"
-              priority
-            />
+        <Link href="https://signedby.ai/dashboard" className="flex items-center gap-3">
+          {/* White-on-clear lockup — direct instruction 2026-07-31, no
+              existing brand asset is a white knockout (both PNGs in
+              /public/brand are the black-wordmark/yellow-badge version, made
+              for light backgrounds), so this recreates the same shape
+              in-place rather than wrapping the PNG in a white chip like the
+              /console marketing page still does. Badge keeps the same
+              rounded-square + slash mark, just inverted: white square, dark
+              slash, sitting straight on bg-neutral-950 with no background box. */}
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white">
+            <span className="text-base font-bold leading-none text-slate-900">/</span>
+          </span>
+          <span className="text-lg font-bold leading-none text-white">
+            SignedBy<span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Beta</span>
           </span>
           <span className="rounded-full border border-yellow-300/35 bg-yellow-300/10 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-yellow-300">
             console
