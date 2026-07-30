@@ -259,7 +259,13 @@ export async function runConsoleChatTurn(params: {
   const second = await callMistral(
     [
       ...wireMessages,
-      { role: "assistant", content: null, tool_calls: [toolCall] },
+      // Mistral rejects `content: null` on a tool-call assistant message —
+      // "Assistant message must have either content or tool_calls, but not
+      // none" (observed live 2026-07-31: a read-only lookup like
+      // list_templates triggered this path and 400'd). Empty string reads
+      // as "has content" to their validator; null doesn't, even with
+      // tool_calls present.
+      { role: "assistant", content: "", tool_calls: [toolCall] },
       { role: "tool", tool_call_id: toolCall.id, name, content: toolResultText },
     ],
     TOOLS
