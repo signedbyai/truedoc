@@ -35,7 +35,13 @@ export async function POST(request: Request) {
       { status: 402 }
     );
   }
-  const metered = !hasApiAccess;
+  // Console is a distinct, metered signing-ops product layered on top of
+  // every plan (2026-07-30, direct instruction) — NOT the same thing as
+  // Business's existing unmetered `apiAccess` perk on the plain
+  // /api/v1/documents endpoint, which is untouched by this. "Pro plan or
+  // higher" is only the access gate here; usage through console itself is
+  // always billed, Business included.
+  const metered = true;
 
   const rateOk = await checkRateLimit(`console-chat:${orgId}`, 60, 3600);
   if (!rateOk) return NextResponse.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });
@@ -56,6 +62,14 @@ export async function POST(request: Request) {
     return NextResponse.json(result);
   } catch (err) {
     console.error("Console chat turn failed", err);
-    return NextResponse.json({ type: "error", error: "The console assistant hit an error. Try again." }, { status: 500 });
+    // Surface the real (truncated) error text instead of a generic
+    // message — this was previously opaque ("hit an error, try again")
+    // with no way to tell a Mistral rate-limit/timeout apart from a real
+    // bug without pulling Vercel logs. Still logged in full above.
+    const detail = err instanceof Error ? err.message.slice(0, 200) : "Unknown error";
+    return NextResponse.json(
+      { type: "error", error: `The console assistant hit an error: ${detail}` },
+      { status: 500 }
+    );
   }
 }

@@ -9,9 +9,17 @@ import { bulkSendAction } from "@/lib/console-actions";
 // POST /api/v1/documents/bulk-send — API-key-authenticated equivalent of
 // the existing session-only dashboard bulk-send
 // (/api/templates/[id]/bulk-send). CONSOLE_UX_SCOPE.md #1: exposes the same
-// already-shipped bulkSend feature (Team+, same gate, no new pricing
-// decision) to external agents and the console chat's `bulk_send` tool,
-// neither of which have a browser session to authenticate with.
+// already-shipped bulkSend feature (Team+, same gate) to external agents
+// and the console chat's `bulk_send` tool, neither of which have a
+// browser session to authenticate with.
+//
+// Deliberately ALWAYS metered (ignores authenticateApiRequest's `metered`
+// flag, which is Business=false based on the older, unrelated apiAccess
+// perk) — this endpoint is new console-product surface, not part of that
+// pre-existing Business perk, and console is metered "over and above
+// standard plans" for every tier including Business (2026-07-30, direct
+// instruction). The plain /api/v1/documents endpoint is untouched and
+// keeps Business's original unmetered behavior.
 const bodySchema = z.object({
   template_id: z.string().uuid(),
   recipients: z
@@ -28,7 +36,8 @@ const bodySchema = z.object({
 export async function POST(request: Request) {
   const auth = await authenticateApiRequest(request);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { orgId, metered } = auth;
+  const { orgId } = auth;
+  const metered = true; // see file-header comment — always metered, regardless of plan
 
   const rateOk = await checkRateLimit(`api-v1-bulk-send:${orgId}`, 60, 3600);
   if (!rateOk) return NextResponse.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });

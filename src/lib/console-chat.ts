@@ -234,7 +234,9 @@ export async function runConsoleChatTurn(params: {
   const toolCall = first.tool_calls?.[0];
 
   if (!toolCall) {
-    return { type: "message", content: first.content ?? "" };
+    // Mistral occasionally returns neither a tool call nor any text on a
+    // turn (observed 2026-07-30) — a friendly fallback beats a blank bubble.
+    return { type: "message", content: first.content?.trim() || "Sorry, I didn't catch that — could you rephrase?" };
   }
 
   const name = toolCall.function.name;

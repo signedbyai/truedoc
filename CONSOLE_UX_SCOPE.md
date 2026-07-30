@@ -146,6 +146,23 @@ left and the usage/cap panel on the right.
 - Confirm v1 tool set (send/bulk-send/status/void) is the right scope —
   anything else that should or shouldn't be chat-reachable?
 
+## Pricing correction (2026-07-30, after build)
+
+Original scope (both this doc and CONSOLE_AI_SIGNING_SCOPE.md) had
+Business getting unlimited, unmetered console access, mirroring its
+existing `apiAccess` perk on the plain API. Direct instruction after
+testing: **console is metered for every plan, Business included** — it's
+a distinct signing-ops product layered on top of a standard subscription,
+not something a Business upgrade should make free. "Pro plan or higher"
+is only the access gate now, not a metering exemption.
+
+Scoped narrowly to the console surfaces (chat, `/api/console/chat`, and
+the new `/api/v1/documents/bulk-send` endpoint) — the pre-existing plain
+`/api/v1/documents` API (Business's older, separately-marketed "API
+access included" perk) is untouched and stays unmetered for Business,
+since that predates console and wasn't part of this instruction. Flagged
+to Michael as a judgment call worth confirming explicitly.
+
 ## Status: scope complete
 
 All open questions from this doc are now decided. Ready to build whenever

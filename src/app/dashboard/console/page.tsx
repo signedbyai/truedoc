@@ -11,6 +11,12 @@ import { ConsoleUsagePanel } from "@/components/console-usage-panel";
 // api-auth.ts / plan.ts's consoleAccess and apiAccess features) — Free
 // orgs are redirected to Settings, where the existing gate line explains
 // what unlocks it.
+//
+// Metered for every plan that reaches this page, Business included
+// (2026-07-30, direct instruction) — console is a distinct signing-ops
+// product layered on top of a standard plan, not covered by Business's
+// separate, unrelated `apiAccess` perk on the plain /api/v1/documents
+// endpoint. "Pro plan or higher" above is only the access gate.
 export default async function ConsolePage() {
   const ctx = await getUserAndOrg();
   if (!ctx) redirect("/login");
@@ -27,8 +33,7 @@ export default async function ConsolePage() {
   const hasConsoleAccess = planHasFeature(org.plan, "consoleAccess");
   if (!hasApiAccess && !hasConsoleAccess) redirect("/dashboard/settings");
 
-  const metered = !hasApiAccess;
-  const billingState = metered ? await getConsoleBillingState(orgId) : null;
+  const billingState = await getConsoleBillingState(orgId);
 
   return (
     <main className="px-4 py-8 sm:px-6 sm:py-10">
@@ -43,21 +48,12 @@ export default async function ConsolePage() {
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.6fr_1fr]">
           <ConsoleChat />
-          {metered && billingState ? (
-            <ConsoleUsagePanel
-              initialState={billingState}
-              initialCapEnabled={org.console_spend_cap_enabled}
-              initialCapCents={org.console_spend_cap_cents}
-              showIntro={!org.console_cap_intro_seen_at}
-            />
-          ) : (
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-sm font-medium text-slate-900">Business plan</p>
-              <p className="mt-1 text-xs text-slate-600">
-                Unlimited, included — no metering or spend cap applies on this plan.
-              </p>
-            </div>
-          )}
+          <ConsoleUsagePanel
+            initialState={billingState}
+            initialCapEnabled={org.console_spend_cap_enabled}
+            initialCapCents={org.console_spend_cap_cents}
+            showIntro={!org.console_cap_intro_seen_at}
+          />
         </div>
       </div>
     </main>

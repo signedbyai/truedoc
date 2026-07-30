@@ -116,9 +116,8 @@ export default async function ConsolePage() {
             Team, or Business subscription.
           </p>
           <ul className="list-inside list-disc space-y-1">
-            <li><strong>20 document-sends</strong> free every month via the console API, on Pro or Team.</li>
-            <li><strong>$0.25 per document</strong> sent beyond that, billed monthly alongside your subscription.</li>
-            <li><strong>Business plan: unlimited, included</strong> — no metering, same as today&apos;s included API access. If you&apos;re already on Business, use the API directly (see <Link href="/developers" className="underline hover:text-slate-900">/developers</Link>) — console&apos;s metered pricing doesn&apos;t apply to you.</li>
+            <li><strong>20 document-sends</strong> free every month via console, on any plan — Pro, Team, or Business.</li>
+            <li><strong>$0.25 per document</strong> sent beyond that, billed monthly alongside your subscription — console is metered on every plan, including Business. This is separate from Business&apos;s existing unlimited, included access to the plain API (see <Link href="/developers" className="underline hover:text-slate-900">/developers</Link>), which is unaffected.</li>
           </ul>
           <p className="text-xs text-slate-500">
             Reads (listing/checking documents) and webhook deliveries are never metered — only creating and sending a
