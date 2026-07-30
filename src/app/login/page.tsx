@@ -246,7 +246,21 @@ function LoginPageInner() {
   async function handleOAuth(provider: "google" | "azure") {
     setOauthLoading(provider);
     const supabase = createClient();
-    const callbackUrl = new URL("/auth/callback", window.location.origin);
+    // Fixed to NEXT_PUBLIC_APP_URL rather than window.location.origin —
+    // same reasoning as sendMagicLink's emailRedirectTo (actions.ts).
+    // Supabase's OAuth redirectTo is checked against a Redirect URLs
+    // allowlist configured in its dashboard; console.signedby.ai was never
+    // added there (2026-07-30: a login attempted from that subdomain
+    // bounced to a bare https://signedby.ai/?code=... with the code never
+    // exchanged, because Supabase silently falls back to its default Site
+    // URL — a plain "/" with no callback handler — for any redirectTo it
+    // doesn't recognize). Routing every OAuth callback through the one
+    // already-allowlisted main-domain URL sidesteps needing a second
+    // dashboard entry entirely, and works correctly now that the auth
+    // cookie is shared across *.signedby.ai (see cookie-domain.ts) — the
+    // session set on signedby.ai/auth/callback is valid back on
+    // console.signedby.ai too.
+    const callbackUrl = new URL("/auth/callback", process.env.NEXT_PUBLIC_APP_URL || "https://signedby.ai");
     if (next) callbackUrl.searchParams.set("next", next);
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
