@@ -23,7 +23,11 @@ const SYSTEM_PROMPT =
   "You are SignedBy Console, an assistant that sends, tracks, and manages e-signature documents on the user's " +
   "SignedBy account by calling the tools provided. Only take an action the user has clearly asked for. Never " +
   "invent a template_id or document_id — call list_templates or list_documents first if you don't already have " +
-  "the right id from earlier in the conversation. Keep replies short and concrete.\n\n" +
+  "the right id from earlier in the conversation.\n\n" +
+  "Be descriptive in your replies, not terse. After looking something up or taking an action, say clearly what " +
+  "you found or did and spell out the details that matter — names, counts, statuses, settings used — rather " +
+  "than a bare 'Done' or 'Sent'. A few sentences is fine; this isn't about being wordy, it's about the user " +
+  "never having to guess what actually happened.\n\n" +
   "Before sending a document (send_document or bulk_send), briefly ask once whether the user wants an " +
   "expiration date and whether the recipient(s) should have to verify their email with a one-time code before " +
   "signing — but don't block on an answer. If they don't say, proceed with no expiration and no verification " +
@@ -258,6 +262,33 @@ export function describeConfirmAction(name: string, args: Record<string, unknown
   );
 }
 
+/** Present-tense status phrase for the "what console is doing right now"
+ *  narration (onStatus below) — shown as a transient line in the chat
+ *  while a tool call or model round-trip is in flight, replaced once the
+ *  real reply arrives. Kept separate from describeConfirmAction/
+ *  describeSendSettings, which describe what's ABOUT to happen or DID
+ *  happen, not what's happening this instant. */
+function toolStatusPhrase(name: string, args: Record<string, unknown>): string {
+  switch (name) {
+    case "list_templates":
+      return "Looking up your templates…";
+    case "list_documents":
+      return "Looking up your documents…";
+    case "check_status":
+      return "Checking that document's status…";
+    case "void_document":
+      return "Voiding the document…";
+    case "send_document":
+      return `Sending to ${String(args.signer_email ?? "the signer")}…`;
+    case "bulk_send": {
+      const count = Array.isArray(args.recipients) ? args.recipients.length : 0;
+      return `Sending to ${count} recipient${count === 1 ? "" : "s"}…`;
+    }
+    default:
+      return "Working on it…";
+  }
+}
+
 export type ConsoleChatTurnResult =
   | { type: "message"; content: string }
   | { type: "confirm"; tool: string; arguments: Record<string, unknown>; content: string }
@@ -267,32 +298,46 @@ export type ConsoleChatTurnResult =
  *  turn (Mistral decides whether to call a tool), or a confirmedTool turn
  *  (the user clicked "Confirm" on a previously proposed send_document/
  *  bulk_send — executes directly, no re-inference, so a confirmed send
- *  can never be second-guessed or altered by the model). */
+ *  can never be second-guessed or altered by the model).
+ *
+ *  `onStatus` (2026-07-31, direct ask: "very descriptive... what it's
+ *  doing") fires a present-tense phrase before each slow step (a Mistral
+ *  round-trip or a tool execution) — the API route streams these to the
+ *  client as they happen, rendered as a transient status line ahead of
+ *  the final reply, instead of a plain unlabeled loading state. */
 export async function runConsoleChatTurn(params: {
   orgId: string;
   metered: boolean;
   messages: ChatMessage[];
   confirmedTool?: { name: string; arguments: Record<string, unknown> };
+  onStatus?: (text: string) => void;
 }): Promise<ConsoleChatTurnResult> {
-  const { orgId, metered, messages, confirmedTool } = params;
+  const { orgId, metered, messages, confirmedTool, onStatus } = params;
 
   if (confirmedTool) {
     if (!CONFIRM_REQUIRED.has(confirmedTool.name)) {
       return { type: "error", error: "That action doesn't require confirmation." };
     }
+    onStatus?.(toolStatusPhrase(confirmedTool.name, confirmedTool.arguments));
     const result = await executeTool(orgId, metered, confirmedTool.name, confirmedTool.arguments);
     if (!result.ok) return { type: "message", content: `Couldn't do that: ${result.error}` };
     if (confirmedTool.name === "send_document" && "documentId" in result) {
-      return { type: "message", content: `Sent. Document id: ${result.documentId}.` };
+      const parts = [
+        `Sent the document to ${String(confirmedTool.arguments.signer_email ?? "the signer")}.`,
+        `${capitalize(describeSendSettings(confirmedTool.arguments))}.`,
+      ];
+      if (result.domainWarning) parts.push(`Heads up — ${result.domainWarning}`);
+      parts.push(`Document id: ${result.documentId}.`);
+      return { type: "message", content: parts.join(" ") };
     }
     if (confirmedTool.name === "bulk_send" && "sent" in result) {
       const skipped = result.skippedCapReached.length;
-      return {
-        type: "message",
-        content:
-          `Sent to ${result.sent.length} recipient${result.sent.length === 1 ? "" : "s"}.` +
-          (skipped > 0 ? ` Stopped early — the console spend cap was reached, ${skipped} recipient(s) not sent.` : ""),
-      };
+      const parts = [
+        `Sent to ${result.sent.length} recipient${result.sent.length === 1 ? "" : "s"} as separate documents.`,
+        `${capitalize(describeSendSettings(confirmedTool.arguments))}.`,
+      ];
+      if (skipped > 0) parts.push(`Stopped early — the console spend cap was reached, ${skipped} recipient(s) not sent.`);
+      return { type: "message", content: parts.join(" ") };
     }
     return { type: "message", content: "Done." };
   }
@@ -304,6 +349,7 @@ export async function runConsoleChatTurn(params: {
     ...messages.map((m) => ({ role: m.role, content: m.content })),
   ];
 
+  onStatus?.("Thinking…");
   const first = await callMistral(wireMessages, TOOLS);
   const toolCall = first.tool_calls?.[0];
 
@@ -326,10 +372,12 @@ export async function runConsoleChatTurn(params: {
   }
 
   // Read-only tools execute immediately, then a second Mistral call turns
-  // the raw result into a short natural-language reply.
+  // the raw result into a natural-language reply.
+  onStatus?.(toolStatusPhrase(name, args));
   const result = await executeTool(orgId, metered, name, args);
   const toolResultText = JSON.stringify(result);
 
+  onStatus?.("Putting together a reply…");
   const second = await callMistral(
     [
       ...wireMessages,
@@ -346,4 +394,8 @@ export async function runConsoleChatTurn(params: {
   );
 
   return { type: "message", content: second.content ?? toolResultText };
+}
+
+function capitalize(text: string): string {
+  return text.length > 0 ? text[0].toUpperCase() + text.slice(1) : text;
 }

@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUp, Paperclip, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { parseNdjsonLine, splitNdjsonLines } from "@/lib/ndjson";
 
 // The console chat pane (CONSOLE_UX_SCOPE.md #2). Talks to
 // POST /api/console/chat, which runs a Mistral tool-calling loop over a
@@ -33,12 +34,51 @@ type Bubble =
 const MAX_BULK_FILE_BYTES = 256 * 1024; // generous for a few hundred lines, well under Mistral's context limit
 const MAX_BULK_FILE_LINES = 200; // matches bulkSendAction's own cap — fail fast client-side instead of a round trip
 
+/** Reads /api/console/chat's streamed NDJSON body, forwarding each
+ *  {type:"status"} line to onStatus as it arrives and returning whatever
+ *  the final (non-status) line was. Falls back to a plain res.json() if
+ *  the response has no readable body (e.g. an older mocked Response in a
+ *  test, or an environment without streaming fetch support) — same shape
+ *  either way, since the API always ends the stream with exactly one
+ *  final result line. */
+async function readStreamedTurn(res: Response, onStatus: (text: string) => void): Promise<Record<string, unknown>> {
+  if (!res.body) return res.json().catch(() => ({}));
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let final: Record<string, unknown> = {};
+
+  const consume = (lines: string[]) => {
+    for (const line of lines) {
+      const obj = parseNdjsonLine(line);
+      if (!obj) continue;
+      if (obj.type === "status" && typeof obj.content === "string") onStatus(obj.content);
+      else final = obj;
+    }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (value) buffer += decoder.decode(value, { stream: true });
+    const { lines, rest } = splitNdjsonLines(buffer);
+    buffer = rest;
+    consume(lines);
+    if (done) {
+      consume(splitNdjsonLines(buffer + "\n").lines); // flush a final line with no trailing newline
+      break;
+    }
+  }
+  return final;
+}
+
 export function ConsoleChat() {
   const router = useRouter();
   const [messages, setMessages] = useState<Bubble[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [status, setStatus] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Only the freeform "ask the model something" call is abortable — not
   // confirmAction below. Once a confirmed send/bulk_send is actually
@@ -63,6 +103,7 @@ export function ConsoleChat() {
     setInput("");
     setLoading(true);
     setError("");
+    setStatus("");
     const controller = new AbortController();
     abortRef.current = controller;
     try {
@@ -72,15 +113,23 @@ export function ConsoleChat() {
         body: JSON.stringify({ messages: historyForApi(next) }),
         signal: controller.signal,
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data.type === "error") {
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
         setError(data.error || "Something went wrong.");
         return;
       }
+      const data = await readStreamedTurn(res, setStatus);
+      if (data.type === "error") {
+        setError(typeof data.error === "string" ? data.error : "Something went wrong.");
+        return;
+      }
       if (data.type === "confirm") {
-        setMessages((cur) => [...cur, { role: "assistant", content: data.content, confirm: { tool: data.tool, arguments: data.arguments } }]);
+        setMessages((cur) => [
+          ...cur,
+          { role: "assistant", content: String(data.content ?? ""), confirm: { tool: String(data.tool), arguments: data.arguments as Record<string, unknown> } },
+        ]);
       } else {
-        setMessages((cur) => [...cur, { role: "assistant", content: data.content }]);
+        setMessages((cur) => [...cur, { role: "assistant", content: String(data.content ?? "") }]);
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
@@ -90,6 +139,7 @@ export function ConsoleChat() {
       }
     } finally {
       setLoading(false);
+      setStatus("");
       abortRef.current = null;
     }
   }
@@ -101,28 +151,35 @@ export function ConsoleChat() {
   async function confirmAction(bubbleIndex: number, confirm: { tool: string; arguments: Record<string, unknown> }) {
     setLoading(true);
     setError("");
+    setStatus("");
     try {
       const res = await fetch("/api/console/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: [], confirmedTool: { name: confirm.tool, arguments: confirm.arguments } }),
       });
-      const data = await res.json().catch(() => ({}));
+      let data: Record<string, unknown>;
+      if (!res.ok) {
+        data = await res.json().catch(() => ({}));
+      } else {
+        data = await readStreamedTurn(res, setStatus);
+      }
       setMessages((cur) => {
         const copy = [...cur];
         copy[bubbleIndex] = { role: "assistant", content: (cur[bubbleIndex] as { content: string }).content };
         return copy;
       });
       if (!res.ok || data.type === "error") {
-        setError(data.error || "Something went wrong.");
+        setError(typeof data.error === "string" ? data.error : "Something went wrong.");
       } else {
-        setMessages((cur) => [...cur, { role: "assistant", content: data.content }]);
+        setMessages((cur) => [...cur, { role: "assistant", content: String(data.content ?? "") }]);
         router.refresh(); // refreshes the usage panel's server-fetched numbers
       }
     } catch {
       setError("Couldn't reach the console assistant.");
     } finally {
       setLoading(false);
+      setStatus("");
     }
   }
 
@@ -213,6 +270,11 @@ export function ConsoleChat() {
               )}
             </div>
           )
+        )}
+        {loading && status && (
+          <p className="mr-auto text-sm italic text-neutral-500" aria-live="polite">
+            {status}
+          </p>
         )}
       </div>
 
