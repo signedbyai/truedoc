@@ -137,12 +137,12 @@ export default async function ConsolePage() {
             console.signedby.ai
           </span>
           <h1 className="text-4xl font-bold tracking-tight text-slate-50 sm:text-5xl">
-            Use your favorite AI to send signing requests.
+            Send contracts from a{" "}
+            <span className="rounded-[3px] bg-yellow-300 px-1.5 text-slate-900">prompt.</span>
           </h1>
           <p className="max-w-xl text-lg text-slate-300">
-            Signing infra made for Europe. Point an agent, a CRM automation, or your own app at SignedBy&apos;s API and let it
-            create, send, and track documents on its own — no separate developer plan, metered only on what you
-            actually send.
+            SignedBy AI lets you control SignedBy directly from a prompt — pick templates, send documents in bulk
+            and check signing status without opening a dashboard.
           </p>
           <CtaLink href={signupHref} color={ctaColor} page="console" position="hero">
             Start for free →
