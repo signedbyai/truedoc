@@ -47,18 +47,38 @@ export default async function ConsoleAppPage() {
     const nextPath = consoleAppNextPath((await headers()).get("host"));
     redirect(`/login?next=${encodeURIComponent(nextPath)}`);
   }
-  const { supabase, orgId } = ctx;
+  const { supabase, orgId, orgs } = ctx;
 
-  const { data: org } = await supabase
-    .from("organizations")
-    .select("plan, console_spend_cap_enabled, console_spend_cap_cents, console_cap_intro_seen_at")
-    .eq("id", orgId)
-    .single();
+  // Plan/access come from `orgs` — the exact same data getUserAndOrg()
+  // already fetched (and the exact same source the dashboard reads its own
+  // plan from) — NOT a second, separate query. Previously this page ran
+  // its own `organizations.select("plan", ...).eq("id", orgId).single()`
+  // right after getUserAndOrg() had already fetched that same org's plan
+  // moments earlier; that redundant round-trip was a real, concrete
+  // divergence from how the dashboard resolves plan, and the prime
+  // suspect for a live bug report (2026-07-31): console showed "Free" for
+  // a confirmed Business account, specifically right after a forced
+  // re-sign-in on Safari — exactly the kind of session-timing window a
+  // second, separate DB read is more exposed to than reusing data already
+  // in hand. Removing the redundant query doesn't just plug a suspected
+  // race, it makes plan/access resolution here byte-identical to the
+  // dashboard's, closing off that whole class of divergence for good.
+  const org = orgs.find((o) => o.id === orgId);
   if (!org) redirect("/dashboard");
 
   const hasApiAccess = planHasFeature(org.plan, "apiAccess");
   const hasConsoleAccess = planHasFeature(org.plan, "consoleAccess");
   const hasAccess = hasApiAccess || hasConsoleAccess;
+
+  // Only the console-specific cap/intro settings still need their own
+  // query — they're not part of getUserAndOrg()'s org-list shape. A
+  // hiccup here can only ever degrade the cap UI to sane defaults
+  // (matching migration 0040's own DB defaults), never misreport plan.
+  const { data: consoleSettings } = await supabase
+    .from("organizations")
+    .select("console_spend_cap_enabled, console_spend_cap_cents, console_cap_intro_seen_at")
+    .eq("id", orgId)
+    .single();
 
   // Skip the billing-state query entirely when locked — nothing on the
   // locked path reads it (ConsoleUsagePanel isn't rendered), so there's no
@@ -72,9 +92,9 @@ export default async function ConsoleAppPage() {
           plan={org.plan ?? "free"}
           hasAccess={hasAccess}
           initialState={billingState}
-          initialCapEnabled={org.console_spend_cap_enabled}
-          initialCapCents={org.console_spend_cap_cents}
-          showIntro={!org.console_cap_intro_seen_at}
+          initialCapEnabled={consoleSettings?.console_spend_cap_enabled ?? true}
+          initialCapCents={consoleSettings?.console_spend_cap_cents ?? 2500}
+          showIntro={!consoleSettings?.console_cap_intro_seen_at}
         />
       </div>
     </main>
