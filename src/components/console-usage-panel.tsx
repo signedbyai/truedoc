@@ -91,10 +91,20 @@ export function ConsoleUsagePanel({
             aria-label="Toggle spend cap"
             onClick={toggleCap}
             disabled={saving}
-            className={`relative h-5 w-9 rounded-full transition-colors ${capEnabled ? "bg-yellow-300" : "bg-white/10"}`}
+            className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${capEnabled ? "bg-yellow-300" : "bg-white/10"}`}
           >
+            {/* Explicit left-0.5 + top-1/2/-translate-y-1/2 (2026-07-31,
+                fixing a malformed/oversized-looking thumb) — the previous
+                version anchored only `top-0.5` with no `left`, so the
+                thumb's un-set horizontal offset defaulted to the browser's
+                own "auto" static-position resolution instead of a fixed
+                2px inset, which rendered inconsistently (the thumb reading
+                as bigger than the track and overflowing its right edge).
+                Both translate-x and translate-y compose into one
+                transform via Tailwind's CSS-variable-based translate
+                utilities, so combining them here is safe. */}
             <span
-              className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${capEnabled ? "translate-x-4" : "translate-x-0.5"} ${capEnabled ? "" : "bg-neutral-400"}`}
+              className={`absolute left-0.5 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-white transition-transform ${capEnabled ? "translate-x-4" : "translate-x-0"} ${capEnabled ? "" : "bg-neutral-400"}`}
             />
           </button>
         </div>

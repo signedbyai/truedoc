@@ -354,7 +354,7 @@ export function ConsoleChat({
           {messages.length === 0 && (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
               <span className="font-mono text-lg text-neutral-600">&gt;_</span>
-              <p className="max-w-xs text-sm text-neutral-500">
+              <p className="max-w-xs text-base text-neutral-500">
                 Ask console to send a document, bulk-send a list, check status, or void something — e.g. &ldquo;send the
                 NDA template to jane@acme.com&rdquo;. For a bulk send, paste one recipient per line (email, or
                 &ldquo;email, name&rdquo;) — or attach a .csv/.txt file with the{" "}
@@ -362,13 +362,15 @@ export function ConsoleChat({
               </p>
             </div>
           )}
+          {/* text-base (2026-07-31, direct feedback: response text was too
+              small to read comfortably) — was text-sm on both bubble types. */}
           {messages.map((m, i) =>
             m.role === "user" ? (
-              <div key={i} className="ml-auto max-w-[85%] rounded-2xl bg-neutral-800 px-4 py-2.5 text-sm text-white">
+              <div key={i} className="ml-auto max-w-[85%] rounded-2xl bg-neutral-800 px-4 py-2.5 text-base text-white">
                 {m.content}
               </div>
             ) : (
-              <div key={i} className="mr-auto max-w-[90%] text-sm leading-relaxed text-neutral-200">
+              <div key={i} className="mr-auto max-w-[90%] text-base leading-relaxed text-neutral-200">
                 {m.content}
                 {m.confirm && (
                   <div className="mt-2 flex gap-2">
@@ -416,20 +418,18 @@ export function ConsoleChat({
 
       {error && <p className="px-1 pt-2 text-xs text-red-400">{error}</p>}
 
-      <div className="mt-3 flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900 px-3 py-2.5">
+      {/* Taller composer (2026-07-31, direct feedback) — was a single row
+          (icons + input + icons all inline); now the text entry sits on
+          its own row up top with room to breathe, and the paperclip/model
+          pill/send-stop button stay anchored in a row along the bottom,
+          same relative positions as before. A plain single-line <input>
+          became a <textarea> so the extra height is actually usable for
+          multi-line text, not just empty padding — Enter still sends
+          (Shift+Enter for a literal newline), unchanged from before. */}
+      <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-white/10 bg-neutral-900 px-4 py-3">
         <input ref={fileInputRef} type="file" accept=".csv,.txt,text/csv,text/plain" onChange={handleFileSelected} className="hidden" />
-        <button
-          type="button"
-          aria-label="Attach a recipient list for bulk send"
-          title="Attach a recipient list (.csv or .txt) for bulk send"
-          disabled={loading}
-          onClick={() => fileInputRef.current?.click()}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-white/10 hover:text-white disabled:opacity-50"
-        >
-          <Paperclip className="h-4 w-4" />
-        </button>
-        <input
-          type="text"
+        <textarea
+          rows={2}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -440,36 +440,50 @@ export function ConsoleChat({
           }}
           disabled={loading}
           placeholder="Ask console to send, check, or bulk-send a document"
-          className="flex-1 bg-transparent text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none"
+          className="max-h-40 min-h-[52px] w-full resize-none bg-transparent text-base text-neutral-100 placeholder-neutral-500 focus:outline-none"
         />
-        <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] font-medium text-neutral-500">
-          Mistral
-        </span>
-        {loading && abortRef.current ? (
-          // Only reachable while send()'s own request is in flight — see the
-          // comment on abortRef above for why confirmAction's loading state
-          // never lands here.
+        <div className="flex items-center justify-between">
           <button
             type="button"
-            aria-label="Stop"
-            title="Stop"
-            onClick={stop}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/15"
+            aria-label="Attach a recipient list for bulk send"
+            title="Attach a recipient list (.csv or .txt) for bulk send"
+            disabled={loading}
+            onClick={() => fileInputRef.current?.click()}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-white/10 hover:text-white disabled:opacity-50"
           >
-            <Square className="h-4 w-4 fill-current" />
+            <Paperclip className="h-4 w-4" />
           </button>
-        ) : (
-          <button
-            type="button"
-            aria-label="Send"
-            title="Send"
-            disabled={!input.trim()}
-            onClick={() => send()}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-yellow-300 text-slate-900 hover:bg-yellow-200 disabled:opacity-40 disabled:hover:bg-yellow-300"
-          >
-            <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
-          </button>
-        )}
+          <div className="flex items-center gap-2">
+            <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] font-medium text-neutral-500">
+              Mistral
+            </span>
+            {loading && abortRef.current ? (
+              // Only reachable while send()'s own request is in flight — see
+              // the comment on abortRef above for why confirmAction's
+              // loading state never lands here.
+              <button
+                type="button"
+                aria-label="Stop"
+                title="Stop"
+                onClick={stop}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/15"
+              >
+                <Square className="h-4 w-4 fill-current" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                aria-label="Send"
+                title="Send"
+                disabled={!input.trim()}
+                onClick={() => send()}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-yellow-300 text-slate-900 hover:bg-yellow-200 disabled:opacity-40 disabled:hover:bg-yellow-300"
+              >
+                <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
