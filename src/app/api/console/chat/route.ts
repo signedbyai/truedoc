@@ -18,6 +18,12 @@ import { runConsoleChatTurn } from "@/lib/console-chat";
 // client already treats data.type === "error" as an error regardless of
 // res.ok).
 
+// Explicit `maxDuration` (2026-07-31, see CONSOLE_BULK_SEND_TIMEOUT_SCOPE.md)
+// — a bulk_send tool call routed through this endpoint relies on
+// bulkSendAction's internal 45s time budget staying safely under this
+// route's real ceiling, rather than an unconfirmed platform default.
+export const maxDuration = 60;
+
 const bodySchema = z.object({
   messages: z
     .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(4000) }))

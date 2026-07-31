@@ -193,11 +193,25 @@ export async function sendDocumentAction(params: {
   return { ok: true, documentId: doc.id, ...(domainCheck.ok ? {} : { domainWarning: domainCheck.reason }) };
 }
 
+// Safety valve for the loop below, not a business/billing cap
+// (2026-07-31 — see CONSOLE_BULK_SEND_TIMEOUT_SCOPE.md). With the old
+// 200-recipient cap gone, a large enough batch could otherwise run past
+// this request's real serverless timeout and get killed mid-run with no
+// structured answer to "how far did it get." A wall-clock budget, checked
+// once per recipient, stops the loop cleanly with time to spare instead —
+// same "sent X, here's who's left" shape as the spend-cap early-stop
+// below, just a second reason. Both callers now also set an explicit
+// `export const maxDuration = 60` on their routes (console/chat/route.ts,
+// v1/documents/bulk-send/route.ts) so this budget is checked against a
+// real, known ceiling rather than an unconfirmed platform default.
+const BULK_SEND_TIME_BUDGET_MS = 45_000; // ~15s of the 60s maxDuration left over for request overhead (auth, body parsing, and — on the chat path — the Mistral round-trip)
+
 /** Sends the same template to many recipients, each as their own
  *  independent document — same shape as the existing dashboard bulk-send
- *  feature. Stops partway through (rather than failing the whole batch)
- *  if the spend cap is hit mid-run, reporting exactly how many sent before
- *  that happened. `expiresAt`/`authRequired`/`inviteSubject`/`inviteMessage`
+ *  feature. Stops partway through (rather than failing the whole batch) if
+ *  the spend cap is hit OR the time budget above runs out mid-run,
+ *  reporting exactly how many sent and who's left, and why, before that
+ *  happened. `expiresAt`/`authRequired`/`inviteSubject`/`inviteMessage`
  *  (2026-07-31) apply identically to every recipient in the batch — one
  *  set of send settings per bulk-send call, not per-recipient.
  *
@@ -219,7 +233,12 @@ export async function bulkSendAction(params: {
   inviteSubject?: string | null;
   inviteMessage?: string | null;
 }): Promise<
-  | { ok: true; sent: { documentId: string; email: string }[]; skippedCapReached: string[] }
+  | {
+      ok: true;
+      sent: { documentId: string; email: string }[];
+      skippedCapReached: string[];
+      skippedTimeoutReached: string[];
+    }
   | ConsoleActionError
 > {
   const { orgId, templateId, recipients, metered, expiresAt, authRequired, inviteSubject, inviteMessage } = params;
@@ -227,8 +246,19 @@ export async function bulkSendAction(params: {
 
   const sent: { documentId: string; email: string }[] = [];
   const skippedCapReached: string[] = [];
+  const skippedTimeoutReached: string[] = [];
+  const startedAt = Date.now();
 
   for (const recipient of recipients) {
+    // Checked first, ahead of the cap check — a batch that's already run
+    // long shouldn't spend more time on another cap round-trip before
+    // bailing. The very first recipient always gets a real attempt: elapsed
+    // time is ~0 at the top of the loop, so this can only trip on a later
+    // iteration, never before anything has been sent at all.
+    if (Date.now() - startedAt > BULK_SEND_TIME_BUDGET_MS) {
+      skippedTimeoutReached.push(recipient.email, ...recipients.slice(recipients.indexOf(recipient) + 1).map((r) => r.email));
+      break;
+    }
     if (metered) {
       const cap = await checkConsoleCap(orgId);
       if (!cap.allowed) {
@@ -254,7 +284,7 @@ export async function bulkSendAction(params: {
     else if (result.status === 404 || result.status === 400) return result;
   }
 
-  return { ok: true, sent, skippedCapReached };
+  return { ok: true, sent, skippedCapReached, skippedTimeoutReached };
 }
 
 export async function checkStatusAction(

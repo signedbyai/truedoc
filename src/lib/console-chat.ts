@@ -345,13 +345,25 @@ export async function runConsoleChatTurn(params: {
       return { type: "message", content: parts.join(" ") };
     }
     if (confirmedTool.name === "bulk_send" && "sent" in result) {
-      const skipped = result.skippedCapReached.length;
+      const capSkipped = result.skippedCapReached.length;
+      const timeoutSkipped = result.skippedTimeoutReached.length;
       const parts = [
         `Sent to ${result.sent.length} recipient${result.sent.length === 1 ? "" : "s"} as separate documents.`,
         `${capitalize(describeSendSettings(confirmedTool.arguments))}.`,
       ];
-      if (skipped > 0) parts.push(`Stopped early — the console spend cap was reached, ${skipped} recipient(s) not sent.`);
-      return { type: "message", content: parts.join(" ") };
+      if (capSkipped > 0) parts.push(`Stopped early — the console spend cap was reached, ${capSkipped} recipient(s) not sent.`);
+      let content = parts.join(" ");
+      // Timeout stop (2026-07-31, see CONSOLE_BULK_SEND_TIMEOUT_SCOPE.md) —
+      // unlike the cap stop above, this isn't a hard wall the user has to
+      // wait out, so it gets its own paragraph plus the actual remaining
+      // emails (not just a count) — a follow-up "continue" message then has
+      // everything needed, straight from this turn's own history, to
+      // re-issue bulk_send with exactly who's left.
+      if (timeoutSkipped > 0) {
+        const list = result.skippedTimeoutReached.map((email) => `- ${email}`).join("\n");
+        content += `\n\nStopped early to stay within one request's time limit — ${timeoutSkipped} recipient(s) not sent yet. Just say "continue" and I'll send to the rest:\n\n${list}`;
+      }
+      return { type: "message", content };
     }
     return { type: "message", content: "Done." };
   }

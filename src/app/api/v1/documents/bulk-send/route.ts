@@ -25,6 +25,13 @@ import { bulkSendAction } from "@/lib/console-actions";
 // previous 200-recipient cap here and in bulkSendAction below it, console-
 // only) — this call is always metered, so the per-recipient $ spend cap is
 // what bounds a runaway batch now, not a separate fixed headcount limit.
+//
+// Explicit `maxDuration` (2026-07-31, see CONSOLE_BULK_SEND_TIMEOUT_SCOPE.md)
+// — bulkSendAction's own internal time budget (45s) assumes a real, known
+// ceiling to stay safely under, rather than an unconfirmed platform
+// default; this sets that ceiling directly instead of guessing at it.
+export const maxDuration = 60;
+
 const bodySchema = z.object({
   template_id: z.string().uuid(),
   recipients: z
@@ -73,6 +80,12 @@ export async function POST(request: Request) {
       documents: result.sent,
       ...(result.skippedCapReached.length > 0
         ? { skipped_cap_reached: result.skippedCapReached, note: "Console spend cap reached partway through this batch." }
+        : {}),
+      ...(result.skippedTimeoutReached.length > 0
+        ? {
+            skipped_timeout_reached: result.skippedTimeoutReached,
+            note: "Stopped partway through this batch to stay within one request's time limit — re-submit the listed recipients in a follow-up call.",
+          }
         : {}),
     },
     { status: 201 }
