@@ -5,6 +5,8 @@ import type { ConsoleBillingState } from "@/lib/console-usage";
 import { ConsoleChat, type Bubble } from "@/components/console-chat";
 import { ConsoleUsagePanel } from "@/components/console-usage-panel";
 import { ConsoleHistorySidebar } from "@/components/console-history-sidebar";
+import { ConsolePlanStatus } from "@/components/console-plan-status";
+import { ConsoleUpgradePanel, ConsoleLockedChat } from "@/components/console-upgrade-panel";
 
 /** Top-level client wrapper for /console/app (2026-07-31 layout pass) —
  *  owns the state that has to be shared between the history sidebar and
@@ -16,14 +18,26 @@ import { ConsoleHistorySidebar } from "@/components/console-history-sidebar";
  *
  *  Layout: a left sidebar (history list on top, usage/billing panel
  *  pinned at the bottom) next to the chat pane, replacing the previous
- *  chat-left/usage-right two-column grid — direct instruction, 2026-07-31. */
+ *  chat-left/usage-right two-column grid — direct instruction, 2026-07-31.
+ *
+ *  Pro-gate (2026-07-31, direct instruction): a plan status box + pill
+ *  always sits at the very bottom of the left column, on every plan. When
+ *  the org lacks console access (below Pro), the OTHER left-hand boxes
+ *  (history + usage panel) are replaced by ConsoleUpgradePanel, and the
+ *  chat pane itself is replaced by ConsoleLockedChat — console genuinely
+ *  doesn't work below Pro, so ConsoleChat is never even mounted in that
+ *  case (on top of /api/console/chat independently 402ing a Free org). */
 export function ConsoleWorkspace({
+  plan,
+  hasAccess,
   initialState,
   initialCapEnabled,
   initialCapCents,
   showIntro,
 }: {
-  initialState: ConsoleBillingState;
+  plan: string;
+  hasAccess: boolean;
+  initialState: ConsoleBillingState | null;
   initialCapEnabled: boolean;
   initialCapCents: number;
   showIntro: boolean;
@@ -69,19 +83,32 @@ export function ConsoleWorkspace({
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_1fr]">
       <aside className="flex flex-col gap-4 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)]">
-        <div className="flex-1 overflow-y-auto">
-          <ConsoleHistorySidebar activeId={activeId} onSelect={handleSelect} onNewChat={handleNewChat} refreshToken={historyRefreshToken} />
-        </div>
-        <ConsoleUsagePanel
-          initialState={initialState}
-          initialCapEnabled={initialCapEnabled}
-          initialCapCents={initialCapCents}
-          showIntro={showIntro}
-        />
+        {hasAccess ? (
+          <>
+            <div className="flex-1 overflow-y-auto">
+              <ConsoleHistorySidebar activeId={activeId} onSelect={handleSelect} onNewChat={handleNewChat} refreshToken={historyRefreshToken} />
+            </div>
+            {initialState && (
+              <ConsoleUsagePanel
+                initialState={initialState}
+                initialCapEnabled={initialCapEnabled}
+                initialCapCents={initialCapCents}
+                showIntro={showIntro}
+              />
+            )}
+          </>
+        ) : (
+          <ConsoleUpgradePanel />
+        )}
+        <ConsolePlanStatus plan={plan} hasAccess={hasAccess} />
       </aside>
 
       <div>
-        <ConsoleChat key={resetKey} conversationId={activeId} initialMessages={initialMessages} onConversationSaved={handleSaved} />
+        {hasAccess ? (
+          <ConsoleChat key={resetKey} conversationId={activeId} initialMessages={initialMessages} onConversationSaved={handleSaved} />
+        ) : (
+          <ConsoleLockedChat />
+        )}
       </div>
     </div>
   );

@@ -11,9 +11,18 @@ import { consoleAppNextPath } from "@/lib/console-host";
 // console: a Mistral-backed chat pane that can send/bulk-send/check/void
 // documents, next to a chat-history sidebar and a live usage meter/spend
 // cap (see console-workspace.tsx for the layout). Gated to Pro+ (see
-// api-auth.ts / plan.ts's consoleAccess and apiAccess features) — Free
-// orgs are redirected to Settings, where the existing gate line explains
-// what unlocks it.
+// api-auth.ts / plan.ts's consoleAccess and apiAccess features).
+//
+// Free orgs are no longer redirected away (2026-07-31, direct
+// instruction) — they land on this same page so they can see what
+// console does, but ConsoleWorkspace renders a locked/upsell state
+// instead of the real chat + history + usage panel: a plan status
+// pill (always shown, every plan) plus, when locked, example prompts
+// and an upgrade CTA in place of the other left-hand boxes. The actual
+// chat is never mounted for a locked org, and /api/console/chat
+// independently 402s any request from a Free org regardless of what
+// the client renders — this page's gate is about the experience, not
+// the only enforcement.
 //
 // Metered for every plan that reaches this page, Business included
 // (2026-07-30, direct instruction) — console is a distinct signing-ops
@@ -48,9 +57,12 @@ export default async function ConsoleAppPage() {
 
   const hasApiAccess = planHasFeature(org.plan, "apiAccess");
   const hasConsoleAccess = planHasFeature(org.plan, "consoleAccess");
-  if (!hasApiAccess && !hasConsoleAccess) redirect("/dashboard/settings");
+  const hasAccess = hasApiAccess || hasConsoleAccess;
 
-  const billingState = await getConsoleBillingState(orgId);
+  // Skip the billing-state query entirely when locked — nothing on the
+  // locked path reads it (ConsoleUsagePanel isn't rendered), so there's no
+  // reason to hit the DB for numbers no one sees.
+  const billingState = hasAccess ? await getConsoleBillingState(orgId) : null;
 
   return (
     <main className="px-4 py-8 sm:px-6 sm:py-10">
@@ -58,6 +70,8 @@ export default async function ConsoleAppPage() {
         <p className="text-sm text-slate-400">Send, track, and manage documents by chatting with SignedBy directly.</p>
 
         <ConsoleWorkspace
+          plan={org.plan ?? "free"}
+          hasAccess={hasAccess}
           initialState={billingState}
           initialCapEnabled={org.console_spend_cap_enabled}
           initialCapCents={org.console_spend_cap_cents}
