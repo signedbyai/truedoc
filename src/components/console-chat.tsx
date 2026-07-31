@@ -941,7 +941,13 @@ export function ConsoleChat({
             aria-label="Scroll to latest message"
             title="Scroll to latest"
             onClick={jumpToLatest}
-            className="absolute bottom-28 left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-neutral-800/90 text-white shadow-lg backdrop-blur hover:bg-neutral-700 lg:bottom-2"
+            // bottom-36 on mobile (2026-08-01, direct ask — was bottom-28,
+            // just barely clearing the fixed composer's resting height; a
+            // multi-line draft or a notch phone's safe-area inset grows the
+            // composer past that and covers half the button). lg:bottom-2
+            // untouched — the composer's back in normal flow there, not
+            // fixed, so there's nothing for this to clear.
+            className="absolute bottom-36 left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-neutral-800/90 text-white shadow-lg backdrop-blur hover:bg-neutral-700 lg:bottom-2"
           >
             <ChevronDown className="h-4 w-4" />
           </button>
