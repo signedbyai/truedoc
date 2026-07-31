@@ -19,12 +19,18 @@ export async function middleware(request: NextRequest) {
     if (pathname === "/") {
       const url = request.nextUrl.clone();
       url.pathname = "/console";
-      return NextResponse.rewrite(url);
+      // Routed through updateSession (2026-07-31, was a bare
+      // NextResponse.rewrite before) so these two console entry routes
+      // still get their session refreshed/domain-widened like every other
+      // route does — see the comment on updateSession's `baseResponse`
+      // param for the live bug this fixed (Safari forcing a re-sign-in on
+      // console that Chrome didn't hit).
+      return await updateSession(request, NextResponse.rewrite(url, { request }));
     }
     if (pathname === "/app") {
       const url = request.nextUrl.clone();
       url.pathname = "/console/app";
-      return NextResponse.rewrite(url);
+      return await updateSession(request, NextResponse.rewrite(url, { request }));
     }
   }
   return await updateSession(request);
