@@ -55,7 +55,14 @@ export default async function ConsoleAppLayout({ children }: { children: React.R
 
   return (
     <div className="min-h-screen bg-neutral-950">
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-5">
+      {/* Sticky (2026-07-31, direct feedback: "can i keep that at the top")
+          — the page below now has a sidebar (history + usage panel) that
+          can grow taller than the viewport, so the header needs to stay
+          pinned rather than scroll away with it. bg-neutral-950 + a hairline
+          border so it reads as a fixed bar once content scrolls under it,
+          not just floating. max-w-6xl matches the page content's width
+          (widened from max-w-5xl the same day, for the new sidebar). */}
+      <header className="sticky top-0 z-20 mx-auto flex w-full max-w-6xl items-center justify-between border-b border-white/5 bg-neutral-950 px-6 py-5">
         <Link href="https://signedby.ai/dashboard" className="flex items-center gap-3">
           {/* White-on-clear lockup, the real asset (2026-07-31): found in
               brand-assets/lockup/micro-small/ after Michael flagged this

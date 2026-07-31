@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUp, Paperclip, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,14 @@ import { parseNdjsonLine, splitNdjsonLines } from "@/lib/ndjson";
 // calls the API again with confirmedTool once the user actually clicks
 // Confirm. No action that emails a real person ever runs without that
 // explicit second click.
+//
+// Also autosaves to /api/console/conversations as a "chat session"
+// (2026-07-31, migration 0041) — see the persist effect below and
+// console-workspace.tsx, which owns the history sidebar and remounts this
+// component (via `key`) when the user switches conversations or starts a
+// new one.
 
-type Bubble =
+export type Bubble =
   | { role: "user"; content: string }
   | { role: "assistant"; content: string; confirm?: { tool: string; arguments: Record<string, unknown> } };
 
@@ -72,14 +78,36 @@ async function readStreamedTurn(res: Response, onStatus: (text: string) => void)
   return final;
 }
 
-export function ConsoleChat() {
+export function ConsoleChat({
+  conversationId = null,
+  initialMessages = [],
+  onConversationSaved,
+}: {
+  /** The conversation's id if this is reopening a past chat, or null for a
+   *  brand new one. Only read at mount time — console-workspace.tsx forces
+   *  a remount (via `key`) whenever this should actually change, so there's
+   *  no need to react to it changing on an already-mounted instance. */
+  conversationId?: string | null;
+  /** The saved messages if reopening a past chat, or [] for a new one. */
+  initialMessages?: Bubble[];
+  /** Fired after the autosave effect below creates or updates a saved
+   *  conversation — lets the parent adopt a freshly-created id (without
+   *  remounting this component mid-conversation) and refresh the sidebar's
+   *  list. */
+  onConversationSaved?: (id: string, title: string) => void;
+} = {}) {
   const router = useRouter();
-  const [messages, setMessages] = useState<Bubble[]>([]);
+  const [messages, setMessages] = useState<Bubble[]>(initialMessages);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const convIdRef = useRef<string | null>(conversationId);
+  // Guards the autosave effect against re-saving a conversation that was
+  // just loaded (initialMessages) with no actual new turn yet — only the
+  // FIRST run should be treated as "nothing changed since load".
+  const lastSavedRef = useRef<string>(JSON.stringify(initialMessages));
   // Only the freeform "ask the model something" call is abortable — not
   // confirmAction below. Once a confirmed send/bulk_send is actually
   // in flight, documents may already be getting created/emailed
@@ -88,6 +116,47 @@ export function ConsoleChat() {
   // deliberately only covers the safe-to-interrupt case (the model still
   // deciding what to do), never the point of no return.
   const abortRef = useRef<AbortController | null>(null);
+
+  // Autosave — fires whenever `messages` actually changes (a completed
+  // turn, a confirm/cancel resolution), not on every keystroke. Creates
+  // the conversation on first save (POST, no id yet) or updates it
+  // thereafter (PATCH). Best-effort: a failed autosave doesn't interrupt
+  // the chat itself, just means that turn didn't make it into history.
+  useEffect(() => {
+    const serialized = JSON.stringify(messages);
+    if (serialized === lastSavedRef.current) return;
+    if (messages.length === 0) return;
+    lastSavedRef.current = serialized;
+
+    (async () => {
+      try {
+        if (!convIdRef.current) {
+          const res = await fetch("/api/console/conversations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messages }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && typeof data.id === "string") {
+            convIdRef.current = data.id;
+            onConversationSaved?.(data.id, String(data.title ?? ""));
+          }
+        } else {
+          const res = await fetch(`/api/console/conversations/${convIdRef.current}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messages }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok) onConversationSaved?.(convIdRef.current, String(data.title ?? ""));
+        }
+      } catch {
+        // Best-effort — see comment above. Nothing surfaced to the user;
+        // the conversation itself already succeeded or failed on its own.
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
 
   function historyForApi(bubbles: Bubble[]) {
     return bubbles
