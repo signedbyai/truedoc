@@ -30,16 +30,17 @@ import { consoleAppNextPath } from "@/lib/console-host";
 // separate, unrelated `apiAccess` perk on the plain /api/v1/documents
 // endpoint. "Pro plan or higher" above is only the access gate.
 //
-// No page heading here (2026-07-31, direct feedback) — the layout's own
-// header already names "console" via its badge, a second "Console" <h1>
-// here just repeated it. Intro copy trimmed to one line; the earlier
-// "or wire your own AI agent in via /console/tools.json" clause was
-// dropped per feedback questioning whether it was built — it actually is
-// (a real, working tool manifest for external agents, see
-// src/app/console/tools.json/route.ts), just worded ambiguously close to
-// BYOK (a genuinely unbuilt phase-2 idea, see CONSOLE_UX_SCOPE.md) — left
-// out here rather than re-explaining the distinction inline; still
-// documented at /developers.
+// No page heading or intro line here (2026-07-31, direct feedback across
+// two passes) — the layout's own header already names "console" via its
+// badge, a second "Console" <h1> here just repeated it, and the one-line
+// intro ("Send, track, and manage documents by chatting with SignedBy
+// directly") was cut too as no longer needed. (Earlier still: an "or wire
+// your own AI agent in via /console/tools.json" clause was dropped from
+// that same line per feedback questioning whether it was built — it
+// actually is, a real working tool manifest for external agents, see
+// src/app/console/tools.json/route.ts — just worded ambiguously close to
+// BYOK, a genuinely unbuilt phase-2 idea, see CONSOLE_UX_SCOPE.md; still
+// documented at /developers.)
 export default async function ConsoleAppPage() {
   const ctx = await getUserAndOrg();
   if (!ctx) {
@@ -66,9 +67,7 @@ export default async function ConsoleAppPage() {
 
   return (
     <main className="px-4 py-8 sm:px-6 sm:py-10">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <p className="text-sm text-slate-400">Send, track, and manage documents by chatting with SignedBy directly.</p>
-
+      <div className="mx-auto max-w-6xl">
         <ConsoleWorkspace
           plan={org.plan ?? "free"}
           hasAccess={hasAccess}

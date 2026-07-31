@@ -20,6 +20,16 @@ import { ConsoleUpgradePanel, ConsoleLockedChat } from "@/components/console-upg
  *  pinned at the bottom) next to the chat pane, replacing the previous
  *  chat-left/usage-right two-column grid — direct instruction, 2026-07-31.
  *
+ *  Both columns are bounded to the viewport height (`h-[calc(100vh-8rem)]`,
+ *  matching the layout's sticky header + this page's own padding) at every
+ *  breakpoint, not just `lg:` — so the page itself doesn't grow taller than
+ *  the viewport and each column scrolls internally instead. This is what
+ *  makes ConsoleChat's input bar read as "floating": it's the last item in
+ *  a bounded flex column, so it never moves, and message content scrolls
+ *  underneath it rather than pushing it down the page (2026-07-31, direct
+ *  feedback — also fixes a white-flash-on-overscroll complaint, since the
+ *  outer page rarely has any real scroll distance left to rubber-band).
+ *
  *  Pro-gate (2026-07-31, direct instruction): a plan status box + pill
  *  always sits at the very bottom of the left column, on every plan. When
  *  the org lacks console access (below Pro), the OTHER left-hand boxes
@@ -82,10 +92,10 @@ export function ConsoleWorkspace({
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_1fr]">
-      <aside className="flex flex-col gap-4 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)]">
+      <aside className="flex h-[calc(100vh-8rem)] flex-col gap-4 lg:sticky lg:top-24">
         {hasAccess ? (
           <>
-            <div className="flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto">
               <ConsoleHistorySidebar activeId={activeId} onSelect={handleSelect} onNewChat={handleNewChat} refreshToken={historyRefreshToken} />
             </div>
             {initialState && (
@@ -103,7 +113,7 @@ export function ConsoleWorkspace({
         <ConsolePlanStatus plan={plan} hasAccess={hasAccess} />
       </aside>
 
-      <div>
+      <div className="h-[calc(100vh-8rem)]">
         {hasAccess ? (
           <ConsoleChat key={resetKey} conversationId={activeId} initialMessages={initialMessages} onConversationSaved={handleSaved} />
         ) : (

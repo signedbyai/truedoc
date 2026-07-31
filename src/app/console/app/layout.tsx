@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getUserAndOrg } from "@/lib/org";
 import { isDevAccessAllowed } from "@/lib/dev-access";
+import { ConsoleBodyBackground } from "@/components/console-body-background";
 
 // Console's own shell — deliberately NOT nested under app/dashboard/, so it
 // does not inherit DashboardNav (the tab bar/pill used by the rest of the
@@ -38,6 +39,7 @@ export default async function ConsoleAppLayout({ children }: { children: React.R
   if (!isDevAccessAllowed(user.email)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-neutral-950 px-4">
+        <ConsoleBodyBackground />
         <div className="w-full max-w-sm rounded-xl border border-white/10 bg-white/[0.03] p-8 text-center">
           <h1 className="text-lg font-semibold text-slate-100">Private preview</h1>
           <p className="mt-2 text-sm text-slate-400">
@@ -55,6 +57,7 @@ export default async function ConsoleAppLayout({ children }: { children: React.R
 
   return (
     <div className="min-h-screen bg-neutral-950">
+      <ConsoleBodyBackground />
       {/* Sticky (2026-07-31, direct feedback: "can i keep that at the top")
           — the page below now has a sidebar (history + usage panel) that
           can grow taller than the viewport, so the header needs to stay

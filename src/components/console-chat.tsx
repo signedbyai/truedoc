@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, Paperclip, Square } from "lucide-react";
+import { ArrowUp, ChevronDown, Paperclip, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { parseNdjsonLine, splitNdjsonLines } from "@/lib/ndjson";
 
@@ -102,7 +102,16 @@ export function ConsoleChat({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  // Tracks whether the user has deliberately scrolled up to read earlier
+  // messages — auto-scroll-to-bottom on new content only fires while this
+  // is false, so it never yanks someone away from history they're reading
+  // mid-conversation. Read inside the scroll effect via a ref (not state)
+  // so that effect doesn't need to depend on it and re-run on every scroll.
+  const scrolledUpRef = useRef(false);
   const convIdRef = useRef<string | null>(conversationId);
   // Guards the autosave effect against re-saving a conversation that was
   // just loaded (initialMessages) with no actual new turn yet — only the
@@ -157,6 +166,35 @@ export function ConsoleChat({
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
+
+  // Auto-scrolls to the latest message whenever the thread changes (a new
+  // bubble, or a status line appearing/disappearing while a turn is in
+  // flight) — but only if the user isn't already scrolled up reading
+  // something earlier. Matches the standard chat-app pattern (ChatGPT/
+  // Claude's own UI): new content doesn't yank you back to the bottom if
+  // you deliberately scrolled away from it.
+  useEffect(() => {
+    if (scrolledUpRef.current) return;
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, status]);
+
+  const NEAR_BOTTOM_PX = 48;
+
+  function handleMessagesScroll() {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const atBottom = distanceFromBottom < NEAR_BOTTOM_PX;
+    scrolledUpRef.current = !atBottom;
+    setShowJumpToLatest(!atBottom);
+  }
+
+  function jumpToLatest() {
+    scrolledUpRef.current = false;
+    setShowJumpToLatest(false);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }
 
   function historyForApi(bubbles: Bubble[]) {
     return bubbles
@@ -300,50 +338,79 @@ export function ConsoleChat({
     // bar only at the bottom). Matched as closely as this component's
     // extra requirements (Confirm/Cancel buttons on some assistant turns,
     // an error line) allow.
-    <div className="flex min-h-[460px] flex-col">
-      <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-1">
-        {messages.length === 0 && (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-            <span className="font-mono text-lg text-neutral-600">&gt;_</span>
-            <p className="max-w-xs text-sm text-neutral-500">
-              Ask console to send a document, bulk-send a list, check status, or void something — e.g. &ldquo;send the
-              NDA template to jane@acme.com&rdquo;. For a bulk send, paste one recipient per line (email, or
-              &ldquo;email, name&rdquo;) — or attach a .csv/.txt file with the{" "}
-              <Paperclip className="inline h-3 w-3 -translate-y-px" aria-hidden="true" /> icon below.
+    <div className="flex h-full flex-col">
+      <div className="relative min-h-0 flex-1">
+        {/* Scrollable message thread — the input bar below is a sibling
+            outside this container, so it stays pinned at the bottom of the
+            flex column (never scrolls) while this scrolls underneath it,
+            which is what makes the input read as "floating" rather than
+            just being the last thing on an ever-growing page
+            (2026-07-31, direct feedback). */}
+        <div
+          ref={messagesContainerRef}
+          onScroll={handleMessagesScroll}
+          className="flex h-full flex-col gap-4 overflow-y-auto px-1 pb-1"
+        >
+          {messages.length === 0 && (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+              <span className="font-mono text-lg text-neutral-600">&gt;_</span>
+              <p className="max-w-xs text-sm text-neutral-500">
+                Ask console to send a document, bulk-send a list, check status, or void something — e.g. &ldquo;send the
+                NDA template to jane@acme.com&rdquo;. For a bulk send, paste one recipient per line (email, or
+                &ldquo;email, name&rdquo;) — or attach a .csv/.txt file with the{" "}
+                <Paperclip className="inline h-3 w-3 -translate-y-px" aria-hidden="true" /> icon below.
+              </p>
+            </div>
+          )}
+          {messages.map((m, i) =>
+            m.role === "user" ? (
+              <div key={i} className="ml-auto max-w-[85%] rounded-2xl bg-neutral-800 px-4 py-2.5 text-sm text-white">
+                {m.content}
+              </div>
+            ) : (
+              <div key={i} className="mr-auto max-w-[90%] text-sm leading-relaxed text-neutral-200">
+                {m.content}
+                {m.confirm && (
+                  <div className="mt-2 flex gap-2">
+                    <Button type="button" variant="cta" size="sm" disabled={loading} onClick={() => confirmAction(i, m.confirm!)}>
+                      Confirm send
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={loading}
+                      onClick={() => cancelAction(i)}
+                      className="bg-transparent text-neutral-400 hover:bg-white/10 hover:text-white"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )
+          )}
+          {loading && status && (
+            <p className="mr-auto text-sm italic text-neutral-500" aria-live="polite">
+              {status}
             </p>
-          </div>
-        )}
-        {messages.map((m, i) =>
-          m.role === "user" ? (
-            <div key={i} className="ml-auto max-w-[85%] rounded-2xl bg-neutral-800 px-4 py-2.5 text-sm text-white">
-              {m.content}
-            </div>
-          ) : (
-            <div key={i} className="mr-auto max-w-[90%] text-sm leading-relaxed text-neutral-200">
-              {m.content}
-              {m.confirm && (
-                <div className="mt-2 flex gap-2">
-                  <Button type="button" variant="cta" size="sm" disabled={loading} onClick={() => confirmAction(i, m.confirm!)}>
-                    Confirm send
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={loading}
-                    onClick={() => cancelAction(i)}
-                    className="bg-transparent text-neutral-400 hover:bg-white/10 hover:text-white"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              )}
-            </div>
-          )
-        )}
-        {loading && status && (
-          <p className="mr-auto text-sm italic text-neutral-500" aria-live="polite">
-            {status}
-          </p>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Floating "jump to latest" button — only appears once the user
+            has scrolled away from the bottom, hovering just above the
+            input bar the same way it does in Claude's own chat UI
+            (reference screenshot, 2026-07-31). */}
+        {showJumpToLatest && (
+          <button
+            type="button"
+            aria-label="Scroll to latest message"
+            title="Scroll to latest"
+            onClick={jumpToLatest}
+            className="absolute bottom-2 left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-neutral-800/90 text-white shadow-lg backdrop-blur hover:bg-neutral-700"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </button>
         )}
       </div>
 

@@ -54,7 +54,7 @@ export function ConsoleUpgradePanel() {
 
 export function ConsoleLockedChat() {
   return (
-    <div className="flex min-h-[460px] flex-col items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-6 text-center">
+    <div className="flex h-full min-h-[460px] flex-col items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-6 text-center">
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5">
         <Lock className="h-4 w-4 text-neutral-400" />
       </div>
