@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { History, X } from "lucide-react";
+import Link from "next/link";
+import { History, Home, Settings, X } from "lucide-react";
 import type { ConsoleBillingState } from "@/lib/console-usage";
 import { ConsoleChat, type Bubble } from "@/components/console-chat";
 import { ConsoleUsagePanel } from "@/components/console-usage-panel";
@@ -78,9 +79,16 @@ export function ConsoleWorkspace({
   // slide-down animation has something to animate.
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [everOpened, setEverOpened] = useState(false);
+  // Which half of `sidebarBody` the sheet shows (2026-08-01, direct ask: the
+  // old single "History & settings" bar became a compact pill with three
+  // separate entry points — History and Settings now open the same sheet
+  // scrolled to, and titled after, the relevant section instead of always
+  // showing everything at once).
+  const [mobileSheetTab, setMobileSheetTab] = useState<"history" | "settings">("history");
 
-  function openMobileSheet() {
+  function openMobileSheet(tab: "history" | "settings") {
     setEverOpened(true);
+    setMobileSheetTab(tab);
     setMobileSheetOpen(true);
   }
 
@@ -126,26 +134,33 @@ export function ConsoleWorkspace({
   // each fetching once — a real but minor duplicate GET, traded here for
   // not needing a matchMedia-driven "which one is actually visible" hook
   // just to dodge one small extra request.
-  const sidebarBody = (
+  // Split into two halves so the mobile sheet can show just one at a time
+  // (see `mobileSheetTab` above) while the desktop aside below still stacks
+  // both together, unchanged.
+  const historyBody = hasAccess ? (
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <ConsoleHistorySidebar activeId={activeId} onSelect={handleSelect} onNewChat={handleNewChat} refreshToken={historyRefreshToken} />
+    </div>
+  ) : (
+    <ConsoleUpgradePanel />
+  );
+  const settingsBody = (
     <>
-      {hasAccess ? (
-        <>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <ConsoleHistorySidebar activeId={activeId} onSelect={handleSelect} onNewChat={handleNewChat} refreshToken={historyRefreshToken} />
-          </div>
-          {initialState && (
-            <ConsoleUsagePanel
-              initialState={initialState}
-              initialCapEnabled={initialCapEnabled}
-              initialCapCents={initialCapCents}
-              showIntro={showIntro}
-            />
-          )}
-        </>
-      ) : (
-        <ConsoleUpgradePanel />
+      {hasAccess && initialState && (
+        <ConsoleUsagePanel
+          initialState={initialState}
+          initialCapEnabled={initialCapEnabled}
+          initialCapCents={initialCapCents}
+          showIntro={showIntro}
+        />
       )}
       <ConsolePlanStatus plan={plan} hasAccess={hasAccess} />
+    </>
+  );
+  const sidebarBody = (
+    <>
+      {historyBody}
+      {settingsBody}
     </>
   );
 
@@ -158,17 +173,42 @@ export function ConsoleWorkspace({
       <aside className="hidden h-[calc(100vh-8rem)] flex-col gap-4 lg:flex lg:sticky lg:top-24">{sidebarBody}</aside>
 
       <div className="flex h-[calc(100vh-8rem)] flex-col gap-2">
-        {/* Mobile-only access point for history + usage + plan (2026-07-31,
-            direct ask) — a real, always-visible button, not something only
-            reachable through a swipe gesture. */}
-        <button
-          type="button"
-          onClick={openMobileSheet}
-          className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm font-medium text-neutral-300 hover:bg-white/5 lg:hidden"
-        >
-          <History className="h-4 w-4" />
-          History &amp; settings
-        </button>
+        {/* Mobile-only access point for dashboard/history/usage/plan
+            (2026-07-31, direct ask for a real always-visible entry point,
+            not something only reachable through a swipe gesture; 2026-08-01,
+            direct ask to shrink the full-width bar down to a small floating
+            pill with three separate icon buttons instead of one combined
+            "History & settings" label). */}
+        <div className="flex justify-center lg:hidden">
+          <div className="inline-flex items-center gap-0.5 rounded-full border border-white/10 bg-white/[0.04] p-1 shadow-lg shadow-black/20">
+            <Link
+              href="https://signedby.ai/dashboard"
+              aria-label="Dashboard"
+              title="Dashboard"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 hover:bg-white/10 hover:text-white"
+            >
+              <Home className="h-4 w-4" />
+            </Link>
+            <button
+              type="button"
+              onClick={() => openMobileSheet("history")}
+              aria-label="History"
+              title="History"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 hover:bg-white/10 hover:text-white"
+            >
+              <History className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => openMobileSheet("settings")}
+              aria-label="Settings"
+              title="Settings"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 hover:bg-white/10 hover:text-white"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
 
         <div className="min-h-0 flex-1">
           {hasAccess ? (
@@ -197,7 +237,7 @@ export function ConsoleWorkspace({
         >
           <div className="mx-auto h-1 w-10 shrink-0 rounded-full bg-white/15" />
           <div className="flex shrink-0 items-center justify-between">
-            <p className="text-sm font-medium text-white">History &amp; settings</p>
+            <p className="text-sm font-medium text-white">{mobileSheetTab === "history" ? "History" : "Settings"}</p>
             <button
               type="button"
               onClick={() => setMobileSheetOpen(false)}
@@ -207,7 +247,9 @@ export function ConsoleWorkspace({
               <X className="h-4 w-4" />
             </button>
           </div>
-          {everOpened && <div className="flex flex-1 flex-col gap-4">{sidebarBody}</div>}
+          {everOpened && (
+            <div className="flex flex-1 flex-col gap-4">{mobileSheetTab === "history" ? historyBody : settingsBody}</div>
+          )}
         </div>
       </div>
     </div>

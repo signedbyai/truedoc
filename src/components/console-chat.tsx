@@ -128,6 +128,77 @@ function parseBoxTable(block: string): { header: string[]; rows: string[][] } | 
   return { header: rows[0], rows: rows.slice(1) };
 }
 
+// Matches a GFM table's separator row: |---|---|, |:--|--:|, ---|---, etc.
+// (leading/trailing pipes optional either way, same as the header/data rows).
+const PIPE_TABLE_SEPARATOR_RE = /^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?$/;
+
+/** Parses a standard markdown pipe table (2026-08-01, direct ask — Mistral
+ *  reaches for GFM-style `| a | b |` / `|---|---|` tables for things like
+ *  template lists, same as it reaches for **bold**, and those were
+ *  rendering as literal pipe-and-dash text instead of an actual table).
+ *  Returns null if the block doesn't have a real separator row on line 2,
+ *  so callers fall back to plain paragraph rendering rather than mangling
+ *  prose that merely contains a "|" character. */
+function parsePipeTable(block: string): { header: string[]; rows: string[][] } | null {
+  const lines = block
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+  if (lines.length < 2 || !lines[0].startsWith("|") || !PIPE_TABLE_SEPARATOR_RE.test(lines[1])) return null;
+
+  const toCells = (line: string) => {
+    const trimmed = line.replace(/^\|/, "").replace(/\|$/, "");
+    return trimmed.split("|").map((c) => c.trim());
+  };
+  const header = toCells(lines[0]);
+  const rows = lines
+    .slice(2)
+    .filter((l) => l.startsWith("|"))
+    .map(toCells);
+  if (rows.length === 0) return null;
+  // Defensively pad/trim data rows to the header's width rather than
+  // dropping the whole table over one ragged row from the model.
+  const width = header.length;
+  return { header, rows: rows.map((r) => (r.length === width ? r : [...r, ...Array(Math.max(0, width - r.length)).fill("")].slice(0, width))) };
+}
+
+/** Shared table markup for both parsers above — box-drawing tables and GFM
+ *  pipe tables render identically once parsed into header/rows. */
+function renderTable(table: { header: string[]; rows: string[][] }, blockKey: number): React.ReactNode {
+  return (
+    <div key={blockKey} className="overflow-x-auto rounded-lg border border-white/10">
+      <table className="w-full min-w-max border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-white/10 bg-white/[0.04]">
+            {table.header.map((cell, i) => (
+              <th key={i} className="px-3 py-1.5 text-left font-medium text-neutral-400">
+                {cell}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {table.rows.map((row, r) => (
+            <tr key={r} className={r % 2 ? "bg-white/[0.02]" : ""}>
+              {row.map((cell, c) =>
+                c === 0 ? (
+                  <td key={c} className="px-3 py-1.5 text-neutral-200">
+                    <CopyableValue value={cell} />
+                  </td>
+                ) : (
+                  <td key={c} className="px-3 py-1.5 text-neutral-400">
+                    {cell}
+                  </td>
+                )
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 /** Renders one markdown-ish block: a table, a heading, a horizontal rule,
  *  a bullet/numbered list, or a paragraph — grouping consecutive lines of
  *  the same kind together (a block can mix a heading line directly above
@@ -137,42 +208,18 @@ function parseBoxTable(block: string): { header: string[]; rows: string[][] } | 
  *  prompt) render via CopyableValue so a name can be grabbed with one
  *  press instead of a manual select. */
 function renderBlock(block: string, blockKey: number): React.ReactNode {
+  // GFM-style pipe table (`| a | b |` / `|---|---|`) — checked first since
+  // its lines start with a plain "|", nothing box-drawing-specific to key
+  // off of. See parsePipeTable's doc comment.
+  const firstLine = block.split("\n")[0]?.trim() ?? "";
+  if (firstLine.startsWith("|")) {
+    const pipeTable = parsePipeTable(block);
+    if (pipeTable) return renderTable(pipeTable, blockKey);
+  }
+
   if (/[┌┬┐├┼┤└┴┘─│╭╮╰╯]/.test(block)) {
     const table = parseBoxTable(block);
-    if (table) {
-      return (
-        <div key={blockKey} className="overflow-x-auto rounded-lg border border-white/10">
-          <table className="w-full min-w-max border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-white/10 bg-white/[0.04]">
-                {table.header.map((cell, i) => (
-                  <th key={i} className="px-3 py-1.5 text-left font-medium text-neutral-400">
-                    {cell}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {table.rows.map((row, r) => (
-                <tr key={r} className={r % 2 ? "bg-white/[0.02]" : ""}>
-                  {row.map((cell, c) =>
-                    c === 0 ? (
-                      <td key={c} className="px-3 py-1.5 text-neutral-200">
-                        <CopyableValue value={cell} />
-                      </td>
-                    ) : (
-                      <td key={c} className="px-3 py-1.5 text-neutral-400">
-                        {cell}
-                      </td>
-                    )
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-    }
+    if (table) return renderTable(table, blockKey);
     // Didn't parse as a clean table — fall back to the raw monospace block
     // rather than lose alignment entirely.
     return (
