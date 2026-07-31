@@ -4,6 +4,7 @@ import Image from "next/image";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { FlagValues } from "flags/react";
+import { ArrowUp, Paperclip } from "lucide-react";
 import { CtaLink } from "@/components/cta-link";
 import { ctaColorFlag } from "@/flags";
 import { isConsoleHost, consoleUrl } from "@/lib/console-host";
@@ -150,6 +151,70 @@ export default async function ConsolePage() {
           <p className="text-xs text-slate-500">
             Requires the Pro plan or higher (templates access). Free to sign up and try the rest of SignedBy first.
           </p>
+        </div>
+      </section>
+
+      {/* Hero visual (2026-07-31, direct instruction): the same "product
+          frame with the signer's phone overlapping its bottom-right
+          corner" convention used on the homepage (hero-field-editor.png)
+          and /developers (a curl request/response terminal) — see those
+          for the established pattern. This page's audience is neither a
+          sender looking at the field editor nor a raw API caller, so the
+          equivalent frame here is a mocked console chat exchange (an
+          example prompt + the confirm-before-send reply), styled to match
+          the real /console/app chat UI (console-chat.tsx: neutral-950
+          canvas, neutral-800 user bubble, borderless assistant text,
+          yellow Confirm button, pill input bar with paperclip/Mistral
+          pill/send arrow) rather than a literal screenshot — there's no
+          production screenshot of the (not-yet-deployed) chat to use, and
+          this reads as more legible/reproducible than one would anyway.
+          The phone overlay is the exact same asset + positioning as the
+          other two pages: the signer's experience is identical no matter
+          how the send was triggered. */}
+      <section className="mx-auto w-full max-w-3xl px-6 pb-4 sm:pr-12">
+        <div className="relative mx-auto max-w-[34rem]">
+          <div className="w-[82%] overflow-hidden rounded-xl border border-white/10 bg-neutral-950 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)] sm:w-full">
+            <div className="flex items-center gap-1.5 border-b border-white/10 px-4 py-3">
+              <span className="h-2.5 w-2.5 rounded-full bg-white/15" aria-hidden="true" />
+              <span className="h-2.5 w-2.5 rounded-full bg-white/15" aria-hidden="true" />
+              <span className="h-2.5 w-2.5 rounded-full bg-white/15" aria-hidden="true" />
+            </div>
+            <div className="flex flex-col gap-3 px-5 py-5">
+              <div className="ml-auto max-w-[85%] rounded-2xl bg-neutral-800 px-4 py-2.5 text-sm text-white">
+                Send the NDA template to jane@acme.com
+              </div>
+              <div className="mr-auto max-w-[90%] text-sm leading-relaxed text-neutral-300">
+                Sending the NDA Template to jane@acme.com — no fields need filling in, expires in 7 days. Confirm to
+                send?
+                <div className="mt-2 flex gap-2">
+                  <span className="rounded-lg bg-yellow-300 px-3 py-1.5 text-xs font-semibold text-slate-900">
+                    Confirm send
+                  </span>
+                  <span className="rounded-lg px-3 py-1.5 text-xs font-medium text-neutral-500">Cancel</span>
+                </div>
+              </div>
+            </div>
+            <div className="mx-5 mb-5 flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900 px-3 py-2.5">
+              <Paperclip className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden="true" />
+              <span className="flex-1 truncate text-sm text-neutral-500">Ask to list or find a template…</span>
+              <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] font-medium text-neutral-500">
+                Mistral
+              </span>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-yellow-300 text-slate-900">
+                <ArrowUp className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+              </span>
+            </div>
+          </div>
+          <div className="absolute -bottom-6 right-0 w-[30%] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:-right-6 sm:w-[28%] lg:-right-10 lg:w-[30%]">
+            <Image
+              src="/hero-signer-mobile.png"
+              alt="The signer's side of the same send: a handwritten signature drawn in the signature pad on a phone, with a yellow slide-to-sign bar ready to submit"
+              width={1236}
+              height={2370}
+              sizes="(min-width: 1024px) 12rem, (min-width: 640px) 11rem, 30vw"
+              className="h-auto w-full"
+            />
+          </div>
         </div>
       </section>
 
