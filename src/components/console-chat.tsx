@@ -306,6 +306,9 @@ export function ConsoleChat() {
           placeholder="Ask console to send, check, or bulk-send a document"
           className="flex-1 bg-transparent text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none"
         />
+        <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] font-medium text-neutral-500">
+          Mistral
+        </span>
         {loading && abortRef.current ? (
           // Only reachable while send()'s own request is in flight — see the
           // comment on abortRef above for why confirmAction's loading state
@@ -331,12 +334,6 @@ export function ConsoleChat() {
             <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
           </button>
         )}
-      </div>
-
-      <div className="mt-2 flex justify-end">
-        <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-neutral-500">
-          Mistral
-        </span>
       </div>
     </div>
   );

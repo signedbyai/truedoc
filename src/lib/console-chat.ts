@@ -21,9 +21,15 @@ const CONFIRM_REQUIRED = new Set(["send_document", "bulk_send"]);
 
 const SYSTEM_PROMPT =
   "You are SignedBy Console, an assistant that sends, tracks, and manages e-signature documents on the user's " +
-  "SignedBy account by calling the tools provided. Only take an action the user has clearly asked for. Never " +
-  "invent a template_id or document_id — call list_templates or list_documents first if you don't already have " +
-  "the right id from earlier in the conversation.\n\n" +
+  "SignedBy account by calling the tools provided. Only take an action the user has clearly asked for. Never, " +
+  "under any circumstance, invent or guess a template_id or document_id. The user never sees or works with " +
+  "raw ids — they refer to things by name, recipient, or recency ('the NDA', 'the one I just sent to jane', " +
+  "'this', 'the latest one'), and it's your job to resolve that to the real id yourself, invisibly. You can " +
+  "call more than one tool per turn in sequence — e.g. call list_documents first to find which document 'this' " +
+  "or 'the latest one' refers to (match on title, recency, or recipient if you can tell from context), THEN " +
+  "call check_status or void_document with the real id you found. Never present a raw id to the user unless " +
+  "they explicitly ask for it. If you truly can't find a match after looking, say so plainly and ask the user " +
+  "for a distinguishing detail — don't guess an id to keep going.\n\n" +
   "Be descriptive in your replies, not terse. After looking something up or taking an action, say clearly what " +
   "you found or did and spell out the details that matter — names, counts, statuses, settings used — rather " +
   "than a bare 'Done' or 'Sent'. A few sentences is fine; this isn't about being wordy, it's about the user " +
@@ -344,42 +350,63 @@ export async function runConsoleChatTurn(params: {
 
   if (messages.length === 0) return { type: "error", error: "No message provided." };
 
-  const wireMessages: unknown[] = [
+  let wireMessages: unknown[] = [
     { role: "system", content: SYSTEM_PROMPT },
     ...messages.map((m) => ({ role: m.role, content: m.content })),
   ];
 
+  // Bounded tool-calling loop (2026-07-31) — previously this was exactly
+  // two Mistral calls: one to decide on a tool, one to turn that tool's
+  // result into text, full stop. That meant a question like "was it
+  // signed?" — where the model needs to call list_documents to find WHICH
+  // document, then check_status on the real id it found — physically
+  // couldn't be answered in one turn: the model would either invent an id
+  // (observed live) or its second call's own follow-up tool_calls got
+  // silently discarded, since the old code only ever read `second.content`.
+  // Looping (capped so a confused model can't run up API cost/turn latency
+  // forever) lets it chain list_documents → check_status, or
+  // list_templates → send_document's confirm step, etc., the way the
+  // system prompt's "reconcile a name to an id yourself" instruction
+  // actually requires.
+  const MAX_TOOL_STEPS = 4;
   onStatus?.("Thinking…");
-  const first = await callMistral(wireMessages, TOOLS);
-  const toolCall = first.tool_calls?.[0];
+  let call = await callMistral(wireMessages, TOOLS);
 
-  if (!toolCall) {
-    // Mistral occasionally returns neither a tool call nor any text on a
-    // turn (observed 2026-07-30) — a friendly fallback beats a blank bubble.
-    return { type: "message", content: first.content?.trim() || "Sorry, I didn't catch that — could you rephrase?" };
-  }
+  for (let step = 0; ; step++) {
+    const toolCall = call.tool_calls?.[0];
 
-  const name = toolCall.function.name;
-  let args: Record<string, unknown> = {};
-  try {
-    args = JSON.parse(toolCall.function.arguments || "{}");
-  } catch {
-    return { type: "error", error: "Couldn't parse the requested action." };
-  }
+    if (!toolCall) {
+      // Mistral occasionally returns neither a tool call nor any text on a
+      // turn (observed 2026-07-30) — a friendly fallback beats a blank bubble.
+      return { type: "message", content: call.content?.trim() || "Sorry, I didn't catch that — could you rephrase?" };
+    }
 
-  if (CONFIRM_REQUIRED.has(name)) {
-    return { type: "confirm", tool: name, arguments: args, content: describeConfirmAction(name, args) };
-  }
+    const name = toolCall.function.name;
+    let args: Record<string, unknown> = {};
+    try {
+      args = JSON.parse(toolCall.function.arguments || "{}");
+    } catch {
+      return { type: "error", error: "Couldn't parse the requested action." };
+    }
 
-  // Read-only tools execute immediately, then a second Mistral call turns
-  // the raw result into a natural-language reply.
-  onStatus?.(toolStatusPhrase(name, args));
-  const result = await executeTool(orgId, metered, name, args);
-  const toolResultText = JSON.stringify(result);
+    if (CONFIRM_REQUIRED.has(name)) {
+      return { type: "confirm", tool: name, arguments: args, content: describeConfirmAction(name, args) };
+    }
 
-  onStatus?.("Putting together a reply…");
-  const second = await callMistral(
-    [
+    if (step >= MAX_TOOL_STEPS) {
+      return {
+        type: "message",
+        content: "That took more lookups than expected — try again with a bit more detail, like which document or recipient you mean.",
+      };
+    }
+
+    // Read-only tool: execute, feed the result back, and see whether Mistral
+    // is ready to answer in text or wants to chain into another tool call.
+    onStatus?.(toolStatusPhrase(name, args));
+    const result = await executeTool(orgId, metered, name, args);
+    const toolResultText = JSON.stringify(result);
+
+    wireMessages = [
       ...wireMessages,
       // Mistral rejects `content: null` on a tool-call assistant message —
       // "Assistant message must have either content or tool_calls, but not
@@ -389,11 +416,11 @@ export async function runConsoleChatTurn(params: {
       // tool_calls present.
       { role: "assistant", content: "", tool_calls: [toolCall] },
       { role: "tool", tool_call_id: toolCall.id, name, content: toolResultText },
-    ],
-    TOOLS
-  );
+    ];
 
-  return { type: "message", content: second.content ?? toolResultText };
+    onStatus?.("Putting together a reply…");
+    call = await callMistral(wireMessages, TOOLS);
+  }
 }
 
 function capitalize(text: string): string {
