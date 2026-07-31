@@ -199,7 +199,16 @@ export async function sendDocumentAction(params: {
  *  if the spend cap is hit mid-run, reporting exactly how many sent before
  *  that happened. `expiresAt`/`authRequired`/`inviteSubject`/`inviteMessage`
  *  (2026-07-31) apply identically to every recipient in the batch — one
- *  set of send settings per bulk-send call, not per-recipient. */
+ *  set of send settings per bulk-send call, not per-recipient.
+ *
+ *  No hard recipient-count cap (2026-07-31, direct instruction — dropped
+ *  the previous 200-per-call limit). Both callers of this function
+ *  (console-chat.ts's bulk_send tool, and /api/v1/documents/bulk-send) are
+ *  always metered — the per-recipient $ spend cap checked in the loop
+ *  below is what actually bounds runaway usage now, so a separate fixed
+ *  headcount cap on top of it was redundant. Unrelated to, and doesn't
+ *  touch, the dashboard's own bulk-send (/api/templates/[id]/bulk-send),
+ *  which is unmetered and keeps its own 200-recipient limit. */
 export async function bulkSendAction(params: {
   orgId: string;
   templateId: string;
@@ -215,7 +224,6 @@ export async function bulkSendAction(params: {
 > {
   const { orgId, templateId, recipients, metered, expiresAt, authRequired, inviteSubject, inviteMessage } = params;
   if (recipients.length === 0) return { ok: false, error: "No recipients provided.", status: 400 };
-  if (recipients.length > 200) return { ok: false, error: "Bulk send is capped at 200 recipients per call.", status: 400 };
 
   const sent: { documentId: string; email: string }[] = [];
   const skippedCapReached: string[] = [];

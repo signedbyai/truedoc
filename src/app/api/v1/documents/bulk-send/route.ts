@@ -20,6 +20,11 @@ import { bulkSendAction } from "@/lib/console-actions";
 // standard plans" for every tier including Business (2026-07-30, direct
 // instruction). The plain /api/v1/documents endpoint is untouched and
 // keeps Business's original unmetered behavior.
+//
+// No `.max()` on recipients (2026-07-31, direct instruction — dropped the
+// previous 200-recipient cap here and in bulkSendAction below it, console-
+// only) — this call is always metered, so the per-recipient $ spend cap is
+// what bounds a runaway batch now, not a separate fixed headcount limit.
 const bodySchema = z.object({
   template_id: z.string().uuid(),
   recipients: z
@@ -29,8 +34,7 @@ const bodySchema = z.object({
         name: z.string().trim().max(200).optional().nullable(),
       })
     )
-    .min(1)
-    .max(200),
+    .min(1),
 });
 
 export async function POST(request: Request) {

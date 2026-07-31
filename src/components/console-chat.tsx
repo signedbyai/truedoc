@@ -288,8 +288,12 @@ function AssistantContent({ content }: { content: string }) {
 // file just stages+sends that chat turn; the actual send still can't happen
 // without the separate Confirm click on the bulk_send tool call, so this
 // is safe to auto-send as a message.
-const MAX_BULK_FILE_BYTES = 256 * 1024; // generous for a few hundred lines, well under Mistral's context limit
-const MAX_BULK_FILE_LINES = 200; // matches bulkSendAction's own cap — fail fast client-side instead of a round trip
+// Still a real ceiling (2026-07-31: the old MAX_BULK_FILE_LINES=200 check
+// right below this was removed — it only existed to mirror bulkSendAction's
+// now-dropped 200-recipient cap, see console-actions.ts) — this one is
+// about not overflowing Mistral's own context window with the raw file
+// text, not a business limit on batch size.
+const MAX_BULK_FILE_BYTES = 256 * 1024; // generous for a few thousand lines, well under Mistral's context limit
 
 // Prefills the composer with a friendly nudge the very first time anyone on
 // this browser opens a brand-new console chat (2026-07-31, direct ask) — a
@@ -629,7 +633,7 @@ export function ConsoleChat({
       return;
     }
     if (file.size > MAX_BULK_FILE_BYTES) {
-      setError("That file's too large for a bulk send — try trimming the list to a couple hundred rows.");
+      setError("That file's too large to attach here — try trimming the list down.");
       return;
     }
 
@@ -637,10 +641,6 @@ export function ConsoleChat({
     const lineCount = text.split("\n").filter((l) => l.trim()).length;
     if (lineCount === 0) {
       setError("That file doesn't seem to have any recipients in it.");
-      return;
-    }
-    if (lineCount > MAX_BULK_FILE_LINES) {
-      setError(`That file has ${lineCount} rows — bulk send is capped at ${MAX_BULK_FILE_LINES} recipients per batch. Trim it and try again.`);
       return;
     }
 
