@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, ChevronDown, Paperclip, Square } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, Copy, Paperclip, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { parseNdjsonLine, splitNdjsonLines } from "@/lib/ndjson";
 
@@ -26,33 +26,255 @@ export type Bubble =
   | { role: "user"; content: string }
   | { role: "assistant"; content: string; confirm?: { tool: string; arguments: Record<string, unknown> } };
 
-/** Renders an assistant reply, splitting out any Unicode box-drawing grid
- *  table (2026-07-31, direct ask — lists/statuses should render as a
- *  readable grid rather than a squished paragraph) into its own monospace,
- *  whitespace-preserving block so │/─/┼ etc. actually line up in columns,
- *  while surrounding narrative sentences stay in normal prose. The system
- *  prompt (console-chat.ts) is what actually tells Mistral to draw these
- *  tables; this only has to render whatever it sends back. Plain replies
- *  with no table still get `whitespace-pre-wrap` so intentional line
- *  breaks in a descriptive reply aren't collapsed into one run-on line —
- *  a real (if minor) pre-existing bug this fix incidentally also closes. */
-function AssistantContent({ content }: { content: string }) {
-  const blocks = content.split(/\n{2,}/);
+/** Copies `text` to the clipboard on click/tap and flashes a brief check
+ *  mark instead of relying on a tooltip alone — 2026-07-31, direct ask:
+ *  anything the user might need to select out of a reply (a template name
+ *  in a list, an id) should be copyable with a single press rather than a
+ *  manual select-and-copy, which is fiddly on mobile in particular. */
+function CopyableValue({ value, className = "" }: { value: string; className?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      // Clipboard API can be unavailable (insecure context, permissions) —
+      // the button still gives visual feedback either way since the value
+      // is short enough to select manually as a fallback.
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  }
+
   return (
-    <div className="flex flex-col gap-2">
-      {blocks.map((block, i) =>
-        /[┌┬┐├┼┤└┴┘─│╭╮╰╯]/.test(block) ? (
-          <pre key={i} className="overflow-x-auto whitespace-pre font-mono text-sm text-neutral-200">
-            {block}
-          </pre>
-        ) : (
-          <p key={i} className="whitespace-pre-wrap">
-            {block}
-          </p>
-        )
+    <button
+      type="button"
+      onClick={copy}
+      title={copied ? "Copied" : `Copy "${value}"`}
+      className={`group inline-flex max-w-full items-center gap-1 rounded-md px-1 -mx-1 text-left hover:bg-white/10 active:bg-white/15 ${className}`}
+    >
+      <span className="truncate">{value}</span>
+      {copied ? (
+        <Check className="h-3 w-3 shrink-0 text-yellow-300" aria-hidden="true" />
+      ) : (
+        <Copy className="h-3 w-3 shrink-0 text-neutral-500 opacity-0 group-hover:opacity-100" aria-hidden="true" />
       )}
+    </button>
+  );
+}
+
+/** Splits a run of inline text on **bold**, *italic*, and `code` markers
+ *  and returns real elements for them — the system prompt (console-chat.ts)
+ *  doesn't ask Mistral to use markdown, but the model reaches for it anyway
+ *  (2026-07-31, direct ask: output was showing up as literal asterisks
+ *  instead of rendering, e.g. "**SignedBy Console**"), so this renders
+ *  whatever markdown-ish syntax actually comes back rather than trying to
+ *  suppress it at the prompt level. */
+function inlineMarkdown(text: string, keyPrefix: string): React.ReactNode[] {
+  const parts = text.split(/(\*\*[^*\n]+\*\*|`[^`\n]+`|\*[^*\n]+\*)/g).filter((p) => p !== "");
+  return parts.map((part, i) => {
+    const key = `${keyPrefix}-${i}`;
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+      return (
+        <strong key={key} className="font-semibold text-white">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith("`") && part.endsWith("`") && part.length > 2) {
+      return (
+        <code key={key} className="rounded bg-white/10 px-1 py-0.5 font-mono text-[0.85em] text-neutral-200">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
+      return (
+        <em key={key} className="text-neutral-300">
+          {part.slice(1, -1)}
+        </em>
+      );
+    }
+    return part;
+  });
+}
+
+const HR_RE = /^[-–—_ー]{3,}$/;
+const BULLET_RE = /^[-*•]\s+/;
+const NUMBERED_RE = /^\d+[.)]\s+/;
+const HEADING_RE = /^(#{1,6})\s+(.*)$/;
+
+/** Parses a Unicode box-drawing grid table (see console-chat.ts's system
+ *  prompt, which is what tells Mistral to draw these for any list of
+ *  documents/templates/recipients) into header + row cell arrays. Border
+ *  lines (┌/├/└-prefixed) carry no cell text and are skipped; every
+ *  remaining line starting with │ is either the header or a data row, in
+ *  order. Returns null if the block doesn't actually look like a
+ *  well-formed table (e.g. a stray box-drawing character in prose), so
+ *  callers can fall back to the old raw <pre> rendering rather than
+ *  showing a broken table. */
+function parseBoxTable(block: string): { header: string[]; rows: string[][] } | null {
+  const cellLines = block.split("\n").filter((line) => line.trim().startsWith("│"));
+  if (cellLines.length < 2) return null;
+  const toCells = (line: string) =>
+    line
+      .split("│")
+      .map((c) => c.trim())
+      .filter((_, i, arr) => !(i === 0 || i === arr.length - 1) || arr[i] !== ""); // drop the empty edge fragments from a leading/trailing │
+  const rows = cellLines.map(toCells).filter((r) => r.length > 0);
+  if (rows.length < 2) return null;
+  const width = rows[0].length;
+  if (!rows.every((r) => r.length === width)) return null;
+  return { header: rows[0], rows: rows.slice(1) };
+}
+
+/** Renders one markdown-ish block: a table, a heading, a horizontal rule,
+ *  a bullet/numbered list, or a paragraph — grouping consecutive lines of
+ *  the same kind together (a block can mix a heading line directly above
+ *  plain prose with only single newlines between them, which is exactly
+ *  the shape Mistral's replies come back in). Table cells in the first
+ *  column (documents/templates are always listed there per the system
+ *  prompt) render via CopyableValue so a name can be grabbed with one
+ *  press instead of a manual select. */
+function renderBlock(block: string, blockKey: number): React.ReactNode {
+  if (/[┌┬┐├┼┤└┴┘─│╭╮╰╯]/.test(block)) {
+    const table = parseBoxTable(block);
+    if (table) {
+      return (
+        <div key={blockKey} className="overflow-x-auto rounded-lg border border-white/10">
+          <table className="w-full min-w-max border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-white/10 bg-white/[0.04]">
+                {table.header.map((cell, i) => (
+                  <th key={i} className="px-3 py-1.5 text-left font-medium text-neutral-400">
+                    {cell}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {table.rows.map((row, r) => (
+                <tr key={r} className={r % 2 ? "bg-white/[0.02]" : ""}>
+                  {row.map((cell, c) =>
+                    c === 0 ? (
+                      <td key={c} className="px-3 py-1.5 text-neutral-200">
+                        <CopyableValue value={cell} />
+                      </td>
+                    ) : (
+                      <td key={c} className="px-3 py-1.5 text-neutral-400">
+                        {cell}
+                      </td>
+                    )
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+    // Didn't parse as a clean table — fall back to the raw monospace block
+    // rather than lose alignment entirely.
+    return (
+      <pre key={blockKey} className="overflow-x-auto whitespace-pre font-mono text-sm text-neutral-200">
+        {block}
+      </pre>
+    );
+  }
+
+  const lines = block.split("\n");
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+  let group = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const heading = line.match(HEADING_RE);
+    if (heading) {
+      const Tag = (["h4", "h4", "h4", "h5", "h5", "h5"][heading[1].length - 1] ?? "h5") as "h4" | "h5";
+      nodes.push(
+        <Tag key={`${blockKey}-${group}`} className="font-semibold text-white">
+          {inlineMarkdown(heading[2], `${blockKey}-${group}`)}
+        </Tag>
+      );
+      i += 1;
+      group += 1;
+      continue;
+    }
+    if (HR_RE.test(line.trim())) {
+      nodes.push(<hr key={`${blockKey}-${group}`} className="border-white/10" />);
+      i += 1;
+      group += 1;
+      continue;
+    }
+    if (BULLET_RE.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && BULLET_RE.test(lines[i])) {
+        items.push(lines[i].replace(BULLET_RE, ""));
+        i += 1;
+      }
+      nodes.push(
+        <ul key={`${blockKey}-${group}`} className="list-disc space-y-0.5 pl-5">
+          {items.map((item, j) => (
+            <li key={j}>{inlineMarkdown(item, `${blockKey}-${group}-${j}`)}</li>
+          ))}
+        </ul>
+      );
+      group += 1;
+      continue;
+    }
+    if (NUMBERED_RE.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && NUMBERED_RE.test(lines[i])) {
+        items.push(lines[i].replace(NUMBERED_RE, ""));
+        i += 1;
+      }
+      nodes.push(
+        <ol key={`${blockKey}-${group}`} className="list-decimal space-y-0.5 pl-5">
+          {items.map((item, j) => (
+            <li key={j}>{inlineMarkdown(item, `${blockKey}-${group}-${j}`)}</li>
+          ))}
+        </ol>
+      );
+      group += 1;
+      continue;
+    }
+    // Plain prose lines — collect a run of them into one paragraph, joined
+    // with <br/> so single newlines within a block still read as line
+    // breaks instead of being collapsed.
+    const prose: string[] = [];
+    while (i < lines.length && !HEADING_RE.test(lines[i]) && !HR_RE.test(lines[i].trim()) && !BULLET_RE.test(lines[i]) && !NUMBERED_RE.test(lines[i])) {
+      prose.push(lines[i]);
+      i += 1;
+    }
+    nodes.push(
+      <p key={`${blockKey}-${group}`}>
+        {prose.map((line, j) => (
+          <span key={j}>
+            {inlineMarkdown(line, `${blockKey}-${group}-${j}`)}
+            {j < prose.length - 1 && <br />}
+          </span>
+        ))}
+      </p>
+    );
+    group += 1;
+  }
+  return (
+    <div key={blockKey} className="flex flex-col gap-2">
+      {nodes}
     </div>
   );
+}
+
+/** Renders an assistant reply: splits it into blank-line-separated blocks,
+ *  then renders each as a table, heading, list, rule, or paragraph (see
+ *  renderBlock above). Markdown-ish syntax (**bold**, headings, lists) now
+ *  actually renders instead of showing up as literal asterisks/hashes
+ *  (2026-07-31, direct ask), and box-drawing tables render as real <table>
+ *  markup with a copy-on-press first column instead of a raw monospace
+ *  block. */
+function AssistantContent({ content }: { content: string }) {
+  const blocks = content.split(/\n{2,}/);
+  return <div className="flex flex-col gap-3">{blocks.map((block, i) => renderBlock(block, i))}</div>;
 }
 
 // Bulk-send recipient lists can arrive as an uploaded file (2026-07-31)
@@ -68,6 +290,18 @@ function AssistantContent({ content }: { content: string }) {
 // is safe to auto-send as a message.
 const MAX_BULK_FILE_BYTES = 256 * 1024; // generous for a few hundred lines, well under Mistral's context limit
 const MAX_BULK_FILE_LINES = 200; // matches bulkSendAction's own cap — fail fast client-side instead of a round trip
+
+// Prefills the composer with a friendly nudge the very first time anyone on
+// this browser opens a brand-new console chat (2026-07-31, direct ask) — a
+// real, editable/sendable value in the textarea itself, not just placeholder
+// text, so a first-time user can get a response with a single tap of Send
+// before they've figured out what to ask. Tracked in localStorage (not a
+// cookie — see the project's standing preference to avoid new cookies) so it
+// only ever fires once per browser, and only ever on a genuinely empty new
+// chat — reopening a past conversation or a chat that already has a draft
+// typed never overwrites it.
+const FIRST_OPEN_PROMPT_KEY = "signedby-console-first-open-prompt-seen";
+const FIRST_OPEN_PROMPT_TEXT = "Let me know what you can do…";
 
 /** Reads /api/console/chat's streamed NDJSON body, forwarding each
  *  {type:"status"} line to onStatus as it arrives and returning whatever
@@ -154,6 +388,29 @@ export function ConsoleChat({
   // deliberately only covers the safe-to-interrupt case (the model still
   // deciding what to do), never the point of no return.
   const abortRef = useRef<AbortController | null>(null);
+
+  // See FIRST_OPEN_PROMPT_KEY above. Runs once on mount, client-only (a
+  // useEffect rather than a useState initializer, so the server-rendered
+  // and first client render both start from the same empty string and
+  // there's no hydration mismatch).
+  useEffect(() => {
+    if (conversationId || initialMessages.length > 0) return;
+    try {
+      if (window.localStorage.getItem(FIRST_OPEN_PROMPT_KEY)) return;
+      window.localStorage.setItem(FIRST_OPEN_PROMPT_KEY, "1");
+      // Deferred a tick — same react-hooks/set-state-in-effect workaround
+      // used elsewhere in the app (new-document-button.tsx, field-editor.tsx).
+      Promise.resolve().then(() => setInput((cur) => cur || FIRST_OPEN_PROMPT_TEXT));
+    } catch {
+      // Storage can throw (private browsing, blocked storage) — a missed
+      // one-time nudge isn't worth surfacing an error for.
+    }
+    // Deliberately mount-only — conversationId/initialMessages are only
+    // ever meant to be read as they were at mount here (see the prop docs
+    // above: console-workspace.tsx remounts this component via `key`
+    // whenever either should actually change).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Autosave — fires whenever `messages` actually changes (a completed
   // turn, a confirm/cancel resolution), not on every keystroke. Creates
@@ -378,7 +635,14 @@ export function ConsoleChat({
         <div
           ref={messagesContainerRef}
           onScroll={handleMessagesScroll}
-          className="flex h-full flex-col gap-4 overflow-y-auto px-1 pb-1"
+          // pb-32 on mobile (2026-07-31, direct ask) — the composer below
+          // switches to `fixed` positioning at the bottom of the viewport
+          // on small screens (see the input bar below) rather than sitting
+          // in normal document flow, so it no longer pushes this scroll
+          // area up on its own; this bottom padding does that job instead,
+          // keeping the last message from being covered by the fixed bar.
+          // Not needed at lg: and up, where the composer is back in flow.
+          className="flex h-full flex-col gap-4 overflow-y-auto px-1 pb-32 lg:pb-1"
         >
           {messages.length === 0 && (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
@@ -438,7 +702,7 @@ export function ConsoleChat({
             aria-label="Scroll to latest message"
             title="Scroll to latest"
             onClick={jumpToLatest}
-            className="absolute bottom-2 left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-neutral-800/90 text-white shadow-lg backdrop-blur hover:bg-neutral-700"
+            className="absolute bottom-28 left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-neutral-800/90 text-white shadow-lg backdrop-blur hover:bg-neutral-700 lg:bottom-2"
           >
             <ChevronDown className="h-4 w-4" />
           </button>
@@ -454,8 +718,20 @@ export function ConsoleChat({
           same relative positions as before. A plain single-line <input>
           became a <textarea> so the extra height is actually usable for
           multi-line text, not just empty padding — Enter still sends
-          (Shift+Enter for a literal newline), unchanged from before. */}
-      <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-white/10 bg-neutral-900 px-4 py-3">
+          (Shift+Enter for a literal newline), unchanged from before.
+
+          Always pinned to the true bottom of the screen on mobile
+          (2026-07-31, direct ask) — below `lg:` this switches from sitting
+          in normal flow to `fixed inset-x-0 bottom-0`, so it stays put
+          regardless of how far the message list is scrolled or how tall
+          the page's own content is, rather than just being "the last thing
+          in a bounded column" the way it already was on desktop. Squared
+          corners + full-bleed width + a safe-area bottom inset (home
+          indicator / gesture bar) while fixed; reverts to the original
+          rounded floating bar once back in flow at lg:. */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-30 flex flex-col gap-2 border-t border-white/10 bg-neutral-950/95 px-4 pt-3 backdrop-blur-sm [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)] lg:static lg:z-auto lg:mt-3 lg:rounded-2xl lg:border lg:bg-neutral-900 lg:px-4 lg:py-3 lg:[padding-bottom:0.75rem] lg:backdrop-blur-none"
+      >
         <input ref={fileInputRef} type="file" accept=".csv,.txt,text/csv,text/plain" onChange={handleFileSelected} className="hidden" />
         <textarea
           rows={2}

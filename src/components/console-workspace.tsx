@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { History, X } from "lucide-react";
 import type { ConsoleBillingState } from "@/lib/console-usage";
 import { ConsoleChat, type Bubble } from "@/components/console-chat";
 import { ConsoleUsagePanel } from "@/components/console-usage-panel";
@@ -36,7 +37,18 @@ import { ConsoleUpgradePanel, ConsoleLockedChat } from "@/components/console-upg
  *  (history + usage panel) are replaced by ConsoleUpgradePanel, and the
  *  chat pane itself is replaced by ConsoleLockedChat — console genuinely
  *  doesn't work below Pro, so ConsoleChat is never even mounted in that
- *  case (on top of /api/console/chat independently 402ing a Free org). */
+ *  case (on top of /api/console/chat independently 402ing a Free org).
+ *
+ *  Mobile (2026-07-31, direct ask): below `lg:` the left column (history +
+ *  usage/upgrade + plan status) is hidden from normal layout — it used to
+ *  just stack above the chat pane, meaning you had to scroll an entire
+ *  extra screen's worth of content before reaching the chat at all — and
+ *  is instead reachable through an explicit "History" button (always
+ *  visible, not gesture-only) that opens it as a bottom sheet over the
+ *  chat. `document.body.dataset.consoleSheetOpen` is set while the sheet
+ *  is open so the console shell's mobile header (console/app/layout.tsx →
+ *  console-header-chrome.tsx) knows to stay visible instead of
+ *  auto-hiding out from under an open sheet. */
 export function ConsoleWorkspace({
   plan,
   hasAccess,
@@ -57,6 +69,27 @@ export function ConsoleWorkspace({
   const [resetKey, setResetKey] = useState(0);
   const [historyRefreshToken, setHistoryRefreshToken] = useState(0);
   const [loadingConversation, setLoadingConversation] = useState(false);
+  // Mobile bottom sheet (history + usage/upgrade + plan status) — see the
+  // "Mobile" doc comment above. `everOpened` lazily mounts the sheet's
+  // contents the first time it's opened rather than on initial page load,
+  // so ConsoleHistorySidebar's fetch doesn't fire twice (once for the
+  // hidden desktop aside, once for the sheet) on a fresh mobile visit
+  // that never opens it; once opened, it stays mounted so the closing
+  // slide-down animation has something to animate.
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const [everOpened, setEverOpened] = useState(false);
+
+  function openMobileSheet() {
+    setEverOpened(true);
+    setMobileSheetOpen(true);
+  }
+
+  useEffect(() => {
+    document.body.dataset.consoleSheetOpen = mobileSheetOpen ? "true" : "false";
+    return () => {
+      delete document.body.dataset.consoleSheetOpen;
+    };
+  }, [mobileSheetOpen]);
 
   async function handleSelect(id: string) {
     if (id === activeId || loadingConversation) return;
@@ -68,6 +101,7 @@ export function ConsoleWorkspace({
         setInitialMessages(data.messages);
         setActiveId(id);
         setResetKey((k) => k + 1);
+        setMobileSheetOpen(false); // picking a chat from the mobile sheet should also close it
       }
     } finally {
       setLoadingConversation(false);
@@ -75,6 +109,7 @@ export function ConsoleWorkspace({
   }
 
   function handleNewChat() {
+    setMobileSheetOpen(false);
     if (activeId === null && initialMessages.length === 0) return; // already a blank new chat
     setActiveId(null);
     setInitialMessages([]);
@@ -90,35 +125,97 @@ export function ConsoleWorkspace({
     setHistoryRefreshToken((t) => t + 1);
   }
 
+  // Shared between the desktop aside and the mobile bottom sheet — same
+  // history/usage(-or-upgrade)/plan-status stack either way, see the
+  // "Mobile" doc comment above. The desktop aside stays mounted (just
+  // `hidden` via CSS) below `lg:`, so on a phone that opens the sheet
+  // there are briefly two ConsoleHistorySidebar instances (one invisible)
+  // each fetching once — a real but minor duplicate GET, traded here for
+  // not needing a matchMedia-driven "which one is actually visible" hook
+  // just to dodge one small extra request.
+  const sidebarBody = (
+    <>
+      {hasAccess ? (
+        <>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <ConsoleHistorySidebar activeId={activeId} onSelect={handleSelect} onNewChat={handleNewChat} refreshToken={historyRefreshToken} />
+          </div>
+          {initialState && (
+            <ConsoleUsagePanel
+              initialState={initialState}
+              initialCapEnabled={initialCapEnabled}
+              initialCapCents={initialCapCents}
+              showIntro={showIntro}
+            />
+          )}
+        </>
+      ) : (
+        <ConsoleUpgradePanel />
+      )}
+      <ConsolePlanStatus plan={plan} hasAccess={hasAccess} />
+    </>
+  );
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_1fr]">
-      <aside className="flex h-[calc(100vh-8rem)] flex-col gap-4 lg:sticky lg:top-24">
-        {hasAccess ? (
-          <>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <ConsoleHistorySidebar activeId={activeId} onSelect={handleSelect} onNewChat={handleNewChat} refreshToken={historyRefreshToken} />
-            </div>
-            {initialState && (
-              <ConsoleUsagePanel
-                initialState={initialState}
-                initialCapEnabled={initialCapEnabled}
-                initialCapCents={initialCapCents}
-                showIntro={showIntro}
-              />
-            )}
-          </>
-        ) : (
-          <ConsoleUpgradePanel />
-        )}
-        <ConsolePlanStatus plan={plan} hasAccess={hasAccess} />
-      </aside>
+      {/* Desktop/tablet sidebar — hidden below `lg:` in favor of the
+          "History" button + bottom sheet below (2026-07-31, direct ask:
+          this used to just stack above the chat on mobile, forcing a
+          full-screen scroll before you ever reached the chat itself). */}
+      <aside className="hidden h-[calc(100vh-8rem)] flex-col gap-4 lg:flex lg:sticky lg:top-24">{sidebarBody}</aside>
 
-      <div className="h-[calc(100vh-8rem)]">
-        {hasAccess ? (
-          <ConsoleChat key={resetKey} conversationId={activeId} initialMessages={initialMessages} onConversationSaved={handleSaved} />
-        ) : (
-          <ConsoleLockedChat />
-        )}
+      <div className="flex h-[calc(100vh-8rem)] flex-col gap-2">
+        {/* Mobile-only access point for history + usage + plan (2026-07-31,
+            direct ask) — a real, always-visible button, not something only
+            reachable through a swipe gesture. */}
+        <button
+          type="button"
+          onClick={openMobileSheet}
+          className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm font-medium text-neutral-300 hover:bg-white/5 lg:hidden"
+        >
+          <History className="h-4 w-4" />
+          History &amp; settings
+        </button>
+
+        <div className="min-h-0 flex-1">
+          {hasAccess ? (
+            <ConsoleChat key={resetKey} conversationId={activeId} initialMessages={initialMessages} onConversationSaved={handleSaved} />
+          ) : (
+            <ConsoleLockedChat />
+          )}
+        </div>
+      </div>
+
+      {/* Mobile bottom sheet — always in the DOM once opened at least once
+          (see `everOpened`) so open/close both get the slide transition;
+          before that first open, nothing inside it is mounted at all. */}
+      <div
+        className={`fixed inset-0 z-40 lg:hidden ${mobileSheetOpen ? "pointer-events-auto" : "pointer-events-none"}`}
+        aria-hidden={!mobileSheetOpen}
+      >
+        <div
+          className={`absolute inset-0 bg-black/60 transition-opacity ${mobileSheetOpen ? "opacity-100" : "opacity-0"}`}
+          onClick={() => setMobileSheetOpen(false)}
+        />
+        <div
+          className={`absolute inset-x-0 bottom-0 flex max-h-[85vh] flex-col gap-4 overflow-y-auto rounded-t-3xl border-t border-white/10 bg-neutral-950 p-4 shadow-2xl shadow-black/60 transition-transform duration-300 [padding-bottom:calc(env(safe-area-inset-bottom)+1rem)] ${
+            mobileSheetOpen ? "translate-y-0" : "translate-y-full"
+          }`}
+        >
+          <div className="mx-auto h-1 w-10 shrink-0 rounded-full bg-white/15" />
+          <div className="flex shrink-0 items-center justify-between">
+            <p className="text-sm font-medium text-white">History &amp; settings</p>
+            <button
+              type="button"
+              onClick={() => setMobileSheetOpen(false)}
+              aria-label="Close"
+              className="rounded-md p-1 text-neutral-400 hover:bg-white/10 hover:text-white"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          {everOpened && <div className="flex flex-1 flex-col gap-4">{sidebarBody}</div>}
+        </div>
       </div>
     </div>
   );

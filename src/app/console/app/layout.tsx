@@ -1,8 +1,7 @@
-import Link from "next/link";
-import Image from "next/image";
 import { getUserAndOrg } from "@/lib/org";
 import { isDevAccessAllowed } from "@/lib/dev-access";
 import { ConsoleBodyBackground } from "@/components/console-body-background";
+import { ConsoleHeaderChrome } from "@/components/console-header-chrome";
 
 // Console's own shell — deliberately NOT nested under app/dashboard/, so it
 // does not inherit DashboardNav (the tab bar/pill used by the rest of the
@@ -64,32 +63,12 @@ export default async function ConsoleAppLayout({ children }: { children: React.R
           pinned rather than scroll away with it. bg-neutral-950 + a hairline
           border so it reads as a fixed bar once content scrolls under it,
           not just floating. max-w-6xl matches the page content's width
-          (widened from max-w-5xl the same day, for the new sidebar). */}
-      <header className="sticky top-0 z-20 mx-auto flex w-full max-w-6xl items-center justify-between border-b border-white/5 bg-neutral-950 px-6 py-5">
-        <Link href="https://signedby.ai/dashboard" className="flex items-center gap-3">
-          {/* White-on-clear lockup, the real asset (2026-07-31): found in
-              brand-assets/lockup/micro-small/ after Michael flagged this
-              file wasn't being used — a code-recreated version was drawn
-              in-place here first because /public/brand only had the
-              black-wordmark/yellow-badge PNGs, made for light backgrounds.
-              Swapped to the actual white-knockout PNG now that it's copied
-              into /public/brand. */}
-          <Image
-            src="/brand/signedby-lockup-white-beta-micro-small-transparent.png"
-            alt="SignedBy"
-            width={266}
-            height={64}
-            className="h-6 w-auto"
-            priority
-          />
-          <span className="rounded-full border border-yellow-300/35 bg-yellow-300/10 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-yellow-300">
-            console
-          </span>
-        </Link>
-        <Link href="https://signedby.ai/dashboard" className="text-sm font-medium text-slate-400 hover:text-white">
-          ← Back to dashboard
-        </Link>
-      </header>
+          (widened from max-w-5xl the same day, for the new sidebar).
+          Split into its own client component (2026-07-31, direct ask) so
+          it can additionally auto-hide on mobile swipe — see
+          console-header-chrome.tsx. The logo/back-link markup itself
+          (including which brand asset to use) lives there now. */}
+      <ConsoleHeaderChrome />
       {children}
     </div>
   );
