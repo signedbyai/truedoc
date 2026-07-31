@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, Check, ChevronDown, Copy, Paperclip, Square } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, Copy, Paperclip, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { parseNdjsonLine, splitNdjsonLines } from "@/lib/ndjson";
 
@@ -303,6 +303,15 @@ const MAX_BULK_FILE_LINES = 200; // matches bulkSendAction's own cap — fail fa
 const FIRST_OPEN_PROMPT_KEY = "signedby-console-first-open-prompt-seen";
 const FIRST_OPEN_PROMPT_TEXT = "Let me know what you can do…";
 
+// First-use explainer for the paperclip button (2026-07-31, direct ask —
+// was a browser-native `title` tooltip only, easy to miss and not
+// discoverable on mobile where there's no hover at all). Same
+// localStorage-gate-once pattern as the composer prefill above and
+// ConsolePlanStatus's "What is console?" popover: shows once per browser,
+// dismissed either by the explicit X or automatically the first time
+// someone actually attaches a file (they've now discovered it either way).
+const PAPERCLIP_INTRO_KEY = "signedby-console-paperclip-intro-dismissed";
+
 /** Reads /api/console/chat's streamed NDJSON body, forwarding each
  *  {type:"status"} line to onStatus as it arrives and returning whatever
  *  the final (non-status) line was. Falls back to a plain res.json() if
@@ -366,6 +375,7 @@ export function ConsoleChat({
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  const [paperclipIntroOpen, setPaperclipIntroOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -411,6 +421,28 @@ export function ConsoleChat({
     // whenever either should actually change).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // See PAPERCLIP_INTRO_KEY above.
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(PAPERCLIP_INTRO_KEY)) return;
+      // Deferred a tick — same react-hooks/set-state-in-effect workaround
+      // used elsewhere in the app (new-document-button.tsx, field-editor.tsx).
+      Promise.resolve().then(() => setPaperclipIntroOpen(true));
+    } catch {
+      // Storage can throw (private browsing, blocked storage) — worst case
+      // the tooltip-only `title` attribute is still there as a fallback.
+    }
+  }, []);
+
+  function dismissPaperclipIntro() {
+    setPaperclipIntroOpen(false);
+    try {
+      window.localStorage.setItem(PAPERCLIP_INTRO_KEY, "1");
+    } catch {
+      // Best-effort — worst case it shows again next visit.
+    }
+  }
 
   // Autosave — fires whenever `messages` actually changes (a completed
   // turn, a confirm/cancel resolution), not on every keystroke. Creates
@@ -612,6 +644,7 @@ export function ConsoleChat({
       return;
     }
 
+    dismissPaperclipIntro(); // they've now discovered what the paperclip does
     void send(`Here's a recipient list from "${file.name}" for a bulk send:\n\n${text}`);
   }
 
@@ -748,16 +781,48 @@ export function ConsoleChat({
           className="max-h-40 min-h-[52px] w-full resize-none bg-transparent text-base text-neutral-100 placeholder-neutral-500 focus:outline-none"
         />
         <div className="flex items-center justify-between">
-          <button
-            type="button"
-            aria-label="Attach a recipient list for bulk send"
-            title="Attach a recipient list (.csv or .txt) for bulk send"
-            disabled={loading}
-            onClick={() => fileInputRef.current?.click()}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-white/10 hover:text-white disabled:opacity-50"
-          >
-            <Paperclip className="h-4 w-4" />
-          </button>
+          <div className="relative">
+            <button
+              type="button"
+              aria-label="Attach a recipient list for bulk send"
+              title="Attach a recipient list (.csv or .txt) for bulk send"
+              disabled={loading}
+              onClick={() => fileInputRef.current?.click()}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-white/10 hover:text-white disabled:opacity-50"
+            >
+              <Paperclip className="h-4 w-4" />
+            </button>
+
+            {/* First-use popover (2026-07-31, direct ask) — the paperclip
+                previously only had a browser `title` tooltip, which needs a
+                mouse hover and so is invisible on mobile (no hover at all)
+                and easy to miss on desktop. Opens upward with a caret
+                pointing at the icon, since the composer this lives in sits
+                at the very bottom of the screen (fixed on mobile) with no
+                room to open downward. */}
+            {paperclipIntroOpen && (
+              <div className="absolute bottom-full left-0 z-10 mb-3 w-64">
+                <div className="rounded-2xl border border-white/10 bg-neutral-900 p-3.5 shadow-2xl shadow-black/60">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-medium text-white">Attach a recipient list</p>
+                    <button
+                      type="button"
+                      onClick={dismissPaperclipIntro}
+                      aria-label="Dismiss"
+                      className="-mr-1 -mt-1 shrink-0 rounded-md p-1 text-neutral-500 hover:bg-white/10 hover:text-white"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-neutral-400">
+                    Attach a .csv or .txt file — one recipient per line (email, or &ldquo;email, name&rdquo;) — to
+                    bulk-send the same document to everyone on it.
+                  </p>
+                </div>
+                <div className="ml-4 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border-b border-r border-white/10 bg-neutral-900" />
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] font-medium text-neutral-500">
               Mistral
