@@ -177,13 +177,14 @@ export function ConsoleWorkspace({
             ancestor for the pill's absolute positioning below), instead of
             the pill living in normal flow as its own row above this div —
             that read as a solid bar under the nav rather than a floating
-            chip (2026-08-01, direct follow-up: it should overlap the chat
-            content the same way ConsoleChat's own "jump to latest" button
-            does, not reserve its own dedicated strip). `pt-14` on mobile
-            keeps the first message/empty-state from starting underneath
-            the overlaid pill; not needed at `lg:` where the pill is hidden
-            and the desktop aside is used instead. */}
-        <div className="relative min-h-0 flex-1 pt-14 lg:pt-0">
+            chip (2026-08-01, direct follow-up). No reserved top padding
+            for it, either — an earlier pass added one so the pill would
+            never cover the first message, but a permanent gap of the same
+            solid background reads exactly like the bar it was meant to
+            replace. Matches ConsoleChat's own "jump to latest" button,
+            which reserves no space either: it just floats over whatever's
+            scrolled underneath it, content included. */}
+        <div className="relative min-h-0 flex-1">
           {/* Mobile-only access point for dashboard/history/usage/plan
               (2026-07-31, direct ask for a real always-visible entry point,
               not something only reachable through a swipe gesture;
