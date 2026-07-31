@@ -22,7 +22,11 @@ export function ConsoleHeaderChrome() {
           console
         </span>
       </Link>
-      <Link href="https://signedby.ai/dashboard" className="text-sm font-medium text-slate-400 hover:text-white">
+      {/* Hidden on mobile (2026-08-01, direct ask) — the floating pill's
+          Home button (console-workspace.tsx) already covers this there;
+          kept for `lg:` and up, where that pill is hidden in favor of the
+          desktop sidebar and this link is the only way back. */}
+      <Link href="https://signedby.ai/dashboard" className="hidden text-sm font-medium text-slate-400 hover:text-white lg:block">
         ← Back to dashboard
       </Link>
     </header>
