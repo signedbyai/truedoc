@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { History, X } from "lucide-react";
 import type { ConsoleBillingState } from "@/lib/console-usage";
 import { ConsoleChat, type Bubble } from "@/components/console-chat";
@@ -45,10 +45,10 @@ import { ConsoleUpgradePanel, ConsoleLockedChat } from "@/components/console-upg
  *  extra screen's worth of content before reaching the chat at all — and
  *  is instead reachable through an explicit "History" button (always
  *  visible, not gesture-only) that opens it as a bottom sheet over the
- *  chat. `document.body.dataset.consoleSheetOpen` is set while the sheet
- *  is open so the console shell's mobile header (console/app/layout.tsx →
- *  console-header-chrome.tsx) knows to stay visible instead of
- *  auto-hiding out from under an open sheet. */
+ *  chat. (The header used to also auto-hide on mobile swipe while this
+ *  sheet was closed, coordinated via a `document.body` dataset flag set
+ *  here — removed same-day per direct feedback; the header is now always
+ *  visible, so that coordination is gone too.) */
 export function ConsoleWorkspace({
   plan,
   hasAccess,
@@ -83,13 +83,6 @@ export function ConsoleWorkspace({
     setEverOpened(true);
     setMobileSheetOpen(true);
   }
-
-  useEffect(() => {
-    document.body.dataset.consoleSheetOpen = mobileSheetOpen ? "true" : "false";
-    return () => {
-      delete document.body.dataset.consoleSheetOpen;
-    };
-  }, [mobileSheetOpen]);
 
   async function handleSelect(id: string) {
     if (id === activeId || loadingConversation) return;
