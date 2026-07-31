@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { cookieDomainFor } from "@/lib/cookie-domain";
+import { cookieDomainFor, clearStaleHostOnlyCookies } from "@/lib/cookie-domain";
 
 // Refreshes the Supabase auth session on every request and redirects
 // unauthenticated users away from /dashboard routes.
@@ -46,6 +46,12 @@ export async function updateSession(request: NextRequest, baseResponse?: NextRes
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
+          // See clearStaleHostOnlyCookies (cookie-domain.ts) — must run
+          // after every .cookies.set() above, not interleaved with them:
+          // Next rebuilds the entire Set-Cookie header from its own
+          // name-keyed map on each .set() call, so anything appended
+          // before a later .set() would just get wiped out again.
+          if (cookieDomain) clearStaleHostOnlyCookies(supabaseResponse, cookiesToSet);
         },
       },
     }

@@ -27,14 +27,19 @@ export async function GET(request: Request) {
   const next = searchParams.get("next") ?? "/dashboard";
 
   if (code) {
-    const supabase = await createClient();
+    // Built up front and handed into createClient() (2026-07-31, live bug
+    // fix) rather than exchanging the code first and building this after —
+    // exchangeCodeForSession's Set-Cookie writes need to land on THIS
+    // exact response object so clearStaleHostOnlyCookies can append onto
+    // it afterward. See createClient's `response` param and
+    // cookie-domain.ts's clearStaleHostOnlyCookies for the full story:
+    // a stale pre-2026-07-30 host-only cookie coexisting with the new
+    // domain-wide one was corrupting the session on the very next request,
+    // which is what made sign-in silently bounce back to /login.
+    const response = NextResponse.redirect(next === "/app" ? consoleUrl("/app") : `${origin}${next}`);
+    const supabase = await createClient(response);
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      if (next === "/app") {
-        return NextResponse.redirect(consoleUrl("/app"));
-      }
-      return NextResponse.redirect(`${origin}${next}`);
-    }
+    if (!error) return response;
   }
 
   return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`);
