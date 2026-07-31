@@ -439,7 +439,7 @@ export function ConsoleChat({
             }
           }}
           disabled={loading}
-          placeholder="Ask console to send, check, or bulk-send a document"
+          placeholder="Ask to list or find a template, send or bulk send a template, check on status…"
           className="max-h-40 min-h-[52px] w-full resize-none bg-transparent text-base text-neutral-100 placeholder-neutral-500 focus:outline-none"
         />
         <div className="flex items-center justify-between">
