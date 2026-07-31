@@ -173,44 +173,58 @@ export function ConsoleWorkspace({
       <aside className="hidden h-[calc(100vh-8rem)] flex-col gap-4 lg:flex lg:sticky lg:top-24">{sidebarBody}</aside>
 
       <div className="flex h-[calc(100vh-8rem)] flex-col gap-2">
-        {/* Mobile-only access point for dashboard/history/usage/plan
-            (2026-07-31, direct ask for a real always-visible entry point,
-            not something only reachable through a swipe gesture; 2026-08-01,
-            direct ask to shrink the full-width bar down to a small floating
-            pill with three separate icon buttons instead of one combined
-            "History & settings" label). */}
-        <div className="flex justify-center lg:hidden">
-          <div className="inline-flex items-center gap-0.5 rounded-full border border-white/10 bg-white/[0.04] p-1 shadow-lg shadow-black/20">
-            <Link
-              href="https://signedby.ai/dashboard"
-              aria-label="Dashboard"
-              title="Dashboard"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 hover:bg-white/10 hover:text-white"
-            >
-              <Home className="h-4 w-4" />
-            </Link>
-            <button
-              type="button"
-              onClick={() => openMobileSheet("history")}
-              aria-label="History"
-              title="History"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 hover:bg-white/10 hover:text-white"
-            >
-              <History className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => openMobileSheet("settings")}
-              aria-label="Settings"
-              title="Settings"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 hover:bg-white/10 hover:text-white"
-            >
-              <Settings className="h-4 w-4" />
-            </button>
+        {/* Chat pane + the mobile pill overlaid on top of it (relative
+            ancestor for the pill's absolute positioning below), instead of
+            the pill living in normal flow as its own row above this div —
+            that read as a solid bar under the nav rather than a floating
+            chip (2026-08-01, direct follow-up: it should overlap the chat
+            content the same way ConsoleChat's own "jump to latest" button
+            does, not reserve its own dedicated strip). `pt-14` on mobile
+            keeps the first message/empty-state from starting underneath
+            the overlaid pill; not needed at `lg:` where the pill is hidden
+            and the desktop aside is used instead. */}
+        <div className="relative min-h-0 flex-1 pt-14 lg:pt-0">
+          {/* Mobile-only access point for dashboard/history/usage/plan
+              (2026-07-31, direct ask for a real always-visible entry point,
+              not something only reachable through a swipe gesture;
+              2026-08-01, direct ask to shrink the full-width bar down to a
+              small floating pill with three separate icon buttons instead
+              of one combined "History & settings" label). The wrapper spans
+              the full width so the pill can center, but only the pill
+              itself is clickable (`pointer-events-none`/`-auto` split) so
+              the empty space beside it doesn't block scrolling/taps on the
+              chat underneath. */}
+          <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center lg:hidden">
+            <div className="pointer-events-auto inline-flex items-center gap-0.5 rounded-full border border-white/10 bg-neutral-800/90 p-1 shadow-lg shadow-black/40 backdrop-blur">
+              <Link
+                href="https://signedby.ai/dashboard"
+                aria-label="Dashboard"
+                title="Dashboard"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 hover:bg-white/10 hover:text-white"
+              >
+                <Home className="h-4 w-4" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => openMobileSheet("history")}
+                aria-label="History"
+                title="History"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 hover:bg-white/10 hover:text-white"
+              >
+                <History className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => openMobileSheet("settings")}
+                aria-label="Settings"
+                title="Settings"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 hover:bg-white/10 hover:text-white"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div className="min-h-0 flex-1">
           {hasAccess ? (
             <ConsoleChat key={resetKey} conversationId={activeId} initialMessages={initialMessages} onConversationSaved={handleSaved} />
           ) : (
