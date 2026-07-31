@@ -1,7 +1,9 @@
+import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSignerInviteEmail } from "@/lib/email";
 import { checkEmailDomainHasMx } from "@/lib/validate-email-domain";
 import { checkConsoleCap, recordConsoleUsage } from "@/lib/console-usage";
+import { planHasFeature } from "@/lib/plan";
 
 // Shared action functions behind the console chat (src/app/api/console/chat)
 // and the API-key-authenticated bulk-send endpoint
@@ -359,4 +361,88 @@ export async function voidDocumentAction(orgId: string, documentId: string): Pro
   await admin.from("audit_events").insert({ document_id: documentId, event_type: "voided", metadata: { via_console: true } });
 
   return { ok: true };
+}
+
+// The per-field shape console-chat.tsx round-trips through the "Save now"
+// confirm bubble's arguments — it's exactly suggest-fields.ts's
+// FieldSuggestion shape (page/type/x/y/width/height/role), computed
+// client-side by calling the existing, already-shipped
+// POST /api/documents/[id]/suggest-fields (stateless — writes nothing) right
+// after upload. Validated fresh here rather than trusted, since it's arrived
+// back from the client same as bulk_send's `recipients` array does.
+const templateFieldSchema = z.object({
+  type: z.enum(["signature", "initials", "date", "text", "checkbox"]),
+  page: z.number().int().min(1),
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  width: z.number().min(0).max(1),
+  height: z.number().min(0).max(1),
+  role: z.number().int().min(0).nullable().optional(),
+});
+
+/** The console upload-a-template flow's "Save now" action (CONSOLE upload
+ *  scope, 2026-08-01) — saves an already-uploaded document straight to
+ *  `templates` using AI-suggested field placement, with no visit to the
+ *  field editor. Deliberately NOT exposed to Mistral as a callable tool
+ *  (see console-chat.ts's TOOLS array) — the only way to reach this is the
+ *  chat UI's own "Save now" button, built with the document id/fields it
+ *  already has in hand from the upload it just did, never from the model
+ *  guessing or resolving an id itself. The "Review fields" alternative
+ *  (multi-party documents, or ones the AI couldn't confidently read) skips
+ *  this function entirely and goes through the existing field editor +
+ *  its own save-as-template route instead.
+ *
+ *  Writes straight to `templates.field_map` rather than first writing
+ *  `document_fields` and then transforming them (the shape the field-editor
+ *  save-as-template route uses) — there's no intermediate document_fields
+ *  state worth persisting here, since nobody reviews this document in the
+ *  editor on the fast path. */
+export async function saveAsTemplateAction(params: {
+  orgId: string;
+  documentId: string;
+  name: string;
+  fields: unknown[];
+}): Promise<{ ok: true; templateId: string } | ConsoleActionError> {
+  const { orgId, documentId } = params;
+
+  const name = params.name.trim().slice(0, 200);
+  if (!name) return { ok: false, error: "Give the template a name.", status: 400 };
+
+  const parsedFields = z.array(templateFieldSchema).safeParse(params.fields);
+  if (!parsedFields.success || parsedFields.data.length === 0) {
+    return { ok: false, error: "No valid fields to save — nothing was placed on this document.", status: 400 };
+  }
+
+  const admin = createAdminClient();
+
+  const { data: org } = await admin.from("organizations").select("plan").eq("id", orgId).single();
+  if (!planHasFeature(org?.plan, "templates")) {
+    return { ok: false, error: "Templates are a Pro plan feature. Upgrade to save documents as templates.", status: 402 };
+  }
+
+  const { data: doc } = await admin.from("documents").select("id, org_id, file_path, page_count").eq("id", documentId).single();
+  if (!doc || doc.org_id !== orgId) return { ok: false, error: "Document not found.", status: 404 };
+
+  const fieldMap: TemplateFieldMapEntry[] = parsedFields.data.map((f) => ({
+    type: f.type,
+    page: f.page,
+    x: f.x,
+    y: f.y,
+    width: f.width,
+    height: f.height,
+    required: true, // matches the field editor's own default for AI-accepted suggestions
+    role: f.role ?? null,
+  }));
+
+  const { data: template, error } = await admin
+    .from("templates")
+    .insert({ org_id: orgId, name, base_file_path: doc.file_path, page_count: doc.page_count, field_map: fieldMap })
+    .select("id")
+    .single();
+  if (error || !template) {
+    console.error("Console action: save as template failed", error);
+    return { ok: false, error: "Couldn't save as a template.", status: 500 };
+  }
+
+  return { ok: true, templateId: template.id };
 }

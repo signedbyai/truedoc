@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, Check, ChevronDown, Copy, Paperclip, Square, X } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, Copy, ExternalLink, FileText, FileUp, Paperclip, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { parseNdjsonLine, splitNdjsonLines } from "@/lib/ndjson";
 
@@ -24,7 +24,17 @@ import { parseNdjsonLine, splitNdjsonLines } from "@/lib/ndjson";
 
 export type Bubble =
   | { role: "user"; content: string }
-  | { role: "assistant"; content: string; confirm?: { tool: string; arguments: Record<string, unknown> } };
+  | {
+      role: "assistant";
+      content: string;
+      confirm?: { tool: string; arguments: Record<string, unknown> };
+      // A plain outbound link rendered alongside (or instead of) the
+      // confirm buttons above — used by the upload-a-template flow's
+      // "Review fields" action (2026-08-01), which opens the existing
+      // field editor in a new tab rather than running anything through
+      // this chat's own confirm/execute mechanism.
+      link?: { href: string; label: string };
+    };
 
 /** Copies `text` to the clipboard on click/tap and flashes a brief check
  *  mark instead of relying on a tooltip alone — 2026-07-31, direct ask:
@@ -342,6 +352,27 @@ function AssistantContent({ content }: { content: string }) {
 // text, not a business limit on batch size.
 const MAX_BULK_FILE_BYTES = 256 * 1024; // generous for a few thousand lines, well under Mistral's context limit
 
+// Upload-a-template (2026-08-01, direct ask) — a
+// second paperclip option that goes straight to R2 (the existing
+// direct-to-R2 dashboard uploader, /api/documents/upload-url + finalize),
+// runs the existing stateless AI field-suggestion pass
+// (/api/documents/[id]/suggest-fields — writes nothing itself), and then
+// offers either an immediate "Save now" (a new save_as_template confirm
+// action, single-signer/readable documents only) or a "Review fields" link
+// into the existing field editor, which already has its own
+// save-as-template control. None of this goes through Mistral at all —
+// it's plain fetch orchestration, same shape as the existing dashboard
+// uploader in new-document-client.tsx, just triggered from here instead.
+// Matches the dashboard uploader's own 25MB product cap.
+const MAX_TEMPLATE_FILE_BYTES = 25 * 1024 * 1024;
+
+// Multi-party documents are the one place AI field placement is known to
+// sometimes get role-matching wrong (the 2026-07-26 column-matching fix),
+// and an "unreadable" result is a pure guess with no relationship to the
+// document's real content (see suggest-fields.ts's own doc comment on that
+// flag) — both only get offered the review link below, never a one-click
+// save straight to a reusable template.
+
 // Prefills the composer with a friendly nudge the very first time anyone on
 // this browser opens a brand-new console chat (2026-07-31, direct ask) — a
 // real, editable/sendable value in the textarea itself, not just placeholder
@@ -427,7 +458,13 @@ export function ConsoleChat({
   const [status, setStatus] = useState("");
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const [paperclipIntroOpen, setPaperclipIntroOpen] = useState(false);
+  // Small popover the paperclip opens with two choices — recipient list vs
+  // upload a template — replacing what used to be a single click straight
+  // to the recipient-list file picker (2026-08-01, see MAX_TEMPLATE_FILE_BYTES
+  // above).
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const templateFileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   // Tracks whether the user has deliberately scrolled up to read earlier
@@ -695,6 +732,112 @@ export function ConsoleChat({
     void send(`Here's a recipient list from "${file.name}" for a bulk send:\n\n${text}`);
   }
 
+  /** Upload-a-template (see MAX_TEMPLATE_FILE_BYTES above). Three plain
+   *  fetches against existing, already-shipped endpoints — presigned PUT to
+   *  R2, finalize, then the stateless AI field-suggestion pass — followed
+   *  by a synthetic user+assistant bubble pair built from the result. None
+   *  of this is a Mistral turn: `loading`/`status`/`error` are reused for
+   *  their existing composer-disabling/status-line/error-line behavior, but
+   *  no /api/console/chat call happens until (if) "Save now" is clicked,
+   *  which reuses the existing confirmAction plumbing untouched. */
+  async function handleTemplateFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || loading) return;
+    setError("");
+
+    if (!/\.pdf$/i.test(file.name)) {
+      setError("Please attach a PDF to upload as a template.");
+      return;
+    }
+    if (file.size > MAX_TEMPLATE_FILE_BYTES) {
+      setError("That file's too large — try one under 25MB.");
+      return;
+    }
+
+    dismissPaperclipIntro();
+    setLoading(true);
+    setStatus("Uploading…");
+
+    try {
+      const presignRes = await fetch("/api/documents/upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, size: file.size }),
+      });
+      const presign = await presignRes.json().catch(() => ({}));
+      if (!presignRes.ok) {
+        setError(presign.error || "Couldn't start the upload.");
+        return;
+      }
+
+      const putRes = await fetch(presign.uploadUrl, { method: "PUT", headers: { "Content-Type": "application/pdf" }, body: file });
+      if (!putRes.ok) {
+        setError("Upload failed. Try again.");
+        return;
+      }
+
+      const finalizeRes = await fetch("/api/documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId: presign.documentId, key: presign.key, filename: file.name }),
+      });
+      const finalize = await finalizeRes.json().catch(() => ({}));
+      if (!finalizeRes.ok) {
+        setError(finalize.error || "Couldn't save the upload.");
+        return;
+      }
+      const documentId = String(finalize.id);
+
+      setStatus("Placing fields…");
+      const suggestRes = await fetch(`/api/documents/${documentId}/suggest-fields`, { method: "POST" });
+      const suggest = await suggestRes.json().catch(() => ({}));
+      if (!suggestRes.ok) {
+        setError(suggest.error || "Couldn't analyze the document.");
+        return;
+      }
+
+      const suggestions = Array.isArray(suggest.suggestions) ? suggest.suggestions : [];
+      const parties: { role: number; label: string }[] = Array.isArray(suggest.parties) ? suggest.parties : [];
+      const unreadable = suggest.unreadable === true;
+      const fieldCount = suggestions.length;
+      const defaultName = file.name.replace(/\.pdf$/i, "").replace(/[-_]+/g, " ").trim() || "Untitled template";
+      const reviewLink = { href: `https://signedby.ai/dashboard/documents/${documentId}`, label: "Review fields" };
+
+      const userBubble: Bubble = { role: "user", content: `Uploaded "${file.name}" to use as a template.` };
+      let assistantBubble: Bubble;
+
+      if (unreadable) {
+        assistantBubble = {
+          role: "assistant",
+          content: `Uploaded "${file.name}," but I couldn't confidently read it to place fields — take a look in the editor and place them by hand.`,
+          link: { ...reviewLink, label: "Open in editor" },
+        };
+      } else if (parties.length >= 2) {
+        const roleNames = parties.map((p) => p.label).join(", ");
+        assistantBubble = {
+          role: "assistant",
+          content: `Uploaded "${file.name}" and placed ${fieldCount} field${fieldCount === 1 ? "" : "s"} across ${parties.length} signer roles (${roleNames}). Multi-signer layouts are the one place I sometimes get role-matching wrong, so take a look before this becomes a reusable template.`,
+          link: reviewLink,
+        };
+      } else {
+        assistantBubble = {
+          role: "assistant",
+          content: `Uploaded "${file.name}" and placed ${fieldCount} field${fieldCount === 1 ? "" : "s"}. Want to look them over first, or save it as "${defaultName}" now?`,
+          link: reviewLink,
+          confirm: { tool: "save_as_template", arguments: { document_id: documentId, name: defaultName, fields: suggestions } },
+        };
+      }
+
+      setMessages((cur) => [...cur, userBubble, assistantBubble]);
+    } catch {
+      setError("Couldn't upload that file. Try again.");
+    } finally {
+      setLoading(false);
+      setStatus("");
+    }
+  }
+
   return (
     // Borderless canvas + a pill-shaped input bar, not a bordered white
     // card — direct visual reference 2026-07-31 (a screenshot of Claude's
@@ -730,8 +873,9 @@ export function ConsoleChat({
               <p className="max-w-xs text-base text-neutral-500">
                 Ask console to send a document, bulk-send a list, check status, or void something — e.g. &ldquo;send the
                 NDA template to jane@acme.com&rdquo;. For a bulk send, paste one recipient per line (email, or
-                &ldquo;email, name&rdquo;) — or attach a .csv/.txt file with the{" "}
-                <Paperclip className="inline h-3 w-3 -translate-y-px" aria-hidden="true" /> icon below.
+                &ldquo;email, name&rdquo;) — or use the{" "}
+                <Paperclip className="inline h-3 w-3 -translate-y-px" aria-hidden="true" /> icon below to attach a
+                recipient list or upload a new template.
               </p>
             </div>
           )}
@@ -745,20 +889,35 @@ export function ConsoleChat({
             ) : (
               <div key={i} className="mr-auto max-w-[90%] text-base leading-relaxed text-neutral-200">
                 <AssistantContent content={m.content} />
-                {m.confirm && (
-                  <div className="mt-2 flex gap-2">
-                    <Button type="button" variant="cta" size="sm" disabled={loading} onClick={() => confirmAction(i, m.confirm!)}>
-                      Confirm send
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={loading}
-                      onClick={() => cancelAction(i)}
-                      className="bg-transparent text-neutral-400 hover:bg-white/10 hover:text-white"
-                    >
-                      Cancel
-                    </Button>
+                {(m.confirm || m.link) && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {m.link && (
+                      <a
+                        href={m.link.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                        {m.link.label}
+                      </a>
+                    )}
+                    {m.confirm && (
+                      <>
+                        <Button type="button" variant="cta" size="sm" disabled={loading} onClick={() => confirmAction(i, m.confirm!)}>
+                          {m.confirm.tool === "save_as_template" ? "Save now" : "Confirm send"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={loading}
+                          onClick={() => cancelAction(i)}
+                          className="bg-transparent text-neutral-400 hover:bg-white/10 hover:text-white"
+                        >
+                          Cancel
+                        </Button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -813,6 +972,7 @@ export function ConsoleChat({
         className="fixed inset-x-0 bottom-0 z-30 flex flex-col gap-2 border-t border-white/10 bg-neutral-950/95 px-4 pt-3 backdrop-blur-sm [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)] lg:static lg:z-auto lg:mt-3 lg:rounded-2xl lg:border lg:bg-neutral-900 lg:px-4 lg:py-3 lg:[padding-bottom:0.75rem] lg:backdrop-blur-none"
       >
         <input ref={fileInputRef} type="file" accept=".csv,.txt,text/csv,text/plain" onChange={handleFileSelected} className="hidden" />
+        <input ref={templateFileInputRef} type="file" accept=".pdf,application/pdf" onChange={handleTemplateFileSelected} className="hidden" />
         <textarea
           rows={2}
           value={input}
@@ -831,10 +991,13 @@ export function ConsoleChat({
           <div className="relative">
             <button
               type="button"
-              aria-label="Attach a recipient list for bulk send"
-              title="Attach a recipient list (.csv or .txt) for bulk send"
+              aria-label="Attach a recipient list or upload a template"
+              title="Attach a recipient list or upload a template"
               disabled={loading}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                dismissPaperclipIntro();
+                setAttachMenuOpen((open) => !open);
+              }}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-white/10 hover:text-white disabled:opacity-50"
             >
               <Paperclip className="h-4 w-4" />
@@ -847,11 +1010,11 @@ export function ConsoleChat({
                 pointing at the icon, since the composer this lives in sits
                 at the very bottom of the screen (fixed on mobile) with no
                 room to open downward. */}
-            {paperclipIntroOpen && (
+            {paperclipIntroOpen && !attachMenuOpen && (
               <div className="absolute bottom-full left-0 z-10 mb-3 w-64">
                 <div className="rounded-2xl border border-white/10 bg-neutral-900 p-3.5 shadow-2xl shadow-black/60">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-medium text-white">Attach a recipient list</p>
+                    <p className="text-sm font-medium text-white">Attach a file</p>
                     <button
                       type="button"
                       onClick={dismissPaperclipIntro}
@@ -862,12 +1025,54 @@ export function ConsoleChat({
                     </button>
                   </div>
                   <p className="mt-1 text-xs leading-relaxed text-neutral-400">
-                    Attach a .csv or .txt file — one recipient per line (email, or &ldquo;email, name&rdquo;) — to
-                    bulk-send the same document to everyone on it.
+                    Attach a .csv or .txt recipient list to bulk-send, or upload a PDF to use as a new template.
                   </p>
                 </div>
                 <div className="ml-4 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border-b border-r border-white/10 bg-neutral-900" />
               </div>
+            )}
+
+            {/* Attach menu (2026-08-01, direct ask) — the paperclip used to
+                go straight to the recipient-list file picker; a PDF upload
+                needs an entirely different handler (handleTemplateFileSelected
+                above), so it's now a choice between the two rather than one
+                click doing double duty. The full-screen backdrop closes the
+                menu on an outside click/tap without needing a ref-based
+                click-outside hook. */}
+            {attachMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setAttachMenuOpen(false)} />
+                <div className="absolute bottom-full left-0 z-20 mb-3 w-64 overflow-hidden rounded-xl border border-white/10 bg-neutral-900 shadow-2xl shadow-black/60">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAttachMenuOpen(false);
+                      fileInputRef.current?.click();
+                    }}
+                    className="flex w-full items-start gap-2.5 px-3.5 py-3 text-left hover:bg-white/5"
+                  >
+                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" aria-hidden="true" />
+                    <span>
+                      <span className="block text-sm font-medium text-white">Recipient list</span>
+                      <span className="block text-xs text-neutral-400">.csv or .txt, for a bulk send</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAttachMenuOpen(false);
+                      templateFileInputRef.current?.click();
+                    }}
+                    className="flex w-full items-start gap-2.5 border-t border-white/5 px-3.5 py-3 text-left hover:bg-white/5"
+                  >
+                    <FileUp className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" aria-hidden="true" />
+                    <span>
+                      <span className="block text-sm font-medium text-white">Upload a template</span>
+                      <span className="block text-xs text-neutral-400">.pdf, becomes a reusable template</span>
+                    </span>
+                  </button>
+                </div>
+              </>
             )}
           </div>
           <div className="flex items-center gap-2">

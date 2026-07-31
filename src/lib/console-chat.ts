@@ -5,6 +5,7 @@ import {
   listDocumentsAction,
   listTemplatesAction,
   voidDocumentAction,
+  saveAsTemplateAction,
 } from "@/lib/console-actions";
 
 // The console chat's Mistral function-calling loop (CONSOLE_UX_SCOPE.md #2).
@@ -17,7 +18,13 @@ import {
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
-const CONFIRM_REQUIRED = new Set(["send_document", "bulk_send"]);
+// save_as_template (2026-08-01, console upload-a-template) is confirm-only
+// like the other two, but deliberately absent from TOOLS below — it's
+// never something Mistral decides to call on its own. The chat UI builds
+// the confirm bubble itself (document id + AI-suggested fields it already
+// has from the upload it just ran), the same way a raw id is never allowed
+// to reach the model. See saveAsTemplateAction's doc comment.
+const CONFIRM_REQUIRED = new Set(["send_document", "bulk_send", "save_as_template"]);
 
 const SYSTEM_PROMPT =
   "You are SignedBy Console, an assistant that sends, tracks, and manages e-signature documents on the user's " +
@@ -203,6 +210,7 @@ type ToolExecutionResult =
   | Awaited<ReturnType<typeof listDocumentsAction>>
   | Awaited<ReturnType<typeof listTemplatesAction>>
   | Awaited<ReturnType<typeof voidDocumentAction>>
+  | Awaited<ReturnType<typeof saveAsTemplateAction>>
   | { ok: false; error: string; status: number };
 
 async function executeTool(orgId: string, metered: boolean, name: string, args: Record<string, unknown>): Promise<ToolExecutionResult> {
@@ -241,6 +249,13 @@ async function executeTool(orgId: string, metered: boolean, name: string, args: 
       return listTemplatesAction(orgId);
     case "void_document":
       return voidDocumentAction(orgId, String(args.document_id ?? ""));
+    case "save_as_template":
+      return saveAsTemplateAction({
+        orgId,
+        documentId: String(args.document_id ?? ""),
+        name: String(args.name ?? ""),
+        fields: Array.isArray(args.fields) ? args.fields : [],
+      });
     default:
       return { ok: false as const, error: `Unknown tool: ${name}`, status: 400 };
   }
@@ -298,6 +313,8 @@ function toolStatusPhrase(name: string, args: Record<string, unknown>): string {
       const count = Array.isArray(args.recipients) ? args.recipients.length : 0;
       return `Sending to ${count} recipient${count === 1 ? "" : "s"}…`;
     }
+    case "save_as_template":
+      return "Saving as a template…";
     default:
       return "Working on it…";
   }
@@ -364,6 +381,13 @@ export async function runConsoleChatTurn(params: {
         content += `\n\nStopped early to stay within one request's time limit — ${timeoutSkipped} recipient(s) not sent yet. Just say "continue" and I'll send to the rest:\n\n${list}`;
       }
       return { type: "message", content };
+    }
+    if (confirmedTool.name === "save_as_template" && "templateId" in result) {
+      const name = String(confirmedTool.arguments.name ?? "this template");
+      return {
+        type: "message",
+        content: `Saved as a template called "${name}." Send it any time by name — e.g. "send ${name} to jane@acme.com."`,
+      };
     }
     return { type: "message", content: "Done." };
   }
