@@ -42,7 +42,15 @@ const SYSTEM_PROMPT =
   "For bulk_send, recipients can be pasted in a lot of shapes — one email per line, comma-separated, or " +
   "'email, name' pairs. If a pasted list is genuinely ambiguous (e.g. you can't tell where one entry ends and " +
   "the next begins), ask the user to paste it as one recipient per line, optionally 'email, name'. Don't ask " +
-  "this proactively before they've pasted anything — only when what they gave you doesn't parse cleanly.";
+  "this proactively before they've pasted anything — only when what they gave you doesn't parse cleanly.\n\n" +
+  "When a reply includes more than one item — a list of documents, a list of templates, a bulk-send " +
+  "recipient breakdown, or multiple statuses — format that part as a Unicode box-drawing grid table, not a " +
+  "bulleted or numbered list: draw it with ┌ ┬ ┐ │ ├ ┼ ┤ └ ┴ ┘ ─, one row per item, short column headers " +
+  "(e.g. Document | Status | Sent), and keep the whole table under about 70 characters wide so it renders " +
+  "without wrapping. Pad cell text with spaces so the │ separators line up in straight columns. Put any " +
+  "narrative sentence (what you found, what's next) before or after the table, not inside it. A single item " +
+  "or a plain narrative answer doesn't need a table — use one only when there are multiple rows worth " +
+  "scanning at a glance.";
 
 const TOOLS = [
   {

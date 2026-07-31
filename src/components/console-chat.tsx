@@ -26,6 +26,35 @@ export type Bubble =
   | { role: "user"; content: string }
   | { role: "assistant"; content: string; confirm?: { tool: string; arguments: Record<string, unknown> } };
 
+/** Renders an assistant reply, splitting out any Unicode box-drawing grid
+ *  table (2026-07-31, direct ask — lists/statuses should render as a
+ *  readable grid rather than a squished paragraph) into its own monospace,
+ *  whitespace-preserving block so │/─/┼ etc. actually line up in columns,
+ *  while surrounding narrative sentences stay in normal prose. The system
+ *  prompt (console-chat.ts) is what actually tells Mistral to draw these
+ *  tables; this only has to render whatever it sends back. Plain replies
+ *  with no table still get `whitespace-pre-wrap` so intentional line
+ *  breaks in a descriptive reply aren't collapsed into one run-on line —
+ *  a real (if minor) pre-existing bug this fix incidentally also closes. */
+function AssistantContent({ content }: { content: string }) {
+  const blocks = content.split(/\n{2,}/);
+  return (
+    <div className="flex flex-col gap-2">
+      {blocks.map((block, i) =>
+        /[┌┬┐├┼┤└┴┘─│╭╮╰╯]/.test(block) ? (
+          <pre key={i} className="overflow-x-auto whitespace-pre font-mono text-sm text-neutral-200">
+            {block}
+          </pre>
+        ) : (
+          <p key={i} className="whitespace-pre-wrap">
+            {block}
+          </p>
+        )
+      )}
+    </div>
+  );
+}
+
 // Bulk-send recipient lists can arrive as an uploaded file (2026-07-31)
 // instead of pasted text — deliberately NOT reusing parse-recipients.ts's
 // regex parser (that only understands "email" / "Name <email>" per line,
@@ -371,7 +400,7 @@ export function ConsoleChat({
               </div>
             ) : (
               <div key={i} className="mr-auto max-w-[90%] text-base leading-relaxed text-neutral-200">
-                {m.content}
+                <AssistantContent content={m.content} />
                 {m.confirm && (
                   <div className="mt-2 flex gap-2">
                     <Button type="button" variant="cta" size="sm" disabled={loading} onClick={() => confirmAction(i, m.confirm!)}>
