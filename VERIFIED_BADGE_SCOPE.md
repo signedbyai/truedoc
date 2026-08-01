@@ -443,14 +443,15 @@ Built end to end against this doc's decisions. What shipped:
    `identity.verification_session.verified` to this project's existing
    Stripe webhook endpoint's subscribed events, alongside
    checkout/subscription/invoice.
-4. Legal: per the standing rule (update legal pages in the same piece of
-   work that calls a new processor/data type, not after) — Stripe Identity
-   adds government-ID-image and biometric data handling that isn't
-   described in `/privacy` or `/dpa` yet. `STRIPE_IDENTITY_SCOPE.md`
-   already flagged this for its own (still-unbuilt) per-signer version; it
-   applies here too and hasn't been done in this pass.
+4. ~~Legal~~ — DONE 2026-08-01: `/privacy` (new "Identity verification data
+   (Verified Badge)" bullet in Section 2, updated Stripe line in Section 4)
+   and `/dpa` (Section 2, sub-processor list, and Annex A's "Types of
+   personal data"/"Special categories of data") now describe Stripe
+   Identity's government-ID-image and biometric data handling, and are
+   explicit that SignedBy itself never receives or stores that raw
+   ID/biometric data — only the verification result and confirmed name.
 5. Merge to master and deploy (`./deploy-prod.sh` per the standing
-   deploy-guard-script workflow) once 1-4 are done.
+   deploy-guard-script workflow) once 1-3 are done.
 
 ## Status
 

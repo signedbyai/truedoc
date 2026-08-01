@@ -55,7 +55,11 @@ export default function DpaPage() {
         addresses, user agent strings, and document hashes) needed for a legally defensible electronic signature;
         generate the final signed PDF and certificate of completion; and, for Customers using optional AI-assisted
         features, send relevant document text to an AI sub-processor for field-suggestion, drafting, or
-        summarization — Mistral AI. Processing lasts for the duration of the
+        summarization — Mistral AI; and, for Customers using the optional Verified Badge feature, directing Stripe to
+        perform identity verification of the Customer — a government-issued ID document and a live selfie are
+        submitted directly to Stripe, which collects and retains that document image and biometric data under its
+        own terms, and SignedBy receives and stores only the resulting verification status and the name confirmed on
+        the ID. Processing lasts for the duration of the
         Customer&apos;s use of the service and any applicable retention period described in our{" "}
         <a href="/privacy" className="underline">
           Privacy Policy
@@ -70,7 +74,11 @@ export default function DpaPage() {
         <li>Cloudflare, Inc. (R2) — document file storage</li>
         <li>Resend — transactional email delivery</li>
         <li>Mistral AI — AI processing for optional field-suggestion, document-drafting, and summary features</li>
-        <li>Stripe, Inc. — payment processing for subscriptions</li>
+        <li>
+          Stripe, Inc. — payment processing for subscriptions and, for Customers using Verified Badge, identity
+          verification (the government-ID image and biometric data are collected and retained by Stripe, not
+          SignedBy)
+        </li>
         <li>Vercel Inc. — application hosting</li>
       </ul>
       <p>
@@ -164,15 +172,22 @@ export default function DpaPage() {
       </p>
       <p>
         <strong>Types of personal data:</strong> names; email addresses; document content uploaded by or on behalf
-        of the Customer; field values and typed or drawn signature images entered by Signers; and audit-trail data
-        (including timestamps, IP addresses, browser/user-agent strings, and cryptographic document hashes).
+        of the Customer; field values and typed or drawn signature images entered by Signers; audit-trail data
+        (including timestamps, IP addresses, browser/user-agent strings, and cryptographic document hashes); and,
+        for Customers using the optional Verified Badge feature, identity-verification results (verification status
+        and the name confirmed on a government-issued ID) — the underlying ID document image and biometric data are
+        collected and retained solely by Stripe, not SignedBy.
       </p>
       <p>
         <strong>Special categories of data:</strong> SignedBy does not intentionally collect or request special
         categories of personal data (as defined in Article 9 of the GDPR). Uploaded documents may contain any
         content the Customer chooses to include; as controller, the Customer is solely responsible for determining
         the content of documents, for the presence of any special-category or other sensitive data within them, and
-        for ensuring an appropriate lawful basis for its processing.
+        for ensuring an appropriate lawful basis for its processing. Separately, for Customers using the optional
+        Verified Badge feature, Stripe processes biometric data (facial matching against a government-issued ID) as
+        part of its identity verification service; SignedBy does not receive, store, or otherwise process that
+        biometric data itself — only the resulting verification status and confirmed name are returned to and
+        stored by SignedBy.
       </p>
       <p>
         <strong>Nature and purpose of the processing:</strong> to render and store uploaded documents; capture field

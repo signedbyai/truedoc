@@ -77,6 +77,14 @@ export default function PrivacyPage() {
           collects your payment card details directly — SignedBy never sees or stores full card numbers.
         </li>
         <li>
+          <strong>Identity verification data (Verified Badge):</strong> if your organization uses the optional
+          Verified Badge feature, our identity verification provider, Stripe, collects a government-issued ID
+          document and a live selfie to confirm your identity. Stripe retains that ID document image and the
+          biometric (facial-matching) data under its own privacy policy — SignedBy never receives, stores, or has
+          access to it. SignedBy stores only the verification result and the name confirmed on the ID, which we
+          reuse for documents you seal afterward so you are not re-verified every time.
+        </li>
+        <li>
           <strong>Usage data:</strong> basic technical logs (e.g. request metadata) needed to operate and secure the
           service.
         </li>
@@ -121,7 +129,9 @@ export default function PrivacyPage() {
           Mistral&apos;s models;
         </li>
         <li>
-          <strong>Stripe</strong> — processes subscription payments;
+          <strong>Stripe</strong> — processes subscription payments and, for organizations using Verified Badge,
+          performs identity verification. Stripe itself collects and retains the government-ID image and biometric
+          data involved — SignedBy receives only the verification result and confirmed name;
         </li>
         <li>
           <strong>Vercel</strong> — hosts the application itself.
