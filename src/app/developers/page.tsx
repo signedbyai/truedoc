@@ -431,11 +431,26 @@ function verify(rawBody, signatureHeader, secret) {
 
       <Section id="mcp" title="MCP server (for AI agents)">
         <p>
-          SignedBy also runs a real Model Context Protocol (MCP) server at <code>/api/mcp</code> — point Claude, or
-          any other MCP-speaking client, at it directly and six tools show up ready to call, wrapping the same
-          endpoints above. No custom integration code: an MCP client just needs the URL and a bearer key.
+          SignedBy also runs a real Model Context Protocol (MCP) server at <code>/api/mcp</code> — six tools show up
+          ready to call, wrapping the same endpoints above. No custom integration code: an MCP client just needs the
+          URL and your API key.
         </p>
-        <CodeBlock>{`{
+
+        <div>
+          <p className="font-medium text-slate-900">Mistral Le Chat</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+            <li>Connectors → + Add Connector → the &quot;Custom MCP Connector&quot; tab</li>
+            <li>
+              Name it (e.g. <code>signedby</code>) and paste the server URL: <code>https://signedby.ai/api/mcp</code>
+            </li>
+            <li>Le Chat detects it needs an HTTP Bearer Token and prompts for one — paste your SignedBy API key</li>
+          </ul>
+        </div>
+
+        <div>
+          <p className="font-medium text-slate-900">Claude Code / Claude Desktop</p>
+          <p className="mt-2 text-slate-600">Add this to your MCP config:</p>
+          <CodeBlock>{`{
   "mcpServers": {
     "signedby": {
       "url": "https://signedby.ai/api/mcp",
@@ -443,6 +458,8 @@ function verify(rawBody, signatureHeader, secret) {
     }
   }
 }`}</CodeBlock>
+        </div>
+
         <p>
           The signer&apos;s side is completely unchanged — an AI agent can trigger a signing request through these
           tools, but the recipient still has to open the link and sign it themselves, through the same per-recipient

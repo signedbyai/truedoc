@@ -278,10 +278,22 @@ export default async function ConsolePage() {
           <p>
             SignedBy runs a real MCP server at{" "}
             <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs text-slate-200">/api/mcp</code> —
-            point Claude, or any other MCP-speaking client, at it directly as a remote connector. Six tools show up
-            ready to call: send a document, check status, list documents and templates, void, and download the
-            signed PDF. No wrapper code, no manifest to ingest first.
+            six tools show up ready to call: send a document, check status, list documents and templates, void, and
+            download the signed PDF. No wrapper code, no manifest to ingest first.
           </p>
+
+          <p className="font-medium text-slate-200">Mistral Le Chat</p>
+          <ul className="list-inside list-disc space-y-1">
+            <li>Connectors → + Add Connector → the &quot;Custom MCP Connector&quot; tab</li>
+            <li>
+              Name it (e.g. <code className="rounded bg-white/10 px-1 py-0.5 font-mono text-xs text-slate-200">signedby</code>) and paste the
+              server URL: <code className="rounded bg-white/10 px-1 py-0.5 font-mono text-xs text-slate-200">https://signedby.ai/api/mcp</code>
+            </li>
+            <li>Le Chat detects it needs an HTTP Bearer Token and prompts for one — paste your SignedBy API key</li>
+          </ul>
+
+          <p className="font-medium text-slate-200">Claude Code / Claude Desktop</p>
+          <p>Add this to your MCP config:</p>
           <CodeBlock>{`{
   "mcpServers": {
     "signedby": {
@@ -290,6 +302,7 @@ export default async function ConsolePage() {
     }
   }
 }`}</CodeBlock>
+
           <p className="text-xs text-slate-500">
             Generate the key in Settings → Integration & API — the same key the REST API uses, requires the Pro plan
             or higher.
