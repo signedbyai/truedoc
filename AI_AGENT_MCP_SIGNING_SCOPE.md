@@ -1,8 +1,10 @@
 # AI agent triggers a signing request — scope (backlog)
 
-Status: **BUILT 2026-08-01**, smoke-verified in the sandbox (tsc, eslint,
-full vitest suite — 538 tests — and a clean `next build` all pass, `/api/mcp`
-present in the route manifest), not yet merged to master/deployed to prod.
+Status: **BUILT 2026-08-01**, merged to master (branch `ai-agent-mcp-signing`,
+plus a same-day `master` follow-up documenting it), smoke-verified in the
+sandbox throughout (tsc, eslint, full vitest suite — 538 tests — and a clean
+`next build` all pass). Docs added to both `/console` ("Connect an AI agent")
+and `/developers` (a full "MCP server" section). Deploy to prod still owed.
 
 ## Why this one
 
@@ -162,14 +164,28 @@ Built essentially as scoped, on branch `ai-agent-mcp-signing`:
 - No approval gate, no per-key labeling/scoping — both deferred per the
   2026-08-01 decisions above.
 
-Not yet done: merge to master, deploy, or update `/developers` docs to
-mention the MCP endpoint. The sandbox's local `@next/swc-linux-arm64-gnu`
-binary was corrupted mid-build (bus error) and needed a forced reinstall to
-verify `next build` — noted here in case it recurs, unrelated to this
-feature's own code.
+The sandbox's local `@next/swc-linux-arm64-gnu` binary was corrupted
+mid-build (bus error) and needed a forced reinstall to verify `next build` —
+noted here in case it recurs, unrelated to this feature's own code.
+
+## Docs follow-up (2026-08-01)
+
+Merged to `master` (branch `ai-agent-mcp-signing`, 2 commits: the server
+itself, then a `/console` CTA-page update). Two more docs adds, both
+committed straight to `master` since they're copy-only:
+
+- `/console`'s "Connect an AI agent" section now leads with a connector
+  config snippet for `/api/mcp` (works for Claude Desktop, Claude Code, any
+  MCP client), with the `tools.json` manifest kept underneath as the
+  fallback for OpenAI-style function calling / non-MCP frameworks.
+  `tools.json`'s own response gained an `mcp_server` field, and its route
+  comment no longer claims there's no hosted MCP server.
+- `/developers` gained a full "MCP server (for AI agents)" section (between
+  Webhooks and Connect via Make): the same config snippet, all six tools
+  with descriptions, the agent-triggers/human-still-signs trust note, and a
+  pointer to `/console` for the Pro+ metered pricing this rides on.
 
 ## Status
 
-Built, not deployed. Needs: review, merge `ai-agent-mcp-signing` → `master`,
-deploy, then document the `/api/mcp` endpoint (URL + the six tools) wherever
-the Console/API docs live.
+Built and merged to `master`, not yet deployed to prod. Docs are done on
+both `/console` and `/developers`. Only remaining step: `./deploy-prod.sh`.
