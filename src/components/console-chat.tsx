@@ -606,6 +606,17 @@ export function ConsoleChat({
   // the conversation on first save (POST, no id yet) or updates it
   // thereafter (PATCH). Best-effort: a failed autosave doesn't interrupt
   // the chat itself, just means that turn didn't make it into history.
+  //
+  // keepalive: true (2026-08-02, direct bug report) — the exact turn most
+  // likely to trigger a same-tab navigation away (one that just produced a
+  // Verified Badge attachment link) is also the turn whose autosave is most
+  // likely to still be in flight when the user taps that link. A plain
+  // fetch() gets aborted on page unload, silently dropping that turn from
+  // History; keepalive lets the browser finish sending it in the
+  // background instead. (The attachment links themselves were also missing
+  // target="_blank", the more direct fix for losing the chat/its state
+  // entirely — see the m.sealed links above — but this covers every other
+  // path that still navigates the same tab away mid-save.)
   useEffect(() => {
     const serialized = JSON.stringify(messages);
     if (serialized === lastSavedRef.current) return;
@@ -619,6 +630,7 @@ export function ConsoleChat({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ messages }),
+            keepalive: true,
           });
           const data = await res.json().catch(() => ({}));
           if (res.ok && typeof data.id === "string") {
@@ -630,6 +642,7 @@ export function ConsoleChat({
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ messages }),
+            keepalive: true,
           });
           const data = await res.json().catch(() => ({}));
           if (res.ok) onConversationSaved?.(convIdRef.current, String(data.title ?? ""));
@@ -1156,9 +1169,22 @@ export function ConsoleChat({
                       <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                       Open verify page
                     </a>
+                    {/* target="_blank" (2026-08-02, direct bug report) — these
+                        three were missing it, unlike verifyUrl/m.link.href
+                        above. On mobile, tapping one navigated the SAME tab
+                        away from console.signedby.ai entirely; hitting back
+                        then landed on a fresh mount with no chat and, worse,
+                        could abort the in-flight autosave fetch for the very
+                        turn that had just produced this attachment (see the
+                        keepalive fix on the autosave effect below) — so the
+                        last turn could be missing from History too. Opening
+                        in a new tab keeps the console tab alive and never
+                        interrupts that autosave at all. */}
                     {m.sealed.hasSignedFile && (
                       <a
                         href={`/api/documents/${m.sealed.documentId}/signed-file`}
+                        target="_blank"
+                        rel="noreferrer"
                         className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
                       >
                         <FileText className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1168,6 +1194,8 @@ export function ConsoleChat({
                     {m.sealed.hasCertificateFile && (
                       <a
                         href={`/api/documents/${m.sealed.documentId}/certificate`}
+                        target="_blank"
+                        rel="noreferrer"
                         className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
                       >
                         <FileText className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1176,6 +1204,8 @@ export function ConsoleChat({
                     )}
                     <a
                       href={`/api/documents/${m.sealed.documentId}/badge`}
+                      target="_blank"
+                      rel="noreferrer"
                       className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
                     >
                       <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />

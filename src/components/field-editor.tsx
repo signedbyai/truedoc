@@ -305,7 +305,20 @@ export function FieldEditor({
   // as the per-chip lock toggle (toggleAuthRequired below); only actually
   // persists on Save draft / Send, same as every other recipient edit.
   const [showVerificationModal, setShowVerificationModal] = useState(false);
-  const [templateName, setTemplateName] = useState("");
+  // Pre-filled from documentTitle (2026-08-02, direct bug report), not
+  // blank — was forcing every "Save as Template" to be typed from scratch,
+  // which is how a console-uploaded multi-signer document (Console's own
+  // inline save_as_template confirm only covers <=1 party — see
+  // handleTemplateFileSelected's `parties.length >= 2` branch in
+  // console-chat.tsx, which just links here with no name at all) ended up
+  // saved under a name Console never actually proposed or knew about.
+  // Normalized the exact same way console-chat.tsx's own `defaultName`
+  // is (dashes/underscores -> spaces) so the two paths agree on a name
+  // whenever the sender just accepts the default, instead of only when
+  // Console happens to be the one offering it.
+  const [templateName, setTemplateName] = useState(
+    () => documentTitle.replace(/[-_]+/g, " ").trim() || "Untitled template"
+  );
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateError, setTemplateError] = useState("");
   // First-time-sender guidance — only relevant before any fields exist, so
@@ -397,6 +410,21 @@ export function FieldEditor({
   // without this, any state change that re-runs the effect (e.g. the
   // suggestions themselves arriving) would re-trigger it in a loop.
   const autoSuggestAttempted = useRef(false);
+  // Generation counter for runSuggestFields (2026-08-02, direct bug report:
+  // duplicate fields after a console-originated upload). The auto-run fires
+  // itself via a deferred microtask right when the review page opens; if a
+  // sender who saw nothing yet (suggestions were still loading, not
+  // actually broken) taps the toolbar's "Suggest fields" button in that
+  // window, both calls are genuinely in flight at once. The manual call
+  // (replaceExisting=true) correctly clears prior *suggested* fields before
+  // adding its own batch — but if the auto call (replaceExisting=false)
+  // resolves AFTER it, its own bail-out guard only checks for *confirmed*
+  // fields, so it doesn't back off; it just appends its batch on top of the
+  // manual one, producing the visible "double up." Each call now stamps the
+  // generation it started at and checks it's still current before applying
+  // (or clearing `suggesting` for) its own response — a response from a
+  // superseded call is dropped outright instead of merging in.
+  const suggestGenerationRef = useRef(0);
   // Same one-shot guard, for the initial-signer seeding effect below.
   const initialSignerSeeded = useRef(false);
   // Set right after any pointer interaction that started on an existing field
@@ -625,6 +653,7 @@ export function FieldEditor({
   // need it since there's nothing to replace yet.
   const runSuggestFields = useCallback(
     async (replaceExisting = false) => {
+      const myGeneration = ++suggestGenerationRef.current;
       setSuggesting(true);
       setSuggestError("");
       try {
@@ -649,8 +678,12 @@ export function FieldEditor({
         // document the sender has already placed fields on (guard below) —
         // mirror that here to decide whether to scroll.
         const willApply = replaceExisting || !hasConfirmedRef.current;
+        // A newer run has since started — drop this response outright
+        // rather than merging it in. See suggestGenerationRef's comment.
+        const superseded = myGeneration !== suggestGenerationRef.current;
 
         setFields((prev) => {
+          if (superseded) return prev;
           // If the sender started placing fields manually while this
           // request was in flight, don't clobber their work with stale
           // suggestions computed against an empty editor.
@@ -775,13 +808,22 @@ export function FieldEditor({
         // signature block, off-screen below). Two rAFs so the new fields have
         // laid out first. Skipped when nothing was applied or there's nothing
         // meaningful to scroll to (e.g. a single top-of-page placeholder).
-        if (willApply && topmost && !unreadable) {
+        // !superseded too — this response's fields were never applied (see
+        // the setFields guard above), so its own topmost position no longer
+        // corresponds to anything actually on screen.
+        if (!superseded && willApply && topmost && !unreadable) {
           requestAnimationFrame(() => requestAnimationFrame(() => scrollToDocPosition(topmost.page, topmost.y)));
         }
       } catch (err) {
-        setSuggestError(err instanceof Error ? err.message : "Couldn't generate suggestions.");
+        if (myGeneration === suggestGenerationRef.current) {
+          setSuggestError(err instanceof Error ? err.message : "Couldn't generate suggestions.");
+        }
       } finally {
-        setSuggesting(false);
+        // Only the latest generation should clear the loading state — if a
+        // stale call's `finally` ran after a newer one had already started,
+        // it would otherwise flip `suggesting` back to false while the
+        // newer request is still genuinely in flight.
+        if (myGeneration === suggestGenerationRef.current) setSuggesting(false);
       }
     },
     [documentId, recipients, scrollToDocPosition]
