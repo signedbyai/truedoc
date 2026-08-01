@@ -132,6 +132,9 @@ export default async function VsSignNowPage() {
           <Link href="/vs/bolosign" className="hover:text-slate-600">
             SignedBy vs BoloSign
           </Link>
+          <Link href="/vs/adobe" className="hover:text-slate-600">
+            SignedBy vs Adobe
+          </Link>
           <Link href="/templates" className="hover:text-slate-600">
             Free templates
           </Link>

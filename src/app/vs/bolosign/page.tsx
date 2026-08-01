@@ -154,6 +154,9 @@ export default async function VsBoloSignPage() {
           <Link href="/vs/hix" className="hover:text-slate-600">
             SignedBy vs Hix
           </Link>
+          <Link href="/vs/adobe" className="hover:text-slate-600">
+            SignedBy vs Adobe
+          </Link>
           <Link href="/templates" className="hover:text-slate-600">
             Free templates
           </Link>

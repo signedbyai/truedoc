@@ -28,6 +28,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // for national eID, which doesn't compete for the same buyer and was
     // skipped rather than forced into an apples-to-oranges comparison).
     { url: `${BASE_URL}/vs/bolosign`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    // Added 2026-08-01 — Adobe Acrobat Sign, the market's incumbent, was the
+    // one major-competitor comparison page still missing.
+    { url: `${BASE_URL}/vs/adobe`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     // Programmatic-SEO template pages, added 2026-07-21 (see the DocuSign/
     // SignNow GTM research this was modeled on) — one per AI Drafter
     // document type, index page plus each individual /templates/[slug].
