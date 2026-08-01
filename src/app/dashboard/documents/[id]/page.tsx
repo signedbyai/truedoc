@@ -24,10 +24,16 @@ export default async function DocumentEditorPage({
   // handleFinalize) — passed straight through to FieldEditor, which only
   // acts on them when an email is present. Absent for every other path
   // into this page (upload, AI Drafter, duplicate, template).
-  searchParams: Promise<{ signerName?: string; signerEmail?: string }>;
+  //
+  // from=console (2026-08-02, direct ask) — set only on the "Review fields"
+  // link console-chat.tsx's handleTemplateFileSelected sends a multi-party
+  // upload to (see that file's reviewLink). Threaded through to
+  // FieldEditor's cameFromConsole prop, which shows a couple of
+  // Console-specific hints; absent (and inert) for every other path in.
+  searchParams: Promise<{ signerName?: string; signerEmail?: string; from?: string }>;
 }) {
   const { id } = await params;
-  const { signerName, signerEmail } = await searchParams;
+  const { signerName, signerEmail, from } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -329,6 +335,7 @@ export default async function DocumentEditorPage({
       initialExpiresAt={doc.expires_at}
       initialSignerName={signerName}
       initialSignerEmail={signerEmail}
+      cameFromConsole={from === "console"}
     />
   );
 }

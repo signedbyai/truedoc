@@ -957,7 +957,13 @@ export function ConsoleChat({
       const unreadable = suggest.unreadable === true;
       const fieldCount = suggestions.length;
       const defaultName = file.name.replace(/\.pdf$/i, "").replace(/[-_]+/g, " ").trim() || "Untitled template";
-      const reviewLink = { href: `https://signedby.ai/dashboard/documents/${documentId}`, label: "Review fields" };
+      // ?from=console (2026-08-02, direct ask) — lets the editor show a
+      // couple of console-specific hints (don't re-click Suggest while
+      // it's still running; the template name is prefilled to match this
+      // same defaultName) only for someone who actually landed here via
+      // Console, not every document editor visit. See field-editor.tsx's
+      // cameFromConsole prop.
+      const reviewLink = { href: `https://signedby.ai/dashboard/documents/${documentId}?from=console`, label: "Review fields" };
 
       const userBubble: Bubble = { role: "user", content: `Uploaded "${file.name}" to use as a template.` };
       let assistantBubble: Bubble;

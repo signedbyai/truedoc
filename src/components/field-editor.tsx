@@ -176,6 +176,7 @@ export function FieldEditor({
   initialInviteSubject,
   initialInviteMessage,
   initialExpiresAt,
+  cameFromConsole = false,
   initialSignerName,
   initialSignerEmail,
 }: {
@@ -210,6 +211,15 @@ export function FieldEditor({
   initialInviteMessage: string | null;
   // documents.expires_at (migration 0030) — null means no expiration.
   initialExpiresAt: string | null;
+  // True only when this document was opened via Console's own
+  // "Review fields" link after a multi-party upload (?from=console — see
+  // dashboard/documents/[id]/page.tsx). Shows two small Console-specific
+  // hints (direct ask, 2026-08-02): don't re-click Suggest while the first
+  // run is still going, and the Save-as-Template name is prefilled to match
+  // what Console itself expects. Defaults to false so every other path into
+  // this page (a plain upload, AI Drafter, duplicate, template) is
+  // unaffected.
+  cameFromConsole?: boolean;
   // Set only on the redirect from Magic Quote's finalize step (see
   // magic-quote-form.tsx's handleFinalize + documents/[id]/page.tsx's
   // ?signerName=/?signerEmail= searchParams), and only when the sender
@@ -2426,7 +2436,16 @@ export function FieldEditor({
       {suggesting && (
         <div className="flex items-center gap-2 border-b border-amber-100 bg-amber-50 px-4 py-2.5 sm:px-6">
           <span className="h-3 w-3 animate-spin rounded-full border-2 border-amber-400 border-t-transparent" />
-          <p className="text-xs text-amber-900">Looking for signature, date, and initials spots in this document…</p>
+          <p className="text-xs text-amber-900">
+            Looking for signature, date, and initials spots in this document…
+            {/* Console-only hint (2026-08-02, direct ask) — the moment
+                someone coming from a Console upload is most likely to
+                assume nothing happened and hit Suggest again, producing a
+                duplicate batch (see suggestGenerationRef's comment above
+                for the underlying race this used to cause — now harmless
+                either way, but better to just avoid the extra click). */}
+            {cameFromConsole && " Usually takes a few seconds — no need to click Suggest again."}
+          </p>
         </div>
       )}
 
@@ -2759,6 +2778,18 @@ export function FieldEditor({
               className="mt-3"
               onKeyDown={(e) => e.key === "Enter" && handleSaveAsTemplate()}
             />
+            {/* Console-only hint (2026-08-02, direct ask) — a multi-party
+                console upload never gets an inline name proposal in chat
+                (see console-chat.tsx's handleTemplateFileSelected, the
+                parties.length >= 2 branch), so nothing else on screen
+                explains that this field is already prefilled to agree with
+                what Console itself would call this document. */}
+            {cameFromConsole && (
+              <p className="mt-1.5 text-xs text-slate-400">
+                Prefilled to match what Console expects — keep it, or note your new name so you can ask Console to
+                find it later.
+              </p>
+            )}
             {templateError && <p className="mt-2 text-sm text-red-600">{templateError}</p>}
             <div className="mt-4 flex justify-end gap-2">
               <button
