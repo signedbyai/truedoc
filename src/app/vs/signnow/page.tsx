@@ -148,6 +148,9 @@ export default async function VsSignNowPage() {
           <Link href="/vs/adobe" className="hover:text-slate-600">
             SignedBy vs Adobe
           </Link>
+          <Link href="/vs/dropbox" className="hover:text-slate-600">
+            SignedBy vs Dropbox Sign
+          </Link>
           <Link href="/templates" className="hover:text-slate-600">
             Free templates
           </Link>

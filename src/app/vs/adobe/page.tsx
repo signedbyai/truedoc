@@ -169,6 +169,9 @@ export default async function VsAdobePage() {
           <Link href="/vs/bolosign" className="hover:text-slate-600">
             SignedBy vs BoloSign
           </Link>
+          <Link href="/vs/dropbox" className="hover:text-slate-600">
+            SignedBy vs Dropbox Sign
+          </Link>
           <Link href="/templates" className="hover:text-slate-600">
             Free templates
           </Link>
