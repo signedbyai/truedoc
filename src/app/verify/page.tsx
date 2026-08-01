@@ -7,7 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 type Result =
-  | { verified: true; title: string; completedAt: string; signerCount: number; orgName: string | null }
+  | {
+      verified: true;
+      title: string;
+      completedAt: string;
+      signerCount: number;
+      orgName: string | null;
+      isVerifiedBadge: boolean;
+      sealedBy: string | null;
+      identityVerifiedAt: string | null;
+    }
   | { verified: false }
   | null;
 
@@ -82,7 +91,48 @@ function VerifyPageInner() {
           </Button>
         </div>
 
-        {result && result.verified && (
+        {result && result.verified && result.isVerifiedBadge && (
+          // Verified Badge framing (VERIFIED_BADGE_SCOPE.md) — the signing
+          // individual's name is the headline claim, not a signer count,
+          // since every Badge has exactly one real, verified signer behind
+          // it. "Sealed" and "Identity verified" are shown as two distinct
+          // facts/dates, not one combined claim — the identity check may
+          // have been reused from an earlier verified session rather than
+          // performed fresh for this specific file.
+          <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-5">
+            <p className="text-sm font-semibold text-emerald-800">✓ Sealed and identity-verified</p>
+            {result.sealedBy && <p className="mt-1 text-base font-semibold text-emerald-900">{result.sealedBy}</p>}
+            <dl className="mt-3 space-y-1.5 text-sm text-emerald-900">
+              <div className="flex justify-between gap-4">
+                <dt className="text-emerald-700">File</dt>
+                <dd className="text-right font-medium">{result.title}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-emerald-700">Sealed</dt>
+                <dd className="text-right font-medium">{new Date(result.completedAt).toLocaleString()}</dd>
+              </div>
+              {result.identityVerifiedAt && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-emerald-700">Identity verified</dt>
+                  <dd className="text-right font-medium">{new Date(result.identityVerifiedAt).toLocaleDateString()}</dd>
+                </div>
+              )}
+              {result.orgName && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-emerald-700">Organization</dt>
+                  <dd className="text-right font-medium">{result.orgName}</dd>
+                </div>
+              )}
+            </dl>
+            <p className="mt-3 text-xs text-emerald-700">
+              This confirms the file existed, unaltered, as of the sealed timestamp above, sealed by a
+              verified individual. It doesn&apos;t certify the file&apos;s contents weren&apos;t AI-generated —
+              only that it hasn&apos;t changed since this timestamp.
+            </p>
+          </div>
+        )}
+
+        {result && result.verified && !result.isVerifiedBadge && (
           <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-5">
             <p className="text-sm font-semibold text-emerald-800">✓ This document is genuine</p>
             <dl className="mt-3 space-y-1.5 text-sm text-emerald-900">

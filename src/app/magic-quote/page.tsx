@@ -197,6 +197,10 @@ export default async function MagicQuotePage() {
             Free templates
           </Link>{" "}
           ·{" "}
+          <Link href="/verified-badge" className="underline underline-offset-2 hover:text-slate-900">
+            Verified Badge
+          </Link>{" "}
+          ·{" "}
           <Link href="/vs/docusign" className="underline underline-offset-2 hover:text-slate-900">
             SignedBy vs DocuSign
           </Link>{" "}

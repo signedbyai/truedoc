@@ -6,7 +6,8 @@ import { authenticateApiRequest } from "@/lib/api-auth";
 import { planHasFeature } from "@/lib/plan";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getFromR2 } from "@/lib/r2";
+import { getFromR2, uploadToR2 } from "@/lib/r2";
+import { appUrl } from "@/lib/email";
 import {
   sendDocumentAction,
   checkStatusAction,
@@ -14,6 +15,12 @@ import {
   listTemplatesAction,
   voidDocumentAction,
 } from "@/lib/console-actions";
+import { sealDocumentAction, isLoadablePdf } from "@/lib/verified-badge-actions";
+
+// Matches the console upload UI's own 25MB product cap
+// (console-chat.tsx's MAX_TEMPLATE_FILE_BYTES) — same ceiling, just applied
+// to a base64-decoded byte length here instead of a File object's .size.
+const MAX_SEAL_FILE_BYTES = 25 * 1024 * 1024;
 
 // POST /api/mcp — a real Model Context Protocol server (AI_AGENT_MCP_SIGNING_SCOPE.md),
 // distinct from CRM_MCP_READINESS_PHASE1_SCOPE.md's REST+webhooks work for
@@ -192,6 +199,80 @@ function buildMcpServer(orgId: string, orgName: string): McpServer {
         console.error("MCP get_signed_file: R2 fetch failed", err);
         return textResult({ error: "Could not load file." }, true);
       }
+    }
+  );
+
+  mcp.registerTool(
+    "seal_document",
+    {
+      title: "Seal a document for Verified Badge",
+      description:
+        "Certifies a finished PDF as unaltered and identity-verified: hashes it, timestamps it, and returns a scannable proof badge plus a public ledger link anyone can check with no account needed. This is NOT a signature request — it never asks anyone else to sign anything, it certifies a file this organization already considers final (VERIFIED_BADGE_SCOPE.md). Requires the organization to have completed a one-time Stripe Identity check first (from the SignedBy dashboard's Settings page, not through this tool) — call this and read the error message if you're not sure whether that's done yet.",
+      inputSchema: {
+        file_base64: z.string().describe("The PDF file's bytes, base64-encoded"),
+        filename: z.string().trim().max(200).optional(),
+        certificate_mode: z
+          .enum(["appended", "separate", "both"])
+          .optional()
+          .describe(
+            "'appended' bakes the certificate into the file (default). 'separate' returns the original file untouched plus a standalone certificate PDF. 'both' returns all three."
+          ),
+      },
+    },
+    async (args) => {
+      const bytes = Buffer.from(args.file_base64, "base64");
+      if (bytes.length === 0 || bytes.length > MAX_SEAL_FILE_BYTES) {
+        return textResult({ error: "File is empty, unreadable, or exceeds the 25MB limit." }, true);
+      }
+      if (!(await isLoadablePdf(bytes))) {
+        return textResult({ error: "That doesn't look like a valid PDF (PDFs only for v1)." }, true);
+      }
+
+      const admin = createAdminClient();
+      const { data: org } = await admin.from("organizations").select("owner_id").eq("id", orgId).single();
+      if (!org) return textResult({ error: "Organization not found." }, true);
+
+      const documentId = crypto.randomUUID();
+      const safeFilename = (args.filename || "document.pdf").replace(/[^\w.\- ]/g, "").trim() || "document.pdf";
+      const key = `${orgId}/${documentId}/${safeFilename}`;
+
+      try {
+        await uploadToR2(key, bytes, "application/pdf");
+      } catch (err) {
+        console.error("MCP seal_document: R2 upload failed", err);
+        return textResult({ error: "Upload failed. Try again." }, true);
+      }
+
+      const { error: insertError } = await admin.from("documents").insert({
+        id: documentId,
+        org_id: orgId,
+        owner_id: org.owner_id,
+        title: safeFilename.replace(/\.pdf$/i, "") || "Sealed document",
+        status: "draft",
+        file_path: key,
+        original_filename: safeFilename,
+      });
+      if (insertError) {
+        console.error("MCP seal_document: create document failed", insertError);
+        return textResult({ error: "Couldn't save the uploaded file." }, true);
+      }
+
+      const result = await sealDocumentAction({
+        orgId,
+        documentId,
+        certificateMode: args.certificate_mode ?? "appended",
+        metered: true,
+        source: "mcp",
+      });
+      if (!result.ok) return textResult({ error: result.error }, true);
+
+      return textResult({
+        document_id: result.documentId,
+        verify_url: result.verifyUrl,
+        sealed_file_url: result.hasSignedFile ? `${appUrl()}/api/v1/documents/${result.documentId}/signed-file` : null,
+        certificate_file_url: result.hasCertificateFile ? `${appUrl()}/api/v1/documents/${result.documentId}/certificate` : null,
+        badge_image_url: `${appUrl()}/api/v1/documents/${result.documentId}/badge`,
+      });
     }
   );
 

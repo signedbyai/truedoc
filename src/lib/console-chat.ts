@@ -7,6 +7,7 @@ import {
   voidDocumentAction,
   saveAsTemplateAction,
 } from "@/lib/console-actions";
+import { sealDocumentAction } from "@/lib/verified-badge-actions";
 
 // The console chat's Mistral function-calling loop (CONSOLE_UX_SCOPE.md #2).
 // Deliberately its own module rather than an extension of ai-provider.ts's
@@ -24,7 +25,13 @@ export type ChatMessage = { role: "user" | "assistant"; content: string };
 // the confirm bubble itself (document id + AI-suggested fields it already
 // has from the upload it just ran), the same way a raw id is never allowed
 // to reach the model. See saveAsTemplateAction's doc comment.
-const CONFIRM_REQUIRED = new Set(["send_document", "bulk_send", "save_as_template"]);
+//
+// seal_document (2026-08-01, VERIFIED_BADGE_SCOPE.md) is the same shape as
+// save_as_template: confirm-only, and also absent from TOOLS below. The
+// document_id it acts on only ever exists because the chat UI's own
+// "Get a Verified Badge" upload button just created it — never something
+// Mistral resolves or guesses from a name.
+const CONFIRM_REQUIRED = new Set(["send_document", "bulk_send", "save_as_template", "seal_document"]);
 
 const SYSTEM_PROMPT =
   "You are SignedBy Console, an assistant that sends, tracks, and manages e-signature documents on the user's " +
@@ -211,6 +218,7 @@ type ToolExecutionResult =
   | Awaited<ReturnType<typeof listTemplatesAction>>
   | Awaited<ReturnType<typeof voidDocumentAction>>
   | Awaited<ReturnType<typeof saveAsTemplateAction>>
+  | Awaited<ReturnType<typeof sealDocumentAction>>
   | { ok: false; error: string; status: number };
 
 async function executeTool(orgId: string, metered: boolean, name: string, args: Record<string, unknown>): Promise<ToolExecutionResult> {
@@ -256,6 +264,17 @@ async function executeTool(orgId: string, metered: boolean, name: string, args: 
         name: String(args.name ?? ""),
         fields: Array.isArray(args.fields) ? args.fields : [],
       });
+    case "seal_document": {
+      const mode = args.certificate_mode;
+      const certificateMode = mode === "separate" || mode === "both" ? mode : "appended";
+      return sealDocumentAction({
+        orgId,
+        documentId: String(args.document_id ?? ""),
+        certificateMode,
+        metered,
+        source: "console",
+      });
+    }
     default:
       return { ok: false as const, error: `Unknown tool: ${name}`, status: 400 };
   }
@@ -315,6 +334,8 @@ function toolStatusPhrase(name: string, args: Record<string, unknown>): string {
     }
     case "save_as_template":
       return "Saving as a template…";
+    case "seal_document":
+      return "Sealing the document…";
     default:
       return "Working on it…";
   }
@@ -351,13 +372,24 @@ export async function runConsoleChatTurn(params: {
     }
     onStatus?.(toolStatusPhrase(confirmedTool.name, confirmedTool.arguments));
     const result = await executeTool(orgId, metered, confirmedTool.name, confirmedTool.arguments);
-    if (!result.ok) return { type: "message", content: `Couldn't do that: ${result.error}` };
+    if (!result.ok) {
+      // seal_document's one special failure mode: no verified identity on
+      // file yet (or it's gone stale) — point at Settings rather than just
+      // reporting a generic error, since there's a real next step to take.
+      if ("needsIdentityVerification" in result && result.needsIdentityVerification) {
+        return {
+          type: "message",
+          content: `${result.error} Head to Settings → Integration & API to verify — it only takes about a minute, then come back and try sealing again.`,
+        };
+      }
+      return { type: "message", content: `Couldn't do that: ${result.error}` };
+    }
     if (confirmedTool.name === "send_document" && "documentId" in result) {
       const parts = [
         `Sent the document to ${String(confirmedTool.arguments.signer_email ?? "the signer")}.`,
         `${capitalize(describeSendSettings(confirmedTool.arguments))}.`,
       ];
-      if (result.domainWarning) parts.push(`Heads up — ${result.domainWarning}`);
+      if ("domainWarning" in result && result.domainWarning) parts.push(`Heads up — ${result.domainWarning}`);
       parts.push(`Document id: ${result.documentId}.`);
       return { type: "message", content: parts.join(" ") };
     }
@@ -388,6 +420,13 @@ export async function runConsoleChatTurn(params: {
         type: "message",
         content: `Saved as a template called "${name}." Send it any time by name — e.g. "send ${name} to jane@acme.com."`,
       };
+    }
+    if (confirmedTool.name === "seal_document" && "verifyUrl" in result) {
+      const parts = [`Sealed. Anyone can verify it, with no account needed, at ${result.verifyUrl}.`];
+      if (result.hasSignedFile) parts.push("Download the sealed PDF from the documents list.");
+      if (result.hasCertificateFile) parts.push("The standalone certificate is available separately, same place.");
+      parts.push("The Badge image (for an invoice footer, portfolio, or email signature) downloads from the same document.");
+      return { type: "message", content: parts.join(" ") };
     }
     return { type: "message", content: "Done." };
   }

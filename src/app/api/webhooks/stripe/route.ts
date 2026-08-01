@@ -110,6 +110,34 @@ export async function POST(request: Request) {
         break;
       }
 
+      // Org-level Stripe Identity (VERIFIED_BADGE_SCOPE.md) — needs
+      // "identity.verification_session.verified" enabled on this webhook
+      // endpoint in the Stripe dashboard alongside the existing checkout/
+      // subscription/invoice events. Retrieves the session with
+      // verified_outputs expanded since the webhook payload's own
+      // data.object doesn't include the confirmed name by default.
+      case "identity.verification_session.verified": {
+        const session = event.data.object as Stripe.Identity.VerificationSession;
+        const orgId = session.metadata?.org_id;
+        if (!orgId) break;
+
+        const full = await stripe.identity.verificationSessions.retrieve(session.id, {
+          expand: ["verified_outputs"],
+        });
+        const outputs = full.verified_outputs;
+        const name = outputs ? [outputs.first_name, outputs.last_name].filter(Boolean).join(" ").trim() : "";
+
+        await admin
+          .from("organizations")
+          .update({
+            identity_verified_at: new Date().toISOString(),
+            identity_verified_name: name || "Verified individual",
+            stripe_identity_verification_session_id: session.id,
+          })
+          .eq("id", orgId);
+        break;
+      }
+
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
         const orgId = await resolveOrgId(admin, subscription);

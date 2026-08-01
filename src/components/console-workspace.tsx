@@ -57,6 +57,7 @@ export function ConsoleWorkspace({
   initialCapEnabled,
   initialCapCents,
   showIntro,
+  certificateModePreference,
 }: {
   plan: string;
   hasAccess: boolean;
@@ -64,6 +65,10 @@ export function ConsoleWorkspace({
   initialCapEnabled: boolean;
   initialCapCents: number;
   showIntro: boolean;
+  /** Org's Settings preference for Verified Badge's certificate question —
+   *  threaded straight through to ConsoleChat. See that component's own
+   *  prop doc for what each value does. */
+  certificateModePreference: "ask" | "appended" | "separate" | "both";
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [initialMessages, setInitialMessages] = useState<Bubble[]>([]);
@@ -227,7 +232,13 @@ export function ConsoleWorkspace({
           </div>
 
           {hasAccess ? (
-            <ConsoleChat key={resetKey} conversationId={activeId} initialMessages={initialMessages} onConversationSaved={handleSaved} />
+            <ConsoleChat
+              key={resetKey}
+              conversationId={activeId}
+              initialMessages={initialMessages}
+              onConversationSaved={handleSaved}
+              certificateModePreference={certificateModePreference}
+            />
           ) : (
             <ConsoleLockedChat />
           )}

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, Check, ChevronDown, Copy, ExternalLink, FileText, FileUp, Paperclip, Square, X } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, Copy, ExternalLink, FileText, FileUp, Paperclip, ShieldCheck, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { parseNdjsonLine, splitNdjsonLines } from "@/lib/ndjson";
 
@@ -34,6 +34,16 @@ export type Bubble =
       // field editor in a new tab rather than running anything through
       // this chat's own confirm/execute mechanism.
       link?: { href: string; label: string };
+      // Verified Badge upload flow (2026-08-01, VERIFIED_BADGE_SCOPE.md):
+      // the appended/separate/both question, asked conversationally right
+      // after an upload when the org's Settings preference is "ask." Kept
+      // as plain local click handlers (see chooseCertificateMode below),
+      // NOT routed through Mistral's tool-calling loop — same reasoning as
+      // save_as_template/seal_document being absent from TOOLS: the raw
+      // document_id from a just-finished upload should never be something
+      // the model has to guess or resolve, only something the UI already
+      // has in hand.
+      certificateModeChoice?: { documentId: string; filename: string };
     };
 
 /** Copies `text` to the clipboard on click/tap and flashes a brief check
@@ -436,6 +446,7 @@ export function ConsoleChat({
   conversationId = null,
   initialMessages = [],
   onConversationSaved,
+  certificateModePreference = "ask",
 }: {
   /** The conversation's id if this is reopening a past chat, or null for a
    *  brand new one. Only read at mount time — console-workspace.tsx forces
@@ -449,6 +460,12 @@ export function ConsoleChat({
    *  remounting this component mid-conversation) and refresh the sidebar's
    *  list. */
   onConversationSaved?: (id: string, title: string) => void;
+  /** The org's Settings preference for Verified Badge's certificate
+   *  question (organizations.verified_badge_certificate_mode) — "ask"
+   *  (default) means handleVerifiedBadgeFileSelected below asks
+   *  conversationally after every upload; any other value skips the
+   *  question and seals straight away using that mode. */
+  certificateModePreference?: "ask" | "appended" | "separate" | "both";
 } = {}) {
   const router = useRouter();
   const [messages, setMessages] = useState<Bubble[]>(initialMessages);
@@ -465,6 +482,7 @@ export function ConsoleChat({
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const templateFileInputRef = useRef<HTMLInputElement>(null);
+  const verifiedBadgeFileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   // Tracks whether the user has deliberately scrolled up to read earlier
@@ -705,6 +723,36 @@ export function ConsoleChat({
     });
   }
 
+  /** Resolves the appended/separate/both quick-reply question a Verified
+   *  Badge upload asks (see handleVerifiedBadgeFileSelected below) —
+   *  strips the choice buttons off that bubble (same in-place-mutation
+   *  pattern confirmAction/cancelAction use above) and appends a normal
+   *  confirm bubble for seal_document with the chosen mode baked in. */
+  function chooseCertificateMode(
+    bubbleIndex: number,
+    documentId: string,
+    filename: string,
+    mode: "appended" | "separate" | "both"
+  ) {
+    const modeLabel =
+      mode === "appended" ? "appended to the file" : mode === "separate" ? "kept as a separate certificate" : "both — appended and separate";
+
+    setMessages((cur) => {
+      const copy = [...cur];
+      const bubble = cur[bubbleIndex] as { role: "assistant"; content: string };
+      copy[bubbleIndex] = { role: "assistant", content: bubble.content };
+      return [
+        ...copy,
+        { role: "user", content: `${modeLabel.charAt(0).toUpperCase()}${modeLabel.slice(1)}, please.` },
+        {
+          role: "assistant",
+          content: `Ready to seal "${filename}" — ${modeLabel}. Confirm?`,
+          confirm: { tool: "seal_document", arguments: { document_id: documentId, certificate_mode: mode } },
+        },
+      ];
+    });
+  }
+
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // clear so selecting the same file again still fires onChange
@@ -838,6 +886,95 @@ export function ConsoleChat({
     }
   }
 
+  /** Get a Verified Badge (2026-08-01, VERIFIED_BADGE_SCOPE.md) — same
+   *  presign/PUT/finalize upload as handleTemplateFileSelected above (the
+   *  file intake mechanics are identical), but no suggest-fields pass:
+   *  there's nothing to place fields for, a seal just certifies the file
+   *  as-is. Ends either with a conversational appended/separate/both
+   *  question (certificateModePreference === "ask", the default) or
+   *  straight to a confirm bubble using the org's standing Settings
+   *  preference. */
+  async function handleVerifiedBadgeFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || loading) return;
+    setError("");
+
+    if (!/\.pdf$/i.test(file.name)) {
+      setError("Please attach a PDF to seal.");
+      return;
+    }
+    if (file.size > MAX_TEMPLATE_FILE_BYTES) {
+      setError("That file's too large — try one under 25MB.");
+      return;
+    }
+
+    dismissPaperclipIntro();
+    setLoading(true);
+    setStatus("Uploading…");
+
+    try {
+      const presignRes = await fetch("/api/documents/upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, size: file.size }),
+      });
+      const presign = await presignRes.json().catch(() => ({}));
+      if (!presignRes.ok) {
+        setError(presign.error || "Couldn't start the upload.");
+        return;
+      }
+
+      const putRes = await fetch(presign.uploadUrl, { method: "PUT", headers: { "Content-Type": "application/pdf" }, body: file });
+      if (!putRes.ok) {
+        setError("Upload failed. Try again.");
+        return;
+      }
+
+      const finalizeRes = await fetch("/api/documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId: presign.documentId, key: presign.key, filename: file.name }),
+      });
+      const finalize = await finalizeRes.json().catch(() => ({}));
+      if (!finalizeRes.ok) {
+        setError(finalize.error || "Couldn't save the upload.");
+        return;
+      }
+      const documentId = String(finalize.id);
+
+      const userBubble: Bubble = { role: "user", content: `Uploaded "${file.name}" to seal as a Verified Badge.` };
+      let assistantBubble: Bubble;
+
+      if (certificateModePreference === "ask") {
+        assistantBubble = {
+          role: "assistant",
+          content: `Got "${file.name}." Want the certificate appended to the file, kept as a separate document, or both? (Change the default any time in Settings.)`,
+          certificateModeChoice: { documentId, filename: file.name },
+        };
+      } else {
+        const modeLabel =
+          certificateModePreference === "appended"
+            ? "appended to the file"
+            : certificateModePreference === "separate"
+              ? "a separate certificate"
+              : "both appended and separate";
+        assistantBubble = {
+          role: "assistant",
+          content: `Got "${file.name}." Ready to seal it — ${modeLabel}, per your Settings preference. Confirm?`,
+          confirm: { tool: "seal_document", arguments: { document_id: documentId, certificate_mode: certificateModePreference } },
+        };
+      }
+
+      setMessages((cur) => [...cur, userBubble, assistantBubble]);
+    } catch {
+      setError("Couldn't upload that file. Try again.");
+    } finally {
+      setLoading(false);
+      setStatus("");
+    }
+  }
+
   return (
     // Borderless canvas + a pill-shaped input bar, not a bordered white
     // card — direct visual reference 2026-07-31 (a screenshot of Claude's
@@ -889,6 +1026,22 @@ export function ConsoleChat({
             ) : (
               <div key={i} className="mr-auto max-w-[90%] text-base leading-relaxed text-neutral-200">
                 <AssistantContent content={m.content} />
+                {m.certificateModeChoice && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {(["appended", "separate", "both"] as const).map((mode) => (
+                      <Button
+                        key={mode}
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={loading}
+                        onClick={() => chooseCertificateMode(i, m.certificateModeChoice!.documentId, m.certificateModeChoice!.filename, mode)}
+                      >
+                        {mode === "appended" ? "Appended" : mode === "separate" ? "Separate" : "Both"}
+                      </Button>
+                    ))}
+                  </div>
+                )}
                 {(m.confirm || m.link) && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {m.link && (
@@ -905,7 +1058,7 @@ export function ConsoleChat({
                     {m.confirm && (
                       <>
                         <Button type="button" variant="cta" size="sm" disabled={loading} onClick={() => confirmAction(i, m.confirm!)}>
-                          {m.confirm.tool === "save_as_template" ? "Save now" : "Confirm send"}
+                          {m.confirm.tool === "save_as_template" ? "Save now" : m.confirm.tool === "seal_document" ? "Seal it" : "Confirm send"}
                         </Button>
                         <Button
                           type="button"
@@ -979,6 +1132,7 @@ export function ConsoleChat({
       >
         <input ref={fileInputRef} type="file" accept=".csv,.txt,text/csv,text/plain" onChange={handleFileSelected} className="hidden" />
         <input ref={templateFileInputRef} type="file" accept=".pdf,application/pdf" onChange={handleTemplateFileSelected} className="hidden" />
+        <input ref={verifiedBadgeFileInputRef} type="file" accept=".pdf,application/pdf" onChange={handleVerifiedBadgeFileSelected} className="hidden" />
         <textarea
           rows={2}
           value={input}
@@ -1075,6 +1229,25 @@ export function ConsoleChat({
                     <span>
                       <span className="block text-sm font-medium text-white">Upload a template</span>
                       <span className="block text-xs text-neutral-400">.pdf, becomes a reusable template</span>
+                    </span>
+                  </button>
+                  {/* Get a Verified Badge (2026-08-01, VERIFIED_BADGE_SCOPE.md)
+                      — a third attach option, same file-picker mechanics as
+                      "Upload a template" above but a different intent: this
+                      isn't a signable template, it's a finished file getting
+                      certified as-is. */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAttachMenuOpen(false);
+                      verifiedBadgeFileInputRef.current?.click();
+                    }}
+                    className="flex w-full items-start gap-2.5 border-t border-white/5 px-3.5 py-3 text-left hover:bg-white/5"
+                  >
+                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" aria-hidden="true" />
+                    <span>
+                      <span className="block text-sm font-medium text-white">Get a Verified Badge</span>
+                      <span className="block text-xs text-neutral-400">.pdf, seal a finished file with a scannable proof badge</span>
                     </span>
                   </button>
                 </div>

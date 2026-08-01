@@ -12,6 +12,10 @@ const bodySchema = z.object({
   capEnabled: z.boolean().optional(),
   capCents: z.number().int().min(100).max(1000000).optional(),
   introSeen: z.boolean().optional(),
+  // Verified Badge's certificate-style preference (migration 0042,
+  // VERIFIED_BADGE_SCOPE.md) — same permission level as the cap toggle
+  // above, rides on this same route rather than a new settings surface.
+  certificateMode: z.enum(["ask", "appended", "separate", "both"]).optional(),
 });
 
 export async function PATCH(request: Request) {
@@ -29,6 +33,7 @@ export async function PATCH(request: Request) {
   if (parsed.data.capEnabled !== undefined) update.console_spend_cap_enabled = parsed.data.capEnabled;
   if (parsed.data.capCents !== undefined) update.console_spend_cap_cents = parsed.data.capCents;
   if (parsed.data.introSeen) update.console_cap_intro_seen_at = new Date().toISOString();
+  if (parsed.data.certificateMode !== undefined) update.verified_badge_certificate_mode = parsed.data.certificateMode;
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: "Nothing to update." }, { status: 400 });

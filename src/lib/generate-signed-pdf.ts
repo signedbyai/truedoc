@@ -3,6 +3,7 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getFromR2, uploadToR2 } from "@/lib/r2";
 import { appUrl } from "@/lib/email";
+import { generateCertificateBadge } from "@/lib/badge-asset";
 
 // If the uploaded PDF already had its own interactive form fields (an
 // "AcroForm" — e.g. an existing fillable contract template), they're
@@ -123,7 +124,18 @@ export async function stampFields(
 // Stamps every filled-in field value onto the original PDF, appends a
 // certificate-of-completion page summarizing the audit trail, uploads the
 // result to R2, and records the resulting key on documents.signed_file_path.
-export async function generateSignedPdf(documentId: string): Promise<{ key: string; hash: string }> {
+//
+// `sealed` (2026-08-01, VERIFIED_BADGE_SCOPE.md) lets a caller swap the
+// certificate page's framing from the normal multi-party "Certificate of
+// Completion" copy to Verified Badge's "Sealed & Identity-Verified" copy —
+// same function, same hash-then-certify pipeline, just different words on
+// the page and an identity-verification line instead of a plain IP address.
+// Optional and defaults to the original framing so every existing caller
+// (sign/[token]/submit/route.ts) is unaffected.
+export async function generateSignedPdf(
+  documentId: string,
+  opts?: { sealed?: { identityVerifiedName: string; identityVerifiedAt: string | null } }
+): Promise<{ key: string; hash: string }> {
   const admin = createAdminClient();
 
   const { data: doc } = await admin
@@ -186,6 +198,7 @@ export async function generateSignedPdf(documentId: string): Promise<{ key: stri
     hash,
     signers: signers || [],
     ipBySigner,
+    sealed: opts?.sealed,
   });
 
   const finalBytes = await pdfDoc.save();
@@ -196,16 +209,33 @@ export async function generateSignedPdf(documentId: string): Promise<{ key: stri
   return { key, hash };
 }
 
-async function addCertificatePage(
-  pdfDoc: PDFDocument,
-  opts: {
-    title: string;
-    documentId: string;
-    hash: string;
-    signers: { id: string; name: string | null; email: string; signed_at: string | null }[];
-    ipBySigner: Map<string, string>;
-  }
-) {
+export type CertificatePageOpts = {
+  title: string;
+  documentId: string;
+  hash: string;
+  signers: { id: string; name: string | null; email: string; signed_at: string | null }[];
+  ipBySigner: Map<string, string>;
+  // Verified Badge framing (VERIFIED_BADGE_SCOPE.md) — present only for a
+  // self-sign seal, where there's exactly one signer (the freelancer
+  // signing their own file) and the credibility claim is "identity
+  // verified," not "had this IP address." identityVerifiedAt is kept
+  // separate from the signer's signed_at deliberately: since the identity
+  // check itself may be reused from an earlier verified session rather
+  // than freshly performed for this specific seal (the whole point of the
+  // reused-session cost/friction tradeoff — see console-actions.ts or
+  // VERIFIED_BADGE_SCOPE.md's decision 6), the page has to distinguish
+  // "signed on [date]" (true every time) from "identity verified on
+  // [date]" (may be an earlier date), not imply both happened
+  // simultaneously — same honesty standard as the AES-not-QES framing
+  // used elsewhere in this project's legal-facing copy.
+  sealed?: { identityVerifiedName: string; identityVerifiedAt: string | null };
+};
+
+// Exported (not just used internally by generateSignedPdf above) so
+// verified-badge-actions.ts's "separate certificate" mode can build a
+// certificate-only PDF (no original file content, just this one page) with
+// the exact same layout/copy, rather than duplicating the drawing code.
+export async function addCertificatePage(pdfDoc: PDFDocument, opts: CertificatePageOpts) {
   const page = pdfDoc.addPage([612, 792]); // US letter
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -214,62 +244,115 @@ async function addCertificatePage(
   const gray = rgb(0.42, 0.45, 0.5);
   let y = 792 - 70;
 
-  page.drawText("Certificate of Completion", { x: margin, y, size: 18, font: boldFont, color: dark });
+  const heading = opts.sealed ? "Sealed & Identity-Verified" : "Certificate of Completion";
+  page.drawText(heading, { x: margin, y, size: 18, font: boldFont, color: dark });
   y -= 26;
   page.drawText(opts.title, { x: margin, y, size: 12, font, color: dark, maxWidth: 612 - margin * 2 });
   y -= 20;
   page.drawText(`Document ID: ${opts.documentId}`, { x: margin, y, size: 9, font, color: gray });
   y -= 13;
-  page.drawText(`Completed: ${new Date().toISOString()}`, { x: margin, y, size: 9, font, color: gray });
+  page.drawText(`${opts.sealed ? "Sealed" : "Completed"}: ${new Date().toISOString()}`, {
+    x: margin,
+    y,
+    size: 9,
+    font,
+    color: gray,
+  });
   y -= 32;
 
-  page.drawText("Signers", { x: margin, y, size: 12, font: boldFont, color: dark });
-  y -= 20;
-
-  for (const signer of opts.signers) {
-    if (y < 140) break; // simple MVP guard against overflow on very long signer lists —
-    // leaves room for the checksum + verify-URL block drawn after this loop
-    const ip = opts.ipBySigner.get(signer.id) || "unavailable";
-    const label = signer.name ? `${signer.name} <${signer.email}>` : signer.email;
-    page.drawText(label, { x: margin, y, size: 10, font: boldFont, color: dark, maxWidth: 612 - margin * 2 });
-    y -= 14;
-    const signedAt = signer.signed_at ? new Date(signer.signed_at).toISOString() : "not recorded";
-    page.drawText(`Signed: ${signedAt}    IP address: ${ip}`, { x: margin + 12, y, size: 9, font, color: gray });
+  if (opts.sealed) {
+    // One signer, self-addressed — see the type comment above for why
+    // "signed on" and "identity verified on" are shown as two distinct
+    // facts rather than one combined claim.
+    page.drawText("Identity", { x: margin, y, size: 12, font: boldFont, color: dark });
+    y -= 20;
+    const signer = opts.signers[0];
+    if (signer) {
+      const label = signer.name ? `${signer.name} <${signer.email}>` : signer.email;
+      page.drawText(label, { x: margin, y, size: 10, font: boldFont, color: dark, maxWidth: 612 - margin * 2 });
+      y -= 14;
+      const signedAt = signer.signed_at ? new Date(signer.signed_at).toISOString() : "not recorded";
+      page.drawText(`Signed: ${signedAt}`, { x: margin + 12, y, size: 9, font, color: gray });
+      y -= 13;
+    }
+    const verifiedLine = opts.sealed.identityVerifiedAt
+      ? `Identity verified via government ID (Stripe) — ${opts.sealed.identityVerifiedName}, ${new Date(opts.sealed.identityVerifiedAt).toISOString()}`
+      : `Identity verified via government ID (Stripe) — ${opts.sealed.identityVerifiedName}`;
+    page.drawText(verifiedLine, { x: margin + 12, y, size: 9, font, color: gray, maxWidth: 612 - margin * 2 - 12 });
     y -= 24;
+  } else {
+    page.drawText("Signers", { x: margin, y, size: 12, font: boldFont, color: dark });
+    y -= 20;
+
+    for (const signer of opts.signers) {
+      if (y < 140) break; // simple MVP guard against overflow on very long signer lists —
+      // leaves room for the checksum + verify-URL block drawn after this loop
+      const ip = opts.ipBySigner.get(signer.id) || "unavailable";
+      const label = signer.name ? `${signer.name} <${signer.email}>` : signer.email;
+      page.drawText(label, { x: margin, y, size: 10, font: boldFont, color: dark, maxWidth: 612 - margin * 2 });
+      y -= 14;
+      const signedAt = signer.signed_at ? new Date(signer.signed_at).toISOString() : "not recorded";
+      page.drawText(`Signed: ${signedAt}    IP address: ${ip}`, { x: margin + 12, y, size: 9, font, color: gray });
+      y -= 24;
+    }
   }
 
   y -= 8;
   page.drawText(
-    "This certificate was generated by SignedBy and reflects the audit trail captured during the",
+    opts.sealed
+      ? "This certificate was generated by SignedBy and reflects the identity check and file hash captured at"
+      : "This certificate was generated by SignedBy and reflects the audit trail captured during the",
     { x: margin, y, size: 8, font, color: gray }
   );
   y -= 11;
   page.drawText(
-    "electronic signing process, consistent with the U.S. ESIGN Act and UETA.",
+    opts.sealed
+      ? "the time of sealing, consistent with the U.S. ESIGN Act and UETA."
+      : "electronic signing process, consistent with the U.S. ESIGN Act and UETA.",
     { x: margin, y, size: 8, font, color: gray }
   );
   y -= 20;
   page.drawText("SHA-512 checksum of the signed document:", { x: margin, y, size: 8, font: boldFont, color: gray });
   y -= 11;
   page.drawText(opts.hash, { x: margin, y, size: 7, font, color: gray });
-  y -= 18;
-  // Deliberately does NOT append "?hash=<hash>" to this URL. At 128 hex
-  // chars (since the SHA-512 switch -- see isValidDocumentHash), appending
-  // it made this line ~578pt wide against a 512pt-wide printable area, so
-  // the tail of the hash silently ran off the right edge of the page --
-  // most PDF viewers clip page content at the page boundary, so anyone
-  // who copy-pasted "the whole verify line" instead of the checksum line
-  // above got a truncated hash and a "not a valid document hash" error.
-  // The checksum above is already the thing meant to be pasted into this
-  // page, and at 7pt it fits comfortably (~467pt of 512pt), so this line
-  // is just a short, static, always-safe pointer to where to paste it.
-  page.drawText("Anyone can independently verify this document is genuine, with no account needed, at:", {
-    x: margin,
-    y,
-    size: 8,
-    font,
-    color: gray,
-  });
-  y -= 11;
-  page.drawText(`${appUrl()}/verify`, { x: margin, y, size: 7, font, color: gray });
+  y -= 20;
+
+  // QR + mark badge (2026-08-01), replacing what used to be two lines of
+  // plain-text "paste the hash at signedby.ai/verify" instructions — a QR
+  // that jumps straight to /verify?hash=... beats making someone manually
+  // copy 128 hex characters. Applies to EVERY certificate page, not just
+  // Verified Badge ones (see VERIFIED_BADGE_SCOPE.md's "Related, smaller
+  // addition" section) — this is a real, independent UX improvement to the
+  // existing /verify flow, decoupled from the rest of that feature. Never
+  // lets badge generation failure (missing asset, sharp/QR error) block a
+  // signed PDF from finishing — falls back to the old plain-text pointer.
+  try {
+    const verifyUrl = `${appUrl()}/verify?hash=${opts.hash}`;
+    const badgePng = await generateCertificateBadge(verifyUrl);
+    const badgeImage = await pdfDoc.embedPng(badgePng);
+    const badgeWidth = 210;
+    const badgeHeight = badgeWidth * (130 / 300);
+    page.drawImage(badgeImage, { x: margin, y: y - badgeHeight, width: badgeWidth, height: badgeHeight });
+  } catch (err) {
+    console.error(`Failed to embed verify badge on certificate page for document ${opts.documentId}`, err);
+    page.drawText("Anyone can independently verify this document is genuine, with no account needed, at:", {
+      x: margin,
+      y,
+      size: 8,
+      font,
+      color: gray,
+    });
+    y -= 11;
+    page.drawText(`${appUrl()}/verify`, { x: margin, y, size: 7, font, color: gray });
+  }
+}
+
+// Certificate-only PDF (no original file content) for Verified Badge's
+// "separate" and "both" certificateMode options — same drawing code as the
+// appended path above, just on a fresh blank document instead of appended
+// to the sealed original. See verified-badge-actions.ts.
+export async function buildStandaloneCertificatePdf(opts: CertificatePageOpts): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create();
+  await addCertificatePage(pdfDoc, opts);
+  return pdfDoc.save();
 }

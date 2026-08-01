@@ -74,9 +74,11 @@ export default async function ConsoleAppPage() {
   // query — they're not part of getUserAndOrg()'s org-list shape. A
   // hiccup here can only ever degrade the cap UI to sane defaults
   // (matching migration 0040's own DB defaults), never misreport plan.
+  // verified_badge_certificate_mode (migration 0042) rides along here too —
+  // same "one more org-level console setting" shape as the cap columns.
   const { data: consoleSettings } = await supabase
     .from("organizations")
-    .select("console_spend_cap_enabled, console_spend_cap_cents, console_cap_intro_seen_at")
+    .select("console_spend_cap_enabled, console_spend_cap_cents, console_cap_intro_seen_at, verified_badge_certificate_mode")
     .eq("id", orgId)
     .single();
 
@@ -95,6 +97,9 @@ export default async function ConsoleAppPage() {
           initialCapEnabled={consoleSettings?.console_spend_cap_enabled ?? true}
           initialCapCents={consoleSettings?.console_spend_cap_cents ?? 2500}
           showIntro={!consoleSettings?.console_cap_intro_seen_at}
+          certificateModePreference={
+            (consoleSettings?.verified_badge_certificate_mode as "ask" | "appended" | "separate" | "both" | undefined) ?? "ask"
+          }
         />
       </div>
     </main>

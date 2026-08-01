@@ -39,7 +39,7 @@ export async function GET(request: Request) {
 
   const { data: event } = await admin
     .from("audit_events")
-    .select("document_id, created_at")
+    .select("document_id, created_at, metadata")
     .eq("document_hash", hash)
     .eq("event_type", "completed")
     .maybeSingle();
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
 
   const { data: doc } = await admin
     .from("documents")
-    .select("title, organizations(name)")
+    .select("title, is_verified_badge, org_id, organizations(name)")
     .eq("id", event.document_id)
     .single();
 
@@ -62,11 +62,43 @@ export async function GET(request: Request) {
   const orgData = doc?.organizations as unknown as { name?: string } | { name?: string }[] | undefined;
   const orgName = Array.isArray(orgData) ? orgData[0]?.name : orgData?.name;
 
+  // Verified Badge framing (VERIFIED_BADGE_SCOPE.md): the ledger entry
+  // shows the signing individual's name as primary — safe since every
+  // Badge has exactly one real, verified signer behind it (the self-sign
+  // pivot) — plus org name as secondary context if one exists. Also
+  // surfaces identityVerifiedAt distinct from completedAt: the identity
+  // check itself may be reused from an earlier verified session, so the
+  // page has to be able to say "signed on X" and "identity verified on Y"
+  // as two different facts rather than implying they happened
+  // simultaneously (the "remaining nuance" this doc's open questions
+  // called out). Read from this event's own metadata (snapshotted at seal
+  // time by sealDocumentAction), not live off organizations — see that
+  // function's comment on why a later re-verification shouldn't be able to
+  // retroactively change what an older seal's ledger page claims.
+  let sealedBy: string | null = null;
+  let identityVerifiedAt: string | null = null;
+  if (doc?.is_verified_badge) {
+    const { data: signer } = await admin
+      .from("signers")
+      .select("name, email")
+      .eq("document_id", event.document_id)
+      .order("order_index", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    sealedBy = signer?.name || signer?.email || null;
+
+    const metadata = event.metadata as Record<string, unknown> | null;
+    identityVerifiedAt = typeof metadata?.identity_verified_at === "string" ? metadata.identity_verified_at : null;
+  }
+
   return NextResponse.json({
     verified: true,
     title: doc?.title ?? "Untitled document",
     completedAt: event.created_at,
     signerCount: signerCount ?? 0,
     orgName: orgName ?? null,
+    isVerifiedBadge: doc?.is_verified_badge ?? false,
+    sealedBy,
+    identityVerifiedAt,
   });
 }

@@ -9,6 +9,8 @@ import { ApiKeySettings } from "@/components/api-key-settings";
 import { AutoSuggestSettings } from "@/components/auto-suggest-settings";
 import { FrequentSignersSettings } from "@/components/frequent-signers-settings";
 import { WebhookSettings } from "@/components/webhook-settings";
+import { VerifiedBadgeSettings } from "@/components/verified-badge-settings";
+import { resolveIdentityStatus } from "@/lib/identity";
 
 // Grouped by concern, not by tier: Workspace (identity) → Automation & AI →
 // Integrations → Plan & team. Plan/seat management actually lives on separate
@@ -21,7 +23,9 @@ export default async function SettingsPage() {
 
   const { data: org } = await supabase
     .from("organizations")
-    .select("name, plan, logo_url, brand_color, api_key_prefix, auto_suggest_on_upload")
+    .select(
+      "name, plan, logo_url, brand_color, api_key_prefix, auto_suggest_on_upload, identity_verified_at, identity_verified_name, verified_badge_certificate_mode"
+    )
     .eq("id", orgId)
     .single();
 
@@ -33,6 +37,7 @@ export default async function SettingsPage() {
   const hasAnyApiAccess = hasApiAccess || hasConsoleAccess;
   const planLabel = PLAN_LABEL[org.plan ?? "free"] ?? org.plan;
   const seatCap = teamMemberLimit(org.plan);
+  const identityStatus = resolveIdentityStatus(org);
 
   return (
     <main className="px-4 py-8 sm:px-6 sm:py-10">
@@ -196,6 +201,29 @@ curl -X POST https://signedby.ai/api/v1/documents/<document-id>/void \\
             )}
           </CardContent>
         </Card>
+
+        {hasConsoleAccess && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Verified Badge</CardTitle>
+              <CardDescription>
+                Console/MCP-only — seal a finished file as unaltered and identity-verified. One-time identity check,
+                reused across every seal.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <VerifiedBadgeSettings
+                identityVerified={identityStatus.verified}
+                identityVerifiedName={identityStatus.verified ? identityStatus.name : null}
+                identityVerifiedAt={identityStatus.verified ? identityStatus.verifiedAt : null}
+                identityStale={identityStatus.verified ? identityStatus.stale : false}
+                initialCertificateMode={
+                  (org.verified_badge_certificate_mode as "ask" | "appended" | "separate" | "both" | null) ?? "ask"
+                }
+              />
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
