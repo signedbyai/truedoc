@@ -8,8 +8,8 @@ import Image from "next/image";
  *  always visible now, on every viewport size, no swipe listener. */
 export function ConsoleHeaderChrome() {
   return (
-    <header className="sticky top-0 z-20 mx-auto flex w-full max-w-6xl items-center justify-between border-b border-white/5 bg-neutral-950 px-6 py-5">
-      <Link href="https://signedby.ai/dashboard" className="flex items-center gap-3">
+    <header className="sticky top-0 z-20 mx-auto grid w-full max-w-6xl grid-cols-3 items-center border-b border-white/5 bg-neutral-950 px-6 py-5">
+      <Link href="https://signedby.ai/dashboard" className="flex items-center">
         <Image
           src="/brand/signedby-lockup-white-beta-micro-small-transparent.png"
           alt="SignedBy"
@@ -18,15 +18,17 @@ export function ConsoleHeaderChrome() {
           className="h-6 w-auto"
           priority
         />
-        <span className="rounded-full border border-yellow-300/35 bg-yellow-300/10 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-yellow-300">
-          console
-        </span>
       </Link>
+      {/* Centered in the bar on every viewport (2026-08-01, direct ask) —
+          previously sat inline next to the logo on the left. */}
+      <span className="justify-self-center rounded-full border border-yellow-300/35 bg-yellow-300/10 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-yellow-300">
+        console
+      </span>
       {/* Hidden on mobile (2026-08-01, direct ask) — the floating pill's
           Home button (console-workspace.tsx) already covers this there;
           kept for `lg:` and up, where that pill is hidden in favor of the
           desktop sidebar and this link is the only way back. */}
-      <Link href="https://signedby.ai/dashboard" className="hidden text-sm font-medium text-slate-400 hover:text-white lg:block">
+      <Link href="https://signedby.ai/dashboard" className="hidden justify-self-end text-sm font-medium text-slate-400 hover:text-white lg:block">
         ← Back to dashboard
       </Link>
     </header>
