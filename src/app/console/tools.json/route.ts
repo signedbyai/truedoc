@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 
 // Static tool manifest for console.signedby.ai (CONSOLE_AI_SIGNING_SCOPE.md)
-// — the "use your favorite AI" half of the product. Deliberately a plain
-// JSON schema an agent framework can ingest (Claude custom connectors,
-// OpenAI function calling, or a hand-rolled MCP wrapper), not a hosted
-// stateful MCP server — the underlying routes already exist and are
-// already tested (see /api/v1), so this is a thin description of them, not
-// new business logic. No auth needed to fetch the manifest itself; each
-// tool call still needs a real API key, same as calling the REST API
+// — the fallback half of "use your favorite AI" for agent frameworks that
+// don't speak MCP (OpenAI function calling, a hand-rolled framework). For an
+// actual MCP client (Claude, or anything else MCP-speaking), point it
+// directly at the real MCP server instead — POST /api/mcp (see
+// AI_AGENT_MCP_SIGNING_SCOPE.md), which serves these same tools natively, no
+// manifest-ingestion step required. This file stays deliberately a plain
+// JSON schema, not a protocol implementation: the underlying routes already
+// exist and are already tested (see /api/v1), so it's a thin description of
+// them, not new business logic. No auth needed to fetch the manifest itself;
+// each tool call still needs a real API key, same as calling the REST API
 // directly (see /developers for the full reference).
 export async function GET() {
   return NextResponse.json({
@@ -20,6 +23,10 @@ export async function GET() {
       header: "Authorization",
       instructions:
         "Generate a key in SignedBy Settings → Integration & API. Requires at least the Pro plan (metered via console.signedby.ai) or the Business plan (unlimited, included).",
+    },
+    mcp_server: {
+      url: "https://signedby.ai/api/mcp",
+      note: "If your agent framework speaks MCP directly, connect there instead of ingesting this manifest — same six tools, same API key, no wrapper needed.",
     },
     tools: [
       {

@@ -276,19 +276,37 @@ export default async function ConsolePage() {
         <h2 className="text-xl font-semibold text-slate-100">Connect an AI agent</h2>
         <div className="mt-4 space-y-4 text-sm text-slate-300">
           <p>
-            A machine-readable tool manifest describing every console action lives at{" "}
-            <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs text-slate-200">/console/tools.json</code> —
-            point a Claude custom connector, an OpenAI function-calling setup, or your own agent framework at it
-            directly.
+            SignedBy runs a real MCP server at{" "}
+            <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs text-slate-200">/api/mcp</code> —
+            point Claude, or any other MCP-speaking client, at it directly as a remote connector. Six tools show up
+            ready to call: send a document, check status, list documents and templates, void, and download the
+            signed PDF. No wrapper code, no manifest to ingest first.
+          </p>
+          <CodeBlock>{`{
+  "mcpServers": {
+    "signedby": {
+      "url": "https://signedby.ai/api/mcp",
+      "headers": { "Authorization": "Bearer sb_live_..." }
+    }
+  }
+}`}</CodeBlock>
+          <p className="text-xs text-slate-500">
+            Generate the key in Settings → Integration & API — the same key the REST API uses, requires the Pro plan
+            or higher.
+          </p>
+          <p>
+            Not using an MCP client? A machine-readable tool manifest for OpenAI-style function calling or a custom
+            agent framework also lives at{" "}
+            <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs text-slate-200">/console/tools.json</code>.
           </p>
           <CodeBlock>{`curl https://signedby.ai/console/tools.json`}</CodeBlock>
           <p>
-            Under the hood these are the same REST endpoints documented in full at{" "}
+            Under the hood, the MCP server and the manifest both call the same REST endpoints documented in full at{" "}
             <Link href="/developers" className="underline hover:text-white">
               /developers
             </Link>{" "}
-            — the manifest is just a thin description of them for an agent to read, not a different API. Any
-            integration built against the REST API directly works exactly the same way.
+            — neither is a different API. Any integration built against the REST API directly works exactly the
+            same way.
           </p>
         </div>
       </section>
