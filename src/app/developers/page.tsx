@@ -73,6 +73,15 @@ function Endpoint({
   );
 }
 
+function Tool({ name, description }: { name: string; description: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 p-5">
+      <code className="text-sm font-medium text-slate-900">{name}</code>
+      <p className="mt-2 text-sm text-slate-600">{description}</p>
+    </div>
+  );
+}
+
 const FOOTER_LINKS = (
   <p className="mt-2 space-x-4">
     <Link href="/vs/signnow" className="hover:text-slate-600">
@@ -417,6 +426,49 @@ function verify(rawBody, signatureHeader, secret) {
           no persistent delivery log or manual-redelivery UI yet, so make your endpoint idempotent and check the
           document&apos;s current status via <code>GET /api/v1/documents/&#123;id&#125;</code> if you need to reconcile a
           missed event.
+        </p>
+      </Section>
+
+      <Section id="mcp" title="MCP server (for AI agents)">
+        <p>
+          SignedBy also runs a real Model Context Protocol (MCP) server at <code>/api/mcp</code> — point Claude, or
+          any other MCP-speaking client, at it directly and six tools show up ready to call, wrapping the same
+          endpoints above. No custom integration code: an MCP client just needs the URL and a bearer key.
+        </p>
+        <CodeBlock>{`{
+  "mcpServers": {
+    "signedby": {
+      "url": "https://signedby.ai/api/mcp",
+      "headers": { "Authorization": "Bearer sb_live_..." }
+    }
+  }
+}`}</CodeBlock>
+        <p>
+          The signer&apos;s side is completely unchanged — an AI agent can trigger a signing request through these
+          tools, but the recipient still has to open the link and sign it themselves, through the same per-recipient
+          verification as every other document. Every document an agent creates or voids through this server is
+          tagged in the audit trail (an <code>agent_triggered</code> flag alongside the usual event log), so it&apos;s
+          always possible to tell an agent-initiated send apart from one a person sent directly.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Tool name="list_templates" description="List the org's templates, to find a template_id for create_and_send_document." />
+          <Tool
+            name="create_and_send_document"
+            description="Create a document from a template and send it to one signer. Triggers the send only — the signer still opens the link and signs it themselves."
+          />
+          <Tool name="get_document_status" description="Look up a document's status and each signer's status by id." />
+          <Tool name="list_documents" description="List the org's documents, optionally filtered by status." />
+          <Tool name="void_document" description="Cancel a document that's still out for signature (status must be 'sent')." />
+          <Tool name="get_signed_file" description="Download the completed, signed PDF once every signer has finished." />
+        </div>
+        <p className="text-slate-600">
+          Requires the Pro plan or higher — this rides on{" "}
+          <Link href="/console" className="underline">
+            Console&apos;s
+          </Link>{" "}
+          metered access (20 free document-sends/month, then billed per document), not the flat Business API access
+          described in Authentication above. See <Link href="/console" className="underline">/console</Link> for the
+          full pricing.
         </p>
       </Section>
 
