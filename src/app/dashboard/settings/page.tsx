@@ -9,6 +9,7 @@ import { ApiKeySettings } from "@/components/api-key-settings";
 import { AutoSuggestSettings } from "@/components/auto-suggest-settings";
 import { FrequentSignersSettings } from "@/components/frequent-signers-settings";
 import { WebhookSettings } from "@/components/webhook-settings";
+import { Collapsible } from "@/components/collapsible";
 
 // Grouped by concern, not by tier: Workspace (identity) → Automation & AI →
 // Integrations → Plan & team. Plan/seat management actually lives on separate
@@ -108,24 +109,27 @@ export default async function SettingsPage() {
                     marketing-page links removed 2026-07-30. Re-add once
                     it's ready to promote. */}
                 <ApiKeySettings apiKeyPrefix={org.api_key_prefix} />
-                {/* Shown inline (not collapsed) — for a Business customer who
-                    came here to wire up the API, the examples are the point of
-                    the card, not reference material to go hunting for. */}
-                <div className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">
-                  <p className="font-medium text-slate-900">Create &amp; send a document</p>
-                  <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
+                {/* Collapsed by default (2026-08-02, direct ask) — was shown
+                    inline unconditionally; the examples are reference
+                    material someone reaches for once they're actually
+                    wiring the API up, not something that needs to be visible
+                    on first load of this card. See src/components/collapsible.tsx. */}
+                <Collapsible label="Code examples">
+                  <div className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">
+                    <p className="font-medium text-slate-900">Create &amp; send a document</p>
+                    <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
 {`curl -X POST https://signedby.ai/api/v1/documents \\
   -H "Authorization: Bearer sb_live_..." \\
   -H "Content-Type: application/json" \\
   -d '{"template_id":"<template-id>","signer":{"email":"jane@acme.com","name":"Jane"}}'`}
-                  </pre>
-                  <p className="mt-3 font-medium text-slate-900">Check status</p>
-                  <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
+                    </pre>
+                    <p className="mt-3 font-medium text-slate-900">Check status</p>
+                    <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
 {`curl https://signedby.ai/api/v1/documents/<document-id> \\
   -H "Authorization: Bearer sb_live_..."`}
-                  </pre>
-                  <p className="mt-3 font-medium text-slate-900">Multi-party document (2+ signers)</p>
-                  <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
+                    </pre>
+                    <p className="mt-3 font-medium text-slate-900">Multi-party document (2+ signers)</p>
+                    <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
 {`curl -X POST https://signedby.ai/api/v1/documents \\
   -H "Authorization: Bearer sb_live_..." \\
   -H "Content-Type: application/json" \\
@@ -133,17 +137,17 @@ export default async function SettingsPage() {
     {"role":0,"email":"buyer@acme.com","name":"Buyer"},
     {"role":1,"email":"seller@acme.com","name":"Seller"}
   ]}'`}
-                  </pre>
-                  <p className="mt-3 font-medium text-slate-900">Set an expiration date, or require signer verification</p>
-                  <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
+                    </pre>
+                    <p className="mt-3 font-medium text-slate-900">Set an expiration date, or require signer verification</p>
+                    <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
 {`curl -X POST https://signedby.ai/api/v1/documents \\
   -H "Authorization: Bearer sb_live_..." \\
   -H "Content-Type: application/json" \\
   -d '{"template_id":"<template-id>","expires_at":"2026-08-15T00:00:00Z",
        "signer":{"email":"jane@acme.com","auth_required":true}}'`}
-                  </pre>
-                  <p className="mt-3 font-medium text-slate-900">Customize the invite email&apos;s subject &amp; message</p>
-                  <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
+                    </pre>
+                    <p className="mt-3 font-medium text-slate-900">Customize the invite email&apos;s subject &amp; message</p>
+                    <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
 {`curl -X POST https://signedby.ai/api/v1/documents \\
   -H "Authorization: Bearer sb_live_..." \\
   -H "Content-Type: application/json" \\
@@ -151,22 +155,23 @@ export default async function SettingsPage() {
        "invite_subject":"Please sign your Acme onboarding form",
        "invite_message":"Thanks for joining — just one form to go.",
        "signer":{"email":"jane@acme.com"}}'`}
-                  </pre>
-                  <p className="mt-3 font-medium text-slate-900">List documents &amp; templates</p>
-                  <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
+                    </pre>
+                    <p className="mt-3 font-medium text-slate-900">List documents &amp; templates</p>
+                    <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
 {`curl "https://signedby.ai/api/v1/documents?status=completed&limit=20" \\
   -H "Authorization: Bearer sb_live_..."
 curl https://signedby.ai/api/v1/templates \\
   -H "Authorization: Bearer sb_live_..."`}
-                  </pre>
-                  <p className="mt-3 font-medium text-slate-900">Download the signed PDF, or void a document</p>
-                  <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
+                    </pre>
+                    <p className="mt-3 font-medium text-slate-900">Download the signed PDF, or void a document</p>
+                    <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all">
 {`curl https://signedby.ai/api/v1/documents/<document-id>/signed-file \\
   -H "Authorization: Bearer sb_live_..." -o signed.pdf
 curl -X POST https://signedby.ai/api/v1/documents/<document-id>/void \\
   -H "Authorization: Bearer sb_live_..."`}
-                  </pre>
-                </div>
+                    </pre>
+                  </div>
+                </Collapsible>
 
                 <div className="border-t border-slate-100 pt-4">
                   <p className="text-sm font-medium text-slate-900">Webhooks</p>
