@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseExpiresAt } from "./console-actions";
+import { parseExpiresAt, auditProvenance } from "./console-actions";
 
 describe("parseExpiresAt", () => {
   it("treats an omitted or empty value as no expiration", () => {
@@ -23,5 +23,18 @@ describe("parseExpiresAt", () => {
     const result = parseExpiresAt("next friday-ish");
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/couldn't understand/i);
+  });
+});
+
+// AI_AGENT_MCP_SIGNING_SCOPE.md — audit-trail provenance is the whole
+// answer to "can you tell an agent sent this," so this mapping being right
+// matters more than most pure helpers in this file.
+describe("auditProvenance", () => {
+  it("tags a console-originated send with via_console, no agent flag", () => {
+    expect(auditProvenance("console")).toEqual({ via_console: true });
+  });
+
+  it("tags an MCP-originated send with via_mcp AND agent_triggered", () => {
+    expect(auditProvenance("mcp")).toEqual({ via_mcp: true, agent_triggered: true });
   });
 });

@@ -46,6 +46,19 @@ export function parseExpiresAt(expiresAt: string | null | undefined): { ok: true
   return { ok: true, iso: parsed.toISOString() };
 }
 
+/** Pure mapping from caller provenance to the audit_events.metadata flags to
+ *  attach — split out so it's unit-testable without a Supabase client (same
+ *  extract-the-pure-part precedent as parseExpiresAt above). Keeps
+ *  via_console's existing boolean-flag shape (matching via_api on the plain
+ *  /api/v1/documents route) rather than replacing it with a bare `source`
+ *  string, so nothing already reading via_console breaks; agent_triggered is
+ *  the one new field a downstream consumer (audit UI, webhook payload) needs
+ *  to key off of to show "sent by an AI agent." See
+ *  AI_AGENT_MCP_SIGNING_SCOPE.md. */
+export function auditProvenance(source: "console" | "mcp"): Record<string, boolean> {
+  return source === "mcp" ? { via_mcp: true, agent_triggered: true } : { via_console: true };
+}
+
 async function loadOrgAndTemplate(orgId: string, templateId: string) {
   const admin = createAdminClient();
   const { data: org } = await admin.from("organizations").select("name, owner_id").eq("id", orgId).single();
@@ -81,8 +94,16 @@ export async function sendDocumentAction(params: {
   authRequired?: boolean;
   inviteSubject?: string | null;
   inviteMessage?: string | null;
+  // Provenance (AI_AGENT_MCP_SIGNING_SCOPE.md, 2026-08-01) — which caller
+  // triggered this send, recorded on the audit_events rows below so a
+  // sender's audit trail can distinguish "a person sent this" (console
+  // chat) from "an agent sent this on a person's behalf" (MCP tool call).
+  // Defaults to "console" so every existing caller (console-chat.ts,
+  // bulkSendAction below) keeps its current via_console:true metadata
+  // unchanged with no call-site updates required.
+  source?: "console" | "mcp";
 }): Promise<{ ok: true; documentId: string; domainWarning?: string } | ConsoleActionError> {
-  const { orgId, templateId, signerEmail, signerName, metered, expiresAt, authRequired, inviteSubject, inviteMessage } = params;
+  const { orgId, templateId, signerEmail, signerName, metered, expiresAt, authRequired, inviteSubject, inviteMessage, source = "console" } = params;
 
   const expiresAtResult = parseExpiresAt(expiresAt);
   if (!expiresAtResult.ok) return { ok: false, error: expiresAtResult.error, status: 400 };
@@ -159,9 +180,10 @@ export async function sendDocumentAction(params: {
   }));
   await admin.from("document_fields").insert(rows);
 
+  const provenance = auditProvenance(source);
   await admin.from("audit_events").insert([
-    { document_id: doc.id, event_type: "created", metadata: { from_template: template.id, via_console: true } },
-    { document_id: doc.id, event_type: "sent", metadata: { via_console: true } },
+    { document_id: doc.id, event_type: "created", metadata: { from_template: template.id, ...provenance } },
+    { document_id: doc.id, event_type: "sent", metadata: { ...provenance } },
   ]);
 
   const domainCheck = await checkEmailDomainHasMx(signerEmail);
@@ -234,6 +256,7 @@ export async function bulkSendAction(params: {
   authRequired?: boolean;
   inviteSubject?: string | null;
   inviteMessage?: string | null;
+  source?: "console" | "mcp";
 }): Promise<
   | {
       ok: true;
@@ -243,7 +266,7 @@ export async function bulkSendAction(params: {
     }
   | ConsoleActionError
 > {
-  const { orgId, templateId, recipients, metered, expiresAt, authRequired, inviteSubject, inviteMessage } = params;
+  const { orgId, templateId, recipients, metered, expiresAt, authRequired, inviteSubject, inviteMessage, source = "console" } = params;
   if (recipients.length === 0) return { ok: false, error: "No recipients provided.", status: 400 };
 
   const sent: { documentId: string; email: string }[] = [];
@@ -278,6 +301,7 @@ export async function bulkSendAction(params: {
       authRequired,
       inviteSubject,
       inviteMessage,
+      source,
     });
     if (result.ok) sent.push({ documentId: result.documentId, email: recipient.email });
     // A single bad recipient (e.g. template lookup race) doesn't need its
@@ -349,7 +373,11 @@ export async function listTemplatesAction(orgId: string): Promise<{ ok: true; te
   return { ok: true, templates: data || [] };
 }
 
-export async function voidDocumentAction(orgId: string, documentId: string): Promise<{ ok: true } | ConsoleActionError> {
+export async function voidDocumentAction(
+  orgId: string,
+  documentId: string,
+  source: "console" | "mcp" = "console"
+): Promise<{ ok: true } | ConsoleActionError> {
   const admin = createAdminClient();
   const { data: doc } = await admin.from("documents").select("id, org_id, status").eq("id", documentId).single();
   if (!doc || doc.org_id !== orgId) return { ok: false, error: "Document not found.", status: 404 };
@@ -358,7 +386,9 @@ export async function voidDocumentAction(orgId: string, documentId: string): Pro
   }
 
   await admin.from("documents").update({ status: "voided" }).eq("id", documentId);
-  await admin.from("audit_events").insert({ document_id: documentId, event_type: "voided", metadata: { via_console: true } });
+  await admin
+    .from("audit_events")
+    .insert({ document_id: documentId, event_type: "voided", metadata: { ...auditProvenance(source) } });
 
   return { ok: true };
 }
