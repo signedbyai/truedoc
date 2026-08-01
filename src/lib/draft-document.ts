@@ -48,6 +48,15 @@ const TYPE_GUIDANCE: Record<DraftDocumentType, string> = {
     "and a statement that the resolution takes effect once every director has signed. Keep the approved action " +
     "itself matched closely to what the user described, and don't invent corporate details (state/jurisdiction of " +
     "incorporation, exact company name) they didn't provide — use a bracketed placeholder instead.",
+  shareholder_consent:
+    "A shareholder consent (unanimous written consent in lieu of a meeting) typically covers: identifying the " +
+    "company, confirming this is signed by all shareholders entitled to vote acting without a live meeting, a " +
+    "clear statement of the specific action being approved (e.g. electing a director, amending the articles of " +
+    "incorporation, approving a merger or major transaction), a line for each signer to record the number of " +
+    "shares they hold, and a statement that the resolution takes effect once every shareholder has signed. Keep " +
+    "the approved action itself matched closely to what the user described, and don't invent corporate details " +
+    "(state/jurisdiction of incorporation, exact company name, share counts) they didn't provide — use a " +
+    "bracketed placeholder instead.",
 };
 
 const PROMPT = (

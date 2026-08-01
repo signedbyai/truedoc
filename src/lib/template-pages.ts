@@ -388,7 +388,10 @@ Date: _______________________
 
   {
     slug: "shareholder-consent-template",
-    documentType: "general",
+    // Its own AI Drafter type (added 2026-08-01, see ai-draft-types.ts and
+    // draft-document.ts's TYPE_GUIDANCE) — no longer routes through the
+    // "general" catch-all.
+    documentType: "shareholder_consent",
     seoTitle: "Free Shareholder Consent Template — Unanimous Written Consent",
     metaDescription:
       "A free shareholder consent template for approving corporate actions without a formal meeting. Customize it and collect every shareholder's signature in minutes.",

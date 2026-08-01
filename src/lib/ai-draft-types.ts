@@ -11,6 +11,7 @@ export type DraftDocumentType =
   | "boiler_maintenance"
   | "bike_rental"
   | "board_resolution"
+  | "shareholder_consent"
   | "general";
 
 // `en` is required as the fallback; other draft-language codes are optional
@@ -152,6 +153,27 @@ export const DOCUMENT_TYPES: { id: DraftDocumentType; labels: Localized; placeho
       pt: "ex. consentimento unânime por escrito para abrir uma conta bancária empresarial, 3 diretores, com efeito imediato",
       nl: "bijv. eenparige schriftelijke toestemming om een zakelijke bankrekening te openen, 3 bestuurders, met onmiddellijke ingang",
       it: "es. consenso scritto unanime per aprire un conto bancario aziendale, 3 amministratori, con effetto immediato",
+    },
+  },
+  {
+    id: "shareholder_consent",
+    labels: {
+      en: "Shareholder Consent / Written Consent",
+      es: "Consentimiento de Accionistas / Consentimiento por Escrito",
+      fr: "Consentement des Actionnaires / Consentement Écrit",
+      de: "Aktionärszustimmung / Schriftliche Zustimmung",
+      pt: "Consentimento dos Acionistas / Consentimento por Escrito",
+      nl: "Aandeelhouderstoestemming / Schriftelijke Toestemming",
+      it: "Consenso degli Azionisti / Consenso Scritto",
+    },
+    placeholders: {
+      en: "e.g. unanimous written consent to elect a new director, 3 shareholders, effective immediately",
+      es: "ej. consentimiento unánime por escrito para elegir a un nuevo director, 3 accionistas, con efecto inmediato",
+      fr: "ex. consentement écrit unanime pour élire un nouvel administrateur, 3 actionnaires, effet immédiat",
+      de: "z. B. einstimmige schriftliche Zustimmung zur Wahl eines neuen Direktors, 3 Aktionäre, sofort wirksam",
+      pt: "ex. consentimento unânime por escrito para eleger um novo diretor, 3 acionistas, com efeito imediato",
+      nl: "bijv. eenparige schriftelijke toestemming om een nieuwe bestuurder te benoemen, 3 aandeelhouders, met onmiddellijke ingang",
+      it: "es. consenso scritto unanime per eleggere un nuovo amministratore, 3 azionisti, con effetto immediato",
     },
   },
   {
