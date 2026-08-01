@@ -8,6 +8,7 @@ import { ConsoleChat, type Bubble } from "@/components/console-chat";
 import { ConsoleUsagePanel } from "@/components/console-usage-panel";
 import { ConsoleHistorySidebar } from "@/components/console-history-sidebar";
 import { ConsolePlanStatus } from "@/components/console-plan-status";
+import { VerifiedBadgeSettings } from "@/components/verified-badge-settings";
 import { ConsoleUpgradePanel, ConsoleLockedChat } from "@/components/console-upgrade-panel";
 
 /** Top-level client wrapper for /console/app (2026-07-31 layout pass) —
@@ -58,6 +59,10 @@ export function ConsoleWorkspace({
   initialCapCents,
   showIntro,
   certificateModePreference,
+  identityVerified,
+  identityVerifiedName,
+  identityVerifiedAt,
+  identityStale,
 }: {
   plan: string;
   hasAccess: boolean;
@@ -69,6 +74,14 @@ export function ConsoleWorkspace({
    *  threaded straight through to ConsoleChat. See that component's own
    *  prop doc for what each value does. */
   certificateModePreference: "ask" | "appended" | "separate" | "both";
+  /** Verified Badge identity-verification status, rendered in this
+   *  component's own Settings tab (settingsBody below) via
+   *  VerifiedBadgeSettings — moved here 2026-08-01 from /dashboard/settings,
+   *  see that component's doc comment for why. */
+  identityVerified: boolean;
+  identityVerifiedName: string | null;
+  identityVerifiedAt: string | null;
+  identityStale: boolean;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [initialMessages, setInitialMessages] = useState<Bubble[]>([]);
@@ -157,6 +170,19 @@ export function ConsoleWorkspace({
           initialCapEnabled={initialCapEnabled}
           initialCapCents={initialCapCents}
           showIntro={showIntro}
+        />
+      )}
+      {/* Verified Badge (2026-08-01, moved from /dashboard/settings) — same
+          `hasAccess` gate as the usage panel above: Verified Badge is
+          Console/MCP-only, so there's nothing to configure here for a
+          locked org either. */}
+      {hasAccess && (
+        <VerifiedBadgeSettings
+          identityVerified={identityVerified}
+          identityVerifiedName={identityVerifiedName}
+          identityVerifiedAt={identityVerifiedAt}
+          identityStale={identityStale}
+          initialCertificateMode={certificateModePreference}
         />
       )}
       <ConsolePlanStatus plan={plan} hasAccess={hasAccess} />

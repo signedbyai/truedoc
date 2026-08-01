@@ -5,6 +5,7 @@ import { planHasFeature } from "@/lib/plan";
 import { getConsoleBillingState } from "@/lib/console-usage";
 import { ConsoleWorkspace } from "@/components/console-workspace";
 import { consoleAppNextPath } from "@/lib/console-host";
+import { resolveIdentityStatus } from "@/lib/identity";
 
 // /console/app (moved from /dashboard/console 2026-07-30 — see
 // src/app/console/app/layout.tsx for why) — the actual interactive
@@ -74,13 +75,19 @@ export default async function ConsoleAppPage() {
   // query — they're not part of getUserAndOrg()'s org-list shape. A
   // hiccup here can only ever degrade the cap UI to sane defaults
   // (matching migration 0040's own DB defaults), never misreport plan.
-  // verified_badge_certificate_mode (migration 0042) rides along here too —
-  // same "one more org-level console setting" shape as the cap columns.
+  // verified_badge_certificate_mode + the identity columns (migration 0042)
+  // ride along here too, since Verified Badge's Settings panel moved into
+  // Console's own Settings tab 2026-08-01 (was briefly on /dashboard/settings
+  // — moved after direct feedback that Console/MCP-only activity shouldn't
+  // require a trip to the separate dashboard to manage).
   const { data: consoleSettings } = await supabase
     .from("organizations")
-    .select("console_spend_cap_enabled, console_spend_cap_cents, console_cap_intro_seen_at, verified_badge_certificate_mode")
+    .select(
+      "console_spend_cap_enabled, console_spend_cap_cents, console_cap_intro_seen_at, verified_badge_certificate_mode, identity_verified_at, identity_verified_name"
+    )
     .eq("id", orgId)
     .single();
+  const identityStatus = resolveIdentityStatus(consoleSettings ?? { identity_verified_at: null, identity_verified_name: null });
 
   // Skip the billing-state query entirely when locked — nothing on the
   // locked path reads it (ConsoleUsagePanel isn't rendered), so there's no
@@ -100,6 +107,10 @@ export default async function ConsoleAppPage() {
           certificateModePreference={
             (consoleSettings?.verified_badge_certificate_mode as "ask" | "appended" | "separate" | "both" | undefined) ?? "ask"
           }
+          identityVerified={identityStatus.verified}
+          identityVerifiedName={identityStatus.verified ? identityStatus.name : null}
+          identityVerifiedAt={identityStatus.verified ? identityStatus.verifiedAt : null}
+          identityStale={identityStatus.verified ? identityStatus.stale : false}
         />
       </div>
     </main>

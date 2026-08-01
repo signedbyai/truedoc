@@ -415,11 +415,20 @@ Built end to end against this doc's decisions. What shipped:
 - **MCP `seal_document` tool** (`/api/mcp/route.ts`) — takes the file as
   `file_base64` (an agent has no upload-button flow), uploads it, then calls
   the same `sealDocumentAction`.
-- **Settings** (`dashboard/settings/page.tsx` → `verified-badge-settings.tsx`)
-  — identity status + a "Verify identity"/"Redo verification" button (real
+- **Settings** (`verified-badge-settings.tsx`) — identity status + a
+  "Verify identity"/"Redo verification" button (real
   `stripe.verifyIdentity()` call via `@stripe/stripe-js`, already an
   existing-but-unused dependency), plus the certificateMode preference
   select, riding on the existing `/api/org/console-settings` PATCH route.
+  **Moved 2026-08-01** from `/dashboard/settings` into Console's own
+  Settings tab (`console-workspace.tsx`'s `settingsBody`, alongside the
+  spend-cap panel and plan status) — direct feedback: unlike the API key
+  (also used dashboard-wide by the plain `/api/v1` REST API), Verified
+  Badge is Console/MCP-only, so every bit of its activity happens in
+  Console and sending someone to the separate dashboard just to verify
+  their identity was needless friction. `console/app/page.tsx` now fetches
+  the identity columns alongside the existing cap/cert-mode settings query
+  and threads them through `ConsoleWorkspace`.
 - **`/verify`** — branches on `is_verified_badge`: "Sealed and
   identity-verified by [name]" framing, with "Sealed on X" and "Identity
   verified on Y" shown as two separate facts per this doc's own "remaining

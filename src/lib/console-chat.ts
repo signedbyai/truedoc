@@ -379,7 +379,7 @@ export async function runConsoleChatTurn(params: {
       if ("needsIdentityVerification" in result && result.needsIdentityVerification) {
         return {
           type: "message",
-          content: `${result.error} Head to Settings → Integration & API to verify — it only takes about a minute, then come back and try sealing again.`,
+          content: `${result.error} Open Settings right here in Console (the gear icon on mobile, or the panel on the left on desktop) to verify — it only takes about a minute, then come back and try sealing again.`,
         };
       }
       return { type: "message", content: `Couldn't do that: ${result.error}` };
