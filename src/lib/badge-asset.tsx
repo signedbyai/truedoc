@@ -173,9 +173,22 @@ export async function generateVerifiedBadgeImage(verifyUrl: string): Promise<Buf
 
         <div style={{ display: "flex", flex: 1 }} />
 
+        {/* FIXED 2026-08-01: previously read "Timestamp and identity
+            cryptographically verified" — not accurate. The hash (SHA-512
+            over the stamped document, see generate-signed-pdf.ts) and the
+            identity check (real Stripe Identity govt-ID + selfie, see
+            identity.ts) are genuinely cryptographic; the timestamp itself
+            is a plain Postgres `created_at` value with no trusted
+            timestamping authority or other independent proof of time
+            behind it — nothing in this codebase does RFC 3161 timestamping
+            or blockchain anchoring today. Reworded to only claim crypto
+            verification for the two things that actually have it, matching
+            the more careful language the certificate PDF page already
+            used ("reflects the identity check and file hash captured at
+            the time of sealing" — see generate-signed-pdf.ts). */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 34 }}>
           <div style={{ display: "flex", fontSize: 10.5, color: "#94a3b8", textAlign: "center" }}>
-            Unaltered since sealed. Timestamp and identity cryptographically verified.
+            Unaltered since sealed. File hash and identity cryptographically verified.
           </div>
         </div>
       </div>
