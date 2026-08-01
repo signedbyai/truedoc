@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FlagValues } from "flags/react";
 import Image from "next/image";
 import { CtaLink } from "@/components/cta-link";
+import { LanguageSupportRow } from "@/components/language-support-row";
 import { ctaColorFlag } from "@/flags";
 import { TEMPLATE_PAGES } from "@/lib/template-pages";
 
@@ -104,6 +105,7 @@ export default async function BoardResolutionsPage() {
           </CtaLink>
           <p className="text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
         </div>
+        <LanguageSupportRow />
       </section>
 
       <section className="mx-auto w-full max-w-3xl px-6 pb-10">
@@ -154,6 +156,9 @@ export default async function BoardResolutionsPage() {
         <CtaLink href="/login?intent=signup" className="mt-5" color={ctaColor} page="board-resolutions" position="footer">
           Start for free →
         </CtaLink>
+        <div className="mt-5">
+          <LanguageSupportRow />
+        </div>
       </section>
 
       <footer className="mt-auto border-t border-slate-100 px-6 py-8 text-center text-xs text-slate-400">
