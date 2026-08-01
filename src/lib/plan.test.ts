@@ -11,11 +11,8 @@ describe("planHasFeature", () => {
     }
   });
 
-  // Branding is a single Team-tier promise (name + logo + colour) as of
-  // 2026-07-17 — customBranding moved business → team, so both branding keys
-  // now unlock together.
-  it("gates teamMembers/bulkSend/branding/customBranding to team and business", () => {
-    for (const feature of ["teamMembers", "bulkSend", "branding", "customBranding"] as const) {
+  it("gates teamMembers/bulkSend to team and business", () => {
+    for (const feature of ["teamMembers", "bulkSend"] as const) {
       expect(planHasFeature("free", feature)).toBe(false);
       expect(planHasFeature("starter", feature)).toBe(false);
       expect(planHasFeature("team", feature)).toBe(true);
@@ -23,6 +20,25 @@ describe("planHasFeature", () => {
     }
   });
 
+  // Branding was a single Team-tier promise (name + logo + colour) from
+  // 2026-07-17 until 2026-08-02, when it reverted to Business-only
+  // (API_TIER_SCOPE.md, direct instruction: "team should not have the
+  // branding so that makes business a bigger step") — see plan.ts's comment
+  // on `branding`/`customBranding` for why the reversal happened.
+  it("gates branding/customBranding to business only", () => {
+    for (const feature of ["branding", "customBranding"] as const) {
+      expect(planHasFeature("free", feature)).toBe(false);
+      expect(planHasFeature("starter", feature)).toBe(false);
+      expect(planHasFeature("team", feature)).toBe(false);
+      expect(planHasFeature("business", feature)).toBe(true);
+    }
+  });
+
+  // apiAccess itself is unchanged by API_TIER_SCOPE.md (2026-08-02) — still
+  // means "unlimited, unmetered," genuinely true only for Business. What
+  // changed is api/org/webhooks/route.ts, which now also accepts
+  // consoleAccess (tested at the route level, not here) so Pro/Team get
+  // real webhook access for the first time, just still metered.
   it("gates apiAccess and paymentCollection to business only", () => {
     for (const feature of ["apiAccess", "paymentCollection"] as const) {
       expect(planHasFeature("free", feature)).toBe(false);

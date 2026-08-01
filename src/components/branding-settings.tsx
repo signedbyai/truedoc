@@ -126,7 +126,7 @@ export function BrandingSettings({
     <div className="space-y-6">
       <form onSubmit={saveName} className="space-y-2">
         <Label htmlFor="org-name">Workspace name</Label>
-        <p className="text-xs text-slate-500">Shown to signers on the Team-tier branded signing page.</p>
+        <p className="text-xs text-slate-500">Shown to signers on the Business-tier branded signing page.</p>
         <div className="flex gap-2">
           {/* min-w-0 flex-1 (capped at xs on wider screens) so this row
               fits a phone width instead of the fixed max-w-xs input +
@@ -196,7 +196,7 @@ export function BrandingSettings({
             {logoStatus === "removed" && <p className="text-xs text-emerald-600">Logo removed.</p>}
           </>
         ) : (
-          <p className="text-xs text-slate-500">Custom logo upload is available on the Team plan.</p>
+          <p className="text-xs text-slate-500">Custom logo upload is available on the Business plan.</p>
         )}
       </div>
 
@@ -221,7 +221,7 @@ export function BrandingSettings({
             {colorStatus === "done" && <p className="text-xs text-emerald-600">Brand color updated.</p>}
           </>
         ) : (
-          <p className="text-xs text-slate-500">Custom brand color is available on the Team plan.</p>
+          <p className="text-xs text-slate-500">Custom brand color is available on the Business plan.</p>
         )}
       </div>
 

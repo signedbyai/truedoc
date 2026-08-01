@@ -49,7 +49,7 @@ export default async function SettingsPage() {
             <CardDescription>
               {hasCustomBranding
                 ? "Your name, logo, and brand color appear on the signing page instead of the default SignedBy footer."
-                : "Your workspace name, logo, and brand color replace the default SignedBy footer on the signing page (Team plan)."}
+                : "Your workspace name, logo, and brand color replace the default SignedBy footer on the signing page (Business plan)."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -93,16 +93,23 @@ export default async function SettingsPage() {
           <CardHeader>
             <CardTitle>Integration &amp; API</CardTitle>
             <CardDescription>
+              {/* Three states now, not two (API_TIER_SCOPE.md, 2026-08-02) —
+                  Free used to be a flat "you don't have this" gate line; it's
+                  now a real (if capped) sandbox, same as SignNow/eSignatures.com
+                  offer developers before they pay. */}
               {hasApiAccess
                 ? "Wire SignedBy into your CRM, app, or onboarding flow. Use the key below to create, send, and track documents from your own code."
                 : hasConsoleAccess
-                  ? "Metered API access — 20 free document-sends a month, then billed per document. Use the key below to create, send, and track documents from your own code."
-                  : "Wire SignedBy into your CRM, app, or onboarding flow — create, send, and track documents without anyone opening a browser. Copy the API URL and generate the key here."}
+                  ? "Metered API access — 50 free document-sends a month, then billed per document. Use the key below to create, send, and track documents from your own code."
+                  : "Free plan sandbox — the same 3 documents/month the dashboard gives you, reachable via the API too. Build and test against a real account before upgrading."}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {hasAnyApiAccess ? (
-              <div className="space-y-4">
+            {/* ApiKeySettings + examples now show for every plan, including
+                Free — only Webhooks stays gated to Pro/Team/Business
+                (hasAnyApiAccess) below, since that wasn't part of the
+                free-sandbox decision. */}
+            <div className="space-y-4">
                 {/* No link to /dashboard/console here for now — Michael wants
                     it discoverable only by going directly to
                     console.signedby.ai while it's still early, same as the
@@ -173,32 +180,34 @@ curl -X POST https://signedby.ai/api/v1/documents/<document-id>/void \\
                   </div>
                 </Collapsible>
 
+                {/* Webhooks stay gated to Pro/Team/Business — not part of the
+                    Free-sandbox decision (API_TIER_SCOPE.md). A Free org
+                    sees a plain gate line instead, same style as the
+                    Workspace card's own gate line, linking to the public
+                    docs (PUBLIC_API_DOCS_SCOPE.md) rather than dead-ending. */}
                 <div className="border-t border-slate-100 pt-4">
                   <p className="text-sm font-medium text-slate-900">Webhooks</p>
-                  <p className="mt-0.5 text-xs text-slate-600">
-                    Get notified the moment a document is viewed, signed, completed, or declined — e.g. attach the
-                    signed PDF to a CRM deal via Make.
-                  </p>
-                  <div className="mt-3">
-                    <WebhookSettings />
-                  </div>
+                  {hasAnyApiAccess ? (
+                    <>
+                      <p className="mt-0.5 text-xs text-slate-600">
+                        Get notified the moment a document is viewed, signed, completed, or declined — e.g. attach
+                        the signed PDF to a CRM deal via Make.
+                      </p>
+                      <div className="mt-3">
+                        <WebhookSettings />
+                      </div>
+                    </>
+                  ) : (
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      Webhooks are available on the Pro plan or higher.{" "}
+                      <Link href="/developers" className="font-medium text-slate-700 underline hover:text-slate-900">
+                        See what&apos;s possible in the docs
+                      </Link>
+                      .
+                    </p>
+                  )}
                 </div>
               </div>
-            ) : (
-              // Plain gate line only, same as the Workspace card — no dashed
-              // upgrade box. The Plan & team card below is the one place that
-              // routes people to billing. Links to the public docs
-              // (PUBLIC_API_DOCS_SCOPE.md) rather than dead-ending here —
-              // previously a non-Business user had zero visibility into what
-              // they'd actually be buying.
-              <p className="text-xs text-slate-500">
-                API access is available on the Pro plan (metered) or Business plan (unlimited).{" "}
-                <Link href="/developers" className="font-medium text-slate-700 underline hover:text-slate-900">
-                  See what&apos;s possible in the docs
-                </Link>
-                .
-              </p>
-            )}
           </CardContent>
         </Card>
 

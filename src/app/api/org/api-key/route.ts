@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getUserAndOrg } from "@/lib/org";
-import { planHasFeature } from "@/lib/plan";
 import { generateApiKey } from "@/lib/api-key";
 
 // Generates (or regenerates) the org's API key. The raw key is returned
@@ -11,19 +10,15 @@ export async function POST() {
   if (!ctx) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   const { supabase, user, orgId } = ctx;
 
+  // No plan gate here anymore (API_TIER_SCOPE.md, 2026-08-02) — every plan
+  // now has a real path through authenticateApiRequest() at request time:
+  // Business is unlimited, Pro/Team is metered (apiAccess/consoleAccess),
+  // and Free is capped at 3 documents/month via checkFreePlanDocCap, same
+  // as the dashboard UI. Key generation itself was never the right place to
+  // gate access — the actual request-time check in api-auth.ts already
+  // covers every plan, so this route just needs the org to exist.
   const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
-  // Business gets unlimited included access (apiAccess); Pro/Team get the
-  // metered console path (consoleAccess) — see api-auth.ts's ApiAuthResult
-  // for how the two combine at request time. Previously this route only
-  // honored apiAccess, so a Pro/Team org had no way to ever get a key at
-  // all despite the metering backend already accepting their calls — see
-  // CONSOLE_UX_SCOPE.md's "the actual gap" section.
-  if (!org || (!planHasFeature(org.plan, "apiAccess") && !planHasFeature(org.plan, "consoleAccess"))) {
-    return NextResponse.json(
-      { error: "API access requires the Pro plan (metered) or the Business plan (unlimited).", upgrade: true },
-      { status: 402 }
-    );
-  }
+  if (!org) return NextResponse.json({ error: "Org not found" }, { status: 404 });
 
   const { data: requester } = await supabase
     .from("organization_members")

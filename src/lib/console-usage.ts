@@ -3,7 +3,7 @@ import { getStripe, consoleMeteredPriceIdFor } from "@/lib/stripe";
 import { sendConsoleCapWarningEmail } from "@/lib/email";
 
 // Pricing constants (CONSOLE_AI_SIGNING_SCOPE.md, CONSOLE_UX_SCOPE.md) — the
-// same 20 free sends/month + $0.25/doc figures already shown on
+// same free-sends/month + $0.25/doc figures already shown on
 // console/page.tsx, centralized here so the cap math, the usage panel, and
 // the pitch page never drift apart. Deliberately USD-denominated for the
 // cap/bill-so-far math regardless of the org's actual Stripe billing
@@ -12,7 +12,15 @@ import { sendConsoleCapWarningEmail } from "@/lib/email";
 // the org's correct currency Price, via consoleMeteredPriceIdFor). Good
 // enough for a v1 spend cap; a future pass could localize the cap's own
 // currency if that mismatch ever confuses a non-USD org.
-export const CONSOLE_FREE_ALLOWANCE = 20;
+//
+// Raised from 20 to 50 (2026-08-02, API_TIER_SCOPE.md, direct instruction)
+// as part of unlocking Pro/Team access to the plain REST API + webhooks —
+// stays metered rather than becoming unlimited (Console's bulk-send has no
+// volume cap of its own, see console-bulk-send-cap-removed memory), so a
+// more generous free allowance is the actual lever being pulled here. Every
+// hardcoded "20 free" mention in marketing/settings copy (developers,
+// console, dashboard/settings, verified-badge pages) needs to match this.
+export const CONSOLE_FREE_ALLOWANCE = 50;
 export const CONSOLE_OVERAGE_CENTS = 25;
 
 // 80% of the cap is the warning threshold (CONSOLE_UX_SCOPE.md's "Decided"

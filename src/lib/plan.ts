@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Feature gating for paid-tier functionality. Kept as a single source of
 // truth so the app logic always matches what pricing-cards.tsx promises —
@@ -42,16 +42,25 @@ const FEATURE_PLANS = {
   teamMembers: ["team", "business"],
   // Team: "Bulk send"
   bulkSend: ["team", "business"],
-  // Team: full white-label on the signing page — org name, logo, and brand
-  // colour. Collapsed into ONE promise on 2026-07-17 (customBranding moved
-  // business → team): the old split of name-only at Team vs logo+colour at
-  // Business was a confusing half-measure that undersold Team and made
-  // Business read as "the tier where branding finally works". Both keys are
-  // kept — `branding` gates removing SignedBy's mark, `customBranding` gates
-  // the logo/colour controls — so callers don't all have to change.
-  branding: ["team", "business"],
-  customBranding: ["team", "business"],
-  // Business: "API access"
+  // Business: full white-label on the signing page — org name, logo, and
+  // brand colour. Reverted back to business-only 2026-08-02
+  // (API_TIER_SCOPE.md, direct instruction: "team should not have the
+  // branding so that makes business a bigger step"), undoing the 2026-07-17
+  // merge that had collapsed this into one team+business promise. That
+  // merge was sound *given API access was still Business's differentiator*
+  // — once this scope doc moved API access to Pro (see `apiAccess` below,
+  // now effectively superseded by `consoleAccess` for Pro/Team), Business
+  // needed a replacement, and branding exclusivity is it. Both keys kept —
+  // `branding` gates removing SignedBy's mark, `customBranding` gates the
+  // logo/colour controls — so callers don't all have to change.
+  branding: ["business"],
+  customBranding: ["business"],
+  // Business: still the only genuinely unlimited/unmetered REST API access
+  // (API_TIER_SCOPE.md) — Pro/Team now get real API + webhook access too
+  // (see `consoleAccess` below and api-auth.ts's `authenticateApiRequest`),
+  // but it stays metered there rather than becoming unlimited, since
+  // Console's bulk-send has no volume cap of its own and metering is the
+  // only safety valve against unbounded bulk sends at a lower tier.
   apiAccess: ["business"],
   // Business: "Payment collection" — an external link (e.g. a Stripe Payment
   // Link the org already owns), not a Connect-style in-app charge. See
@@ -95,8 +104,8 @@ export const FEATURE_UPGRADE_PLAN: Record<Feature, PlanId> = {
   pageViewTracking: "starter",
   teamMembers: "team",
   bulkSend: "team",
-  branding: "team",
-  customBranding: "team",
+  branding: "business",
+  customBranding: "business",
   apiAccess: "business",
   paymentCollection: "business",
   docGate: "business",
@@ -141,8 +150,21 @@ export function seatsOverLimit(memberCount: number, plan: string | null | undefi
 // a Free org could bypass the cap by duplicating/drafting past it. Kept
 // here (not re-inlined per route) after it was found byte-for-byte
 // duplicated in the upload and duplicate routes.
+//
+// Typed as the generic `SupabaseClient` (was the session-bound `createClient`
+// return type specifically) — API_TIER_SCOPE.md's free-tier API sandbox
+// (2026-08-02, direct instruction) needed this same cap enforced from
+// api/v1/documents/route.ts, which has no user session and only ever holds
+// the service-role admin client. Both clients are structurally the same
+// underlying `SupabaseClient`, so this widens the type without changing
+// behavior for any existing session-based caller.
 export async function checkFreePlanDocCap(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  // Bare `SupabaseClient` (no generics) — both the session client
+  // (createServerClient) and the admin client (createAdminClient) are
+  // SupabaseClient instances with no shared Database generic declared
+  // anywhere in this codebase, so the library's own default type params
+  // apply to both without needing an explicit `any` here.
+  supabase: SupabaseClient,
   orgId: string
 ): Promise<NextResponse | null> {
   const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();

@@ -9,7 +9,7 @@ import { ctaColorFlag } from "@/flags";
 
 const TITLE = "SignedBy API — wire e-signature into your CRM or app";
 const DESCRIPTION =
-  "REST API and outbound webhooks, included in the $29/mo Business plan — no separate developer plan. Create and send documents from your CRM, get notified on sign/complete, and connect via Make.";
+  "REST API and outbound webhooks, starting on the $7/mo Pro plan (metered) and fully unlimited on Business ($29/mo) — no separate developer plan. Create and send documents from your CRM, get notified on sign/complete, and connect via Make.";
 
 // This page has its own opengraph-image.tsx (route-scoped, next to this
 // file) — same as /magic-quote, openGraph/twitter here omit `images`
@@ -136,8 +136,9 @@ export default async function DevelopersPage() {
         </h1>
         <p className="max-w-xl text-lg text-slate-600">
           A REST API and outbound webhooks for wiring SignedBy into your CRM, app, or onboarding flow — create and
-          send documents, get notified the moment one&apos;s signed, and sync it all back automatically. Included in
-          the $29/mo Business plan, not a separate metered developer product like most e-signature APIs.
+          send documents, get notified the moment one&apos;s signed, and sync it all back automatically. Starts on
+          the $7/mo Pro plan (50 free document-sends a month, then billed per document) and becomes fully
+          unlimited on Business ($29/mo) — no separate developer plan to buy first.
         </p>
         <CtaLink href="/login?intent=signup" color={ctaColor} page="developers" position="hero">
           Start for free →
@@ -219,10 +220,11 @@ export default async function DevelopersPage() {
       <section className="mx-auto w-full max-w-3xl px-6 pb-8">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl border border-slate-200 p-5">
-            <p className="text-sm font-semibold text-slate-900">Included in Business ($29/mo)</p>
+            <p className="text-sm font-semibold text-slate-900">Starts on Pro ($7/mo)</p>
             <p className="mt-1 text-xs text-slate-600">
-              No separate developer plan or per-seat API tier — see how that compares to DocuSign, SignNow, and
-              PandaDoc on our <Link href="/vs/docusign" className="underline">comparison pages</Link>.
+              No separate developer plan or per-seat API tier — 50 free document-sends a month on Pro/Team,
+              fully unlimited (plus webhooks) on Business ($29/mo). See how that compares to DocuSign, SignNow,
+              and PandaDoc on our <Link href="/vs/docusign" className="underline">comparison pages</Link>.
             </p>
           </div>
           <div className="rounded-xl border border-slate-200 p-5">
@@ -242,14 +244,19 @@ export default async function DevelopersPage() {
 
       <Section id="auth" title="Authentication">
         <p>
-          Generate a key from Settings → Integration &amp; API (requires the Business plan). Send it as a bearer
-          token on every request:
+          Generate a key from Settings → Integration &amp; API — every plan can generate one now, including Free.
+          Send it as a bearer token on every request:
         </p>
         <CodeBlock>{`Authorization: Bearer sb_live_...`}</CodeBlock>
-        <p>Missing or invalid keys get a 401. A key on a plan below Business gets a 402:</p>
+        <p>
+          Missing or invalid keys get a 401. What happens after that depends on your plan: Business is unlimited,
+          Pro and Team are metered (50 free document-sends/month, then billed per document — see{" "}
+          <Link href="/console" className="underline">/console</Link> for pricing), and Free is capped at the same
+          3 documents/month the dashboard gives you:
+        </p>
         <CodeBlock>{`401  { "error": "Missing API key. Pass it as 'Authorization: Bearer <key>'." }
 401  { "error": "Invalid API key." }
-402  { "error": "API access requires the Business plan." }`}</CodeBlock>
+402  { "error": "You've hit the Free plan's 3 documents/month limit. Upgrade to keep going." }`}</CodeBlock>
       </Section>
 
       <Section id="endpoints" title="Endpoints">
@@ -383,8 +390,9 @@ export default async function DevelopersPage() {
 
       <Section id="webhooks" title="Webhooks">
         <p>
-          Register one or more endpoint URLs in Settings → Webhooks (each gets its own signing secret). Every enabled
-          endpoint receives all four document lifecycle events:
+          Available on Pro and higher (previously Business-only). Register one or more endpoint URLs in Settings →
+          Webhooks (each gets its own signing secret). Every enabled endpoint receives all four document lifecycle
+          events:
         </p>
         <ul className="list-disc space-y-1 pl-5">
           <li>
@@ -483,9 +491,10 @@ function verify(rawBody, signatureHeader, secret) {
           <Link href="/console" className="underline">
             Console&apos;s
           </Link>{" "}
-          metered access (20 free document-sends/month, then billed per document), not the flat Business API access
-          described in Authentication above. See <Link href="/console" className="underline">/console</Link> for the
-          full pricing.
+          metered access (50 free document-sends/month, then billed per document), same metering on every plan
+          including Business — not the plain REST API access described in Authentication above, which is metered
+          on Pro/Team and unlimited on Business. See <Link href="/console" className="underline">/console</Link>{" "}
+          for the full pricing.
         </p>
       </Section>
 
@@ -580,7 +589,8 @@ function verify(rawBody, signatureHeader, secret) {
       <section className="mx-auto w-full max-w-3xl px-6 pb-20 pt-10 text-center">
         <h2 className="text-2xl font-semibold text-slate-900">Ready to build?</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Sign up free, then upgrade to Business ($29/mo) whenever you&apos;re ready for your API key.
+          Sign up free — you can generate a key today. Upgrade to Pro ($7/mo) for real usage, or Business
+          ($29/mo) for unlimited access and webhooks.
         </p>
         <CtaLink href="/login?intent=signup" className="mt-5" color={ctaColor} page="developers" position="footer">
           Start for free →

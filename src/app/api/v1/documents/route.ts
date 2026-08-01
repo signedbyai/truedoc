@@ -6,6 +6,7 @@ import { sendSignerInviteEmail } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { checkEmailDomainHasMx } from "@/lib/validate-email-domain";
 import { recordConsoleUsage } from "@/lib/console-usage";
+import { checkFreePlanDocCap } from "@/lib/plan";
 
 // Per-recipient authentication (PER_RECIPIENT_AUTH_SCOPE.md) — free on every
 // plan, not gated separately from apiAccess itself, same as the dashboard's
@@ -132,18 +133,29 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const auth = await authenticateApiRequest(request);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const { orgId, orgName, metered } = auth;
+  const { orgId, orgName, metered, freeCapped } = auth;
 
   const rateOk = await checkRateLimit(`api-v1-documents:${orgId}`, 60, 3600);
   if (!rateOk) return NextResponse.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });
+
+  const admin = createAdminClient();
+
+  // Free-tier sandbox (API_TIER_SCOPE.md, direct instruction: "the 3 docs
+  // per month cap enforced on the API make it a sandbox") — same cap the
+  // dashboard UI already enforces, checked here before creating anything so
+  // a capped-out Free org gets a clean 402 instead of a partially-created
+  // document. The service-role admin client is fine here — checkFreePlanDocCap
+  // only reads/counts organizations.plan and documents, both accessible via it.
+  if (freeCapped) {
+    const capResponse = await checkFreePlanDocCap(admin, orgId);
+    if (capResponse) return capResponse;
+  }
 
   const json = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message || "Invalid request body." }, { status: 400 });
   }
-
-  const admin = createAdminClient();
 
   const { data: org } = await admin.from("organizations").select("owner_id").eq("id", orgId).single();
   const { data: template } = await admin

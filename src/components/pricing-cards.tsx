@@ -27,19 +27,32 @@ const PLANS: {
     id: "starter",
     name: "Pro",
     blurb: "For solo professionals",
-    features: ["Unlimited documents", "1 user", "Templates & reminders", "AI-drafted documents", "Engagement tracking"],
+    features: [
+      "Unlimited documents",
+      "1 user",
+      "Templates & reminders",
+      "AI-drafted documents",
+      "Engagement tracking",
+      "API access",
+    ],
   },
   {
     id: "team",
     name: "Team",
     blurb: "Up to 3 users",
-    features: ["Everything in Pro", "Shared templates", "Bulk send", "Custom branding (logo & color)"],
+    features: ["Everything in Pro", "Shared templates", "Bulk send"],
   },
   {
     id: "business",
     name: "Business",
     blurb: "Up to 5 users",
-    features: ["Everything in Team", "API access", "Payment collection", "Gated file delivery"],
+    features: [
+      "Everything in Team",
+      "Custom branding (logo & color)",
+      "Unlimited API access + webhooks",
+      "Payment collection",
+      "Gated file delivery",
+    ],
   },
 ];
 

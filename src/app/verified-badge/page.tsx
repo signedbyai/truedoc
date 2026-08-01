@@ -51,7 +51,7 @@ const FAQ = [
   },
   {
     q: "What plan do I need?",
-    a: "Verified Badge is Console/MCP — Pro plan or higher, metered the same as Console's other actions (20 free document-seals a month, then billed per seal). It's reached by chatting with Console (\"seal this file\") or through the seal_document tool if you're wiring in an AI agent — see the developer docs.",
+    a: "Verified Badge is Console/MCP — Pro plan or higher, metered the same as Console's other actions (50 free document-seals a month, then billed per seal). It's reached by chatting with Console (\"seal this file\") or through the seal_document tool if you're wiring in an AI agent — see the developer docs.",
   },
 ];
 
@@ -153,7 +153,7 @@ export default async function VerifiedBadgePage() {
       <section className="mx-auto w-full max-w-3xl px-6 py-10 text-center">
         <h2 className="text-2xl font-semibold text-slate-900">Generate Your Proof</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Console/MCP, Pro plan or higher. 20 free document-seals a month, then billed per seal — same metering as
+          Console/MCP, Pro plan or higher. 50 free document-seals a month, then billed per seal — same metering as
           every other Console action.
         </p>
         <CtaLink href={START_HREF} className="mt-5" color={ctaColor} page="verified-badge" position="footer">

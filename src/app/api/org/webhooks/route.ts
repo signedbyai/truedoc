@@ -37,8 +37,16 @@ export async function POST(request: Request) {
   const { supabase, user, orgId } = ctx;
 
   const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
-  if (!org || !planHasFeature(org.plan, "apiAccess")) {
-    return NextResponse.json({ error: "Webhooks require the Business plan.", upgrade: true }, { status: 402 });
+  // Widened from apiAccess-only to apiAccess||consoleAccess (API_TIER_SCOPE.md,
+  // direct instruction) — webhooks used to require Business specifically,
+  // even though Pro/Team already had metered document-send access with no
+  // way to get notified about it. Same combined check authenticateApiRequest
+  // and dashboard/settings/page.tsx already use.
+  if (!org || (!planHasFeature(org.plan, "apiAccess") && !planHasFeature(org.plan, "consoleAccess"))) {
+    return NextResponse.json(
+      { error: "Webhooks require the Pro plan or higher.", upgrade: true },
+      { status: 402 }
+    );
   }
 
   const { data: requester } = await supabase
