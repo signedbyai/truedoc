@@ -46,6 +46,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // message-match — same priority tier as the template pages.
     { url: `${BASE_URL}/ai-drafter`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE_URL}/magic-quote`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    // Vertical landing page, added 2026-08-01 — was missing from here
+    // entirely (caught while checking whether the page's FAQ section had
+    // sitemap coverage), same priority tier as the other feature/template
+    // landing pages above.
+    { url: `${BASE_URL}/board-resolutions`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     // Audience-specific entry-point pages, added 2026-07-27 to test AU
     // trades and US subcontractor market entry — same feature, localized
     // framing and FAQ (see each page's own top-of-file comment).
