@@ -1276,7 +1276,18 @@ export function ConsoleChat({
           rounded floating bar once back in flow at lg:. */}
       <div
         ref={composerRef}
-        className="fixed inset-x-0 bottom-0 z-30 flex flex-col gap-2 border-t border-white/10 bg-neutral-950/95 px-4 pt-3 backdrop-blur-sm [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)] lg:static lg:z-auto lg:mt-3 lg:rounded-2xl lg:border lg:bg-neutral-900 lg:px-4 lg:py-3 lg:[padding-bottom:0.75rem] lg:backdrop-blur-none"
+        // One continuous rounded panel, not a lighter textarea box floating
+        // inside a separate outer box (2026-08-01, direct ask w/ reference
+        // screenshot — the send button and paperclip need to visually read
+        // as *inside* the same curved container the text sits in). The
+        // lighter bg-white/[0.04] tint that used to live on just the
+        // <textarea> now lives on this outer container instead, so the
+        // rounded corners actually wrap everything — text row and icon row
+        // alike — with no seam between them. Mobile's fixed full-bleed bar
+        // keeps its intentional squared edges (see comment below), but gets
+        // the same uniform panel tint so the "where do I type" contrast from
+        // the earlier fix isn't lost.
+        className="fixed inset-x-0 bottom-0 z-30 flex flex-col gap-2 border-t border-white/10 bg-neutral-900/95 px-4 pt-3 backdrop-blur-sm [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)] lg:static lg:z-auto lg:mt-3 lg:rounded-2xl lg:border lg:border-white/10 lg:bg-neutral-900 lg:px-4 lg:py-3 lg:[padding-bottom:0.75rem] lg:backdrop-blur-none"
       >
         <input ref={fileInputRef} type="file" accept=".csv,.txt,text/csv,text/plain" onChange={handleFileSelected} className="hidden" />
         <input ref={templateFileInputRef} type="file" accept=".pdf,application/pdf" onChange={handleTemplateFileSelected} className="hidden" />
@@ -1293,13 +1304,16 @@ export function ConsoleChat({
           }}
           disabled={loading}
           placeholder="Ask to list or find a template, send or bulk send a template, check on status…"
-          // bg-white/[0.04] (2026-08-01, direct ask) — was bg-transparent,
-          // so the entry area was indistinguishable from the composer bar
-          // around it with nothing marking where to type. A very slightly
-          // lighter panel than the surrounding neutral-950/neutral-900,
-          // same tint level already used for other dark-theme panels in
-          // console (see console-usage-panel.tsx).
-          className="max-h-40 min-h-[52px] w-full resize-none rounded-xl bg-white/[0.04] px-3 py-2.5 text-base text-neutral-100 placeholder-neutral-500 focus:outline-none"
+          // bg-transparent (2026-08-01, direct ask, superseding the same-day
+          // bg-white/[0.04] fix above) — that fix made the textarea easy to
+          // see, but as its own separately-rounded box nested inside the
+          // composer, which broke the composer into two visibly stacked
+          // panels instead of one continuous curved container (paperclip/
+          // send button read as sitting *below* the box, not inside it). The
+          // lighter tint + visibility now come from the outer composer
+          // panel itself (see composerRef div above), so the textarea can go
+          // back to blending in without losing "where do I type" contrast.
+          className="max-h-40 min-h-[52px] w-full resize-none bg-transparent px-1 py-1.5 text-base text-neutral-100 placeholder-neutral-500 focus:outline-none"
         />
         <div className="flex items-center justify-between">
           <div className="relative">
