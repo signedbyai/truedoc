@@ -20,6 +20,7 @@ import { defaultRecipientNotice } from "@/lib/recipient-notice";
 import { installMapUpsertPolyfill } from "@/lib/pdfjs-map-polyfill";
 import { computeSignatureLayout, quantize, type SignatureLayout } from "@/lib/suggestion-shape";
 import type { AIProvider } from "@/lib/ai-provider";
+import { consoleAppUrl } from "@/lib/console-host";
 
 type Field = {
   id: string;
@@ -331,6 +332,25 @@ export function FieldEditor({
   );
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateError, setTemplateError] = useState("");
+  // Console-return flow (2026-08-02, direct ask) — a console-originated
+  // session has no obvious "you're done, go back" moment: Save as Template
+  // used to just close its modal and fade a toast, leaving the sender on
+  // an unchanged screen with no signal the task was finished, and the
+  // uploaded document itself is left behind as a separate, harmless draft
+  // once save-as-template/route.ts creates its own independent templates
+  // row. Three pieces below, all gated on cameFromConsole so every other
+  // path into this page is unaffected:
+  //  - templateSaved: has a save actually succeeded yet this session.
+  //  - showBackToConsolePrompt: the front-and-center "you're done" popover,
+  //    auto-shown right after a successful save.
+  //  - showSaveReminderPrompt: shown instead of navigating away if the
+  //    floating "Back to Console" button is clicked before templateSaved.
+  const [templateSaved, setTemplateSaved] = useState(false);
+  const [showBackToConsolePrompt, setShowBackToConsolePrompt] = useState(false);
+  const [showSaveReminderPrompt, setShowSaveReminderPrompt] = useState(false);
+  // Captured right before templateName resets to "" on success, so the
+  // back-to-Console popover can still name what was just saved.
+  const [lastSavedTemplateName, setLastSavedTemplateName] = useState("");
   // First-time-sender guidance — only relevant before any fields exist, so
   // it naturally disappears for every document after the first one, and
   // won't flash for a returning document that already has fields once the
@@ -1536,8 +1556,17 @@ export function FieldEditor({
         throw new Error(data.error || "Couldn't save as a template.");
       }
       setShowSaveTemplateModal(false);
+      setLastSavedTemplateName(templateName.trim());
       setTemplateName("");
-      setStatusMessage("Saved as template.");
+      setTemplateSaved(true);
+      // The front-and-center popover below replaces the plain toast for a
+      // console-originated session — a fading "Saved as template." was the
+      // exact non-signal that left the sender wondering what to do next.
+      if (cameFromConsole) {
+        setShowBackToConsolePrompt(true);
+      } else {
+        setStatusMessage("Saved as template.");
+      }
     } catch (err) {
       setTemplateError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -2980,6 +3009,88 @@ export function FieldEditor({
             <div className="mt-4 flex justify-end">
               <Button onClick={() => setShowVerificationModal(false)}>Done</Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Console-return flow (2026-08-02, direct ask) — see the
+          templateSaved/showBackToConsolePrompt/showSaveReminderPrompt
+          state comment above for why this exists at all: neither the
+          quiet "Saved as template." toast nor the small "← Documents"
+          header link gave a console-originated sender any signal that
+          they were done and could leave. All three pieces below are
+          gated on cameFromConsole; every other path into this page
+          (a plain upload, AI Drafter, duplicate, template) never
+          renders any of them. */}
+      {cameFromConsole && (
+        <button
+          type="button"
+          onClick={() => {
+            if (templateSaved) {
+              window.location.href = consoleAppUrl();
+            } else {
+              // Don't navigate silently — leaving before saving means the
+              // fields placed here never become a reusable template, the
+              // entire point of this detour from Console.
+              setShowSaveReminderPrompt(true);
+            }
+          }}
+          className="fixed bottom-5 right-5 z-30 flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-black/25 hover:bg-slate-800"
+        >
+          ← Back to Console
+        </button>
+      )}
+
+      {showSaveReminderPrompt && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+            <p className="text-sm font-medium text-slate-900">Save this as a template first?</p>
+            <p className="mt-1 text-xs text-slate-500">
+              You haven&apos;t saved a template yet — leave now and the fields you&apos;ve placed here won&apos;t be
+              reusable from Console.
+            </p>
+            <div className="mt-4 flex flex-col gap-2">
+              <Button
+                onClick={() => {
+                  setShowSaveReminderPrompt(false);
+                  setShowSaveTemplateModal(true);
+                }}
+              >
+                Save as template
+              </Button>
+              <button
+                onClick={() => {
+                  setShowSaveReminderPrompt(false);
+                  window.location.href = consoleAppUrl();
+                }}
+                className="text-xs font-medium text-slate-500 hover:text-slate-700"
+              >
+                Go to Console anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBackToConsolePrompt && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-lg bg-white p-6 text-center shadow-xl">
+            <p className="text-sm font-semibold text-slate-900">
+              &quot;{lastSavedTemplateName}&quot; saved as a template ✓
+            </p>
+            <p className="mt-1.5 text-xs text-slate-500">
+              The upload itself is still sitting in Documents as a draft — safe to ignore or delete, since the
+              reusable template now lives on its own.
+            </p>
+            <Button className="mt-4 w-full" onClick={() => (window.location.href = consoleAppUrl())}>
+              Back to Console →
+            </Button>
+            <button
+              onClick={() => setShowBackToConsolePrompt(false)}
+              className="mt-2.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+            >
+              Stay and keep editing
+            </button>
           </div>
         </div>
       )}
