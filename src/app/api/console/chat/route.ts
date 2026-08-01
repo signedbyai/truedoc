@@ -30,7 +30,7 @@ const bodySchema = z.object({
     .max(50)
     .default([]),
   confirmedTool: z
-    .object({ name: z.enum(["send_document", "bulk_send", "save_as_template"]), arguments: z.record(z.string(), z.unknown()) })
+    .object({ name: z.enum(["send_document", "bulk_send", "save_as_template", "seal_document"]), arguments: z.record(z.string(), z.unknown()) })
     .optional(),
 });
 
