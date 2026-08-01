@@ -9,20 +9,28 @@ import type { NextConfig } from "next";
 //   to a Stripe-hosted URL) set from our own API responses, not a fetch/XHR
 //   or <form> post to stripe.com — so it isn't governed by connect-src or
 //   form-action and needs no extra allowance here.
+// - Stripe Identity (Verified Badge, 2026-08-01) is different: @stripe/stripe-js's
+//   loadStripe()/stripe.verifyIdentity() loads js.stripe.com client-side and opens
+//   Stripe's hosted verification flow in an iframe, so it needs real script-src/
+//   connect-src/frame-src allowances — confirmed broken in prod (stripe.js
+//   blocked:csp) since this CSP predates Identity and was only ever written for
+//   the redirect-only Checkout flow above. m.stripe.network is Stripe.js's own
+//   telemetry/fraud-detection beacon, required for Stripe.js to initialize at all.
 // 'unsafe-inline' stays in script-src because Next's App Router injects
 // inline hydration/RSC payload scripts; making this strict requires a
 // nonce wired through middleware, which is a further hardening step, not
 // a blocker.
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
+  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://js.stripe.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  "img-src 'self' data: blob: https://*.stripe.com",
   "font-src 'self' data:",
   // R2 endpoint added for direct-to-R2 presigned uploads: the browser PUTs the
   // file straight to <account>.r2.cloudflarestorage.com, bypassing the Vercel
   // 4.5 MB function-body cap (see /api/documents/upload-url).
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.r2.cloudflarestorage.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.r2.cloudflarestorage.com https://api.stripe.com https://m.stripe.network",
+  "frame-src https://js.stripe.com https://hooks.stripe.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",
