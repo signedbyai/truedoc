@@ -331,6 +331,119 @@ Date: _______________________`,
   },
 
   {
+    slug: "board-resolution-template",
+    // No dedicated AI Drafter type for this yet (see ai-draft-types.ts) —
+    // routes into the "general" catch-all like general-agreement-template
+    // below, same honest-fallback reasoning: this promises a real,
+    // customizable starting document, not a purpose-built board-resolution
+    // AI prompt that doesn't exist.
+    documentType: "general",
+    seoTitle: "Free Board Resolution Template — Unanimous Written Consent",
+    metaDescription:
+      "A free board resolution template (unanimous written consent of directors) for routine corporate actions — no meeting required. Customize it and collect every director's signature in minutes.",
+    h1: "Free Board Resolution Template",
+    intro: [
+      "A board resolution records a decision made by a company's board of directors — opening a bank account, appointing an officer, approving a contract, or authorizing any other action that needs formal board approval. Most routine resolutions are passed by unanimous written consent instead of a live meeting: every director reads and signs the same document, and it takes effect the moment the last signature is in.",
+      "It's the kind of document small companies and startups sign more often than they'd expect, every time the board acts outside a formal meeting — and it doesn't need a governance platform built for a company with a full-time corporate secretary. A signed PDF, and a record of who signed it, is the actual legal requirement.",
+    ],
+    example: {
+      title: "Unanimous Written Consent of the Board of Directors",
+      body: `UNANIMOUS WRITTEN CONSENT OF THE BOARD OF DIRECTORS OF [Company Name]
+
+The undersigned, being all of the directors of [Company Name], a [State/Jurisdiction] corporation (the "Company"), acting by unanimous written consent in lieu of a meeting as permitted under the Company's bylaws and applicable law, hereby adopt the following resolutions:
+
+RESOLVED, that [description of the action being approved — e.g. "the Company is authorized to open a business bank account with [Bank Name], and [Officer Name] is authorized to execute all documents necessary to open and operate the account"].
+
+FURTHER RESOLVED, that the officers of the Company are authorized to take any further action necessary or appropriate to carry out the intent of the foregoing resolution.
+
+This Consent may be signed in counterparts, each of which is deemed an original, and is effective as of the date the last director signs below.
+
+SIGNATURES
+
+Director
+Signature: _______________________
+Print Name: [Director 1 Name]
+Date: _______________________
+
+Director
+Signature: _______________________
+Print Name: [Director 2 Name]
+Date: _______________________
+
+[Add one additional signature block per director]`,
+    },
+    faq: [
+      {
+        q: "Is a unanimous written consent the same as holding a board meeting?",
+        a: "Legally, yes for most standard corporate actions — most corporate statutes and standard bylaws let directors act by unanimous written consent instead of a live meeting, as long as every director signs. It takes effect once the last signature is in, with the same legal weight as a resolution passed at a meeting.",
+      },
+      {
+        q: "Do all directors need to sign, or just a majority?",
+        a: "Written consent almost always requires unanimity — that's what distinguishes it from a meeting, where a quorum and majority vote can be enough. Check your own bylaws; the default assumption in this template is unanimous.",
+      },
+      {
+        q: "Can I use this for any board decision?",
+        a: "For routine, everyday actions — opening a bank account, appointing an officer, approving a standard contract — this format is normally sufficient. For a major decision, like a merger, a new equity issuance, or an amendment to the articles of incorporation, have a lawyer confirm the specific requirements for that action in your jurisdiction.",
+      },
+    ],
+  },
+
+  {
+    slug: "shareholder-consent-template",
+    documentType: "general",
+    seoTitle: "Free Shareholder Consent Template — Unanimous Written Consent",
+    metaDescription:
+      "A free shareholder consent template for approving corporate actions without a formal meeting. Customize it and collect every shareholder's signature in minutes.",
+    h1: "Free Shareholder Consent Template",
+    intro: [
+      "A shareholder consent records a decision made by a company's owners — electing or removing a director, amending the articles of incorporation, approving a merger or a sale of substantially all assets, or any other action that specifically needs shareholder approval rather than just the board's. Like a board resolution, it's most often passed by unanimous written consent instead of a live shareholder meeting.",
+      "It's a separate document from a board resolution template (see below) for a reason: directors approve management-level decisions, shareholders approve owner-level ones, and some actions genuinely need both. This template covers the shareholder side.",
+    ],
+    example: {
+      title: "Unanimous Written Consent of the Shareholders",
+      body: `UNANIMOUS WRITTEN CONSENT OF THE SHAREHOLDERS OF [Company Name]
+
+The undersigned, being all of the shareholders entitled to vote of [Company Name], a [State/Jurisdiction] corporation (the "Company"), acting by unanimous written consent in lieu of a meeting as permitted under the Company's bylaws and applicable law, hereby adopt the following resolutions:
+
+RESOLVED, that [description of the action being approved — e.g. "[Director Name] is elected as a director of the Company, to serve until the next annual meeting or until a successor is duly elected"].
+
+FURTHER RESOLVED, that the officers of the Company are authorized to take any further action necessary or appropriate to carry out the intent of the foregoing resolution.
+
+This Consent may be signed in counterparts, each of which is deemed an original, and is effective as of the date the last shareholder signs below.
+
+SIGNATURES
+
+Shareholder
+Signature: _______________________
+Print Name: [Shareholder 1 Name]
+Shares Held: [Number of Shares]
+Date: _______________________
+
+Shareholder
+Signature: _______________________
+Print Name: [Shareholder 2 Name]
+Shares Held: [Number of Shares]
+Date: _______________________
+
+[Add one additional signature block per shareholder]`,
+    },
+    faq: [
+      {
+        q: "Does every shareholder need to sign, or just a majority?",
+        a: "Acting without a meeting almost always requires unanimous written consent, unlike a live vote where a majority can be enough — check your company's bylaws and state law, since some jurisdictions allow less-than-unanimous consent if the certificate of incorporation specifically authorizes it.",
+      },
+      {
+        q: "What kinds of decisions need shareholder approval instead of just the board?",
+        a: "Electing or removing directors, amending the certificate or articles of incorporation, and approving a merger, dissolution, or sale of substantially all the company's assets typically need shareholder approval — not just the board's. Routine operational decisions usually don't.",
+      },
+      {
+        q: "Is this different from the board resolution template?",
+        a: "Yes — a board resolution is signed by directors approving management-level decisions. This is signed by shareholders (owners) approving the decisions that specifically require owner-level approval. Some actions need both documents signed.",
+      },
+    ],
+  },
+
+  {
     slug: "general-agreement-template",
     documentType: "general",
     seoTitle: "Free General Agreement Template — Simple Contract",
