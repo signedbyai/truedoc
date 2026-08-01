@@ -532,6 +532,16 @@ export function ConsoleChat({
   // mid-conversation. Read inside the scroll effect via a ref (not state)
   // so that effect doesn't need to depend on it and re-run on every scroll.
   const scrolledUpRef = useRef(false);
+  const composerRef = useRef<HTMLDivElement>(null);
+  // Measured height (px) of the fixed mobile composer bar, or null once
+  // we're at the lg breakpoint where it sits in normal flow instead of
+  // floating over the content. See the effect below — the old flat pb-32
+  // guess on the scroll container fell short any time the composer grew
+  // past its single-line resting height (a multi-line draft, a device's
+  // safe-area inset), silently burying the newest message's own buttons
+  // (Confirm/Cancel, Seal it, etc.) behind the input bar (2026-08-01,
+  // direct report: "you can see only half a button and it's hard to press").
+  const [composerOverlapPx, setComposerOverlapPx] = useState<number | null>(null);
   const convIdRef = useRef<string | null>(conversationId);
   // Guards the autosave effect against re-saving a conversation that was
   // just loaded (initialMessages) with no actual new turn yet — only the
@@ -643,6 +653,34 @@ export function ConsoleChat({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, status]);
+
+  // Keeps composerOverlapPx in sync with the composer's actual rendered
+  // height below the lg breakpoint (where it's `fixed` and floats over the
+  // message thread), and clears it back to null at lg+ (where it's
+  // `lg:static`, in normal flex flow, so nothing needs to reserve room for
+  // it). ResizeObserver catches every height change that matters here — the
+  // textarea growing/shrinking with its content (up to max-h-40), a
+  // multi-line draft, or a device's safe-area-inset-bottom differing — not
+  // just the ones triggered by state changes this component already knows
+  // about.
+  useEffect(() => {
+    const composerEl = composerRef.current;
+    if (!composerEl || typeof ResizeObserver === "undefined" || typeof window === "undefined") return;
+
+    const mq = window.matchMedia("(min-width: 1024px)"); // Tailwind's lg breakpoint
+    const update = () => {
+      setComposerOverlapPx(mq.matches ? null : composerEl.getBoundingClientRect().height + 16);
+    };
+
+    update();
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(composerEl);
+    mq.addEventListener("change", update);
+    return () => {
+      resizeObserver.disconnect();
+      mq.removeEventListener("change", update);
+    };
+  }, []);
 
   const NEAR_BOTTOM_PX = 48;
 
@@ -1051,14 +1089,22 @@ export function ConsoleChat({
         <div
           ref={messagesContainerRef}
           onScroll={handleMessagesScroll}
-          // pb-32 on mobile (2026-07-31, direct ask) — the composer below
-          // switches to `fixed` positioning at the bottom of the viewport
-          // on small screens (see the input bar below) rather than sitting
-          // in normal document flow, so it no longer pushes this scroll
-          // area up on its own; this bottom padding does that job instead,
-          // keeping the last message from being covered by the fixed bar.
-          // Not needed at lg: and up, where the composer is back in flow.
+          // pb-32 is the fallback/first-paint guess before composerOverlapPx
+          // is measured (2026-07-31) — the composer below switches to
+          // `fixed` positioning at the bottom of the viewport on small
+          // screens (see the input bar below) rather than sitting in normal
+          // document flow, so it no longer pushes this scroll area up on
+          // its own; bottom padding does that job instead, keeping the last
+          // message from being covered by the fixed bar. Once measured, the
+          // inline style below overrides that flat guess with the
+          // composer's actual live height (see composerOverlapPx's effect)
+          // so a taller composer (multi-line draft, safe-area inset) can't
+          // silently bury the newest message's buttons behind it
+          // (2026-08-01 fix). Not needed at lg: and up, where the composer
+          // is back in flow — composerOverlapPx is null there, so the
+          // inline style is omitted and lg:pb-1 applies untouched.
           className="flex h-full flex-col gap-4 overflow-y-auto px-1 pb-32 lg:pb-1"
+          style={composerOverlapPx !== null ? { paddingBottom: composerOverlapPx } : undefined}
         >
           {messages.length === 0 && (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
@@ -1189,13 +1235,19 @@ export function ConsoleChat({
             aria-label="Scroll to latest message"
             title="Scroll to latest"
             onClick={jumpToLatest}
-            // bottom-36 on mobile (2026-08-01, direct ask — was bottom-28,
-            // just barely clearing the fixed composer's resting height; a
-            // multi-line draft or a notch phone's safe-area inset grows the
-            // composer past that and covers half the button). lg:bottom-2
-            // untouched — the composer's back in normal flow there, not
-            // fixed, so there's nothing for this to clear.
+            // bottom-36 is the fallback/first-paint guess (2026-08-01, was
+            // bottom-28 before that — just barely clearing the fixed
+            // composer's resting height; a multi-line draft or a notch
+            // phone's safe-area inset grows the composer past that and
+            // covers half the button). Now overridden by the same measured
+            // composerOverlapPx the scroll container's padding uses, so
+            // this stays pinned just above the composer at whatever height
+            // it's actually rendering at. lg:bottom-2 untouched — the
+            // composer's back in normal flow there, not fixed, so there's
+            // nothing for this to clear (composerOverlapPx is null at lg:,
+            // so the inline style is omitted and the Tailwind class wins).
             className="absolute bottom-36 left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-neutral-800/90 text-white shadow-lg backdrop-blur hover:bg-neutral-700 lg:bottom-2"
+            style={composerOverlapPx !== null ? { bottom: composerOverlapPx } : undefined}
           >
             <ChevronDown className="h-4 w-4" />
           </button>
@@ -1223,6 +1275,7 @@ export function ConsoleChat({
           indicator / gesture bar) while fixed; reverts to the original
           rounded floating bar once back in flow at lg:. */}
       <div
+        ref={composerRef}
         className="fixed inset-x-0 bottom-0 z-30 flex flex-col gap-2 border-t border-white/10 bg-neutral-950/95 px-4 pt-3 backdrop-blur-sm [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)] lg:static lg:z-auto lg:mt-3 lg:rounded-2xl lg:border lg:bg-neutral-900 lg:px-4 lg:py-3 lg:[padding-bottom:0.75rem] lg:backdrop-blur-none"
       >
         <input ref={fileInputRef} type="file" accept=".csv,.txt,text/csv,text/plain" onChange={handleFileSelected} className="hidden" />
@@ -1240,7 +1293,13 @@ export function ConsoleChat({
           }}
           disabled={loading}
           placeholder="Ask to list or find a template, send or bulk send a template, check on status…"
-          className="max-h-40 min-h-[52px] w-full resize-none bg-transparent text-base text-neutral-100 placeholder-neutral-500 focus:outline-none"
+          // bg-white/[0.04] (2026-08-01, direct ask) — was bg-transparent,
+          // so the entry area was indistinguishable from the composer bar
+          // around it with nothing marking where to type. A very slightly
+          // lighter panel than the surrounding neutral-950/neutral-900,
+          // same tint level already used for other dark-theme panels in
+          // console (see console-usage-panel.tsx).
+          className="max-h-40 min-h-[52px] w-full resize-none rounded-xl bg-white/[0.04] px-3 py-2.5 text-base text-neutral-100 placeholder-neutral-500 focus:outline-none"
         />
         <div className="flex items-center justify-between">
           <div className="relative">
