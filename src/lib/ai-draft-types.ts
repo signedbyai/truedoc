@@ -10,6 +10,7 @@ export type DraftDocumentType =
   | "waiver"
   | "boiler_maintenance"
   | "bike_rental"
+  | "board_resolution"
   | "general";
 
 // `en` is required as the fallback; other draft-language codes are optional
@@ -130,6 +131,27 @@ export const DOCUMENT_TYPES: { id: DraftDocumentType; labels: Localized; placeho
       pt: "ex. aluguel de bicicleta de fim de semana, caução reembolsável de €50, locatário responsável por danos ou roubo",
       nl: "bijv. fietsverhuur voor het weekend, terugbetaalbare borg van €50, huurder aansprakelijk voor schade of diefstal",
       it: "es. noleggio bici per il weekend, cauzione rimborsabile di 50 €, il noleggiatore risponde di danni o furto",
+    },
+  },
+  {
+    id: "board_resolution",
+    labels: {
+      en: "Board Resolution / Written Consent",
+      es: "Resolución del Consejo / Consentimiento por Escrito",
+      fr: "Résolution du Conseil / Consentement Écrit",
+      de: "Vorstandsbeschluss / Schriftliche Zustimmung",
+      pt: "Resolução do Conselho / Consentimento por Escrito",
+      nl: "Bestuursbesluit / Schriftelijke Toestemming",
+      it: "Delibera del Consiglio / Consenso Scritto",
+    },
+    placeholders: {
+      en: "e.g. unanimous written consent to open a business bank account, 3 directors, effective immediately",
+      es: "ej. consentimiento unánime por escrito para abrir una cuenta bancaria empresarial, 3 directores, con efecto inmediato",
+      fr: "ex. consentement écrit unanime pour ouvrir un compte bancaire professionnel, 3 administrateurs, effet immédiat",
+      de: "z. B. einstimmige schriftliche Zustimmung zur Eröffnung eines Geschäftskontos, 3 Vorstandsmitglieder, sofort wirksam",
+      pt: "ex. consentimento unânime por escrito para abrir uma conta bancária empresarial, 3 diretores, com efeito imediato",
+      nl: "bijv. eenparige schriftelijke toestemming om een zakelijke bankrekening te openen, 3 bestuurders, met onmiddellijke ingang",
+      it: "es. consenso scritto unanime per aprire un conto bancario aziendale, 3 amministratori, con effetto immediato",
     },
   },
   {

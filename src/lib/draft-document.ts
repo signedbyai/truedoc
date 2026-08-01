@@ -41,6 +41,13 @@ const TYPE_GUIDANCE: Record<DraftDocumentType, string> = {
     "A bicycle rental agreement typically covers: the bicycle(s) being rented and their condition at handover, " +
     "the rental period and rate, a security deposit and what it can be used against, the renter's responsibility " +
     "for damage, loss, or theft during the rental period, and the condition the bicycle must be returned in.",
+  board_resolution:
+    "A board resolution (unanimous written consent in lieu of a meeting) typically covers: identifying the " +
+    "company, confirming this is signed by all directors acting without a live meeting, a clear statement of the " +
+    "specific action being approved (e.g. opening a bank account, appointing an officer, approving a contract), " +
+    "and a statement that the resolution takes effect once every director has signed. Keep the approved action " +
+    "itself matched closely to what the user described, and don't invent corporate details (state/jurisdiction of " +
+    "incorporation, exact company name) they didn't provide — use a bracketed placeholder instead.",
 };
 
 const PROMPT = (

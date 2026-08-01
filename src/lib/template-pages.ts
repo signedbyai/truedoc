@@ -332,12 +332,10 @@ Date: _______________________`,
 
   {
     slug: "board-resolution-template",
-    // No dedicated AI Drafter type for this yet (see ai-draft-types.ts) —
-    // routes into the "general" catch-all like general-agreement-template
-    // below, same honest-fallback reasoning: this promises a real,
-    // customizable starting document, not a purpose-built board-resolution
-    // AI prompt that doesn't exist.
-    documentType: "general",
+    // Its own AI Drafter type (added 2026-08-01, see ai-draft-types.ts and
+    // draft-document.ts's TYPE_GUIDANCE) — no longer routes through the
+    // "general" catch-all.
+    documentType: "board_resolution",
     seoTitle: "Free Board Resolution Template — Unanimous Written Consent",
     metaDescription:
       "A free board resolution template (unanimous written consent of directors) for routine corporate actions — no meeting required. Customize it and collect every director's signature in minutes.",
