@@ -51,16 +51,29 @@ const FEATURE_ROWS: Row[] = [
 function CompareTable({ title, rows }: { title: string; rows: Row[] }) {
   return (
     <div className="mt-8 overflow-hidden rounded-xl border border-slate-200">
-      <div className="grid grid-cols-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <div className="hidden grid-cols-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 sm:grid">
         <span>{title}</span>
         <span className="text-slate-900">SignedBy</span>
         <span>DocuSign</span>
       </div>
       {rows.map((r) => (
-        <div key={r.label} className="grid grid-cols-3 gap-2 border-t border-slate-100 px-4 py-3 text-sm">
-          <span className="text-slate-600">{r.label}</span>
-          <span className="font-medium text-slate-900">{r.signedby}</span>
-          <span className="text-slate-500">{r.competitor}</span>
+        // Stacked cards below sm: the 3-column grid gives each cell only
+        // ~1/3 of a mobile screen's width, which forces long unbreakable
+        // strings (e.g. "3 documents/month") to overflow the cell and get
+        // clipped by this table's overflow-hidden border. Full-width rows
+        // sidestep that instead of trying to hyphenate/break-word around it.
+        <div key={r.label} className="grid grid-cols-1 gap-1.5 border-t border-slate-100 px-4 py-3 text-sm sm:grid-cols-3 sm:items-start sm:gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400 sm:text-sm sm:font-normal sm:normal-case sm:tracking-normal sm:text-slate-600">
+            {r.label}
+          </span>
+          <span className="font-medium text-slate-900">
+            <span className="text-slate-400 sm:hidden">SignedBy — </span>
+            {r.signedby}
+          </span>
+          <span className="text-slate-500">
+            <span className="text-slate-400 sm:hidden">DocuSign — </span>
+            {r.competitor}
+          </span>
         </div>
       ))}
     </div>
