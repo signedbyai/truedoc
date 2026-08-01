@@ -44,6 +44,11 @@ export type Bubble =
       // the model has to guess or resolve, only something the UI already
       // has in hand.
       certificateModeChoice?: { documentId: string; filename: string };
+      // seal_document's result (2026-08-01, direct feedback) — renders a
+      // copy-link button plus inline download buttons for whichever files
+      // this seal actually produced, instead of the raw verify URL and a
+      // pointer to the documents list.
+      sealed?: { documentId: string; verifyUrl: string; hasSignedFile: boolean; hasCertificateFile: boolean };
     };
 
 /** Copies `text` to the clipboard on click/tap and flashes a brief check
@@ -79,6 +84,42 @@ function CopyableValue({ value, className = "" }: { value: string; className?: s
       ) : (
         <Copy className="h-3 w-3 shrink-0 text-neutral-500 opacity-0 group-hover:opacity-100" aria-hidden="true" />
       )}
+    </button>
+  );
+}
+
+/** A pill button (same visual weight as the m.link "Open in editor" button
+ *  below) that copies `value` on click and flashes its label to "Copied"
+ *  instead of showing the value itself — 2026-08-01, direct feedback: the
+ *  Verified Badge verify link is a full SHA-512 hash, unwieldy to read or
+ *  select by hand, so unlike CopyableValue above this deliberately never
+ *  renders the raw string, just a short fixed label. */
+function CopyLinkButton({ value, label = "Copy link" }: { value: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      // Same clipboard-unavailable fallback as CopyableValue — still flash
+      // the "Copied" state since there's nothing more useful to do here.
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
+    >
+      {copied ? (
+        <Check className="h-3.5 w-3.5 text-yellow-300" aria-hidden="true" />
+      ) : (
+        <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+      )}
+      {copied ? "Copied" : label}
     </button>
   );
 }
@@ -702,6 +743,21 @@ export function ConsoleChat({
       });
       if (!res.ok || data.type === "error") {
         setError(typeof data.error === "string" ? data.error : "Something went wrong.");
+      } else if (data.type === "sealed") {
+        setMessages((cur) => [
+          ...cur,
+          {
+            role: "assistant",
+            content: String(data.content ?? ""),
+            sealed: {
+              documentId: String(data.documentId ?? ""),
+              verifyUrl: String(data.verifyUrl ?? ""),
+              hasSignedFile: Boolean(data.hasSignedFile),
+              hasCertificateFile: Boolean(data.hasCertificateFile),
+            },
+          },
+        ]);
+        router.refresh();
       } else {
         setMessages((cur) => [...cur, { role: "assistant", content: String(data.content ?? "") }]);
         router.refresh(); // refreshes the usage panel's server-fetched numbers
@@ -1040,6 +1096,45 @@ export function ConsoleChat({
                         {mode === "appended" ? "Appended" : mode === "separate" ? "Separate" : "Both"}
                       </Button>
                     ))}
+                  </div>
+                )}
+                {m.sealed && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <CopyLinkButton value={m.sealed.verifyUrl} label="Copy verify link" />
+                    <a
+                      href={m.sealed.verifyUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                      Open verify page
+                    </a>
+                    {m.sealed.hasSignedFile && (
+                      <a
+                        href={`/api/documents/${m.sealed.documentId}/signed-file`}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
+                      >
+                        <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                        Sealed PDF
+                      </a>
+                    )}
+                    {m.sealed.hasCertificateFile && (
+                      <a
+                        href={`/api/documents/${m.sealed.documentId}/certificate`}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
+                      >
+                        <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                        Certificate
+                      </a>
+                    )}
+                    <a
+                      href={`/api/documents/${m.sealed.documentId}/badge`}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
+                    >
+                      <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                      Badge image
+                    </a>
                   </div>
                 )}
                 {(m.confirm || m.link) && (

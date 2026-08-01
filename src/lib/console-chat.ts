@@ -344,7 +344,22 @@ function toolStatusPhrase(name: string, args: Record<string, unknown>): string {
 export type ConsoleChatTurnResult =
   | { type: "message"; content: string }
   | { type: "confirm"; tool: string; arguments: Record<string, unknown>; content: string }
-  | { type: "error"; error: string };
+  | { type: "error"; error: string }
+  // seal_document's success case (2026-08-01, direct feedback: the raw
+  // verify URL is a full SHA-512 hash — unwieldy to select/copy by hand,
+  // and the sealed PDF/certificate/badge were only reachable via a trip to
+  // the documents list). Carries the structured pieces console-chat.tsx
+  // needs to render a copy-link button and inline download buttons,
+  // instead of asking the model or the user to parse them back out of
+  // prose.
+  | {
+      type: "sealed";
+      content: string;
+      documentId: string;
+      verifyUrl: string;
+      hasSignedFile: boolean;
+      hasCertificateFile: boolean;
+    };
 
 /** Runs one turn of the console chat. Two entry shapes: a normal message
  *  turn (Mistral decides whether to call a tool), or a confirmedTool turn
@@ -422,11 +437,14 @@ export async function runConsoleChatTurn(params: {
       };
     }
     if (confirmedTool.name === "seal_document" && "verifyUrl" in result) {
-      const parts = [`Sealed. Anyone can verify it, with no account needed, at ${result.verifyUrl}.`];
-      if (result.hasSignedFile) parts.push("Download the sealed PDF from the documents list.");
-      if (result.hasCertificateFile) parts.push("The standalone certificate is available separately, same place.");
-      parts.push("The Badge image (for an invoice footer, portfolio, or email signature) downloads from the same document.");
-      return { type: "message", content: parts.join(" ") };
+      return {
+        type: "sealed",
+        content: "Sealed. Anyone can verify it, no account needed — copy the link or grab the files below.",
+        documentId: result.documentId,
+        verifyUrl: result.verifyUrl,
+        hasSignedFile: result.hasSignedFile,
+        hasCertificateFile: result.hasCertificateFile,
+      };
     }
     return { type: "message", content: "Done." };
   }
