@@ -66,6 +66,77 @@ all currently assert Pro-or-nothing — all of that needs a rewrite, which is
 the same "hardcoded prose echoed in many places" tax `API_TIER_SCOPE.md`
 hit when it only changed a number.
 
+### 1a. The cap-hit moment itself — today's four inconsistent treatments
+
+Direct follow-up question: "once the user hits 3 documents, do they get
+kicked to the signup-for-Pro landing?" Grounded the actual answer instead
+of assuming — today there isn't one consistent behavior, there are four,
+and none of them reconnect someone to where they were after they upgrade:
+
+- **Dashboard** (`new-document-client.tsx`): the only surface with a real
+  machine-readable signal — the API returns `{ error, upgrade: true }`,
+  and the client renders a small red inline error line with a **"View
+  plans"** link to `/pricing` appended. Not a modal, not a redirect — the
+  person stays on the same page and has to click through themselves.
+- **Console chat, cap reached mid-conversation**: gets buried as a plain
+  assistant sentence — *"Couldn't do that: Console spend cap reached
+  ($X.XX this period)..."* — no button, no link, just text in the thread
+  like any other reply.
+- **Console chat, no access at all**: never actually reached in practice —
+  `ConsoleWorkspace` swaps in `ConsoleLockedChat` before the chat ever
+  mounts, so the person sees a dedicated "Upgrade to Pro to start chatting
+  with console" screen with a real **"View plans"** button — but it points
+  at a hardcoded `https://signedby.ai/pricing`, not something that returns
+  them to Console after they subscribe.
+- **REST API / MCP**: no landing page at all, by nature — these are
+  programmatic callers. The REST API's doc-cap 402 at least carries the
+  same `upgrade: true` boolean the dashboard uses; MCP's below-Pro error
+  only works because someone happened to write "— see console.signedby.ai"
+  into the message string, and MCP's own cap-hit tool errors (doc cap,
+  spend cap) don't even do that — just the raw reason text, no pointer at
+  all. An AI agent hitting this can't "get kicked" anywhere; the best it
+  can do is relay a plain string to whoever's operating it.
+
+**The concrete gap underneath all four**: even where a real upgrade link
+exists, nothing carries someone back to where they were once they've
+actually paid. Stripe Checkout's `success_url` is hardcoded in
+`app/api/billing/checkout/route.ts` to `/dashboard/billing?success=1`,
+full stop — unrelated to whatever feature sent them to checkout in the
+first place. The `?intent=signup&next=...` pattern used elsewhere in the
+app only survives the *sign-in* step, not an actual purchase.
+
+**Recommended shape, reusing what already exists rather than inventing
+new mechanics:**
+
+1. Give the cap-hit moment in Console chat its own rich bubble type — the
+   `Bubble` union already has special-purpose variants for other console
+   moments (`certificateModeChoice`, `sealed`); a `capReached: { upgradeUrl }`
+   variant fits the same pattern, rendered as a real button instead of a
+   sentence fragment buried in `AssistantContent`.
+2. Point that button (and every other upgrade link, across all four
+   surfaces) at `/login?intent=signup&next=/console/app?c=<conversationId>`
+   — reusing the exact conversation-resume-by-id mechanism already built
+   this session for "browse a template, come back to the same chat." A
+   free-tier person who hits their cap mid-conversation, signs up, and
+   subscribes lands right back in that same thread, not a blank dashboard.
+3. That only works end-to-end once Stripe Checkout's `success_url` stops
+   being hardcoded — needs to accept and honor a return path (session
+   metadata or a query param threaded through `/api/billing/checkout`),
+   redirecting to wherever the person actually came from instead of always
+   `/dashboard/billing`. This is the one piece of new plumbing; everything
+   else above is rearranging what already exists.
+4. Standardize the REST API and MCP error shape too: every 402 gets a real
+   `upgradeUrl` string field (not just a boolean, not just a mention buried
+   in a sentence), so a human reading raw JSON — or an agent relaying the
+   error to whoever's operating it — always has one consistent, literal
+   link to act on rather than four different shapes depending on which
+   surface they hit the cap through.
+
+**Effort: small.** Nothing here is new infrastructure — it's consistency
+work across four call sites that already each do *part* of this correctly,
+plus one real gap (checkout's hardcoded success URL) that's a contained,
+well-understood fix.
+
 ### 2. Tool-call cap (~10/mo) — a genuinely new metering dimension
 
 This is not the same thing as the existing document-send metering, and it's
@@ -221,10 +292,11 @@ independently of the rest of this doc if you want a quick win.
 ## Recommended phasing (cheapest path to something real)
 
 **Phase 1 — small, reuses existing plumbing entirely:**
-Free-tier Console/API access on the existing 3-doc cap (#1) · badge
-branding by plan (#5) · disposable-email blocklist (#4) · free-tier-specific
-rate limit tightening (#4, the limiter already exists) · GitHub OAuth
-specifically (simpler review process than LinkedIn).
+Free-tier Console/API access on the existing 3-doc cap (#1) · a consistent
+cap-hit-to-checkout-and-back flow (#1a) · badge branding by plan (#5) ·
+disposable-email blocklist (#4) · free-tier-specific rate limit tightening
+(#4, the limiter already exists) · GitHub OAuth specifically (simpler
+review process than LinkedIn).
 
 **Phase 2 — medium, new-but-familiar territory:**
 Tool-call counter as a second metering dimension (#2) · audit trail export,
