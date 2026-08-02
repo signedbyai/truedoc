@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { History, Home, Settings, X } from "lucide-react";
+import { FileText, History, Home, Settings, X } from "lucide-react";
 import type { ConsoleBillingState } from "@/lib/console-usage";
 import { ConsoleChat, type Bubble } from "@/components/console-chat";
 import { ConsoleUsagePanel } from "@/components/console-usage-panel";
 import { ConsoleHistorySidebar } from "@/components/console-history-sidebar";
+import { ConsoleTemplatesList } from "@/components/console-templates-list";
 import { ConsolePlanStatus } from "@/components/console-plan-status";
 import { VerifiedBadgeSettings } from "@/components/verified-badge-settings";
 import { ConsoleUpgradePanel, ConsoleLockedChat } from "@/components/console-upgrade-panel";
@@ -54,6 +55,7 @@ import { ConsoleUpgradePanel, ConsoleLockedChat } from "@/components/console-upg
 export function ConsoleWorkspace({
   plan,
   hasAccess,
+  initialConversationId,
   initialState,
   initialCapEnabled,
   initialCapCents,
@@ -66,6 +68,11 @@ export function ConsoleWorkspace({
 }: {
   plan: string;
   hasAccess: boolean;
+  // ?c=<id> from /console/app's own searchParams (see that page's doc
+  // comment) — the conversation to auto-select on mount, or null for the
+  // normal case (a plain visit to /console/app starts on a blank new chat,
+  // unchanged). See the mount effect below, right after handleSelect.
+  initialConversationId: string | null;
   initialState: ConsoleBillingState | null;
   initialCapEnabled: boolean;
   initialCapCents: number;
@@ -102,9 +109,14 @@ export function ConsoleWorkspace({
   // separate entry points — History and Settings now open the same sheet
   // scrolled to, and titled after, the relevant section instead of always
   // showing everything at once).
-  const [mobileSheetTab, setMobileSheetTab] = useState<"history" | "settings">("history");
+  const [mobileSheetTab, setMobileSheetTab] = useState<"history" | "templates" | "settings">("history");
+  // Desktop-only equivalent of mobileSheetTab, scoped to just the
+  // History/Templates switch — see historyOrTemplatesBody below for why
+  // Settings/usage/plan-status stay outside this switcher entirely rather
+  // than becoming a third tab here too.
+  const [desktopHistoryTab, setDesktopHistoryTab] = useState<"history" | "templates">("history");
 
-  function openMobileSheet(tab: "history" | "settings") {
+  function openMobileSheet(tab: "history" | "templates" | "settings") {
     setEverOpened(true);
     setMobileSheetTab(tab);
     setMobileSheetOpen(true);
@@ -126,6 +138,25 @@ export function ConsoleWorkspace({
       setLoadingConversation(false);
     }
   }
+
+  // Auto-resumes the conversation named by ?c= on first mount only (a
+  // guard ref, not a dependency array trick — handleSelect itself updates
+  // activeId, and this effect must NOT re-fire just because that changed,
+  // or picking a different chat from the sidebar afterward would keep
+  // snapping back to the URL's original id). Silently does nothing if the
+  // id is missing, already active, or fails to load (handleSelect's own
+  // no-op-on-failure behavior) — this is a convenience resume, not
+  // something worth erroring the whole page over.
+  const triedInitialConversationRef = useRef(false);
+  useEffect(() => {
+    if (triedInitialConversationRef.current) return;
+    triedInitialConversationRef.current = true;
+    // Deferred a tick — same react-hooks/set-state-in-effect workaround
+    // used elsewhere in the app (console-chat.tsx, new-document-button.tsx,
+    // field-editor.tsx) — handleSelect itself calls setState synchronously.
+    if (initialConversationId) Promise.resolve().then(() => handleSelect(initialConversationId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleNewChat() {
     setMobileSheetOpen(false);
@@ -155,12 +186,56 @@ export function ConsoleWorkspace({
   // Split into two halves so the mobile sheet can show just one at a time
   // (see `mobileSheetTab` above) while the desktop aside below still stacks
   // both together, unchanged.
-  const historyBody = hasAccess ? (
+  // Split into raw content (used identically by desktop's tab switcher and
+  // mobile's sheet) and an upgrade-gated version of each (same fallback
+  // both surfaces need whenever the org lacks console access) — 2026-08-02,
+  // TEMPLATE_BROWSE_SCOPE.md added templatesBody/upgradeOrTemplatesBody
+  // alongside the pre-existing historyBody pattern.
+  const historyBody = (
     <div className="min-h-0 flex-1 overflow-y-auto">
       <ConsoleHistorySidebar activeId={activeId} onSelect={handleSelect} onNewChat={handleNewChat} refreshToken={historyRefreshToken} />
     </div>
-  ) : (
-    <ConsoleUpgradePanel />
+  );
+  const templatesBody = (
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <ConsoleTemplatesList activeConversationId={activeId} />
+    </div>
+  );
+  const upgradeOrHistoryBody = hasAccess ? historyBody : <ConsoleUpgradePanel />;
+  const upgradeOrTemplatesBody = hasAccess ? templatesBody : <ConsoleUpgradePanel />;
+  // Desktop-only: a small pill switcher between History and Templates,
+  // mirroring the mobile sheet's tab pattern rather than stacking a third
+  // full-height list under History (which would just keep growing the
+  // sidebar). Settings/usage/plan-status (settingsBody below) stay OUTSIDE
+  // this switcher, always visible underneath either tab — this component's
+  // own "Pro-gate" doc comment is explicit that plan status in particular
+  // must stay visible on every plan, not get hidden behind a tab click.
+  const historyOrTemplatesBody = (
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
+      {hasAccess && (
+        <div className="flex shrink-0 gap-1 rounded-full border border-white/10 bg-neutral-900/60 p-1">
+          <button
+            type="button"
+            onClick={() => setDesktopHistoryTab("history")}
+            className={`flex-1 rounded-full py-1.5 text-xs font-medium ${
+              desktopHistoryTab === "history" ? "bg-white/10 text-white" : "text-neutral-500 hover:text-neutral-300"
+            }`}
+          >
+            History
+          </button>
+          <button
+            type="button"
+            onClick={() => setDesktopHistoryTab("templates")}
+            className={`flex-1 rounded-full py-1.5 text-xs font-medium ${
+              desktopHistoryTab === "templates" ? "bg-white/10 text-white" : "text-neutral-500 hover:text-neutral-300"
+            }`}
+          >
+            Templates
+          </button>
+        </div>
+      )}
+      {desktopHistoryTab === "templates" ? upgradeOrTemplatesBody : upgradeOrHistoryBody}
+    </div>
   );
   const settingsBody = (
     <>
@@ -190,7 +265,7 @@ export function ConsoleWorkspace({
   );
   const sidebarBody = (
     <>
-      {historyBody}
+      {historyOrTemplatesBody}
       {settingsBody}
     </>
   );
@@ -247,6 +322,15 @@ export function ConsoleWorkspace({
               </button>
               <button
                 type="button"
+                onClick={() => openMobileSheet("templates")}
+                aria-label="Templates"
+                title="Templates"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 hover:bg-white/10 hover:text-white"
+              >
+                <FileText className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
                 onClick={() => openMobileSheet("settings")}
                 aria-label="Settings"
                 title="Settings"
@@ -289,7 +373,9 @@ export function ConsoleWorkspace({
         >
           <div className="mx-auto h-1 w-10 shrink-0 rounded-full bg-white/15" />
           <div className="flex shrink-0 items-center justify-between">
-            <p className="text-sm font-medium text-white">{mobileSheetTab === "history" ? "History" : "Settings"}</p>
+            <p className="text-sm font-medium text-white">
+              {mobileSheetTab === "history" ? "History" : mobileSheetTab === "templates" ? "Templates" : "Settings"}
+            </p>
             <button
               type="button"
               onClick={() => setMobileSheetOpen(false)}
@@ -300,7 +386,9 @@ export function ConsoleWorkspace({
             </button>
           </div>
           {everOpened && (
-            <div className="flex flex-1 flex-col gap-4">{mobileSheetTab === "history" ? historyBody : settingsBody}</div>
+            <div className="flex flex-1 flex-col gap-4">
+              {mobileSheetTab === "history" ? upgradeOrHistoryBody : mobileSheetTab === "templates" ? upgradeOrTemplatesBody : settingsBody}
+            </div>
           )}
         </div>
       </div>

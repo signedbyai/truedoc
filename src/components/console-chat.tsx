@@ -963,7 +963,21 @@ export function ConsoleChat({
       // same defaultName) only for someone who actually landed here via
       // Console, not every document editor visit. See field-editor.tsx's
       // cameFromConsole prop.
-      const reviewLink = { href: `https://signedby.ai/dashboard/documents/${documentId}?from=console`, label: "Review fields" };
+      //
+      // &c=<conversationId> (2026-08-02, TEMPLATE_BROWSE_SCOPE.md) — rides
+      // along so the editor's "Back to Console" button can reopen this
+      // exact conversation instead of a blank one. convIdRef.current is
+      // already known here — this same upload turn is what the autosave
+      // effect below is about to persist (or already has, if this isn't
+      // the first turn), so the id either already exists or will exist by
+      // the time anyone clicks the link. Omitted (falls back to a blank
+      // new chat) only in the edge case of the very first turn in a
+      // conversation somehow not having autosaved yet — harmless, just
+      // loses the resume behavior for that one rare case.
+      const reviewLink = {
+        href: `https://signedby.ai/dashboard/documents/${documentId}?from=console${convIdRef.current ? `&c=${convIdRef.current}` : ""}`,
+        label: "Review fields",
+      };
 
       const userBubble: Bubble = { role: "user", content: `Uploaded "${file.name}" to use as a template.` };
       let assistantBubble: Bubble;

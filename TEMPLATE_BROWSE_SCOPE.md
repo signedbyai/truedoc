@@ -1,10 +1,25 @@
 # Console template browsing + return-to-conversation — scope
 
-Status: SCOPED 2026-08-02, not built. Direct ask: "maybe after uploading a
-template the user should see the list of templates and they should be
-clickable so that the user can click on any template and jump into the
-editor, and then close the editor completely to when done drop back in to
-the console."
+Status: BUILT 2026-08-02 — Option A, direct instruction ("go with A"). The
+conversation-resume fix, the Templates tab (desktop pill switcher +
+mobile sheet tab), and the auto-discard-on-preview flow described below are
+all implemented, tsc/eslint clean, full 553-test suite passing. Still needs
+push/deploy (sandbox has no git push credentials). Option B (edit the
+template directly, no document spawned) was explicitly not built — see the
+"View on A vs B" reasoning below, kept for the record since it's a real
+decision, not an oversight. The template-card content (party count, usage
+tracking, thumbnails) section also reflects what actually shipped vs. what's
+still just scoped.
+
+**Recommendation given, decision made:** A over B, specifically because of
+`field-editor.tsx`'s bug history — every field-assignment bug this session
+and last (null signer_id, save-as-template role fallback, duplicate
+suggested fields, drag snap-back) lived in that exact file's field/role/
+signer machinery, which B would need a second parallel version of. A reuses
+the field editor completely unchanged, so every hardening pass already
+applied to it (including today's zero-fields fix) covers this feature for
+free. A's one real downside — draft-document litter — is solved separately
+below (auto-discard) rather than by reaching for B.
 
 ## Why this one
 
@@ -77,6 +92,15 @@ land back in the conversation you were in," just via a second tab that
 shows the right thing instead of a blank one. Worth building even if the
 list UI below turns out bigger than expected.
 
+**BUILT as described above** — `console-chat.tsx`'s `reviewLink` now
+appends `&c=${convIdRef.current}`, `dashboard/documents/[id]/page.tsx` reads
+`c` and passes `consoleConversationId` to `FieldEditor`, that component's
+"Back to Console" (all three exit points — the pill, the save-reminder
+modal's "Go to Console anyway", and the success popover) now navigates to
+`consoleAppUrl()?c=<id>` via a `backToConsoleUrl` computed value, and
+`console-workspace.tsx` auto-selects that conversation on mount via a
+guarded one-shot effect around the existing `handleSelect`.
+
 ## The template list itself — two shapes, genuinely undecided
 
 **Option A — a template spawns a document, same as today's "Use template."**
@@ -124,11 +148,32 @@ swapping the recipient sidebar from "real signers" to "Party 1 / Party 2"
 role slots, since a template has no actual people yet. Canvas rendering,
 drag, resize, and AI-suggest are all reused unchanged.
 
-**Not deciding here which one — this is the open question this doc exists
-to raise.** Leaning notes only: Option A is a same-day build; Option B is
-the more correct long-term shape given the template/document confusion
-that's already bitten once, and — per the above — isn't as much bigger as
-it first looked.
+**Decided 2026-08-02: Option A.** Built as described — clicking a template
+in the new Templates tab calls `/api/templates/[id]/use` unchanged and
+opens the field editor with `?from=console&consoleTemplatePreview=1&c=...`,
+the last of which flags the draft as auto-discardable (see the "What
+actually shipped" note in the template-card section below, and the
+auto-discard mechanism itself: `field-editor.tsx`'s
+`discardPreviewDraftIfAny()`, a best-effort `keepalive` DELETE fired before
+every Back to Console exit point, relying on `DELETE /api/documents/[id]`'s
+existing draft-only guard as the safety net if the user actually sent the
+document instead of just previewing it). Option B remains unbuilt, not
+rejected outright — see the status line at the top of this doc for the
+reasoning.
+
+**Bug found and fixed along the way, independent of this feature but
+directly relevant to it:** `DELETE /api/documents/[id]` was unconditionally
+purging the R2 file on every draft delete, but any document seeded from a
+template (via "Use template", console send, or bulk-send) shares its PDF
+with the template itself (`file_path`/`base_file_path` point at the same R2
+key, never copied). Deleting such a draft — which the auto-discard feature
+above now does routinely — would have silently broken the template and
+every sibling document for everyone. Fixed by checking for remaining
+`documents.file_path`/`templates.base_file_path` references before purging
+R2. This was a latent, pre-existing bug reachable today via the ordinary
+dashboard delete-draft button on any "Use template" draft, not something
+this feature introduced — just something it would have made far more
+likely to hit in practice.
 
 ## Where the list would render
 
@@ -153,6 +198,15 @@ Two candidate spots, not mutually exclusive:
 Recommend building #1 regardless of what's decided on #2 — it's the more
 reliable, less model-dependent entry point ("click Templates" always works;
 "ask the right question" doesn't).
+
+**BUILT: #1 only.** A "Templates" tab now sits next to History — a pill
+switcher on desktop (`console-workspace.tsx`'s `desktopHistoryTab` state,
+above the existing history list, with Settings/usage/plan-status staying
+outside the switcher and always visible per this component's own "Pro-gate"
+doc comment) and a third icon in the mobile floating pill/bottom sheet
+(`mobileSheetTab` widened from two values to three). #2 (inline
+model-rendered clickable list mid-conversation) is not built — `#1` alone
+was judged sufficient for this pass.
 
 ## What a template card actually shows
 
@@ -192,6 +246,15 @@ actually calls, `console-actions.ts`) returns bare `{id, name}` today — even
 the "already proven" fields above (page count, field count, created date)
 would need that query widened to match the dashboard's before a Console
 card could show real numbers instead of placeholders.
+
+**What actually shipped:** a new, separate `GET /api/console/templates`
+route (deliberately not a widening of `listTemplatesAction`, which stays
+scoped to the model's own name-resolution tool call) returns name, page
+count, field count, and computed party count for every card in the new
+Templates tab. Created date is returned by the route but not currently
+shown on the card (kept compact for the 240px sidebar) — trivial to add
+later if wanted. Usage tracking and thumbnails were NOT built — still
+exactly the "genuinely new work" described above, untouched by this pass.
 
 ## Explicitly out of scope
 

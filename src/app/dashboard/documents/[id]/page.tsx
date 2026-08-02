@@ -30,10 +30,25 @@ export default async function DocumentEditorPage({
   // upload to (see that file's reviewLink). Threaded through to
   // FieldEditor's cameFromConsole prop, which shows a couple of
   // Console-specific hints; absent (and inert) for every other path in.
-  searchParams: Promise<{ signerName?: string; signerEmail?: string; from?: string }>;
+  //
+  // c=<conversationId> (2026-08-02, TEMPLATE_BROWSE_SCOPE.md) — rides
+  // alongside from=console on the same links, carrying which console
+  // conversation the user actually came from. Threaded through to
+  // FieldEditor's consoleConversationId prop so its "Back to Console"
+  // button can reopen that exact conversation instead of a blank one —
+  // see console-workspace.tsx's handling of /console/app?c=.
+  //
+  // consoleTemplatePreview=1 (2026-08-02, TEMPLATE_BROWSE_SCOPE.md Option
+  // A) — set only by console-templates-list.tsx's "click a template"
+  // action, which spawns this draft purely so its fields are visible in
+  // the editor, not because the user meant to create a new document.
+  // Threaded through to FieldEditor's isConsoleTemplatePreview prop, which
+  // auto-discards the draft on Back to Console instead of leaving it as
+  // clutter in Documents.
+  searchParams: Promise<{ signerName?: string; signerEmail?: string; from?: string; c?: string; consoleTemplatePreview?: string }>;
 }) {
   const { id } = await params;
-  const { signerName, signerEmail, from } = await searchParams;
+  const { signerName, signerEmail, from, c, consoleTemplatePreview } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -336,6 +351,8 @@ export default async function DocumentEditorPage({
       initialSignerName={signerName}
       initialSignerEmail={signerEmail}
       cameFromConsole={from === "console"}
+      consoleConversationId={from === "console" ? c ?? null : null}
+      isConsoleTemplatePreview={from === "console" && consoleTemplatePreview === "1"}
     />
   );
 }

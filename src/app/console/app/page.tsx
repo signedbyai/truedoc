@@ -42,7 +42,21 @@ import { resolveIdentityStatus } from "@/lib/identity";
 // src/app/console/tools.json/route.ts — just worded ambiguously close to
 // BYOK, a genuinely unbuilt phase-2 idea, see CONSOLE_UX_SCOPE.md; still
 // documented at /developers.)
-export default async function ConsoleAppPage() {
+export default async function ConsoleAppPage({
+  searchParams,
+}: {
+  // ?c=<conversationId> (2026-08-02, TEMPLATE_BROWSE_SCOPE.md) — set by the
+  // field editor's "Back to Console" button when it knows which
+  // conversation the user came from (see field-editor.tsx's
+  // consoleConversationId prop). Threaded through to ConsoleWorkspace so it
+  // can auto-select that conversation on mount instead of always opening a
+  // blank new chat — the actual fix for "closing the editor loses my
+  // conversation," since target="_blank" already keeps the original tab
+  // alive but there's no programmatic way back to that specific tab (see
+  // the scope doc for why).
+  searchParams: Promise<{ c?: string }>;
+}) {
+  const { c: initialConversationId } = await searchParams;
   const ctx = await getUserAndOrg();
   if (!ctx) {
     const nextPath = consoleAppNextPath((await headers()).get("host"));
@@ -100,6 +114,7 @@ export default async function ConsoleAppPage() {
         <ConsoleWorkspace
           plan={org.plan ?? "free"}
           hasAccess={hasAccess}
+          initialConversationId={initialConversationId ?? null}
           initialState={billingState}
           initialCapEnabled={consoleSettings?.console_spend_cap_enabled ?? true}
           initialCapCents={consoleSettings?.console_spend_cap_cents ?? 2500}

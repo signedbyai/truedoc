@@ -178,6 +178,8 @@ export function FieldEditor({
   initialInviteMessage,
   initialExpiresAt,
   cameFromConsole = false,
+  consoleConversationId = null,
+  isConsoleTemplatePreview = false,
   initialSignerName,
   initialSignerEmail,
 }: {
@@ -221,6 +223,24 @@ export function FieldEditor({
   // this page (a plain upload, AI Drafter, duplicate, template) is
   // unaffected.
   cameFromConsole?: boolean;
+  // The specific console conversation this document was opened from
+  // (?c=<id> alongside ?from=console — see dashboard/documents/[id]/page.tsx
+  // and TEMPLATE_BROWSE_SCOPE.md). Only meaningful when cameFromConsole is
+  // true. Used solely to make the floating "Back to Console" button below
+  // reopen that exact conversation (console.signedby.ai/app?c=<id>) instead
+  // of always landing on a blank new chat — see consoleAppUrl() call below.
+  consoleConversationId?: string | null;
+  // True only for a draft spawned by console-templates-list.tsx's "click a
+  // template" action (?consoleTemplatePreview=1 — TEMPLATE_BROWSE_SCOPE.md
+  // Option A, 2026-08-02) — the user clicked a template to look at/tweak
+  // its fields, not to create a new document. Every "Back to Console" exit
+  // point below best-effort DELETEs this draft first when true, so
+  // browsing templates doesn't quietly accumulate rows in Documents. Safe
+  // even if the user went ahead and actually sent this specific document
+  // instead of just previewing it — DELETE /api/documents/[id] already
+  // refuses anything past draft status, so a real send just makes the
+  // discard attempt a harmless no-op (see that route's own guard).
+  isConsoleTemplatePreview?: boolean;
   // Set only on the redirect from Magic Quote's finalize step (see
   // magic-quote-form.tsx's handleFinalize + documents/[id]/page.tsx's
   // ?signerName=/?signerEmail= searchParams), and only when the sender
@@ -236,6 +256,28 @@ export function FieldEditor({
   initialSignerEmail?: string | null;
 }) {
   const router = useRouter();
+  // Carries the originating conversation back with it (see
+  // consoleConversationId's prop doc above) so console-workspace.tsx can
+  // reopen the right chat instead of always landing on a blank one — the
+  // one thing the floating "Back to Console" button below couldn't do
+  // before this, since target="_blank" already keeps the original tab
+  // alive but rel="noreferrer" blocks any programmatic way back to it.
+  const backToConsoleUrl = consoleConversationId
+    ? `${consoleAppUrl()}?c=${encodeURIComponent(consoleConversationId)}`
+    : consoleAppUrl();
+  // Fires before every Back to Console navigation below when this document
+  // is just a template preview (see isConsoleTemplatePreview's prop doc).
+  // Not awaited — keepalive lets the request finish in the background past
+  // the window.location.href navigation that follows it immediately after,
+  // same reasoning as console-chat.tsx's autosave fix (2026-08-02): a plain
+  // fetch() would otherwise get aborted by the very navigation it's racing.
+  function discardPreviewDraftIfAny() {
+    if (!isConsoleTemplatePreview) return;
+    fetch(`/api/documents/${documentId}`, { method: "DELETE", keepalive: true }).catch(() => {
+      // Best-effort — worst case the draft just lingers in Documents,
+      // same as it would have without this feature at all.
+    });
+  }
   const [selectedTool, setSelectedTool] = useState<FieldType | null>(null);
   const [paymentLinkUrl, setPaymentLinkUrl] = useState(initialPaymentLinkUrl || "");
   const [paymentLabel, setPaymentLabel] = useState(initialPaymentLabel || "");
@@ -3027,7 +3069,8 @@ export function FieldEditor({
           type="button"
           onClick={() => {
             if (templateSaved) {
-              window.location.href = consoleAppUrl();
+              discardPreviewDraftIfAny();
+              window.location.href = backToConsoleUrl;
             } else {
               // Don't navigate silently — leaving before saving means the
               // fields placed here never become a reusable template, the
@@ -3061,7 +3104,8 @@ export function FieldEditor({
               <button
                 onClick={() => {
                   setShowSaveReminderPrompt(false);
-                  window.location.href = consoleAppUrl();
+                  discardPreviewDraftIfAny();
+                  window.location.href = backToConsoleUrl;
                 }}
                 className="text-xs font-medium text-slate-500 hover:text-slate-700"
               >
@@ -3082,7 +3126,13 @@ export function FieldEditor({
               The upload itself is still sitting in Documents as a draft — safe to ignore or delete, since the
               reusable template now lives on its own.
             </p>
-            <Button className="mt-4 w-full" onClick={() => (window.location.href = consoleAppUrl())}>
+            <Button
+              className="mt-4 w-full"
+              onClick={() => {
+                discardPreviewDraftIfAny();
+                window.location.href = backToConsoleUrl;
+              }}
+            >
               Back to Console →
             </Button>
             <button
