@@ -498,6 +498,7 @@ export function ConsoleChat({
   initialMessages = [],
   onConversationSaved,
   certificateModePreference = "ask",
+  plan = "free",
 }: {
   /** The conversation's id if this is reopening a past chat, or null for a
    *  brand new one. Only read at mount time — console-workspace.tsx forces
@@ -517,7 +518,19 @@ export function ConsoleChat({
    *  conversationally after every upload; any other value skips the
    *  question and seals straight away using that mode. */
   certificateModePreference?: "ask" | "appended" | "separate" | "both";
+  /** Org's plan (2026-08-02, CONSOLE_FREE_TIER_SCOPE.md) — Free orgs have
+   *  console access now, but send/bulk-send still require an existing
+   *  template (the `templates` feature, unchanged, Pro+-only — see
+   *  plan.ts's consoleAccess comment), so a Free org's only real console
+   *  action is Verified Badge sealing. Everything below keyed off
+   *  `isFreePlan` hides the template-upload/recipient-list paperclip
+   *  options and the composer copy that references them, rather than
+   *  showing choices that would just dead-end at "Templates are a Pro plan
+   *  feature." Defaults to "free" (the safer default if this prop is ever
+   *  omitted — undershows options rather than over-promising them). */
+  plan?: string;
 } = {}) {
+  const isFreePlan = plan === "free";
   const router = useRouter();
   const [messages, setMessages] = useState<Bubble[]>(initialMessages);
   const [input, setInput] = useState("");
@@ -1225,10 +1238,19 @@ export function ConsoleChat({
                 identity-verified. Use the{" "}
                 <Paperclip className="inline h-3 w-3 -translate-y-px" aria-hidden="true" /> icon below.
               </p>
-              <p className="max-w-xs text-xs text-neutral-600">
-                Console can also send, bulk-send, check status, or void — e.g. &ldquo;send the NDA template to
-                jane@acme.com&rdquo;.
-              </p>
+              {/* Free plan (2026-08-02, CONSOLE_FREE_TIER_SCOPE.md): this
+                  second line used to promise send/bulk-send/status/void,
+                  none of which Free can actually reach (they need an
+                  existing template, and template-saving is Pro+-only) —
+                  showing it would just set up a dead end. Free's real
+                  console value is Verified Badge sealing, already the
+                  headline above, so there's nothing more worth adding here. */}
+              {!isFreePlan && (
+                <p className="max-w-xs text-xs text-neutral-600">
+                  Console can also send, bulk-send, check status, or void — e.g. &ldquo;send the NDA template to
+                  jane@acme.com&rdquo;.
+                </p>
+              )}
             </div>
           )}
           {/* text-base (2026-07-31, direct feedback: response text was too
@@ -1429,7 +1451,11 @@ export function ConsoleChat({
             }
           }}
           disabled={loading}
-          placeholder="Upload a document to get a Verified Badge, bulk sign documents using templates, or check on status…"
+          placeholder={
+            isFreePlan
+              ? "Upload a document to get a Verified Badge for proof…"
+              : "Upload a document to get a Verified Badge, bulk sign documents using templates, or check on status…"
+          }
           // bg-white/[0.04] (2026-08-01, direct ask) — was bg-transparent,
           // so the entry area was indistinguishable from the composer bar
           // around it with nothing marking where to type. A very slightly
@@ -1442,12 +1468,23 @@ export function ConsoleChat({
           <div className="relative">
             <button
               type="button"
-              aria-label="Attach a recipient list or upload a template"
-              title="Attach a recipient list or upload a template"
+              aria-label={isFreePlan ? "Get a Verified Badge for proof" : "Attach a recipient list or upload a template"}
+              title={isFreePlan ? "Get a Verified Badge for proof" : "Attach a recipient list or upload a template"}
               disabled={loading}
               onClick={() => {
                 dismissPaperclipIntro();
-                setAttachMenuOpen((open) => !open);
+                // Free plan (2026-08-02, CONSOLE_FREE_TIER_SCOPE.md): only
+                // one destination exists (Verified Badge sealing — template
+                // upload and recipient-list attach both require the
+                // Pro+-only `templates` feature), so there's nothing to
+                // choose between. Skip the menu entirely and go straight to
+                // that one file picker, rather than showing a dropdown with
+                // options that would just dead-end.
+                if (isFreePlan) {
+                  verifiedBadgeFileInputRef.current?.click();
+                } else {
+                  setAttachMenuOpen((open) => !open);
+                }
               }}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-white/10 hover:text-white disabled:opacity-50"
             >
@@ -1460,7 +1497,10 @@ export function ConsoleChat({
                 and easy to miss on desktop. Opens upward with a caret
                 pointing at the icon, since the composer this lives in sits
                 at the very bottom of the screen (fixed on mobile) with no
-                room to open downward. */}
+                room to open downward. Free plan (2026-08-02): the paperclip
+                has no menu to introduce, so this just explains what the one
+                click does instead of describing a choice that doesn't
+                exist for this plan. */}
             {paperclipIntroOpen && !attachMenuOpen && (
               <div className="absolute bottom-full left-0 z-10 mb-3 w-64">
                 <div className="rounded-2xl border border-white/10 bg-neutral-900 p-3.5 shadow-2xl shadow-black/60">
@@ -1476,7 +1516,9 @@ export function ConsoleChat({
                     </button>
                   </div>
                   <p className="mt-1 text-xs leading-relaxed text-neutral-400">
-                    Attach a .csv or .txt recipient list to bulk-send, or upload a PDF to use as a new template.
+                    {isFreePlan
+                      ? "Attach a PDF to seal it with a scannable Verified Badge — proof it's unaltered and identity-verified."
+                      : "Attach a .csv or .txt recipient list to bulk-send, or upload a PDF to use as a new template."}
                   </p>
                 </div>
                 <div className="ml-4 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border-b border-r border-white/10 bg-neutral-900" />

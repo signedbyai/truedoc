@@ -397,6 +397,7 @@ export function ConsoleWorkspace({
               initialMessages={initialMessages}
               onConversationSaved={handleSaved}
               certificateModePreference={certificateModePreference}
+              plan={plan}
             />
           ) : (
             <ConsoleLockedChat />
