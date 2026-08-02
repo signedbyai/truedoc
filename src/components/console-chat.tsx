@@ -1146,8 +1146,8 @@ export function ConsoleChat({
                 Ask console to send a document, bulk-send a list, check status, or void something — e.g. &ldquo;send the
                 NDA template to jane@acme.com&rdquo;. For a bulk send, paste one recipient per line (email, or
                 &ldquo;email, name&rdquo;) — or use the{" "}
-                <Paperclip className="inline h-3 w-3 -translate-y-px" aria-hidden="true" /> icon below to attach a
-                recipient list or upload a new template.
+                <Paperclip className="inline h-3 w-3 -translate-y-px" aria-hidden="true" /> icon below to get a
+                Verified Badge for proof, upload a new template, or attach a recipient list.
               </p>
             </div>
           )}
