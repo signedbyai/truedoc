@@ -206,23 +206,32 @@ export function ConsoleWorkspace({
   // Desktop-only: a small floating pill switcher between History and
   // Templates (2026-08-02, direct ask — moved off a plain inline toggle to
   // match the mobile floating pill's own visual language: icon buttons,
-  // border/backdrop-blur/shadow, sits above the scrolling list rather than
-  // taking up its own row in flow). The list itself still renders in the
+  // border/backdrop-blur/shadow). The list itself still renders in the
   // left sidebar underneath it ("keep the left sidebar for presentation" —
   // direct ask); only the switcher's presentation changed, not where the
-  // content lives. `sticky top-0` keeps it floating over the list as that
-  // list scrolls, rather than scrolling away with it. Settings/usage/
-  // plan-status (settingsBody below) stay OUTSIDE this switcher entirely,
-  // always visible underneath either tab — this component's own "Pro-gate"
-  // doc comment is explicit that plan status in particular must stay
-  // visible on every plan, not get hidden behind a tab click. (A bigger
-  // unification — folding Settings into the same pill, matching mobile
-  // fully — was discussed and deliberately deferred, not part of this
-  // change.)
+  // content lives. Settings/usage/plan-status (settingsBody below) stay
+  // OUTSIDE this switcher entirely, always visible underneath either tab —
+  // this component's own "Pro-gate" doc comment is explicit that plan
+  // status in particular must stay visible on every plan, not get hidden
+  // behind a tab click. (A bigger unification — folding Settings into the
+  // same pill, matching mobile fully — was discussed and deliberately
+  // deferred, not part of this change.)
+  //
+  // Deliberately NOT position:sticky (2026-08-02 fix, direct bug report:
+  // "they don't do anything when you press on them") — this div sits
+  // inside `<aside>`, which is itself `lg:sticky lg:top-24` right below
+  // console-header-chrome.tsx's OWN sticky header (`sticky top-0 z-20`).
+  // Nested sticky elements with no intermediate overflow/scroll container
+  // between them resolve against the same scrolling ancestor, and this
+  // pill's z-10 sat lower than the header's z-20 — a real risk of the
+  // header's stacking context swallowing clicks on the pill at some scroll
+  // positions. The pill never actually needed its own independent sticky
+  // behavior; the aside already keeps the whole sidebar pinned, so the pill
+  // just needs to render first in its normal flow, which it does either way.
   const historyOrTemplatesBody = (
-    <div className="relative flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       {hasAccess && (
-        <div className="sticky top-0 z-10 mb-2 flex justify-center">
+        <div className="mb-2 flex justify-center">
           <div className="inline-flex items-center gap-0.5 rounded-full border border-white/10 bg-neutral-800/90 p-1 shadow-lg shadow-black/40 backdrop-blur">
             <button
               type="button"
