@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sanitizeNextPath } from "@/lib/safe-redirect";
+import { isDisposableEmailAddress } from "@/lib/disposable-email";
 
 /** Best-effort client IP from standard proxy headers — server actions don't get a Request object. */
 async function clientIp() {
@@ -15,6 +16,29 @@ async function clientIp() {
 export async function sendMagicLink(formData: FormData) {
   const email = String(formData.get("email") || "").trim();
   if (!email) return { error: "Enter a valid email address." };
+
+  // Disposable-domain block (CONSOLE_FREE_TIER_SCOPE.md's bot/abuse
+  // mitigation, 2026-08-03 direct instruction) — this OTP flow is the one
+  // real account-creation choke point in the app (there's no separate
+  // sign-up step; a brand-new email's first successful code verification
+  // creates the account, see the sendPasswordReset comment below for why
+  // password sign-up was removed). Blocking here, before an OTP is even
+  // sent, is the earliest and only place needed to stop a throwaway
+  // address from ever getting an org — everything downstream (Free
+  // console/API access, credit-pack purchases) requires a real account
+  // first. Deliberately NOT applied to signer-facing emails or team
+  // invites elsewhere in the app — those don't create SignedBy accounts by
+  // themselves (an invited teammate still has to pass this same check when
+  // they actually sign in), and blocking someone from merely being SENT a
+  // document over a disposable address would be an unrelated UX
+  // regression, not an abuse fix.
+  //
+  // Checked before the rate-limit calls below on purpose — no reason to
+  // spend rate-limit budget validating a request that's getting rejected
+  // either way.
+  if (isDisposableEmailAddress(email)) {
+    return { error: "Please use a permanent email address — disposable or temporary email domains aren't supported." };
+  }
 
   const ip = await clientIp();
 

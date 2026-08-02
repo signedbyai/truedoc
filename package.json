@@ -23,6 +23,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cookie": "^1.0.2",
+    "disposable-email-domains-js": "^1.25.0",
     "flags": "^4.2.1",
     "lucide-react": "^1.23.0",
     "next": "16.2.10",
