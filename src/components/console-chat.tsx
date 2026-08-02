@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { ArrowUp, Check, ChevronDown, Copy, ExternalLink, FileText, FileUp, Paperclip, ShieldCheck, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { parseNdjsonLine, splitNdjsonLines } from "@/lib/ndjson";
@@ -1139,15 +1140,35 @@ export function ConsoleChat({
           className="flex h-full flex-col gap-4 overflow-y-auto px-1 pb-32 lg:pb-1"
           style={composerOverlapPx !== null ? { paddingBottom: composerOverlapPx } : undefined}
         >
+          {/* Verified Badge promo (2026-08-02, direct ask) — replaces the old
+              plain ">_" prompt + one long paragraph covering every feature
+              equally. Leads with a small thumbnail of the same
+              /hero-verified-badge.png asset the /verified-badge landing page
+              and its OG card already use (real product screenshot, not a
+              mockup), plus a short bolded line naming the feature — the rest
+              of what console can do (send/bulk-send/status/void) is
+              compressed into one small trailing line instead of its own
+              paragraph, so Verified Badge reads as the headline rather than
+              one clause buried in a longer sentence. */}
           {messages.length === 0 && (
-            <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-              <span className="font-mono text-lg text-neutral-600">&gt;_</span>
-              <p className="max-w-xs text-base text-neutral-500">
-                Ask console to send a document, bulk-send a list, check status, or void something — e.g. &ldquo;send the
-                NDA template to jane@acme.com&rdquo;. For a bulk send, paste one recipient per line (email, or
-                &ldquo;email, name&rdquo;) — or use the{" "}
-                <Paperclip className="inline h-3 w-3 -translate-y-px" aria-hidden="true" /> icon below to get a
-                Verified Badge for proof, upload a new template, or attach a recipient list.
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+              <div className="w-20 overflow-hidden rounded-lg border border-white/10 shadow-lg shadow-black/40">
+                <Image
+                  src="/hero-verified-badge.png"
+                  alt="A Verified Badge — the SignedBy mark, a scannable QR code, and a verification link"
+                  width={640}
+                  height={820}
+                  className="h-auto w-full"
+                />
+              </div>
+              <p className="max-w-xs text-base text-neutral-300">
+                Get a <span className="font-semibold text-white">Verified Badge</span> for proof — seal a finished
+                file and embed a scannable QR that proves it&apos;s unaltered and identity-verified. Use the{" "}
+                <Paperclip className="inline h-3 w-3 -translate-y-px" aria-hidden="true" /> icon below.
+              </p>
+              <p className="max-w-xs text-xs text-neutral-600">
+                Console can also send, bulk-send, check status, or void — e.g. &ldquo;send the NDA template to
+                jane@acme.com&rdquo;.
               </p>
             </div>
           )}
