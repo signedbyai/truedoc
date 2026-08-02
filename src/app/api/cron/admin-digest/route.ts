@@ -119,6 +119,28 @@ export async function GET(request: Request) {
   const capHitsMonthOrgs = new Set((capHitsMonthRows || []).map((r) => r.org_id).filter(Boolean)).size;
   const apiCapHitsMonth = (capHitsMonthRows || []).filter((r) => r.source === "api_v1_documents").length;
 
+  // Credit pack top-ups (0044_credit_packs.sql, CONSOLE_FREE_TIER_SCOPE.md
+  // item #8, built 2026-08-03) — packs sold + revenue this month straight
+  // off the purchase ledger, and the outstanding balance straight off
+  // organizations.doc_credits (a sum, not a row count — one org can hold
+  // multiple packs' worth). Same non-fatal treatment as the cap-hits
+  // section above: this table can also still need its migration applied.
+  const { data: packsMonthRows, error: packsMonthError } = await admin
+    .from("credit_purchases")
+    .select("amount_cents")
+    .gte("created_at", monthAgoDate);
+  const { data: freeOrgCredits, error: creditsError } = await admin
+    .from("organizations")
+    .select("doc_credits")
+    .eq("plan", "free")
+    .gt("doc_credits", 0);
+  if (packsMonthError || creditsError) {
+    console.error("Admin digest cron: credit_purchases/doc_credits fetch failed", packsMonthError || creditsError);
+  }
+  const packsSoldMonth = packsMonthRows?.length ?? 0;
+  const packsRevenueMonth = (packsMonthRows || []).reduce((sum, r) => sum + (r.amount_cents ?? 0), 0) / 100;
+  const outstandingCredits = (freeOrgCredits || []).reduce((sum, o) => sum + (o.doc_credits ?? 0), 0);
+
   const dateLabel = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -145,6 +167,9 @@ export async function GET(request: Request) {
       capHitsMonth,
       capHitsMonthOrgs,
       apiCapHitsMonth,
+      packsSoldMonth,
+      packsRevenueMonth,
+      outstandingCredits,
     });
   } catch (err) {
     console.error("Admin digest cron: send failed", err);
@@ -166,5 +191,8 @@ export async function GET(request: Request) {
     capHitsMonth,
     capHitsMonthOrgs,
     apiCapHitsMonth,
+    packsSoldMonth,
+    packsRevenueMonth,
+    outstandingCredits,
   });
 }

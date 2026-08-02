@@ -187,7 +187,7 @@ export async function checkFreePlanDocCap(
   // for its exact string.
   source: string
 ): Promise<NextResponse | null> {
-  const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
+  const { data: org } = await supabase.from("organizations").select("plan, doc_credits").eq("id", orgId).single();
   if (org && org.plan !== "free") return null;
 
   const startOfMonth = new Date();
@@ -201,6 +201,32 @@ export async function checkFreePlanDocCap(
     .gte("created_at", startOfMonth.toISOString());
 
   if ((count ?? 0) >= 3) {
+    // Credit pack top-up (0044_credit_packs.sql, CONSOLE_FREE_TIER_SCOPE.md
+    // item #8) — spend one credit instead of blocking, if the org has a
+    // balance. Compare-and-swap update (`.eq("doc_credits", org.doc_credits)`
+    // alongside the id match) rather than a plain decrement: Postgres only
+    // applies the write if the balance is still what we just read, so two
+    // near-simultaneous requests from the same org can't both decrement off
+    // a stale read and take the balance negative. If the swap loses the
+    // race (someone else's request spent the last credit first), this
+    // falls through to the block-and-log path below rather than retrying —
+    // a single org isn't expected to have meaningful upload concurrency,
+    // and worst case they just see the cap message once and try again.
+    // Always via a fresh admin client, same reasoning as the log below:
+    // session-bound callers have no update policy on organizations.doc_credits
+    // for another org's row, but every caller needs this to work for its
+    // own org regardless of which client it holds.
+    if ((org?.doc_credits ?? 0) > 0) {
+      const { data: spent } = await createAdminClient()
+        .from("organizations")
+        .update({ doc_credits: org!.doc_credits - 1 })
+        .eq("id", orgId)
+        .eq("doc_credits", org!.doc_credits)
+        .select("id")
+        .maybeSingle();
+      if (spent) return null;
+    }
+
     // Best-effort log (2026-08-03, direct ask: "monitor how many users hit
     // the 3-doc limit or attempt a 4th API call"). Always via a fresh
     // admin client, regardless of which client this function was called

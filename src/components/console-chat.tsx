@@ -914,6 +914,29 @@ export function ConsoleChat({
     }
   }
 
+  /** "Buy 25 more ($5)" button on a capReached bubble, next to Upgrade to
+   *  Pro — the credit-pack top-up (CONSOLE_FREE_TIER_SCOPE.md item #8,
+   *  built 2026-08-03). Same shape as subscribeToPro above (POST, redirect
+   *  to the returned Checkout url) but against the one-time-payment route
+   *  instead of the subscription one — no body needed, there's only one
+   *  pack size (see stripe.ts). */
+  const [creditsLoading, setCreditsLoading] = useState(false);
+  async function buyCreditPack() {
+    setError("");
+    setCreditsLoading(true);
+    try {
+      const res = await fetch("/api/billing/credits/checkout", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Couldn't start checkout — try again.");
+      }
+      window.location.href = data.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setCreditsLoading(false);
+    }
+  }
+
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // clear so selecting the same file again still fires onChange
@@ -1340,6 +1363,23 @@ export function ConsoleChat({
                     <Button type="button" variant="cta" size="sm" disabled={upgradeLoading} onClick={subscribeToPro}>
                       {upgradeLoading ? "Starting checkout…" : "Upgrade to Pro"}
                     </Button>
+                    {/* Credit pack top-up (2026-08-03) — the cheaper, no-subscription
+                        alternative sitting right next to Upgrade to Pro, per
+                        CONSOLE_FREE_TIER_SCOPE.md item #8. Not the shared
+                        Button component's "outline" variant — that's a
+                        light-background style built for the marketing/
+                        dashboard pages, and would look out of place against
+                        this dark chat surface. Matches the existing
+                        Certificate/Badge-image secondary-action links a few
+                        lines below instead. */}
+                    <button
+                      type="button"
+                      disabled={creditsLoading}
+                      onClick={buyCreditPack}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5 disabled:pointer-events-none disabled:opacity-50"
+                    >
+                      {creditsLoading ? "Starting checkout…" : "Buy 25 more ($5)"}
+                    </button>
                   </div>
                 )}
                 {(m.confirm || m.link) && (

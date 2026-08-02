@@ -60,8 +60,30 @@ export function NewDocumentClient({
   const [status, setStatus] = useState<"idle" | "uploading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [creditsLoading, setCreditsLoading] = useState(false);
 
   const MAX_FILE_BYTES = 25 * 1024 * 1024;
+
+  // "Buy 25 more" next to "View plans" on the cap-hit error line below —
+  // same credit-pack top-up as console chat's capReached bubble
+  // (CONSOLE_FREE_TIER_SCOPE.md item #8, built 2026-08-03), offered here
+  // too since this is the other real surface someone hits the 3-doc cap
+  // through. Same POST-then-redirect shape as that bubble's buyCreditPack.
+  async function buyCreditPack() {
+    setCreditsLoading(true);
+    try {
+      const res = await fetch("/api/billing/credits/checkout", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Couldn't start checkout — try again.");
+      }
+      window.location.href = data.url;
+    } catch (err) {
+      setStatus("error");
+      setErrorMessage(err instanceof Error ? err.message : "Something went wrong.");
+      setCreditsLoading(false);
+    }
+  }
 
   function handleFileChosen(f: File) {
     if (f.type !== "application/pdf") {
@@ -338,7 +360,16 @@ export function NewDocumentClient({
                       {" "}
                       <Link href="/pricing" className="font-medium underline">
                         View plans
-                      </Link>
+                      </Link>{" "}
+                      ·{" "}
+                      <button
+                        type="button"
+                        disabled={creditsLoading}
+                        onClick={buyCreditPack}
+                        className="font-medium underline disabled:pointer-events-none disabled:opacity-50"
+                      >
+                        {creditsLoading ? "Starting checkout…" : "Buy 25 more ($5)"}
+                      </button>
                     </>
                   )}
                 </p>

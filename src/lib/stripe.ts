@@ -94,3 +94,14 @@ export function consoleMeteredPriceIdFor(currency: string): string | undefined {
 export function appUrl() {
   return (process.env.NEXT_PUBLIC_APP_URL || "https://signedby.ai").replace(/\/$/, "");
 }
+
+// Pay-as-you-go credit pack (CONSOLE_FREE_TIER_SCOPE.md item #8, built
+// 2026-08-03, price changed same day $10→$5) — a single $5/25-seal pack,
+// USD only for v1 (no EUR/GBP/CHF variant the way the subscription plans
+// have — the original ask didn't call for multi-currency, and a fixed USD
+// price keeps this a one-line price_data object instead of another
+// per-currency table). Priced via Stripe Checkout's inline price_data
+// rather than a dashboard-created Price object, so there's nothing to
+// configure in Stripe before this works — see /api/billing/credits/checkout.
+export const CREDIT_PACK_PRICE_USD_CENTS = 500;
+export const CREDIT_PACK_CREDITS = 25;

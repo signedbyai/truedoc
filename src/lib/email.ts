@@ -312,6 +312,9 @@ export async function sendAdminDigestEmail(opts: {
   capHitsMonth: number;
   capHitsMonthOrgs: number;
   apiCapHitsMonth: number;
+  packsSoldMonth: number;
+  packsRevenueMonth: number;
+  outstandingCredits: number;
 }) {
   const totalOrgs = opts.freeOrgs + opts.paidOrgs;
   const row = (label: string, value: string | number) => `
@@ -361,12 +364,19 @@ export async function sendAdminDigestEmail(opts: {
         </table>
 
         <h3 style="margin:0 0 4px;color:#0f172a;font-size:15px;">Free plan 3-doc cap hits</h3>
-        <table style="width:100%;border-collapse:collapse;">
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
           ${row("Today", opts.capHitsToday)}
           ${row("This week", opts.capHitsWeek)}
           ${row("This month", opts.capHitsMonth)}
           ${row("Distinct orgs this month", opts.capHitsMonthOrgs)}
           ${row("Of which, via API", opts.apiCapHitsMonth)}
+        </table>
+
+        <h3 style="margin:0 0 4px;color:#0f172a;font-size:15px;">Credit packs ($5 / 25 seals)</h3>
+        <table style="width:100%;border-collapse:collapse;">
+          ${row("Sold this month", opts.packsSoldMonth)}
+          ${row("Revenue this month", `$${opts.packsRevenueMonth.toFixed(2)}`)}
+          ${row("Outstanding credits (Free orgs)", opts.outstandingCredits)}
         </table>
       </div>
     `,

@@ -35,6 +35,17 @@ export async function POST(request: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+
+        // Credit pack purchase (CONSOLE_FREE_TIER_SCOPE.md item #8) — a
+        // one-time payment, not a subscription, routed entirely separately
+        // from the plan-sync logic below. Checked first since
+        // session.mode === "payment" would otherwise just fall through the
+        // subscription guard below and silently no-op.
+        if (session.mode === "payment" && session.metadata?.type === "credit_pack") {
+          await grantCreditPack(admin, session);
+          break;
+        }
+
         if (session.mode !== "subscription" || !session.subscription) break;
 
         const orgId = session.metadata?.org_id;
@@ -220,6 +231,42 @@ async function rewardReferrerOnFirstPayment(
     .from("referrals")
     .update({ status: "rewarded", rewarded_at: new Date().toISOString() })
     .eq("id", referral.id);
+}
+
+// Grants a credit-pack purchase. Idempotent by construction: Stripe can (and
+// does) redeliver checkout.session.completed, and the unique constraint on
+// credit_purchases.stripe_checkout_session_id (0044_credit_packs.sql) means
+// a redelivery's insert fails with a Postgres unique-violation (23505) —
+// caught below and treated as "already processed," not an error. Only a
+// delivery whose insert actually succeeds goes on to credit the balance, so
+// a duplicate webhook can never double-credit an org even under concurrent
+// delivery (the unique constraint is enforced by Postgres itself, not by
+// this code checking-then-writing).
+async function grantCreditPack(admin: ReturnType<typeof createAdminClient>, session: Stripe.Checkout.Session) {
+  const orgId = session.metadata?.org_id;
+  const credits = Number(session.metadata?.credits);
+  if (!orgId || !Number.isFinite(credits) || credits <= 0) {
+    console.error("Credit pack webhook missing/invalid metadata", session.id, session.metadata);
+    return;
+  }
+
+  const { error: insertError } = await admin.from("credit_purchases").insert({
+    org_id: orgId,
+    stripe_checkout_session_id: session.id,
+    credits,
+    amount_cents: session.amount_total ?? 0,
+  });
+  if (insertError) {
+    if (insertError.code === "23505") return; // already processed — duplicate webhook delivery
+    console.error("Credit pack purchase log failed", insertError);
+    throw insertError;
+  }
+
+  const { data: org } = await admin.from("organizations").select("doc_credits").eq("id", orgId).single();
+  await admin
+    .from("organizations")
+    .update({ doc_credits: (org?.doc_credits ?? 0) + credits })
+    .eq("id", orgId);
 }
 
 async function resolveOrgId(admin: ReturnType<typeof createAdminClient>, subscription: Stripe.Subscription) {
