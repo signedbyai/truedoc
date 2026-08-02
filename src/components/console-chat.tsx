@@ -1210,7 +1210,7 @@ export function ConsoleChat({
               one clause buried in a longer sentence. */}
           {messages.length === 0 && (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-              <div className="w-20 overflow-hidden rounded-lg border border-white/10 shadow-lg shadow-black/40">
+              <div className="w-28 overflow-hidden rounded-lg border border-white/10 shadow-lg shadow-black/40">
                 <Image
                   src="/hero-verified-badge.png"
                   alt="A Verified Badge — the SignedBy mark, a scannable QR code, and a verification link"
