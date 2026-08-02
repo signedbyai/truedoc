@@ -1363,7 +1363,7 @@ export function ConsoleChat({
             }
           }}
           disabled={loading}
-          placeholder="Ask to list or find a template, send or bulk send a template, check on status…"
+          placeholder="Upload a document to get a Verified Badge, send to signers using templates, bulk send, or check on status…"
           // bg-white/[0.04] (2026-08-01, direct ask) — was bg-transparent,
           // so the entry area was indistinguishable from the composer bar
           // around it with nothing marking where to type. A very slightly
