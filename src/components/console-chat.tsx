@@ -1406,19 +1406,26 @@ export function ConsoleChat({
             {attachMenuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setAttachMenuOpen(false)} />
+                {/* Order + labels (2026-08-02, direct ask): Verified Badge
+                    first, template second, recipient list third — reversed
+                    from the original build order, which put recipient list
+                    first since that was the paperclip's only option before
+                    "Upload a template"/"Get a Verified Badge" were added on
+                    top of it. Labels reworded to spell out what each does
+                    rather than name the file type. */}
                 <div className="absolute bottom-full left-0 z-20 mb-3 w-64 overflow-hidden rounded-xl border border-white/10 bg-neutral-900 shadow-2xl shadow-black/60">
                   <button
                     type="button"
                     onClick={() => {
                       setAttachMenuOpen(false);
-                      fileInputRef.current?.click();
+                      verifiedBadgeFileInputRef.current?.click();
                     }}
                     className="flex w-full items-start gap-2.5 px-3.5 py-3 text-left hover:bg-white/5"
                   >
-                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" aria-hidden="true" />
+                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" aria-hidden="true" />
                     <span>
-                      <span className="block text-sm font-medium text-white">Recipient list</span>
-                      <span className="block text-xs text-neutral-400">.csv or .txt, for a bulk send</span>
+                      <span className="block text-sm font-medium text-white">Get a Verified Badge for proof</span>
+                      <span className="block text-xs text-neutral-400">.pdf, seal a finished file with a scannable proof badge</span>
                     </span>
                   </button>
                   <button
@@ -1431,27 +1438,22 @@ export function ConsoleChat({
                   >
                     <FileUp className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" aria-hidden="true" />
                     <span>
-                      <span className="block text-sm font-medium text-white">Upload a template</span>
+                      <span className="block text-sm font-medium text-white">Upload a template to sign</span>
                       <span className="block text-xs text-neutral-400">.pdf, becomes a reusable template</span>
                     </span>
                   </button>
-                  {/* Get a Verified Badge (2026-08-01, VERIFIED_BADGE_SCOPE.md)
-                      — a third attach option, same file-picker mechanics as
-                      "Upload a template" above but a different intent: this
-                      isn't a signable template, it's a finished file getting
-                      certified as-is. */}
                   <button
                     type="button"
                     onClick={() => {
                       setAttachMenuOpen(false);
-                      verifiedBadgeFileInputRef.current?.click();
+                      fileInputRef.current?.click();
                     }}
                     className="flex w-full items-start gap-2.5 border-t border-white/5 px-3.5 py-3 text-left hover:bg-white/5"
                   >
-                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" aria-hidden="true" />
+                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" aria-hidden="true" />
                     <span>
-                      <span className="block text-sm font-medium text-white">Get a Verified Badge</span>
-                      <span className="block text-xs text-neutral-400">.pdf, seal a finished file with a scannable proof badge</span>
+                      <span className="block text-sm font-medium text-white">Upload a list of signers to send</span>
+                      <span className="block text-xs text-neutral-400">.csv or .txt, for a bulk send</span>
                     </span>
                   </button>
                 </div>
