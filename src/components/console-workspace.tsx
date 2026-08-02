@@ -203,35 +203,50 @@ export function ConsoleWorkspace({
   );
   const upgradeOrHistoryBody = hasAccess ? historyBody : <ConsoleUpgradePanel />;
   const upgradeOrTemplatesBody = hasAccess ? templatesBody : <ConsoleUpgradePanel />;
-  // Desktop-only: a small pill switcher between History and Templates,
-  // mirroring the mobile sheet's tab pattern rather than stacking a third
-  // full-height list under History (which would just keep growing the
-  // sidebar). Settings/usage/plan-status (settingsBody below) stay OUTSIDE
-  // this switcher, always visible underneath either tab — this component's
-  // own "Pro-gate" doc comment is explicit that plan status in particular
-  // must stay visible on every plan, not get hidden behind a tab click.
+  // Desktop-only: a small floating pill switcher between History and
+  // Templates (2026-08-02, direct ask — moved off a plain inline toggle to
+  // match the mobile floating pill's own visual language: icon buttons,
+  // border/backdrop-blur/shadow, sits above the scrolling list rather than
+  // taking up its own row in flow). The list itself still renders in the
+  // left sidebar underneath it ("keep the left sidebar for presentation" —
+  // direct ask); only the switcher's presentation changed, not where the
+  // content lives. `sticky top-0` keeps it floating over the list as that
+  // list scrolls, rather than scrolling away with it. Settings/usage/
+  // plan-status (settingsBody below) stay OUTSIDE this switcher entirely,
+  // always visible underneath either tab — this component's own "Pro-gate"
+  // doc comment is explicit that plan status in particular must stay
+  // visible on every plan, not get hidden behind a tab click. (A bigger
+  // unification — folding Settings into the same pill, matching mobile
+  // fully — was discussed and deliberately deferred, not part of this
+  // change.)
   const historyOrTemplatesBody = (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
+    <div className="relative flex min-h-0 flex-1 flex-col">
       {hasAccess && (
-        <div className="flex shrink-0 gap-1 rounded-full border border-white/10 bg-neutral-900/60 p-1">
-          <button
-            type="button"
-            onClick={() => setDesktopHistoryTab("history")}
-            className={`flex-1 rounded-full py-1.5 text-xs font-medium ${
-              desktopHistoryTab === "history" ? "bg-white/10 text-white" : "text-neutral-500 hover:text-neutral-300"
-            }`}
-          >
-            History
-          </button>
-          <button
-            type="button"
-            onClick={() => setDesktopHistoryTab("templates")}
-            className={`flex-1 rounded-full py-1.5 text-xs font-medium ${
-              desktopHistoryTab === "templates" ? "bg-white/10 text-white" : "text-neutral-500 hover:text-neutral-300"
-            }`}
-          >
-            Templates
-          </button>
+        <div className="sticky top-0 z-10 mb-2 flex justify-center">
+          <div className="inline-flex items-center gap-0.5 rounded-full border border-white/10 bg-neutral-800/90 p-1 shadow-lg shadow-black/40 backdrop-blur">
+            <button
+              type="button"
+              onClick={() => setDesktopHistoryTab("history")}
+              aria-label="History"
+              title="History"
+              className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                desktopHistoryTab === "history" ? "bg-white/10 text-white" : "text-neutral-300 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <History className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setDesktopHistoryTab("templates")}
+              aria-label="Templates"
+              title="Templates"
+              className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                desktopHistoryTab === "templates" ? "bg-white/10 text-white" : "text-neutral-300 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <FileText className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
       {desktopHistoryTab === "templates" ? upgradeOrTemplatesBody : upgradeOrHistoryBody}
