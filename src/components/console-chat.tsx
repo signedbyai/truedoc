@@ -1452,7 +1452,7 @@ export function ConsoleChat({
                   >
                     <FileText className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" aria-hidden="true" />
                     <span>
-                      <span className="block text-sm font-medium text-white">Upload a list of signers to send</span>
+                      <span className="block text-sm font-medium text-white">Upload a list of signers</span>
                       <span className="block text-xs text-neutral-400">.csv or .txt, for a bulk send</span>
                     </span>
                   </button>
