@@ -161,12 +161,15 @@ export async function generateVerifiedBadgeImage(verifyUrl: string): Promise<Buf
 
         <div style={{ display: "flex", marginTop: 22, marginLeft: 40, width: width - 80, height: 1.5, backgroundColor: "#e2e8f0" }} />
 
-        <div style={{ display: "flex", justifyContent: "center", marginTop: 38 }}>
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 44 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={qrDataUrl} width={420} height={420} alt="" />
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 22 }}>
+        {/* marginTop 22 -> 38 (2026-08-02, direct ask: more breathing room
+            between the QR and the "Scan or visit to verify" line below it —
+            the badge read as cramped with the two sitting close together). */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 38 }}>
           <div style={{ display: "flex", fontSize: 17, fontWeight: 600, color: "#0f172a" }}>Scan or visit to verify</div>
           <div style={{ display: "flex", marginTop: 6, fontSize: 14, color: "#475569" }}>{label}</div>
         </div>
