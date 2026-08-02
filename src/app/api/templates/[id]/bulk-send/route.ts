@@ -5,6 +5,7 @@ import { planHasFeature } from "@/lib/plan";
 import { sendSignerInviteEmail } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { checkEmailDomainHasMx } from "@/lib/validate-email-domain";
+import { checkSingleSignerRoleCount } from "@/lib/console-actions";
 
 const recipientSchema = z.object({
   name: z.string().trim().max(200).optional().nullable(),
@@ -64,6 +65,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (fieldMap.length === 0) {
     return NextResponse.json({ error: "This template has no fields placed yet." }, { status: 400 });
   }
+  // Every recipient below gets their own document with a single signer
+  // (themselves) — a template built for 2+ parties has no home for the
+  // other parties' fields on a bulk send. Block the whole batch up front
+  // instead of silently dropping those fields (2026-08-02 bug: signer_id
+  // was left null and never resolved, so nobody signing via bulk send ever
+  // saw any fields at all, single- or multi-party template alike). See
+  // checkSingleSignerRoleCount's doc comment.
+  const roleCheck = checkSingleSignerRoleCount(fieldMap);
+  if (!roleCheck.ok) {
+    return NextResponse.json(
+      {
+        error: `This template has fields for ${roleCheck.roleCount} different signers. Bulk send only supports single-signer templates — use "Use template" from the document instead.`,
+      },
+      { status: 400 }
+    );
+  }
 
   const senderName = org.name || user.email || "Someone";
   const createdDocumentIds: string[] = [];
@@ -120,13 +137,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       continue;
     }
 
-    // Fields are left unassigned (signer_id null) — the signing page and
-    // submit route already treat null-signer_id fields as belonging to the
-    // sole signer whenever a document has exactly one signer.
+    // roleCheck above guarantees at most one distinct role across
+    // fieldMap, so every field belongs to this recipient's own signer row
+    // — resolve it directly rather than leaving signer_id null (that used
+    // to rely on a fallback in field-visibility.ts that never actually
+    // fired, since template_role was always set — see
+    // checkSingleSignerRoleCount's doc comment).
     const rows = fieldMap.map((f) => ({
       document_id: doc.id,
-      signer_id: null,
-      template_role: f.role,
+      signer_id: signer.id,
+      template_role: null,
       type: f.type,
       page: f.page,
       x: f.x,
@@ -136,7 +156,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       required: f.required,
     }));
     const { error: fieldsError } = await supabase.from("document_fields").insert(rows);
-    if (fieldsError) console.error("Bulk send: insert fields failed", fieldsError);
+    if (fieldsError) {
+      console.error("Bulk send: insert fields failed", fieldsError);
+      // Don't send an invite for a document that ended up with no fields —
+      // matches the docError/signerError skip pattern above rather than
+      // continuing to email a signer nothing was ever placed for.
+      continue;
+    }
 
     await supabase.from("audit_events").insert([
       { document_id: doc.id, event_type: "created", metadata: { from_template: template.id, bulk_send: true } },

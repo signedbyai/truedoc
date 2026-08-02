@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseExpiresAt, auditProvenance } from "./console-actions";
+import { parseExpiresAt, auditProvenance, checkSingleSignerRoleCount } from "./console-actions";
 
 describe("parseExpiresAt", () => {
   it("treats an omitted or empty value as no expiration", () => {
@@ -36,5 +36,36 @@ describe("auditProvenance", () => {
 
   it("tags an MCP-originated send with via_mcp AND agent_triggered", () => {
     expect(auditProvenance("mcp")).toEqual({ via_mcp: true, agent_triggered: true });
+  });
+});
+
+// Guards the 2026-08-02 bug where sendDocumentAction/bulk-send inserted
+// document_fields with signer_id left null and template_role never
+// resolved, making every field invisible to the signer regardless of how
+// many parties the template was built for. These cases pin down exactly
+// which field_map shapes are allowed through a single-signer send.
+describe("checkSingleSignerRoleCount", () => {
+  it("allows a template with no role tags at all (never party-distinguished)", () => {
+    expect(checkSingleSignerRoleCount([{ role: null }, { role: null }])).toEqual({ ok: true });
+  });
+
+  it("allows a template where every field is tagged the same single role", () => {
+    expect(checkSingleSignerRoleCount([{ role: 0 }, { role: 0 }, { role: 0 }])).toEqual({ ok: true });
+  });
+
+  it("allows a mix of one real role and untagged fields", () => {
+    expect(checkSingleSignerRoleCount([{ role: 0 }, { role: null }])).toEqual({ ok: true });
+  });
+
+  it("blocks a template with 2 distinct roles", () => {
+    expect(checkSingleSignerRoleCount([{ role: 0 }, { role: 1 }])).toEqual({ ok: false, roleCount: 2 });
+  });
+
+  it("blocks a template with 3+ distinct roles, reporting the real count", () => {
+    expect(checkSingleSignerRoleCount([{ role: 0 }, { role: 1 }, { role: 2 }, { role: 0 }])).toEqual({ ok: false, roleCount: 3 });
+  });
+
+  it("treats an empty field_map as fine (caller handles the 'no fields' case separately)", () => {
+    expect(checkSingleSignerRoleCount([])).toEqual({ ok: true });
   });
 });

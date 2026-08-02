@@ -46,6 +46,25 @@ export function parseExpiresAt(expiresAt: string | null | undefined): { ok: true
   return { ok: true, iso: parsed.toISOString() };
 }
 
+/** Whether a template's fields can be resolved to a single real signer —
+ *  used by the two "create-and-send-in-one-step" paths (this file's
+ *  sendDocumentAction below, and /api/templates/[id]/bulk-send) that only
+ *  ever create one signer per document. A template built for 2+ parties
+ *  (2+ distinct non-null `role` values in its field_map) has no home for
+ *  the second party's fields on a single-signer send — previously those
+ *  fields were inserted with signer_id left null and never resolved,
+ *  making them invisible to the signer regardless of how many signers the
+ *  template was designed for (2026-08-02 bug: signer could submit with
+ *  zero fields to fill in). Rather than silently dropping them, block up
+ *  front with a clear error. Pure/exported so it's unit-testable without a
+ *  Supabase client (same extract-the-pure-part precedent as
+ *  parseExpiresAt/auditProvenance above). */
+export function checkSingleSignerRoleCount(fieldMap: { role: number | null }[]): { ok: true } | { ok: false; roleCount: number } {
+  const distinctRoles = new Set(fieldMap.map((f) => f.role).filter((r): r is number => r !== null));
+  if (distinctRoles.size > 1) return { ok: false, roleCount: distinctRoles.size };
+  return { ok: true };
+}
+
 /** Pure mapping from caller provenance to the audit_events.metadata flags to
  *  attach — split out so it's unit-testable without a Supabase client (same
  *  extract-the-pure-part precedent as parseExpiresAt above). Keeps
@@ -124,6 +143,14 @@ export async function sendDocumentAction(params: {
   if (fieldMap.length === 0) {
     return { ok: false, error: "This template has no fields placed yet.", status: 400 };
   }
+  const roleCheck = checkSingleSignerRoleCount(fieldMap);
+  if (!roleCheck.ok) {
+    return {
+      ok: false,
+      error: `This template has fields for ${roleCheck.roleCount} different signers. Sending it this way only supports one recipient — open it from Documents → Use template to send it with the right number of recipients.`,
+      status: 400,
+    };
+  }
 
   const documentId = crypto.randomUUID();
   const { data: doc, error: docError } = await admin
@@ -166,10 +193,14 @@ export async function sendDocumentAction(params: {
     return { ok: false, error: "Couldn't add the signer.", status: 500 };
   }
 
+  // roleCheck above guarantees at most one distinct role across fieldMap,
+  // so every field belongs to the single signer just created — resolve it
+  // now rather than leaving signer_id null (see checkSingleSignerRoleCount's
+  // doc comment for the bug this replaced).
   const rows = fieldMap.map((f) => ({
     document_id: doc.id,
-    signer_id: null,
-    template_role: f.role,
+    signer_id: signer.id,
+    template_role: null,
     type: f.type,
     page: f.page,
     x: f.x,
@@ -178,7 +209,11 @@ export async function sendDocumentAction(params: {
     height: f.height,
     required: f.required,
   }));
-  await admin.from("document_fields").insert(rows);
+  const { error: fieldsError } = await admin.from("document_fields").insert(rows);
+  if (fieldsError) {
+    console.error("Console action: insert fields failed", fieldsError);
+    return { ok: false, error: "Couldn't set up the fields on this document.", status: 500 };
+  }
 
   const provenance = auditProvenance(source);
   await admin.from("audit_events").insert([
