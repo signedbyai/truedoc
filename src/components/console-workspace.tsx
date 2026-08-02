@@ -34,13 +34,13 @@ import { ConsoleUpgradePanel, ConsoleLockedChat } from "@/components/console-upg
  *  feedback — also fixes a white-flash-on-overscroll complaint, since the
  *  outer page rarely has any real scroll distance left to rubber-band).
  *
- *  Pro-gate (2026-07-31, direct instruction): a plan status box + pill
- *  always sits at the very bottom of the left column, on every plan. When
- *  the org lacks console access (below Pro), the OTHER left-hand boxes
- *  (history + usage panel) are replaced by ConsoleUpgradePanel, and the
- *  chat pane itself is replaced by ConsoleLockedChat — console genuinely
- *  doesn't work below Pro, so ConsoleChat is never even mounted in that
- *  case (on top of /api/console/chat independently 402ing a Free org).
+ *  Pro-gate (2026-07-31, direct instruction; desktop layout changed
+ *  2026-08-02 — see desktopSidebarBody below): when the org lacks console
+ *  access (below Pro), the left column shows ConsoleUpgradePanel regardless
+ *  of which pill tab is selected, and the chat pane itself is replaced by
+ *  ConsoleLockedChat — console genuinely doesn't work below Pro, so
+ *  ConsoleChat is never even mounted in that case (on top of
+ *  /api/console/chat independently 402ing a Free org).
  *
  *  Mobile (2026-07-31, direct ask): below `lg:` the left column (history +
  *  usage/upgrade + plan status) is hidden from normal layout — it used to
@@ -104,17 +104,19 @@ export function ConsoleWorkspace({
   // slide-down animation has something to animate.
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [everOpened, setEverOpened] = useState(false);
-  // Which half of `sidebarBody` the sheet shows (2026-08-01, direct ask: the
+  // Which section the mobile sheet shows (2026-08-01, direct ask: the
   // old single "History & settings" bar became a compact pill with three
   // separate entry points — History and Settings now open the same sheet
   // scrolled to, and titled after, the relevant section instead of always
   // showing everything at once).
   const [mobileSheetTab, setMobileSheetTab] = useState<"history" | "templates" | "settings">("history");
-  // Desktop-only equivalent of mobileSheetTab, scoped to just the
-  // History/Templates switch — see historyOrTemplatesBody below for why
-  // Settings/usage/plan-status stay outside this switcher entirely rather
-  // than becoming a third tab here too.
-  const [desktopHistoryTab, setDesktopHistoryTab] = useState<"history" | "templates">("history");
+  // Desktop-only equivalent of mobileSheetTab (2026-08-02, direct
+  // instruction: fold Settings into the same pill as a third tab, default
+  // to it on first load, and add a Home icon that jumps back to the main
+  // dashboard — see desktopSidebarBody below for the full pill). Defaults
+  // to "settings" rather than "history" — only desktop's default changed;
+  // the mobile sheet above still opens on History by default, unchanged.
+  const [desktopSidebarTab, setDesktopSidebarTab] = useState<"history" | "templates" | "settings">("settings");
 
   function openMobileSheet(tab: "history" | "templates" | "settings") {
     setEverOpened(true);
@@ -203,68 +205,6 @@ export function ConsoleWorkspace({
   );
   const upgradeOrHistoryBody = hasAccess ? historyBody : <ConsoleUpgradePanel />;
   const upgradeOrTemplatesBody = hasAccess ? templatesBody : <ConsoleUpgradePanel />;
-  // Desktop-only: a small floating pill switcher between History and
-  // Templates (2026-08-02, direct ask — moved off a plain inline toggle to
-  // match the mobile floating pill's own visual language: icon buttons,
-  // border/backdrop-blur/shadow). The list itself still renders in the
-  // left sidebar underneath it ("keep the left sidebar for presentation" —
-  // direct ask); only the switcher's presentation changed, not where the
-  // content lives. Settings/usage/plan-status (settingsBody below) stay
-  // OUTSIDE this switcher entirely, always visible underneath either tab —
-  // this component's own "Pro-gate" doc comment is explicit that plan
-  // status in particular must stay visible on every plan, not get hidden
-  // behind a tab click. (A bigger unification — folding Settings into the
-  // same pill, matching mobile fully — was discussed and deliberately
-  // deferred, not part of this change.)
-  //
-  // 2026-08-02 fix #2 — the real bug behind "they don't do anything when I
-  // press on them" turned out to have nothing to do with clicks (the
-  // sticky/z-index theory in fix #1 above was wrong; the pill's own active
-  // state DID switch, confirmed via screenshot). The actual cause: this
-  // wrapper was `min-h-0 flex-1` inside `<aside>` (a fixed h-[calc(100vh-8rem)]
-  // flex column), sitting next to `settingsBody` below — a stack of cards
-  // (usage panel, Verified Badge identity, Certificate style, plan status)
-  // that grew tall enough, once Verified Badge Settings moved in here on
-  // 2026-08-01, to exceed the aside's fixed height on its own. Flexbox
-  // shrinks whichever sibling explicitly allows it (min-h-0) before it lets
-  // anything overflow — so it silently crushed this list region to 0px to
-  // make everything else fit exactly, with no scrollbar to hint why. Fixed
-  // by reserving a real minimum height here (so the list can never be
-  // shrunk away) and letting the aside itself scroll if the settings stack
-  // below still doesn't fit.
-  const historyOrTemplatesBody = (
-    <div className="flex min-h-[240px] flex-1 flex-col">
-      {hasAccess && (
-        <div className="mb-2 flex justify-center">
-          <div className="inline-flex items-center gap-0.5 rounded-full border border-white/10 bg-neutral-800/90 p-1 shadow-lg shadow-black/40 backdrop-blur">
-            <button
-              type="button"
-              onClick={() => setDesktopHistoryTab("history")}
-              aria-label="History"
-              title="History"
-              className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                desktopHistoryTab === "history" ? "bg-white/10 text-white" : "text-neutral-300 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <History className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setDesktopHistoryTab("templates")}
-              aria-label="Templates"
-              title="Templates"
-              className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                desktopHistoryTab === "templates" ? "bg-white/10 text-white" : "text-neutral-300 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <FileText className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
-      {desktopHistoryTab === "templates" ? upgradeOrTemplatesBody : upgradeOrHistoryBody}
-    </div>
-  );
   const settingsBody = (
     <>
       {hasAccess && initialState && (
@@ -291,11 +231,84 @@ export function ConsoleWorkspace({
       <ConsolePlanStatus plan={plan} hasAccess={hasAccess} />
     </>
   );
-  const sidebarBody = (
-    <>
-      {historyOrTemplatesBody}
-      {settingsBody}
-    </>
+  // Desktop-only floating pill (2026-08-02, evolved twice the same day).
+  // Started as a plain History/Templates switcher with Settings/usage/
+  // plan-status always visible below it, unconditionally. Direct
+  // instruction later the same day changed that: Settings is now folded
+  // into the pill as a third tab (hidden unless selected, same as the
+  // mobile sheet below), a Home icon was added that jumps straight back to
+  // the main dashboard (matching the mobile pill's own Home button), and
+  // Settings — not History — is now the default tab on first load. When the
+  // org lacks console access, the pill still renders (Home always works),
+  // but the content area always shows ConsoleUpgradePanel regardless of
+  // which tab is selected, matching how historyBody/templatesBody already
+  // behaved when locked.
+  //
+  // The min-h-[240px]/aside-overflow-y-auto pair below is the 2026-08-02
+  // fix #2 for a real bug (not this feature): the content area used to get
+  // silently crushed to 0px by flexbox once the settings stack (below it,
+  // back when Settings wasn't yet a tab) grew tall enough to exceed the
+  // aside's fixed height — see console-desktop-pill-flexbox-fix in memory.
+  // Kept even now that Settings is its own tab, since History/Templates
+  // lists could still in principle be starved the same way by a future
+  // change elsewhere in this component.
+  const desktopSidebarBody = (
+    <div className="flex min-h-[240px] flex-1 flex-col">
+      <div className="mb-2 flex justify-center">
+        <div className="inline-flex items-center gap-0.5 rounded-full border border-white/10 bg-neutral-800/90 p-1 shadow-lg shadow-black/40 backdrop-blur">
+          <Link
+            href="https://signedby.ai/dashboard"
+            aria-label="Dashboard"
+            title="Dashboard"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 hover:bg-white/10 hover:text-white"
+          >
+            <Home className="h-4 w-4" />
+          </Link>
+          <button
+            type="button"
+            onClick={() => setDesktopSidebarTab("history")}
+            aria-label="History"
+            title="History"
+            className={`flex h-8 w-8 items-center justify-center rounded-full ${
+              desktopSidebarTab === "history" ? "bg-white/10 text-white" : "text-neutral-300 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <History className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setDesktopSidebarTab("templates")}
+            aria-label="Templates"
+            title="Templates"
+            className={`flex h-8 w-8 items-center justify-center rounded-full ${
+              desktopSidebarTab === "templates" ? "bg-white/10 text-white" : "text-neutral-300 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <FileText className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setDesktopSidebarTab("settings")}
+            aria-label="Settings"
+            title="Settings"
+            className={`flex h-8 w-8 items-center justify-center rounded-full ${
+              desktopSidebarTab === "settings" ? "bg-white/10 text-white" : "text-neutral-300 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+      {!hasAccess ? (
+        <ConsoleUpgradePanel />
+      ) : desktopSidebarTab === "templates" ? (
+        templatesBody
+      ) : desktopSidebarTab === "settings" ? (
+        settingsBody
+      ) : (
+        historyBody
+      )}
+    </div>
   );
 
   return (
@@ -304,7 +317,7 @@ export function ConsoleWorkspace({
           "History" button + bottom sheet below (2026-07-31, direct ask:
           this used to just stack above the chat on mobile, forcing a
           full-screen scroll before you ever reached the chat itself). */}
-      <aside className="hidden h-[calc(100vh-8rem)] flex-col gap-4 overflow-y-auto lg:flex lg:sticky lg:top-24">{sidebarBody}</aside>
+      <aside className="hidden h-[calc(100vh-8rem)] flex-col gap-4 overflow-y-auto lg:flex lg:sticky lg:top-24">{desktopSidebarBody}</aside>
 
       <div className="flex h-[calc(100vh-8rem)] flex-col gap-2">
         {/* Chat pane + the mobile pill overlaid on top of it (relative
