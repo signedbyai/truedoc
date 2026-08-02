@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUserAndOrg } from "@/lib/org";
 import { getStripe, appUrl, CREDIT_PACK_PRICE_USD_CENTS, CREDIT_PACK_CREDITS } from "@/lib/stripe";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // Pay-as-you-go credit pack checkout (CONSOLE_FREE_TIER_SCOPE.md item #8,
 // built 2026-08-03) — a one-time $5 purchase for 25 extra document seals,
@@ -17,6 +18,23 @@ export async function POST() {
   const ctx = await getUserAndOrg();
   if (!ctx) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   const { supabase, user, orgId } = ctx;
+
+  // Card-testing guard (2026-08-03, direct ask: "do I need business
+  // verification" for this new one-time-payment surface). A real KYB check
+  // wouldn't actually stop this — a stolen-card attempt doesn't care
+  // whether the buying org looks legitimate — but an authenticated account
+  // repeatedly starting Checkout sessions to probe cards is exactly what a
+  // rate limit catches cheaply. Same helper/pattern as upload-url's
+  // `upload:${orgId}` limit; 5/hour is generous for real top-up behavior
+  // (nobody legitimately buys credit packs more than a couple times a day)
+  // while meaningfully blunting a loop through one account. Org-keyed, not
+  // IP-keyed — this route requires a real session, so rotating orgs is the
+  // costlier move for an attacker, same reasoning as every other
+  // org-scoped limit in this file's neighborhood.
+  const checkoutOk = await checkRateLimit(`credit_pack_checkout:${orgId}`, 5, 3600);
+  if (!checkoutOk) {
+    return NextResponse.json({ error: "Too many checkout attempts. Try again in a bit." }, { status: 429 });
+  }
 
   const { data: org } = await supabase.from("organizations").select("name, stripe_customer_id").eq("id", orgId).single();
   if (!org) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
