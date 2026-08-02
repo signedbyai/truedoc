@@ -10,14 +10,43 @@ import { planHasFeature } from "@/lib/plan";
 // [[nextjs-route-export-constraint]]); both routes import from here
 // instead of one importing from the other.
 
+// Kept in sync with console-chat.tsx's own `Bubble` type by hand — this is
+// the persisted subset of it (2026-08-02 bug fix: `link`, `sealed`, and
+// `certificateModeChoice` were missing here, so Zod's default "strip
+// unknown keys" behavior silently dropped them from every saved turn even
+// though the client sent them. A document-upload/seal reply would save
+// fine as far as the API was concerned — 200 OK, title derived correctly —
+// but reopening that conversation from History showed the assistant's text
+// with no "Open in editor" / "Copy verify link" / download buttons at all,
+// which is what "the links to files produced don't show up in the
+// history" was actually describing: not a truncated request, a silently
+// stripped response field). If Bubble ever gains another optional field
+// that should survive a reload, add it here too.
 export type ConsoleConversationMessage =
   | { role: "user"; content: string }
-  | { role: "assistant"; content: string; confirm?: { tool: string; arguments: Record<string, unknown> } };
+  | {
+      role: "assistant";
+      content: string;
+      confirm?: { tool: string; arguments: Record<string, unknown> };
+      link?: { href: string; label: string };
+      certificateModeChoice?: { documentId: string; filename: string };
+      sealed?: { documentId: string; verifyUrl: string; hasSignedFile: boolean; hasCertificateFile: boolean };
+    };
 
 export const consoleConversationMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
   content: z.string(),
   confirm: z.object({ tool: z.string(), arguments: z.record(z.string(), z.unknown()) }).optional(),
+  link: z.object({ href: z.string(), label: z.string() }).optional(),
+  certificateModeChoice: z.object({ documentId: z.string(), filename: z.string() }).optional(),
+  sealed: z
+    .object({
+      documentId: z.string(),
+      verifyUrl: z.string(),
+      hasSignedFile: z.boolean(),
+      hasCertificateFile: z.boolean(),
+    })
+    .optional(),
 });
 
 const MAX_TITLE_LENGTH = 60;
