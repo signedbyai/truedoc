@@ -1473,18 +1473,7 @@ export function ConsoleChat({
               disabled={loading}
               onClick={() => {
                 dismissPaperclipIntro();
-                // Free plan (2026-08-02, CONSOLE_FREE_TIER_SCOPE.md): only
-                // one destination exists (Verified Badge sealing — template
-                // upload and recipient-list attach both require the
-                // Pro+-only `templates` feature), so there's nothing to
-                // choose between. Skip the menu entirely and go straight to
-                // that one file picker, rather than showing a dropdown with
-                // options that would just dead-end.
-                if (isFreePlan) {
-                  verifiedBadgeFileInputRef.current?.click();
-                } else {
-                  setAttachMenuOpen((open) => !open);
-                }
+                setAttachMenuOpen((open) => !open);
               }}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-white/10 hover:text-white disabled:opacity-50"
             >
@@ -1497,10 +1486,13 @@ export function ConsoleChat({
                 and easy to miss on desktop. Opens upward with a caret
                 pointing at the icon, since the composer this lives in sits
                 at the very bottom of the screen (fixed on mobile) with no
-                room to open downward. Free plan (2026-08-02): the paperclip
-                has no menu to introduce, so this just explains what the one
-                click does instead of describing a choice that doesn't
-                exist for this plan. */}
+                room to open downward. Free plan (2026-08-02): still opens
+                the menu below on click, same as every other plan — direct
+                feedback that a single-option menu is still worth keeping
+                (vs. jumping straight to the file picker) so someone can
+                see what they're about to do before committing to it, not
+                just for plans with an actual choice to make. This tooltip's
+                own copy is free-plan-aware for the same reason. */}
             {paperclipIntroOpen && !attachMenuOpen && (
               <div className="absolute bottom-full left-0 z-10 mb-3 w-64">
                 <div className="rounded-2xl border border-white/10 bg-neutral-900 p-3.5 shadow-2xl shadow-black/60">
@@ -1531,7 +1523,16 @@ export function ConsoleChat({
                 above), so it's now a choice between the two rather than one
                 click doing double duty. The full-screen backdrop closes the
                 menu on an outside click/tap without needing a ref-based
-                click-outside hook. */}
+                click-outside hook.
+
+                Free plan (2026-08-02, direct feedback): still shows this
+                menu — just with only the Verified Badge option, since
+                template upload and recipient-list attach both require the
+                Pro+-only `templates` feature. Kept as a single-item menu
+                rather than skipping straight to the file picker on click,
+                so someone still sees what they're about to do (the
+                description line) before committing, the same as every
+                other plan gets. */}
             {attachMenuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setAttachMenuOpen(false)} />
@@ -1557,34 +1558,38 @@ export function ConsoleChat({
                       <span className="block text-xs text-neutral-400">.pdf, seal a finished file with a scannable proof badge</span>
                     </span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAttachMenuOpen(false);
-                      templateFileInputRef.current?.click();
-                    }}
-                    className="flex w-full items-start gap-2.5 border-t border-white/5 px-3.5 py-3 text-left hover:bg-white/5"
-                  >
-                    <FileUp className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" aria-hidden="true" />
-                    <span>
-                      <span className="block text-sm font-medium text-white">Upload a template to sign</span>
-                      <span className="block text-xs text-neutral-400">.pdf, becomes a reusable template</span>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAttachMenuOpen(false);
-                      fileInputRef.current?.click();
-                    }}
-                    className="flex w-full items-start gap-2.5 border-t border-white/5 px-3.5 py-3 text-left hover:bg-white/5"
-                  >
-                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" aria-hidden="true" />
-                    <span>
-                      <span className="block text-sm font-medium text-white">Upload a list of signers</span>
-                      <span className="block text-xs text-neutral-400">.csv or .txt, for a bulk send</span>
-                    </span>
-                  </button>
+                  {!isFreePlan && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAttachMenuOpen(false);
+                          templateFileInputRef.current?.click();
+                        }}
+                        className="flex w-full items-start gap-2.5 border-t border-white/5 px-3.5 py-3 text-left hover:bg-white/5"
+                      >
+                        <FileUp className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" aria-hidden="true" />
+                        <span>
+                          <span className="block text-sm font-medium text-white">Upload a template to sign</span>
+                          <span className="block text-xs text-neutral-400">.pdf, becomes a reusable template</span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAttachMenuOpen(false);
+                          fileInputRef.current?.click();
+                        }}
+                        className="flex w-full items-start gap-2.5 border-t border-white/5 px-3.5 py-3 text-left hover:bg-white/5"
+                      >
+                        <FileText className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" aria-hidden="true" />
+                        <span>
+                          <span className="block text-sm font-medium text-white">Upload a list of signers</span>
+                          <span className="block text-xs text-neutral-400">.csv or .txt, for a bulk send</span>
+                        </span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </>
             )}
