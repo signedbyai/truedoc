@@ -1,16 +1,21 @@
 # Scope: Console free "teaser" tier — API/MCP access for Free-plan orgs
 
-Status: PARTIALLY BUILT 2026-08-02 (commit `366e86a`, local only, push/deploy
-owed). What shipped: item #1 (Free-tier console access, narrowed in practice
-to Verified Badge sealing — see below) and the "Upgrade to Pro" half of #1a's
-cap-reached bubble. Explicitly NOT built yet, per direct instruction ("let's
-just start with the upgrade to pro... credit packs can be a v2"): the
-top-up/credit-pack purchase flow (item #8), the tool-call cap (#2), Pro+
-hard document pools (#3), all of #4's bot/abuse mitigation, badge branding
-by plan (#5), white-label verify pages (#6), and audit export (#7). Also not
-built: the cap-hit bubble's "or top up" half, and the return-to-same-
-conversation-after-checkout refinement from #1a (cross-subdomain redirect
-safety between signedby.ai and console.signedby.ai needs its own pass).
+Status: PARTIALLY BUILT. Shipped 2026-08-02 (commit `366e86a`): item #1
+(Free-tier console access, narrowed in practice to Verified Badge sealing —
+see below) and the "Upgrade to Pro" half of #1a's cap-reached bubble.
+Shipped 2026-08-03 (commit `285d8c9`): cap-hit tracking + daily digest
+visibility (not originally in this doc's item list — see
+plan-cap-hits-tracking memory). Shipped 2026-08-03 (commit `7309deb`): item
+#8, the credit-pack top-up flow — $5/25 seals (price dropped from the
+original $10 same day), cap-hit moment only (console chat bubble +
+dashboard error line, no standalone billing-page entry point). Still
+explicitly NOT built: the tool-call cap (#2), Pro+ hard document pools (#3),
+all of #4's bot/abuse mitigation, badge branding by plan (#5), white-label
+verify pages (#6), and audit export (#7). Also not built: the return-to-
+same-conversation-after-checkout refinement from #1a (cross-subdomain
+redirect safety between signedby.ai and console.signedby.ai needs its own
+pass) — both the Pro checkout and the new credit-pack checkout still land on
+the generic /dashboard/billing regardless of where the person started.
 
 **Real constraint found mid-build, resolved by direct decision**: Console's
 send_document/bulk_send tools require an existing template, and creating one

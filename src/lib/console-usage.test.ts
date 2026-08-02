@@ -17,17 +17,34 @@ describe("computeConsoleBillingState", () => {
   });
 
   it("reaches the warning threshold at 80% of the cap", () => {
-    // $25 cap, $0.25/doc -> 100 billable units total, 80 to hit the 80% warning.
-    const justUnder = computeConsoleBillingState({ unitsUsed: CONSOLE_FREE_ALLOWANCE + 79, capEnabled: true, capCents: 2500 });
+    // $25 cap -> capUnits billable units total (at the current per-doc
+    // rate), 80% of that to hit the warning. Derived from
+    // CONSOLE_OVERAGE_CENTS rather than a hardcoded unit count so this
+    // doesn't silently drift out of sync (and start passing for the wrong
+    // reason) the next time the per-doc rate changes — it already has once,
+    // $0.25 -> $0.20 on 2026-08-03.
+    const capUnits = 2500 / CONSOLE_OVERAGE_CENTS;
+    const warningUnits = Math.ceil(capUnits * 0.8);
+
+    const justUnder = computeConsoleBillingState({
+      unitsUsed: CONSOLE_FREE_ALLOWANCE + warningUnits - 1,
+      capEnabled: true,
+      capCents: 2500,
+    });
     expect(justUnder.warningThresholdReached).toBe(false);
 
-    const atThreshold = computeConsoleBillingState({ unitsUsed: CONSOLE_FREE_ALLOWANCE + 80, capEnabled: true, capCents: 2500 });
+    const atThreshold = computeConsoleBillingState({
+      unitsUsed: CONSOLE_FREE_ALLOWANCE + warningUnits,
+      capEnabled: true,
+      capCents: 2500,
+    });
     expect(atThreshold.warningThresholdReached).toBe(true);
     expect(atThreshold.capReached).toBe(false);
   });
 
-  it("reaches the cap exactly at 100 billable units on a $25 cap", () => {
-    const state = computeConsoleBillingState({ unitsUsed: CONSOLE_FREE_ALLOWANCE + 100, capEnabled: true, capCents: 2500 });
+  it("reaches the cap exactly at capUnits billable units on a $25 cap", () => {
+    const capUnits = 2500 / CONSOLE_OVERAGE_CENTS;
+    const state = computeConsoleBillingState({ unitsUsed: CONSOLE_FREE_ALLOWANCE + capUnits, capEnabled: true, capCents: 2500 });
     expect(state.capReached).toBe(true);
   });
 

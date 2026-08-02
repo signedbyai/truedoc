@@ -77,7 +77,7 @@ export function ConsoleUsagePanel({
           </div>
         </div>
         <p className="mt-2 text-xs text-neutral-500">
-          {initialState.freeAllowance} free + {initialState.billableUnits} billable at $0.25 each
+          {initialState.freeAllowance} free + {initialState.billableUnits} billable at $0.20 each
         </p>
       </div>
 

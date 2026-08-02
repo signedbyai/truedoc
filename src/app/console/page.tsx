@@ -255,7 +255,7 @@ export default async function ConsolePage() {
           <ul className="list-inside list-disc space-y-1">
             <li><strong className="text-slate-100">50 document-sends</strong> free every month via console, on any plan — Pro, Team, or Business.</li>
             <li>
-              <strong className="text-slate-100">$0.25 per document</strong> sent beyond that, billed monthly alongside your
+              <strong className="text-slate-100">$0.20 per document</strong> sent beyond that, billed monthly alongside your
               subscription — console is metered on every plan, including Business. This is separate from
               Business&apos;s existing unlimited, included access to the plain API (see{" "}
               <Link href="/developers" className="underline hover:text-white">

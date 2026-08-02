@@ -3,7 +3,7 @@ import { getStripe, consoleMeteredPriceIdFor } from "@/lib/stripe";
 import { sendConsoleCapWarningEmail } from "@/lib/email";
 
 // Pricing constants (CONSOLE_AI_SIGNING_SCOPE.md, CONSOLE_UX_SCOPE.md) — the
-// same free-sends/month + $0.25/doc figures already shown on
+// same free-sends/month + $0.20/doc figures already shown on
 // console/page.tsx, centralized here so the cap math, the usage panel, and
 // the pitch page never drift apart. Deliberately USD-denominated for the
 // cap/bill-so-far math regardless of the org's actual Stripe billing
@@ -21,7 +21,24 @@ import { sendConsoleCapWarningEmail } from "@/lib/email";
 // hardcoded "20 free" mention in marketing/settings copy (developers,
 // console, dashboard/settings, verified-badge pages) needs to match this.
 export const CONSOLE_FREE_ALLOWANCE = 50;
-export const CONSOLE_OVERAGE_CENTS = 25;
+// Stepped down from 25 to 20 (2026-08-03, direct instruction). IMPORTANT —
+// this constant only drives the LOCAL spend-cap math and display copy
+// (this file's computeConsoleBillingState, console-usage-panel.tsx,
+// console/page.tsx). It does NOT change what Stripe actually invoices: the
+// real per-unit rate lives on the Stripe Price objects referenced by
+// STRIPE_PRICE_CONSOLE_METERED(/_EUR/_GBP/_CHF) in stripe.ts, created
+// manually in the Stripe dashboard and immutable once created (Stripe
+// Prices can't have their unit_amount edited in place). Getting the real
+// invoiced rate down to $0.20 needs new Price objects created at $0.20 in
+// Stripe (per currency actually in use) and those env vars repointed at
+// the new price ids — plus a decision on orgs that already have a
+// console_subscription_item_id attached to the OLD $0.25 price, since
+// ensureConsoleSubscriptionItem only ever attaches once per org and won't
+// auto-swap an existing item to a new Price. See
+// credit-pack-topup-build.md-adjacent memory note on this gap (or ask
+// Claude to write one) before treating this constant change alone as a
+// real pricing update.
+export const CONSOLE_OVERAGE_CENTS = 20;
 
 // 80% of the cap is the warning threshold (CONSOLE_UX_SCOPE.md's "Decided"
 // section) — fires once per billing period via console_cap_warning_sent_at.

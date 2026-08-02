@@ -7,7 +7,8 @@ import { getStripe } from "@/lib/stripe";
 // scoped-but-not-built feature verifies one recipient on one document; this
 // verifies the org once and reuses it across many future Verified Badge
 // seals, since a fresh ID-scan-plus-selfie check on every seal is cost-
-// negative against a $0.25/document Console price. See migration 0042 for
+// negative against a $0.20/document Console price (stepped down from
+// $0.25 on 2026-08-03 — see console-usage.ts). See migration 0042 for
 // the organizations columns this reads/writes.
 
 // How long a verified session stays reusable before a fresh check is asked
