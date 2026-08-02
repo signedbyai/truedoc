@@ -1,6 +1,33 @@
 # Scope: Console free "teaser" tier — API/MCP access for Free-plan orgs
 
-Status: SCOPED, NOT BUILT. Several pieces here are independent and could ship
+Status: PARTIALLY BUILT 2026-08-02 (commit `366e86a`, local only, push/deploy
+owed). What shipped: item #1 (Free-tier console access, narrowed in practice
+to Verified Badge sealing — see below) and the "Upgrade to Pro" half of #1a's
+cap-reached bubble. Explicitly NOT built yet, per direct instruction ("let's
+just start with the upgrade to pro... credit packs can be a v2"): the
+top-up/credit-pack purchase flow (item #8), the tool-call cap (#2), Pro+
+hard document pools (#3), all of #4's bot/abuse mitigation, badge branding
+by plan (#5), white-label verify pages (#6), and audit export (#7). Also not
+built: the cap-hit bubble's "or top up" half, and the return-to-same-
+conversation-after-checkout refinement from #1a (cross-subdomain redirect
+safety between signedby.ai and console.signedby.ai needs its own pass).
+
+**Real constraint found mid-build, resolved by direct decision**: Console's
+send_document/bulk_send tools require an existing template, and creating one
+(`save-as-template`) was already Pro+-gated (`templates` feature) — so
+opening `consoleAccess` to Free alone would NOT have made "send 3 documents/
+month via console" actually reachable; a brand-new Free org would hit
+"Templates are a Pro plan feature" on their very first send attempt. Decided:
+leave `templates` Pro+-only, so Free's real console value for now is
+Verified Badge sealing only (no template needed) — "upgrade to send with
+templates" becomes the natural, honest upsell moment rather than the generic
+3-doc cap. This also meant `checkFreePlanDocCap` needed no new call sites at
+all: Verified Badge's upload already runs through the same presign/finalize
+routes (`/api/documents/upload-url`, `/api/documents`) every other document
+creation path uses, and those already enforce the cap.
+
+Everything below this point is the original scoping pass — still accurate
+for what's NOT yet built. Several pieces here are independent and could ship
 on different timelines — this doc breaks them apart on purpose rather than
 treating it as one feature, because their costs are wildly different (some
 are a config-array edit, one is a genuine multi-tenant infra project).
