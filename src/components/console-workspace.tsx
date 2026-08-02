@@ -217,19 +217,23 @@ export function ConsoleWorkspace({
   // same pill, matching mobile fully — was discussed and deliberately
   // deferred, not part of this change.)
   //
-  // Deliberately NOT position:sticky (2026-08-02 fix, direct bug report:
-  // "they don't do anything when you press on them") — this div sits
-  // inside `<aside>`, which is itself `lg:sticky lg:top-24` right below
-  // console-header-chrome.tsx's OWN sticky header (`sticky top-0 z-20`).
-  // Nested sticky elements with no intermediate overflow/scroll container
-  // between them resolve against the same scrolling ancestor, and this
-  // pill's z-10 sat lower than the header's z-20 — a real risk of the
-  // header's stacking context swallowing clicks on the pill at some scroll
-  // positions. The pill never actually needed its own independent sticky
-  // behavior; the aside already keeps the whole sidebar pinned, so the pill
-  // just needs to render first in its normal flow, which it does either way.
+  // 2026-08-02 fix #2 — the real bug behind "they don't do anything when I
+  // press on them" turned out to have nothing to do with clicks (the
+  // sticky/z-index theory in fix #1 above was wrong; the pill's own active
+  // state DID switch, confirmed via screenshot). The actual cause: this
+  // wrapper was `min-h-0 flex-1` inside `<aside>` (a fixed h-[calc(100vh-8rem)]
+  // flex column), sitting next to `settingsBody` below — a stack of cards
+  // (usage panel, Verified Badge identity, Certificate style, plan status)
+  // that grew tall enough, once Verified Badge Settings moved in here on
+  // 2026-08-01, to exceed the aside's fixed height on its own. Flexbox
+  // shrinks whichever sibling explicitly allows it (min-h-0) before it lets
+  // anything overflow — so it silently crushed this list region to 0px to
+  // make everything else fit exactly, with no scrollbar to hint why. Fixed
+  // by reserving a real minimum height here (so the list can never be
+  // shrunk away) and letting the aside itself scroll if the settings stack
+  // below still doesn't fit.
   const historyOrTemplatesBody = (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-[240px] flex-1 flex-col">
       {hasAccess && (
         <div className="mb-2 flex justify-center">
           <div className="inline-flex items-center gap-0.5 rounded-full border border-white/10 bg-neutral-800/90 p-1 shadow-lg shadow-black/40 backdrop-blur">
@@ -300,7 +304,7 @@ export function ConsoleWorkspace({
           "History" button + bottom sheet below (2026-07-31, direct ask:
           this used to just stack above the chat on mobile, forcing a
           full-screen scroll before you ever reached the chat itself). */}
-      <aside className="hidden h-[calc(100vh-8rem)] flex-col gap-4 lg:flex lg:sticky lg:top-24">{sidebarBody}</aside>
+      <aside className="hidden h-[calc(100vh-8rem)] flex-col gap-4 overflow-y-auto lg:flex lg:sticky lg:top-24">{sidebarBody}</aside>
 
       <div className="flex h-[calc(100vh-8rem)] flex-col gap-2">
         {/* Chat pane + the mobile pill overlaid on top of it (relative
