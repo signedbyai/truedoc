@@ -48,12 +48,16 @@ describe("planHasFeature", () => {
     }
   });
 
-  // console.signedby.ai (CONSOLE_AI_SIGNING_SCOPE.md): same tier list as
-  // templates, deliberately — see the comment in plan.ts. Business orgs also
-  // pass this, but api-auth.ts treats them as unmetered via apiAccess
-  // instead, so this test only needs to confirm the gate itself.
-  it("gates consoleAccess to starter, team, and business (same as templates)", () => {
-    expect(planHasFeature("free", "consoleAccess")).toBe(false);
+  // console.signedby.ai: widened to every plan including Free
+  // (CONSOLE_FREE_TIER_SCOPE.md, 2026-08-02, direct instruction) — was
+  // previously the same tier list as `templates`. Free's console value is
+  // narrower than Pro's in practice, since send/bulk-send still require
+  // `templates` (tested separately above); this key alone only unlocks
+  // reaching console.signedby.ai and its Verified Badge sealing flow.
+  // Business orgs also pass this, but api-auth.ts treats them as unmetered
+  // via apiAccess instead, so this test only needs to confirm the gate.
+  it("gates consoleAccess to every plan including free", () => {
+    expect(planHasFeature("free", "consoleAccess")).toBe(true);
     expect(planHasFeature("starter", "consoleAccess")).toBe(true);
     expect(planHasFeature("team", "consoleAccess")).toBe(true);
     expect(planHasFeature("business", "consoleAccess")).toBe(true);

@@ -50,6 +50,15 @@ export type Bubble =
       // this seal actually produced, instead of the raw verify URL and a
       // pointer to the documents list.
       sealed?: { documentId: string; verifyUrl: string; hasSignedFile: boolean; hasCertificateFile: boolean };
+      // Free-plan doc-cap hit (2026-08-02, CONSOLE_FREE_TIER_SCOPE.md's
+      // "cap-hit moment" addendum) — set when an upload's presign/finalize
+      // call comes back with `upgrade: true` (checkFreePlanDocCap's 402).
+      // Previously this just fell through to the small red error line like
+      // any other failure; a real limit worth a real CTA gets its own
+      // bubble with an "Upgrade to Pro" button instead, same visual
+      // treatment as certificateModeChoice/sealed above rather than plain
+      // text buried in the thread.
+      capReached?: boolean;
     };
 
 /** Copies `text` to the clipboard on click/tap and flashes a brief check
@@ -861,6 +870,37 @@ export function ConsoleChat({
     });
   }
 
+  /** "Upgrade to Pro" button on a capReached bubble (see
+   *  handleVerifiedBadgeFileSelected/handleTemplateFileSelected below) —
+   *  starts a real Stripe Checkout session and redirects there, the exact
+   *  same client-side call pricing-cards.tsx's own subscribe() makes
+   *  (POST /api/billing/checkout {plan}, then window.location.href the
+   *  returned url). Lands on /dashboard/billing?success=1 same as every
+   *  other upgrade path today — returning to this same conversation after
+   *  checkout is a separate, not-yet-built piece (cross-subdomain redirect
+   *  safety between signedby.ai and console.signedby.ai needs its own
+   *  pass, see CONSOLE_FREE_TIER_SCOPE.md). */
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  async function subscribeToPro() {
+    setError("");
+    setUpgradeLoading(true);
+    try {
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: "starter" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Couldn't start checkout — try again.");
+      }
+      window.location.href = data.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setUpgradeLoading(false);
+    }
+  }
+
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // clear so selecting the same file again still fires onChange
@@ -896,6 +936,24 @@ export function ConsoleChat({
    *  their existing composer-disabling/status-line/error-line behavior, but
    *  no /api/console/chat call happens until (if) "Save now" is clicked,
    *  which reuses the existing confirmAction plumbing untouched. */
+  /** Shared by handleTemplateFileSelected/handleVerifiedBadgeFileSelected's
+   *  upload-url and finalize error branches — both routes already run
+   *  checkFreePlanDocCap (plan.ts) and set `upgrade: true` on that specific
+   *  402, same flag new-document-client.tsx's dashboard upload flow already
+   *  keys off. Previously every failure here, cap-hit included, just fell
+   *  through to the small red error line; a hit cap gets a real bubble with
+   *  an "Upgrade to Pro" button instead (2026-08-02,
+   *  CONSOLE_FREE_TIER_SCOPE.md's "cap-hit moment" addendum) — everything
+   *  else (a bad upload, a network error) keeps the plain red-line
+   *  treatment, since those aren't a "here's what to do next" moment. */
+  function reportUploadError(data: { error?: string; upgrade?: boolean }, fallback: string) {
+    if (data.upgrade) {
+      setMessages((cur) => [...cur, { role: "assistant", content: data.error || fallback, capReached: true }]);
+    } else {
+      setError(data.error || fallback);
+    }
+  }
+
   async function handleTemplateFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -923,7 +981,7 @@ export function ConsoleChat({
       });
       const presign = await presignRes.json().catch(() => ({}));
       if (!presignRes.ok) {
-        setError(presign.error || "Couldn't start the upload.");
+        reportUploadError(presign, "Couldn't start the upload.");
         return;
       }
 
@@ -940,7 +998,7 @@ export function ConsoleChat({
       });
       const finalize = await finalizeRes.json().catch(() => ({}));
       if (!finalizeRes.ok) {
-        setError(finalize.error || "Couldn't save the upload.");
+        reportUploadError(finalize, "Couldn't save the upload.");
         return;
       }
       const documentId = String(finalize.id);
@@ -1049,7 +1107,7 @@ export function ConsoleChat({
       });
       const presign = await presignRes.json().catch(() => ({}));
       if (!presignRes.ok) {
-        setError(presign.error || "Couldn't start the upload.");
+        reportUploadError(presign, "Couldn't start the upload.");
         return;
       }
 
@@ -1066,7 +1124,7 @@ export function ConsoleChat({
       });
       const finalize = await finalizeRes.json().catch(() => ({}));
       if (!finalizeRes.ok) {
-        setError(finalize.error || "Couldn't save the upload.");
+        reportUploadError(finalize, "Couldn't save the upload.");
         return;
       }
       const documentId = String(finalize.id);
@@ -1253,6 +1311,13 @@ export function ConsoleChat({
                       <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
                       Badge image
                     </a>
+                  </div>
+                )}
+                {m.capReached && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button type="button" variant="cta" size="sm" disabled={upgradeLoading} onClick={subscribeToPro}>
+                      {upgradeLoading ? "Starting checkout…" : "Upgrade to Pro"}
+                    </Button>
                   </div>
                 )}
                 {(m.confirm || m.link) && (

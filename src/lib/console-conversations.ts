@@ -31,6 +31,11 @@ export type ConsoleConversationMessage =
       link?: { href: string; label: string };
       certificateModeChoice?: { documentId: string; filename: string };
       sealed?: { documentId: string; verifyUrl: string; hasSignedFile: boolean; hasCertificateFile: boolean };
+      // Free-plan doc-cap hit (2026-08-02, CONSOLE_FREE_TIER_SCOPE.md) —
+      // added here alongside the Bubble type change, per this file's own
+      // doc comment above, so it doesn't repeat the exact bug this comment
+      // describes.
+      capReached?: boolean;
     };
 
 export const consoleConversationMessageSchema = z.object({
@@ -47,6 +52,7 @@ export const consoleConversationMessageSchema = z.object({
       hasCertificateFile: z.boolean(),
     })
     .optional(),
+  capReached: z.boolean().optional(),
 });
 
 const MAX_TITLE_LENGTH = 60;

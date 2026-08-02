@@ -72,15 +72,23 @@ const FEATURE_PLANS = {
   // distribution/analytics capability on top of core send-and-sign, not core
   // functionality itself. See src/app/g/[code]/route.ts.
   docGate: ["business"],
-  // Pro+: console.signedby.ai metered API access (CONSOLE_AI_SIGNING_SCOPE.md).
-  // Deliberately the same tier list as `templates` — the real requirement is
-  // "has a template to send," which is what makes API document creation
-  // possible at all, not a separate business decision about who "deserves"
-  // API access. Business orgs already get unlimited included access via
-  // `apiAccess` above; this is the metered, lower-barrier path for orgs that
-  // don't have (or want) Business. See src/lib/api-auth.ts for how the two
-  // gates combine at request time.
-  consoleAccess: ["starter", "team", "business"],
+  // Free+: console.signedby.ai access, widened from Pro-only to every plan
+  // (CONSOLE_FREE_TIER_SCOPE.md, 2026-08-02, direct instruction — a
+  // deliberate reversal of the "Pro+ only" note this comment used to have).
+  // Free's console value is real but narrower than Pro's: `templates`
+  // (below) stays Pro+-only, so send_document/bulk_send — which both
+  // require an existing template — are still unreachable for Free orgs in
+  // practice; what Free genuinely gets is Verified Badge sealing (no
+  // template needed) through the same checkFreePlanDocCap-gated
+  // upload/finalize routes every other document creation path already
+  // uses, so the existing 3-documents/month cap applies with no new
+  // enforcement code. Pro/Team's `templates` access is what makes
+  // console.signedby.ai's send/bulk-send tools actually reachable — this
+  // key alone doesn't hand out anything requiring a template. Business
+  // orgs already get unlimited included access via `apiAccess` above; Pro/
+  // Team get the metered, lower-barrier path. See src/lib/api-auth.ts for
+  // how the gates combine at request time.
+  consoleAccess: ["free", "starter", "team", "business"],
 } as const;
 
 // Per-recipient authentication (a sender can require a signer to enter a
@@ -109,7 +117,12 @@ export const FEATURE_UPGRADE_PLAN: Record<Feature, PlanId> = {
   apiAccess: "business",
   paymentCollection: "business",
   docGate: "business",
-  consoleAccess: "starter",
+  // "free" (2026-08-02, CONSOLE_FREE_TIER_SCOPE.md) — consoleAccess itself
+  // no longer needs an upgrade at all; `templates` is the real thing Free
+  // orgs are missing for console's send/bulk-send tools specifically. This
+  // map is currently unused elsewhere in the app (kept for consistency with
+  // the FEATURE_PLANS table above, not load-bearing).
+  consoleAccess: "free",
 };
 
 // Team member seat caps — matches the "Up to N users" pricing-cards.tsx

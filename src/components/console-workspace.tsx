@@ -207,7 +207,15 @@ export function ConsoleWorkspace({
   const upgradeOrTemplatesBody = hasAccess ? templatesBody : <ConsoleUpgradePanel />;
   const settingsBody = (
     <>
-      {hasAccess && initialState && (
+      {/* plan !== "free" (2026-08-02, CONSOLE_FREE_TIER_SCOPE.md) — this
+          panel shows Pro+'s metered-billing figures (free allowance,
+          $/doc overage, spend cap), none of which apply to Free orgs: Free
+          isn't on console's Stripe metering at all, it's capped by the
+          plain 3-documents/month wall (checkFreePlanDocCap) shared with the
+          rest of the app. Showing this panel to a Free org would display
+          real but meaningless numbers (e.g. "50 free" when their actual
+          limit is 3), not just suboptimal copy. */}
+      {hasAccess && initialState && plan !== "free" && (
         <ConsoleUsagePanel
           initialState={initialState}
           initialCapEnabled={initialCapEnabled}
