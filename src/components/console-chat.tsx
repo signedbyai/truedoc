@@ -1494,7 +1494,15 @@ export function ConsoleChat({
           placeholder={
             isFreePlan
               ? "Upload a document to get a Verified Badge for proof…"
-              : "Upload a document to get a Verified Badge, bulk sign documents using templates, or check on status…"
+              : // Shortened 2026-08-03, direct ask ("so it fits") — the
+                // original 103-char string wrapped past what this 2-row
+                // textarea shows before getting clipped. Also dropped the
+                // "Upload a document to" lead-in Free plan keeps: it read
+                // fine when there was only one destination (upload ->
+                // badge), but didn't grammatically cover "check status"
+                // once Pro+ listed three parallel actions — three plain
+                // verb phrases reads better than one mismatched one.
+                "Get a Verified Badge, bulk sign with templates, or check status…"
           }
           // bg-white/[0.04] (2026-08-01, direct ask) — was bg-transparent,
           // so the entry area was indistinguishable from the composer bar
