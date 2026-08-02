@@ -1162,8 +1162,9 @@ export function ConsoleChat({
                 />
               </div>
               <p className="max-w-xs text-base text-neutral-300">
-                Get a <span className="font-semibold text-white">Verified Badge</span> for proof — seal a finished
-                file and embed a scannable QR that proves it&apos;s unaltered and identity-verified. Use the{" "}
+                Get a <span className="font-semibold text-white">Verified Badge</span>{" "}
+                for proof — seal a finished file and embed a scannable QR that proves it&apos;s unaltered and
+                identity-verified. Use the{" "}
                 <Paperclip className="inline h-3 w-3 -translate-y-px" aria-hidden="true" /> icon below.
               </p>
               <p className="max-w-xs text-xs text-neutral-600">
@@ -1363,7 +1364,7 @@ export function ConsoleChat({
             }
           }}
           disabled={loading}
-          placeholder="Upload a document to get a Verified Badge, send to signers using templates, bulk send, or check on status…"
+          placeholder="Upload a document to get a Verified Badge, bulk sign documents using templates, or check on status…"
           // bg-white/[0.04] (2026-08-01, direct ask) — was bg-transparent,
           // so the entry area was indistinguishable from the composer bar
           // around it with nothing marking where to type. A very slightly
