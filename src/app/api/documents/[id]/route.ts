@@ -33,9 +33,27 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     return NextResponse.json({ error: "Couldn't delete this document." }, { status: 500 });
   }
 
-  // Best-effort — the row is already gone either way, and deleteFromR2
-  // swallows its own errors rather than throwing.
-  if (doc.file_path) await deleteFromR2(doc.file_path);
+  // 2026-08-02 fix: only purge the R2 object if nothing else still points
+  // at it. "Use template", console's send_document, and bulk-send all seed
+  // a document's file_path straight from templates.base_file_path rather
+  // than copying it (see templates/[id]/use/route.ts) — deliberately, per
+  // save-as-template/route.ts's own doc comment ("the original upload is
+  // never mutated"). copyInR2() exists in lib/r2.ts specifically so
+  // "Duplicate document" gets its own independent key instead of sharing
+  // one for this exact reason, but the template-instantiation paths never
+  // adopted that pattern — so this document's file_path may still be the
+  // template's own PDF, or shared with sibling documents created from the
+  // same template. Deleting it out from under them would silently 404 the
+  // template (and every sibling) with no error surfaced anywhere. Query
+  // runs AFTER the row delete above, so it only sees remaining references.
+  if (doc.file_path) {
+    const [{ count: docCount }, { count: templateCount }] = await Promise.all([
+      supabase.from("documents").select("id", { count: "exact", head: true }).eq("file_path", doc.file_path),
+      supabase.from("templates").select("id", { count: "exact", head: true }).eq("base_file_path", doc.file_path),
+    ]);
+    // Best-effort — deleteFromR2 swallows its own errors rather than throwing.
+    if (!docCount && !templateCount) await deleteFromR2(doc.file_path);
+  }
 
   return NextResponse.json({ success: true });
 }
