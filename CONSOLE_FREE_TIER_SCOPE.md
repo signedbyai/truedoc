@@ -8,10 +8,13 @@ visibility (not originally in this doc's item list — see
 plan-cap-hits-tracking memory). Shipped 2026-08-03 (commit `7309deb`): item
 #8, the credit-pack top-up flow — $5/25 seals (price dropped from the
 original $10 same day), cap-hit moment only (console chat bubble +
-dashboard error line, no standalone billing-page entry point). Still
-explicitly NOT built: the tool-call cap (#2), Pro+ hard document pools (#3),
-all of #4's bot/abuse mitigation, badge branding by plan (#5), white-label
-verify pages (#6), and audit export (#7). Also not built: the return-to-
+dashboard error line, no standalone billing-page entry point). Shipped
+2026-08-03 (commit `5ce4a37`): the disposable-email-blocking piece of #4's
+bot/abuse mitigation. Still explicitly NOT built: the tool-call cap (#2),
+Pro+ hard document pools (#3), the rest of #4 (GitHub/LinkedIn OAuth
+enforcement, free-tier-specific rate-limit tightening), badge branding by
+plan (#5), white-label verify pages (#6), and audit export (#7). Also not
+built: the return-to-
 same-conversation-after-checkout refinement from #1a (cross-subdomain
 redirect safety between signedby.ai and console.signedby.ai needs its own
 pass) — both the Pro checkout and the new credit-pack checkout still land on
