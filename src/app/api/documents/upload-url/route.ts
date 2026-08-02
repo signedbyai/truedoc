@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Too many uploads. Try again in a few minutes." }, { status: 429 });
   }
 
-  const capResponse = await checkFreePlanDocCap(supabase, orgId);
+  const capResponse = await checkFreePlanDocCap(supabase, orgId, "upload_url");
   if (capResponse) return capResponse;
 
   const json = await request.json().catch(() => null);

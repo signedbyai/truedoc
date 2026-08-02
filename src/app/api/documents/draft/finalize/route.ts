@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
   // Same free-plan monthly cap as a fresh upload/duplicate — this still
   // creates a new `documents` row.
-  const capResponse = await checkFreePlanDocCap(supabase, orgId);
+  const capResponse = await checkFreePlanDocCap(supabase, orgId, "draft_finalize");
   if (capResponse) return capResponse;
 
   let pdfBytes: Buffer;

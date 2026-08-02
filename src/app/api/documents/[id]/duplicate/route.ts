@@ -32,7 +32,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   // Same free-plan monthly cap as a fresh upload (POST /api/documents) —
   // duplicating still creates a new `documents` row, so without this check
   // a Free org could upload once and duplicate past the limit for free.
-  const capResponse = await checkFreePlanDocCap(supabase, orgId);
+  const capResponse = await checkFreePlanDocCap(supabase, orgId, "duplicate");
   if (capResponse) return capResponse;
 
   const documentId = crypto.randomUUID();

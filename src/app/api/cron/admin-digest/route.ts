@@ -83,6 +83,42 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: documentsError.message }, { status: 500 });
   }
 
+  // Free-plan 3-doc/month cap hits (2026-08-03, direct ask: "monitor how
+  // many users hit the 3-doc limit or attempt a 4th API call" + "maybe in
+  // the daily email report" — see 0043_plan_cap_hits.sql and
+  // checkFreePlanDocCap in lib/plan.ts, the single choke point every
+  // document-creating route logs a row to on every 402). Counts rows, not
+  // orgs — an org that keeps trying after the first block logs one row per
+  // attempt, which is the point: it's a proxy for how much someone actually
+  // wants past the wall, not just whether they've seen it once.
+  const dayAgoDate = new Date(dayAgo).toISOString();
+  const weekAgoDate = new Date(weekAgo).toISOString();
+  const monthAgoDate = new Date(monthAgo).toISOString();
+  const { count: capHitsToday, error: capHitsTodayError } = await admin
+    .from("plan_cap_hits")
+    .select("*", { count: "exact", head: true })
+    .gte("created_at", dayAgoDate);
+  const { count: capHitsWeek, error: capHitsWeekError } = await admin
+    .from("plan_cap_hits")
+    .select("*", { count: "exact", head: true })
+    .gte("created_at", weekAgoDate);
+  const { data: capHitsMonthRows, error: capHitsMonthError } = await admin
+    .from("plan_cap_hits")
+    .select("org_id, source")
+    .gte("created_at", monthAgoDate);
+  if (capHitsTodayError || capHitsWeekError || capHitsMonthError) {
+    console.error(
+      "Admin digest cron: plan_cap_hits count failed",
+      capHitsTodayError || capHitsWeekError || capHitsMonthError
+    );
+    // Non-fatal -- this is a lower-stakes section than the core traction
+    // numbers above, better to send the digest without it than fail the
+    // whole cron over a table that could still need its migration applied.
+  }
+  const capHitsMonth = capHitsMonthRows?.length ?? 0;
+  const capHitsMonthOrgs = new Set((capHitsMonthRows || []).map((r) => r.org_id).filter(Boolean)).size;
+  const apiCapHitsMonth = (capHitsMonthRows || []).filter((r) => r.source === "api_v1_documents").length;
+
   const dateLabel = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -104,6 +140,11 @@ export async function GET(request: Request) {
       paidOrgs,
       totalSignings: totalSignings ?? 0,
       totalDocumentsSigned: totalDocumentsSigned ?? 0,
+      capHitsToday: capHitsToday ?? 0,
+      capHitsWeek: capHitsWeek ?? 0,
+      capHitsMonth,
+      capHitsMonthOrgs,
+      apiCapHitsMonth,
     });
   } catch (err) {
     console.error("Admin digest cron: send failed", err);
@@ -120,5 +161,10 @@ export async function GET(request: Request) {
     paidOrgs,
     totalSignings: totalSignings ?? 0,
     totalDocumentsSigned: totalDocumentsSigned ?? 0,
+    capHitsToday: capHitsToday ?? 0,
+    capHitsWeek: capHitsWeek ?? 0,
+    capHitsMonth,
+    capHitsMonthOrgs,
+    apiCapHitsMonth,
   });
 }

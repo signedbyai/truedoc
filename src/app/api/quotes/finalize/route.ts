@@ -80,7 +80,7 @@ export async function POST(request: Request) {
 
   // Same free-plan monthly cap as a fresh upload/duplicate/AI-draft — this
   // still creates a new `documents` row.
-  const capResponse = await checkFreePlanDocCap(supabase, orgId);
+  const capResponse = await checkFreePlanDocCap(supabase, orgId, "quote_finalize");
   if (capResponse) return capResponse;
 
   const fromName = orgs.find((o) => o.id === orgId)?.name ?? "";

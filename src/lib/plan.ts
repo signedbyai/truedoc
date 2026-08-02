@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // Feature gating for paid-tier functionality. Kept as a single source of
 // truth so the app logic always matches what pricing-cards.tsx promises —
@@ -178,7 +179,13 @@ export async function checkFreePlanDocCap(
   // anywhere in this codebase, so the library's own default type params
   // apply to both without needing an explicit `any` here.
   supabase: SupabaseClient,
-  orgId: string
+  orgId: string,
+  // Which route/flow is calling this, for the plan_cap_hits log below —
+  // e.g. "dashboard_upload", "api_v1_documents". Free text (see
+  // 0043_plan_cap_hits.sql), not required at every call site's leisure but
+  // required here so a hit is never logged unlabeled. See each call site
+  // for its exact string.
+  source: string
 ): Promise<NextResponse | null> {
   const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
   if (org && org.plan !== "free") return null;
@@ -194,6 +201,22 @@ export async function checkFreePlanDocCap(
     .gte("created_at", startOfMonth.toISOString());
 
   if ((count ?? 0) >= 3) {
+    // Best-effort log (2026-08-03, direct ask: "monitor how many users hit
+    // the 3-doc limit or attempt a 4th API call"). Always via a fresh
+    // admin client, regardless of which client this function was called
+    // with — some callers pass a session-bound client with no insert
+    // policy on plan_cap_hits (RLS on, no policies, service-role only, same
+    // as feedback.sql). Awaited (not fire-and-forget) since serverless
+    // functions can be frozen/killed right after the response is sent, but
+    // a logging failure still must never block or shadow the real 402
+    // below.
+    try {
+      const { error } = await createAdminClient().from("plan_cap_hits").insert({ org_id: orgId, source });
+      if (error) console.error("plan_cap_hits log failed", error);
+    } catch (err) {
+      console.error("plan_cap_hits log failed", err);
+    }
+
     return NextResponse.json(
       { error: "You've hit the Free plan's 3 documents/month limit. Upgrade to keep going.", upgrade: true },
       { status: 402 }

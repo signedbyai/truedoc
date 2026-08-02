@@ -147,7 +147,7 @@ export async function POST(request: Request) {
   // document. The service-role admin client is fine here — checkFreePlanDocCap
   // only reads/counts organizations.plan and documents, both accessible via it.
   if (freeCapped) {
-    const capResponse = await checkFreePlanDocCap(admin, orgId);
+    const capResponse = await checkFreePlanDocCap(admin, orgId, "api_v1_documents");
     if (capResponse) return capResponse;
   }
 

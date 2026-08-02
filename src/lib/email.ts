@@ -307,6 +307,11 @@ export async function sendAdminDigestEmail(opts: {
   paidOrgs: number;
   totalSignings: number;
   totalDocumentsSigned: number;
+  capHitsToday: number;
+  capHitsWeek: number;
+  capHitsMonth: number;
+  capHitsMonthOrgs: number;
+  apiCapHitsMonth: number;
 }) {
   const totalOrgs = opts.freeOrgs + opts.paidOrgs;
   const row = (label: string, value: string | number) => `
@@ -349,10 +354,19 @@ export async function sendAdminDigestEmail(opts: {
         </table>
 
         <h3 style="margin:0 0 4px;color:#0f172a;font-size:15px;">Customers (organizations)</h3>
-        <table style="width:100%;border-collapse:collapse;">
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
           ${row("Free", opts.freeOrgs)}
           ${row("Paid", opts.paidOrgs)}
           ${row("Total", totalOrgs)}
+        </table>
+
+        <h3 style="margin:0 0 4px;color:#0f172a;font-size:15px;">Free plan 3-doc cap hits</h3>
+        <table style="width:100%;border-collapse:collapse;">
+          ${row("Today", opts.capHitsToday)}
+          ${row("This week", opts.capHitsWeek)}
+          ${row("This month", opts.capHitsMonth)}
+          ${row("Distinct orgs this month", opts.capHitsMonthOrgs)}
+          ${row("Of which, via API", opts.apiCapHitsMonth)}
         </table>
       </div>
     `,

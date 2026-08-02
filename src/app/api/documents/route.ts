@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
   // Re-check the plan cap right before the insert (upload-url checked it too,
   // but a burst could slip between the two calls).
-  const capResponse = await checkFreePlanDocCap(supabase, orgId);
+  const capResponse = await checkFreePlanDocCap(supabase, orgId, "documents_insert");
   if (capResponse) return capResponse;
 
   // Pull the uploaded object back to validate it.
