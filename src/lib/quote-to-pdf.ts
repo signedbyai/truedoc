@@ -86,9 +86,23 @@ export type QuoteRenderInput = {
 // A space before the number for multi-letter symbols ("CHF 150.00"), none
 // for single-glyph ones ("$150.00") — same convention currency.ts's
 // formatPrice already uses for pricing display.
+//
+// ₹ is swapped for "Rs." here specifically — PDF rendering only, found
+// 2026-08-03 while checking whether INR was actually wired end-to-end for
+// Magic Quote. It's a real, currently-live bug, not a hypothetical: this
+// file embeds pdf-lib's StandardFonts.Helvetica, which uses WinAnsiEncoding
+// (Windows-1252) — confirmed via a direct pdf-lib call that it throws
+// `WinAnsi cannot encode "₹" (0x20b9)` rather than silently dropping the
+// glyph, so finalizing any INR quote would crash PDF generation outright.
+// Same class of font-encoding gap as the AI-draft language feature's
+// documented WinAnsi limit ([[ai-draft-language-option]]). The on-screen
+// picker/review UI (magic-quote-form.tsx) keeps the real ₹ glyph —
+// browsers render it fine — only the server-side PDF string needs the
+// ASCII-safe substitute.
 function formatAmount(currency: string, amount: number): string {
+  const pdfSafeCurrency = currency === "₹" ? "Rs." : currency;
   const formatted = amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return currency.length > 1 ? `${currency} ${formatted}` : `${currency}${formatted}`;
+  return pdfSafeCurrency.length > 1 ? `${pdfSafeCurrency} ${formatted}` : `${pdfSafeCurrency}${formatted}`;
 }
 
 function formatDate(iso: string): string {

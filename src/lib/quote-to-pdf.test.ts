@@ -34,6 +34,23 @@ describe("quoteToPdf", () => {
     expect(loaded.getPageCount()).toBe(result.pageCount);
   });
 
+  // Regression test for 2026-08-03: pdf-lib's StandardFonts.Helvetica uses
+  // WinAnsiEncoding, which has no Indian Rupee Sign (₹, U+20B9) — drawing it
+  // directly threw `WinAnsi cannot encode "₹"` and crashed PDF generation
+  // outright for any INR quote, even though ₹ was already a selectable
+  // currency in the picker (QUOTE_CURRENCY_SYMBOLS). formatAmount now swaps
+  // ₹ for "Rs." on the PDF-rendering path only.
+  it("renders an INR quote without throwing, using an ASCII-safe symbol", async () => {
+    const totals = computeQuoteTotals([{ description: "Consulting", quantity: 1, unitPrice: 500 }], 18);
+    const result = await quoteToPdf(baseInput({ currency: "₹", totals }));
+    const loaded = await PDFDocument.load(result.bytes);
+    expect(loaded.getPageCount()).toBeGreaterThanOrEqual(1);
+
+    const items = await extractPdfTextPositions(result.bytes);
+    expect(items.some((i) => i.str.includes("Rs."))).toBe(true);
+    expect(items.some((i) => i.str.includes("₹"))).toBe(false);
+  });
+
   // Regression test for 2026-07-25: on a blank (no bill-to name yet) quote,
   // Spanish's and French's longer "Print Name:" translation used to leave
   // only ROW_LINE_HEIGHT (14px, ~0.018 of the 792px page) below the label
