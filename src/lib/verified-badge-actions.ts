@@ -5,6 +5,7 @@ import { getFromR2, uploadToR2 } from "@/lib/r2";
 import { appUrl } from "@/lib/email";
 import { checkConsoleCap, recordConsoleUsage } from "@/lib/console-usage";
 import { getOrgIdentityStatus } from "@/lib/identity";
+import { grantSealCreditReferralReward } from "@/lib/referral";
 import { generateSignedPdf, buildStandaloneCertificatePdf, flattenOriginalForm } from "@/lib/generate-signed-pdf";
 import { timestampWithFallback, type TimestampTsa } from "@/lib/timestamp-authority";
 import type { ConsoleActionError } from "@/lib/console-actions";
@@ -251,6 +252,21 @@ export async function sealDocumentAction(params: {
   }
 
   if (metered) await recordConsoleUsage(orgId);
+
+  // Free-tier seal-credit referral reward (REFERRAL_SCOPE.md) — fires once,
+  // on this org's first-ever seal (the qualifying event). Best-effort: a
+  // failure here must never block the seal itself, same reasoning as the
+  // plan_cap_hits logging in plan.ts.
+  try {
+    const { count: sealCount } = await admin
+      .from("documents")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", orgId)
+      .eq("is_verified_badge", true);
+    if (sealCount === 1) await grantSealCreditReferralReward(admin, orgId);
+  } catch (err) {
+    console.error("Referral seal-credit reward failed", err);
+  }
 
   return {
     ok: true,

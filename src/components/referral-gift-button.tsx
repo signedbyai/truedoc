@@ -3,12 +3,16 @@
 import { useEffect, useState } from "react";
 import { Gift, Copy, Check, X } from "lucide-react";
 
-// Persistent header entry point for the referral loop ("give a month, get a
-// month"). The bigger ReferralCard still lives on the dashboard home and is
-// what actually *claims* a pending ?ref on signup — this button only reads
-// the org's own link so it can be shared from any page. A one-time orange
-// nudge dot (localStorage) fades after the first open so it's discoverable
-// without nagging.
+// Persistent header entry point for the referral programme. The bigger
+// ReferralCard still lives on the dashboard home and is what actually
+// *claims* a pending ?ref on signup — this button only reads the org's own
+// link so it can be shared from any page. A one-time orange nudge dot
+// (localStorage) fades after the first open so it's discoverable without
+// nagging.
+//
+// Plan-conditional copy (REFERRAL_SCOPE.md, 2026-08-03) — same branch as
+// ReferralCard: Free gets the seal-credits pitch, Pro+ keeps "give a month,
+// get a month" unchanged.
 const SEEN_KEY = "sb_ref_gift_seen";
 
 export function ReferralGiftButton({ variant = "icon" }: { variant?: "icon" | "label" }) {
@@ -16,6 +20,9 @@ export function ReferralGiftButton({ variant = "icon" }: { variant?: "icon" | "l
   const [loaded, setLoaded] = useState(false);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [plan, setPlan] = useState<string>("free");
+  const [creditsPerReferral, setCreditsPerReferral] = useState(5);
+  const isFree = plan === "free";
   const [seen, setSeen] = useState(true); // assume seen until we know otherwise, avoids a dot-flash
 
   useEffect(() => {
@@ -29,6 +36,8 @@ export function ReferralGiftButton({ variant = "icon" }: { variant?: "icon" | "l
       .then((data) => {
         if (!active) return;
         if (data?.link) setLink(data.link);
+        setPlan(data?.plan ?? "free");
+        setCreditsPerReferral(data?.creditsPerReferral ?? 5);
         try {
           setSeen(window.localStorage.getItem(SEEN_KEY) === "1");
         } catch {
@@ -103,7 +112,9 @@ export function ReferralGiftButton({ variant = "icon" }: { variant?: "icon" | "l
           />
           <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
             <div className="flex items-start justify-between">
-              <p className="text-sm font-semibold text-slate-900">Give a month, get a month</p>
+              <p className="text-sm font-semibold text-slate-900">
+                {isFree ? "Share the seal, get credits" : "Give a month, get a month"}
+              </p>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -114,8 +125,9 @@ export function ReferralGiftButton({ variant = "icon" }: { variant?: "icon" | "l
               </button>
             </div>
             <p className="mt-1 text-xs text-slate-600">
-              When someone signs up with your link and subscribes, they get their first month of Pro free — and so
-              do you.
+              {isFree
+                ? `When someone signs up with your link and verifies their identity to seal their first Verified Badge document, you get ${creditsPerReferral} seal credits and they get 3 — no payment required.`
+                : "When someone signs up with your link and subscribes, they get their first month of Pro free — and so do you."}
             </p>
             <div className="mt-3 flex gap-2">
               <input
