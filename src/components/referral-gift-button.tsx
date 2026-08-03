@@ -49,6 +49,21 @@ import { computePopoverPosition, type PopoverCoords } from "@/lib/popover-positi
 // follow-up: edge-anchoring landed the popover hard against the screen's
 // right edge instead of roughly under the centered pill's icon) — see
 // popover-position.ts's own comment on that value.
+//
+// Closing on an outside tap (2026-08-04, direct bug report: on mobile
+// console, tapping anywhere else didn't close the popover — only tapping
+// the trigger icon again did) used to be an invisible `fixed inset-0`
+// button underneath the popover, relying on it winning DOM hit-testing
+// against whatever else was on the page. That's fragile in exactly this
+// app's shell: the mobile chat pane has its own `fixed`-positioned
+// composer bar and attach-menu overlays nearby, and depending on exactly
+// what a tap lands on, the invisible button doesn't reliably end up on
+// top. Replaced with the standard, more robust pattern: a capture-phase
+// `pointerdown` listener on `document` while open, closing unless the
+// event's target is inside the trigger button or the popover panel
+// itself (both checked via ref `.contains()`). This doesn't depend on
+// z-index/hit-testing at all — it fires for literally any pointer-down
+// anywhere in the document.
 const SEEN_KEY = "sb_ref_gift_seen";
 const POPOVER_WIDTH = 288; // w-72
 
@@ -69,6 +84,21 @@ export function ReferralGiftButton({
   const isFree = plan === "free";
   const [seen, setSeen] = useState(true); // assume seen until we know otherwise, avoids a dot-flash
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(e: PointerEvent) {
+      const target = e.target as Node;
+      if (buttonRef.current?.contains(target)) return; // the trigger's own onClick handles this
+      if (panelRef.current?.contains(target)) return; // clicks inside the popover (Copy, Close, the link) handle themselves
+      setOpen(false);
+    }
+    // Capture phase so this can't be defeated by an ancestor's own click
+    // handler calling stopPropagation before it'd otherwise bubble here.
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () => document.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [open]);
 
   useEffect(() => {
     // Reading localStorage + setState happen inside the async .then (not
@@ -160,81 +190,73 @@ export function ReferralGiftButton({
         coords &&
         typeof document !== "undefined" &&
         createPortal(
-          <>
-            <button
-              type="button"
-              aria-hidden="true"
-              tabIndex={-1}
-              onClick={() => setOpen(false)}
-              className="fixed inset-0 z-40 cursor-default"
-            />
-            <div
-              style={{ top: coords.top, left: coords.left, width: POPOVER_WIDTH }}
-              className={`fixed z-50 ${
-                dark
-                  ? "rounded-xl border border-white/10 bg-neutral-900 p-4 shadow-lg shadow-black/40 backdrop-blur"
-                  : "rounded-xl border border-slate-200 bg-white p-4 shadow-lg"
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <p className={`text-sm font-semibold ${dark ? "text-white" : "text-slate-900"}`}>
-                  {isFree ? "Share the seal, get credits" : "Give a month, get a month"}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  aria-label="Close"
-                  className={dark ? "-mr-1 -mt-1 text-neutral-400 hover:text-white" : "-mr-1 -mt-1 text-slate-400 hover:text-slate-600"}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <p className={`mt-1 text-xs ${dark ? "text-neutral-300" : "text-slate-600"}`}>
-                {isFree
-                  ? `When someone signs up with your link and verifies their identity to seal their first Verified Badge document, you get ${creditsPerReferral} seal credits and they get 3 — no payment required.`
-                  : "When someone signs up with your link and subscribes, they get their first month of Pro free — and so do you."}
+          <div
+            ref={panelRef}
+            style={{ top: coords.top, left: coords.left, width: POPOVER_WIDTH }}
+            className={`fixed z-50 ${
+              dark
+                ? "rounded-xl border border-white/10 bg-neutral-900 p-4 shadow-lg shadow-black/40 backdrop-blur"
+                : "rounded-xl border border-slate-200 bg-white p-4 shadow-lg"
+            }`}
+          >
+            <div className="flex items-start justify-between">
+              <p className={`text-sm font-semibold ${dark ? "text-white" : "text-slate-900"}`}>
+                {isFree ? "Share the seal, get credits" : "Give a month, get a month"}
               </p>
-              <div className="mt-3 flex gap-2">
-                <input
-                  readOnly
-                  value={link ?? ""}
-                  onFocus={(e) => e.currentTarget.select()}
-                  className={
-                    dark
-                      ? "flex-1 rounded-md border border-white/10 bg-neutral-950 px-2.5 py-1.5 text-xs text-neutral-200"
-                      : "flex-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700"
-                  }
-                />
-                <button
-                  type="button"
-                  onClick={copy}
-                  disabled={!link}
-                  className={
-                    dark
-                      ? "flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-white/20 disabled:opacity-50"
-                      : "flex items-center gap-1 rounded-md border border-slate-900 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-                  }
-                >
-                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                  {copied ? "Copied" : "Copy"}
-                </button>
-              </div>
-              {/* The popover is the entry point most people actually use —
-                  it's in the nav on every page, where the dashboard card
-                  only appears on home. It needs the terms link just as
-                  much. */}
-              <a
-                href="/referral-terms"
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Close"
+                className={dark ? "-mr-1 -mt-1 text-neutral-400 hover:text-white" : "-mr-1 -mt-1 text-slate-400 hover:text-slate-600"}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className={`mt-1 text-xs ${dark ? "text-neutral-300" : "text-slate-600"}`}>
+              {isFree
+                ? `When someone signs up with your link and verifies their identity to seal their first Verified Badge document, you get ${creditsPerReferral} seal credits and they get 3 — no payment required.`
+                : "When someone signs up with your link and subscribes, they get their first month of Pro free — and so do you."}
+            </p>
+            <div className="mt-3 flex gap-2">
+              <input
+                readOnly
+                value={link ?? ""}
+                onFocus={(e) => e.currentTarget.select()}
                 className={
                   dark
-                    ? "mt-3 inline-block text-xs font-medium text-neutral-400 hover:text-neutral-200"
-                    : "mt-3 inline-block text-xs font-medium text-slate-500 hover:text-slate-700"
+                    ? "flex-1 rounded-md border border-white/10 bg-neutral-950 px-2.5 py-1.5 text-xs text-neutral-200"
+                    : "flex-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700"
+                }
+              />
+              <button
+                type="button"
+                onClick={copy}
+                disabled={!link}
+                className={
+                  dark
+                    ? "flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-white/20 disabled:opacity-50"
+                    : "flex items-center gap-1 rounded-md border border-slate-900 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50"
                 }
               >
-                Terms and conditions
-              </a>
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? "Copied" : "Copy"}
+              </button>
             </div>
-          </>,
+            {/* The popover is the entry point most people actually use —
+                it's in the nav on every page, where the dashboard card
+                only appears on home. It needs the terms link just as
+                much. */}
+            <a
+              href="/referral-terms"
+              className={
+                dark
+                  ? "mt-3 inline-block text-xs font-medium text-neutral-400 hover:text-neutral-200"
+                  : "mt-3 inline-block text-xs font-medium text-slate-500 hover:text-slate-700"
+              }
+            >
+              Terms and conditions
+            </a>
+          </div>,
           document.body
         )}
     </div>

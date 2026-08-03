@@ -53,6 +53,24 @@ function ConsolePillMoreMenu({
   const [coords, setCoords] = useState<PopoverCoords | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Close on any outside pointerdown (2026-08-04, direct bug report: on
+  // mobile console, tapping elsewhere didn't close this menu — see
+  // referral-gift-button.tsx's matching comment for the full reasoning on
+  // why an invisible full-screen "backdrop button" was replaced with this
+  // — same fix applies here since it's the exact same pill/portal shape.
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(e: PointerEvent) {
+      const target = e.target as Node;
+      if (buttonRef.current?.contains(target)) return;
+      if (panelRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () => document.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [open]);
 
   async function logout() {
     setLoggingOut(true);
@@ -90,40 +108,32 @@ function ConsolePillMoreMenu({
         coords &&
         typeof document !== "undefined" &&
         createPortal(
-          <>
+          <div
+            ref={panelRef}
+            style={{ top: coords.top, left: coords.left, width: MORE_MENU_WIDTH }}
+            className="fixed z-50 overflow-hidden rounded-xl border border-white/10 bg-neutral-900 py-1 shadow-lg shadow-black/40 backdrop-blur"
+          >
             <button
               type="button"
-              aria-hidden="true"
-              tabIndex={-1}
-              onClick={() => setOpen(false)}
-              className="fixed inset-0 z-40 cursor-default"
-            />
-            <div
-              style={{ top: coords.top, left: coords.left, width: MORE_MENU_WIDTH }}
-              className="fixed z-50 overflow-hidden rounded-xl border border-white/10 bg-neutral-900 py-1 shadow-lg shadow-black/40 backdrop-blur"
+              onClick={() => {
+                setOpen(false);
+                onSettings();
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10 hover:text-white"
             >
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  onSettings();
-                }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10 hover:text-white"
-              >
-                <Settings className="h-4 w-4" />
-                Settings
-              </button>
-              <button
-                type="button"
-                onClick={logout}
-                disabled={loggingOut}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10 hover:text-white disabled:opacity-50"
-              >
-                <LogOut className="h-4 w-4" />
-                {loggingOut ? "Logging out…" : "Log out"}
-              </button>
-            </div>
-          </>,
+              <Settings className="h-4 w-4" />
+              Settings
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              disabled={loggingOut}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10 hover:text-white disabled:opacity-50"
+            >
+              <LogOut className="h-4 w-4" />
+              {loggingOut ? "Logging out…" : "Log out"}
+            </button>
+          </div>,
           document.body
         )}
     </div>
