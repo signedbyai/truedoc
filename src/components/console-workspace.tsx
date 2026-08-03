@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { FileText, History, Home, LogOut, MoreHorizontal, Settings, X } from "lucide-react";
 import type { ConsoleBillingState } from "@/lib/console-usage";
@@ -13,6 +14,9 @@ import { VerifiedBadgeSettings } from "@/components/verified-badge-settings";
 import { ConsoleUpgradePanel, ConsoleLockedChat } from "@/components/console-upgrade-panel";
 import { ReferralGiftButton } from "@/components/referral-gift-button";
 import { createClient } from "@/lib/supabase/client";
+import { computePopoverPosition, type PopoverCoords } from "@/lib/popover-position";
+
+const MORE_MENU_WIDTH = 160; // w-40
 
 /** Pill icon #4 (2026-08-04, direct instruction: "put settings and logout
  *  in a three dots icon in the pill so the pill does not get too big" —
@@ -26,11 +30,29 @@ import { createClient } from "@/lib/supabase/client";
  *  pill itself at four icons (Home/History/Templates/⋯) plus the referral
  *  gift icon.
  *
- *  `align="left"` (see referral-gift-button.tsx's own comment) applies
- *  here too — same narrow-left-column context, same fix. */
-function ConsolePillMoreMenu({ active, onSettings }: { active: boolean; onSettings: () => void }) {
+ *  Portal-based dropdown, same fix and same reason as
+ *  referral-gift-button.tsx's popover (see that file's comment in full):
+ *  a plain CSS-anchored popover nested inside this pill gets clipped by
+ *  the aside's `overflow-y-auto` and re-contained by the pill's own
+ *  `backdrop-blur`, regardless of which side it's anchored to. Rendering
+ *  into `document.body` via `createPortal`, positioned with
+ *  `computePopoverPosition`, escapes both. */
+function ConsolePillMoreMenu({
+  active,
+  onSettings,
+  align = "left",
+}: {
+  active: boolean;
+  onSettings: () => void;
+  // "left" on desktop (grows into the wide chat pane), "center" on mobile
+  // (see referral-gift-button.tsx's own comment on this value — same
+  // narrow-centered-pill reasoning applies here).
+  align?: "left" | "right" | "center";
+}) {
   const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<PopoverCoords | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   async function logout() {
     setLoggingOut(true);
@@ -41,11 +63,19 @@ function ConsolePillMoreMenu({ active, onSettings }: { active: boolean; onSettin
     window.location.href = "/login";
   }
 
+  function toggle() {
+    if (!open && buttonRef.current) {
+      setCoords(computePopoverPosition(buttonRef.current.getBoundingClientRect(), MORE_MENU_WIDTH, align, window.innerWidth));
+    }
+    setOpen((o) => !o);
+  }
+
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         aria-label="More"
         aria-expanded={open}
         title="More"
@@ -56,39 +86,46 @@ function ConsolePillMoreMenu({ active, onSettings }: { active: boolean; onSettin
         <MoreHorizontal className="h-4 w-4" />
       </button>
 
-      {open && (
-        <>
-          <button
-            type="button"
-            aria-hidden="true"
-            tabIndex={-1}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-40 cursor-default"
-          />
-          <div className="absolute left-0 top-full z-50 mt-2 w-40 overflow-hidden rounded-xl border border-white/10 bg-neutral-900 py-1 shadow-lg shadow-black/40 backdrop-blur">
+      {open &&
+        coords &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <>
             <button
               type="button"
-              onClick={() => {
-                setOpen(false);
-                onSettings();
-              }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10 hover:text-white"
+              aria-hidden="true"
+              tabIndex={-1}
+              onClick={() => setOpen(false)}
+              className="fixed inset-0 z-40 cursor-default"
+            />
+            <div
+              style={{ top: coords.top, left: coords.left, width: MORE_MENU_WIDTH }}
+              className="fixed z-50 overflow-hidden rounded-xl border border-white/10 bg-neutral-900 py-1 shadow-lg shadow-black/40 backdrop-blur"
             >
-              <Settings className="h-4 w-4" />
-              Settings
-            </button>
-            <button
-              type="button"
-              onClick={logout}
-              disabled={loggingOut}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10 hover:text-white disabled:opacity-50"
-            >
-              <LogOut className="h-4 w-4" />
-              {loggingOut ? "Logging out…" : "Log out"}
-            </button>
-          </div>
-        </>
-      )}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  onSettings();
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10 hover:text-white"
+              >
+                <Settings className="h-4 w-4" />
+                Settings
+              </button>
+              <button
+                type="button"
+                onClick={logout}
+                disabled={loggingOut}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10 hover:text-white disabled:opacity-50"
+              >
+                <LogOut className="h-4 w-4" />
+                {loggingOut ? "Logging out…" : "Log out"}
+              </button>
+            </div>
+          </>,
+          document.body
+        )}
     </div>
   );
 }
@@ -469,10 +506,14 @@ export function ConsoleWorkspace({
               <ConsolePillMoreMenu
                 active={mobileSheetOpen && mobileSheetTab === "settings"}
                 onSettings={() => openMobileSheet("settings")}
+                align="center"
               />
               {/* Same referral entry point as the desktop pill above — see
-                  that button's comment. */}
-              <ReferralGiftButton variant="pill" align="left" />
+                  that button's comment. align="center" here (vs. "left" on
+                  desktop) since this pill is horizontally centered on a
+                  narrow screen — edge-anchoring landed the popover hard
+                  against the screen's right edge instead of under the icon. */}
+              <ReferralGiftButton variant="pill" align="center" />
             </div>
           </div>
 

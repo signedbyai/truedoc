@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Gift, Copy, Check, X } from "lucide-react";
+import { computePopoverPosition, type PopoverCoords } from "@/lib/popover-position";
 
 // Persistent header entry point for the referral programme. The bigger
 // ReferralCard still lives on the dashboard home and is what actually
@@ -22,36 +24,51 @@ import { Gift, Copy, Check, X } from "lucide-react";
 // text-neutral-300/hover:bg-white/10 styling exactly, with a dark popover
 // instead of the light one the dashboard's "icon"/"label" variants use.
 //
-// `align` (2026-08-04, direct bug report: "on full screen only the
-// referral popover disappears off to the left of the window") — the
-// popover used to always anchor `right-0` (grow leftward from the
-// button), which is fine in the dashboard nav (button sits near the
-// right edge of a wide bar, plenty of room to its left) but breaks
-// inside console-workspace.tsx's narrow left-hand pill: on a wide/full-
-// screen viewport a 288px-wide popover growing left from an icon that's
-// already close to the page's left edge runs past x=0 and is clipped by
-// the browser viewport, not just its own container (an `absolute`
-// element isn't bounded by its non-`relative` ancestors' widths, only by
-// the actual browser window). `align="left"` flips it to grow rightward
-// instead, which is safe there since the wide chat pane fills the space
-// immediately to the right.
+// The popover renders via a portal into `document.body`, positioned with
+// `position: fixed` from `computePopoverPosition` (popover-position.ts) —
+// NOT plain CSS `absolute`/`right-0`/`left-0` anymore. Two real bugs found
+// 2026-08-04 forced this: (1) "on full screen only the referral popover
+// disappears off to the left of the window" — a plain `absolute right-0`
+// popover growing left ran past the viewport edge when this button sits
+// near the left of a wide screen (as it does in console's pill). Flipping
+// to `left-0` (an `align` prop, first attempted fix) didn't actually solve
+// it: (2) the pill lives inside console-workspace.tsx's `overflow-y-auto`
+// aside, and the pill's own wrapper has `backdrop-blur` — which
+// establishes a containing block for `position: fixed` descendants, same
+// as `transform` does. Any CSS-anchored popover nested in that markup
+// gets clipped by the aside's scroll bounds or re-contained by the
+// backdrop-blur ancestor, which is what "popover renders underneath the
+// settings panel" actually was. A portal is the real fix: the DOM node is
+// moved to be a direct child of `<body>`, escaping every ancestor's
+// overflow/containing-block behavior entirely, positioned purely by the
+// inline `top`/`left` computed from the trigger button's own
+// `getBoundingClientRect()`. `align` is now just the *preferred* growth
+// direction — `computePopoverPosition`'s own viewport clamp is what
+// actually guarantees it never runs off-screen, regardless of context.
+// Console's mobile pill passes `align="center"` (added same day, direct
+// follow-up: edge-anchoring landed the popover hard against the screen's
+// right edge instead of roughly under the centered pill's icon) — see
+// popover-position.ts's own comment on that value.
 const SEEN_KEY = "sb_ref_gift_seen";
+const POPOVER_WIDTH = 288; // w-72
 
 export function ReferralGiftButton({
   variant = "icon",
   align = "right",
 }: {
   variant?: "icon" | "label" | "pill";
-  align?: "left" | "right";
+  align?: "left" | "right" | "center";
 }) {
   const [link, setLink] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<PopoverCoords | null>(null);
   const [copied, setCopied] = useState(false);
   const [plan, setPlan] = useState<string>("free");
   const [creditsPerReferral, setCreditsPerReferral] = useState(5);
   const isFree = plan === "free";
   const [seen, setSeen] = useState(true); // assume seen until we know otherwise, avoids a dot-flash
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     // Reading localStorage + setState happen inside the async .then (not
@@ -82,6 +99,9 @@ export function ReferralGiftButton({
   }, []);
 
   function toggle() {
+    if (!open && buttonRef.current) {
+      setCoords(computePopoverPosition(buttonRef.current.getBoundingClientRect(), POPOVER_WIDTH, align, window.innerWidth));
+    }
     setOpen((o) => !o);
     if (!seen) {
       setSeen(true);
@@ -113,6 +133,7 @@ export function ReferralGiftButton({
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         type="button"
         onClick={toggle}
         aria-label="Refer a friend"
@@ -135,81 +156,87 @@ export function ReferralGiftButton({
         )}
       </button>
 
-      {open && (
-        <>
-          <button
-            type="button"
-            aria-hidden="true"
-            tabIndex={-1}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-40 cursor-default"
-          />
-          <div
-            className={`absolute top-full z-50 mt-2 w-72 ${align === "left" ? "left-0" : "right-0"} ${
-              dark
-                ? "rounded-xl border border-white/10 bg-neutral-900 p-4 shadow-lg shadow-black/40 backdrop-blur"
-                : "rounded-xl border border-slate-200 bg-white p-4 shadow-lg"
-            }`}
-          >
-            <div className="flex items-start justify-between">
-              <p className={`text-sm font-semibold ${dark ? "text-white" : "text-slate-900"}`}>
-                {isFree ? "Share the seal, get credits" : "Give a month, get a month"}
-              </p>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Close"
-                className={dark ? "-mr-1 -mt-1 text-neutral-400 hover:text-white" : "-mr-1 -mt-1 text-slate-400 hover:text-slate-600"}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <p className={`mt-1 text-xs ${dark ? "text-neutral-300" : "text-slate-600"}`}>
-              {isFree
-                ? `When someone signs up with your link and verifies their identity to seal their first Verified Badge document, you get ${creditsPerReferral} seal credits and they get 3 — no payment required.`
-                : "When someone signs up with your link and subscribes, they get their first month of Pro free — and so do you."}
-            </p>
-            <div className="mt-3 flex gap-2">
-              <input
-                readOnly
-                value={link ?? ""}
-                onFocus={(e) => e.currentTarget.select()}
-                className={
-                  dark
-                    ? "flex-1 rounded-md border border-white/10 bg-neutral-950 px-2.5 py-1.5 text-xs text-neutral-200"
-                    : "flex-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700"
-                }
-              />
-              <button
-                type="button"
-                onClick={copy}
-                disabled={!link}
-                className={
-                  dark
-                    ? "flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-white/20 disabled:opacity-50"
-                    : "flex items-center gap-1 rounded-md border border-slate-900 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-                }
-              >
-                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                {copied ? "Copied" : "Copy"}
-              </button>
-            </div>
-            {/* The popover is the entry point most people actually use — it's
-                in the nav on every page, where the dashboard card only appears
-                on home. It needs the terms link just as much. */}
-            <a
-              href="/referral-terms"
-              className={
+      {open &&
+        coords &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <>
+            <button
+              type="button"
+              aria-hidden="true"
+              tabIndex={-1}
+              onClick={() => setOpen(false)}
+              className="fixed inset-0 z-40 cursor-default"
+            />
+            <div
+              style={{ top: coords.top, left: coords.left, width: POPOVER_WIDTH }}
+              className={`fixed z-50 ${
                 dark
-                  ? "mt-3 inline-block text-xs font-medium text-neutral-400 hover:text-neutral-200"
-                  : "mt-3 inline-block text-xs font-medium text-slate-500 hover:text-slate-700"
-              }
+                  ? "rounded-xl border border-white/10 bg-neutral-900 p-4 shadow-lg shadow-black/40 backdrop-blur"
+                  : "rounded-xl border border-slate-200 bg-white p-4 shadow-lg"
+              }`}
             >
-              Terms and conditions
-            </a>
-          </div>
-        </>
-      )}
+              <div className="flex items-start justify-between">
+                <p className={`text-sm font-semibold ${dark ? "text-white" : "text-slate-900"}`}>
+                  {isFree ? "Share the seal, get credits" : "Give a month, get a month"}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  aria-label="Close"
+                  className={dark ? "-mr-1 -mt-1 text-neutral-400 hover:text-white" : "-mr-1 -mt-1 text-slate-400 hover:text-slate-600"}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <p className={`mt-1 text-xs ${dark ? "text-neutral-300" : "text-slate-600"}`}>
+                {isFree
+                  ? `When someone signs up with your link and verifies their identity to seal their first Verified Badge document, you get ${creditsPerReferral} seal credits and they get 3 — no payment required.`
+                  : "When someone signs up with your link and subscribes, they get their first month of Pro free — and so do you."}
+              </p>
+              <div className="mt-3 flex gap-2">
+                <input
+                  readOnly
+                  value={link ?? ""}
+                  onFocus={(e) => e.currentTarget.select()}
+                  className={
+                    dark
+                      ? "flex-1 rounded-md border border-white/10 bg-neutral-950 px-2.5 py-1.5 text-xs text-neutral-200"
+                      : "flex-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700"
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={copy}
+                  disabled={!link}
+                  className={
+                    dark
+                      ? "flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-white/20 disabled:opacity-50"
+                      : "flex items-center gap-1 rounded-md border border-slate-900 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                  }
+                >
+                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+              {/* The popover is the entry point most people actually use —
+                  it's in the nav on every page, where the dashboard card
+                  only appears on home. It needs the terms link just as
+                  much. */}
+              <a
+                href="/referral-terms"
+                className={
+                  dark
+                    ? "mt-3 inline-block text-xs font-medium text-neutral-400 hover:text-neutral-200"
+                    : "mt-3 inline-block text-xs font-medium text-slate-500 hover:text-slate-700"
+                }
+              >
+                Terms and conditions
+              </a>
+            </div>
+          </>,
+          document.body
+        )}
     </div>
   );
 }
