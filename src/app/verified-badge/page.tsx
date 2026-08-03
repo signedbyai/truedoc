@@ -15,8 +15,13 @@ import { consoleUrl } from "@/lib/console-host";
 // product by name (a wedge against a third-party pain point, not a
 // head-to-head comparison the way /vs/* pages are).
 const TITLE = "Verified Badge — pre-verify your work before a client's AI detector does | SignedBy";
+// DESCRIPTION corrected 2026-08-01 (direct instruction, following a console
+// sign-up/login audit): this used to say "Console/MCP, Pro plan or higher,"
+// contradicting the page's own body copy below (which correctly advertises
+// Free tier) — a misleading Google/social preview for exactly the free-tier
+// audience this page targets. See CONSOLE_FREE_TIER_SCOPE.md.
 const DESCRIPTION =
-  "Seal a finished file as unaltered and identity-verified, then embed a scannable proof badge on the deliverable. Anyone can check it, with no account needed. Console/MCP, Pro plan or higher.";
+  "Seal a finished file as unaltered and identity-verified, then embed a scannable proof badge on the deliverable. Anyone can check it, with no account needed. Free to start, no card required.";
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -26,10 +31,12 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
-// Console-gated (Pro+, Console/MCP only — no dashboard button, see the
-// scope doc's Decisions) — so the CTA sends someone to console.signedby.ai
-// to sign up, same cross-host pattern /console/page.tsx uses, rather than
-// the plain dashboard signup magic-quote links to.
+// Console-gated (Console/MCP only, no dashboard button — see the scope
+// doc's Decisions) — so the CTA sends someone to console.signedby.ai to
+// sign up, same cross-host pattern /console/page.tsx uses, rather than the
+// plain dashboard signup magic-quote links to. Free on every plan, not
+// Pro+-gated — that was a stale assumption in this comment and the page's
+// own meta DESCRIPTION until 2026-08-01, see CONSOLE_FREE_TIER_SCOPE.md.
 const START_HREF = consoleUrl("/login?intent=signup&next=/app");
 
 const FAQ = [

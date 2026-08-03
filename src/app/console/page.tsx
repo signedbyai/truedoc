@@ -11,9 +11,19 @@ import { isConsoleHost, consoleUrl } from "@/lib/console-host";
 import { getUserAndOrg } from "@/lib/org";
 import { planHasFeature } from "@/lib/plan";
 
+// Copy rewrite 2026-08-01 (direct instruction, following a console
+// sign-up/login audit): this page previously read as Pro-or-nothing
+// throughout — hero subtext and both a feature card and the pricing
+// section all said "Requires the Pro plan or higher" with zero mention
+// that console access itself, and Verified Badge sealing specifically,
+// are free on every plan (see CONSOLE_FREE_TIER_SCOPE.md, built 08-02).
+// Only *sending* documents/templates from the console still needs Pro+
+// (templates stays a Pro+-gated feature — see plan.ts's FEATURE_PLANS).
+// The scope doc itself flagged this page's copy as needing a rewrite
+// once Free tier shipped; that rewrite hadn't happened until now.
 const TITLE = "SignedBy Console — use your favorite AI to send signing requests";
 const DESCRIPTION =
-  "Signing infra made for Europe. Wire an AI agent, CRM, or app into SignedBy's metered API — no separate developer plan, no per-seat tax. Requires the Pro plan or higher.";
+  "Signing infra made for Europe. Free to start — seal a Verified Badge from the console on any plan, no card required. Wire an AI agent, CRM, or app into SignedBy's metered API to send documents and templates on the Pro plan or higher.";
 
 // Own opengraph-image.tsx (route-scoped) — same pattern as /developers,
 // so openGraph/twitter omit `images` and let Next auto-merge the file
@@ -138,18 +148,19 @@ export default async function ConsolePage() {
             console.signedby.ai
           </span>
           <h1 className="text-4xl font-bold tracking-tight text-slate-50 sm:text-5xl">
-            Send contracts from a{" "}
+            Control SignedBy from a{" "}
             <span className="rounded-[3px] bg-yellow-300 px-1.5 text-slate-900">prompt.</span>
           </h1>
           <p className="max-w-xl text-lg text-slate-300">
-            SignedBy AI lets you control SignedBy directly from a prompt — pick templates, send documents in bulk
-            and check signing status without opening a dashboard.
+            SignedBy AI lets you chat your way through signing — seal a document with a Verified Badge, pick
+            templates, send in bulk, and check status without opening a dashboard.
           </p>
           <CtaLink href={signupHref} color={ctaColor} page="console" position="hero">
             Start for free →
           </CtaLink>
           <p className="text-xs text-slate-500">
-            Requires the Pro plan or higher (templates access). Free to sign up and try the rest of SignedBy first.
+            Free to start — seal a Verified Badge right from the console, no card required. Sending documents and
+            templates from a prompt needs the Pro plan or higher.
           </p>
         </div>
       </section>
@@ -220,9 +231,10 @@ export default async function ConsolePage() {
 
       <section className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-4 border-t border-white/10 px-6 py-10 sm:grid-cols-3">
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">
-          <p className="text-sm font-semibold text-slate-100">Pro plan minimum</p>
+          <p className="text-sm font-semibold text-slate-100">Free to start</p>
           <p className="mt-1 text-xs text-slate-400">
-            Console access needs template access, same gate as templates themselves — no separate approval.
+            Console access comes with every plan, including Free — chat your way through a Verified Badge seal, no
+            card required. Sending documents and templates needs Pro or higher.
           </p>
         </div>
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">
@@ -248,9 +260,13 @@ export default async function ConsolePage() {
         <h2 className="text-xl font-semibold text-slate-100">Pricing</h2>
         <div className="mt-4 space-y-4 text-sm text-slate-300">
           <p>
-            Console is priced separately from the rest of SignedBy&apos;s flat-fee plans, because it&apos;s usage that scales
-            with an agent or automation rather than a person. No monthly console fee — access comes with any Pro,
-            Team, or Business subscription.
+            Console access itself is free on every plan, Free included — no monthly console fee, no card required
+            to start sealing Verified Badge documents by chat.
+          </p>
+          <p>
+            Sending documents and using templates from the console is priced separately from the rest of
+            SignedBy&apos;s flat-fee plans, because it&apos;s usage that scales with an agent or automation rather
+            than a person, and needs the Pro plan or higher:
           </p>
           <ul className="list-inside list-disc space-y-1">
             <li><strong className="text-slate-100">50 document-sends</strong> free every month via console, on any plan — Pro, Team, or Business.</li>
@@ -266,8 +282,11 @@ export default async function ConsolePage() {
           </ul>
           <p className="text-xs text-slate-500">
             Reads (listing/checking documents) and webhook deliveries are never metered — only creating and sending a
-            document counts. Exact pricing is still being finalized; this page will be updated before any charge is
-            ever billed.
+            document counts. Verified Badge sealing has its own separate free-tier limit, not this metering — see{" "}
+            <Link href="/verified-badge" className="underline hover:text-white">
+              /verified-badge
+            </Link>
+            . Exact pricing is still being finalized; this page will be updated before any charge is ever billed.
           </p>
         </div>
       </section>
@@ -325,8 +344,11 @@ export default async function ConsolePage() {
       </section>
 
       <section className="mx-auto w-full max-w-3xl border-t border-white/10 px-6 py-16 text-center">
-        <h2 className="text-2xl font-semibold text-slate-100">Ready to wire it up?</h2>
-        <p className="mt-2 text-slate-400">Sign up free, then upgrade to Pro whenever you&apos;re ready for an API key.</p>
+        <h2 className="text-2xl font-semibold text-slate-100">Ready to try it?</h2>
+        <p className="mt-2 text-slate-400">
+          Sign up free and seal your first Verified Badge today — upgrade to Pro whenever you&apos;re ready to send
+          documents or wire up an agent.
+        </p>
         <CtaLink href={signupHref} className="mt-6" color={ctaColor} page="console" position="footer">
           Start for free →
         </CtaLink>
