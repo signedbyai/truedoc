@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getUserAndOrg } from "@/lib/org";
-import { planHasFeature } from "@/lib/plan";
+import { planHasFeature, getFreePlanDocUsage } from "@/lib/plan";
 import { getConsoleBillingState } from "@/lib/console-usage";
 import { ConsoleWorkspace } from "@/components/console-workspace";
 import { consoleAppNextPath } from "@/lib/console-host";
@@ -109,6 +109,13 @@ export default async function ConsoleAppPage({
   // reason to hit the DB for numbers no one sees.
   const billingState = hasAccess ? await getConsoleBillingState(orgId) : null;
 
+  // Free-tier Settings usage display (2026-08-01, direct ask: a Free org
+  // that gets referral seal credits should be able to actually see the
+  // balance somewhere, not just discover it worked next time they hit the
+  // cap). Only fetched for Free orgs — Pro+ has its own ConsoleUsagePanel
+  // fed by billingState above, this is the Free-only counterpart.
+  const freePlanUsage = hasAccess && org.plan === "free" ? await getFreePlanDocUsage(supabase, orgId) : null;
+
   return (
     <main className="px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-6xl">
@@ -137,6 +144,8 @@ export default async function ConsoleAppPage({
           identityVerifiedName={identityStatus.verified ? identityStatus.name : null}
           identityVerifiedAt={identityStatus.verified ? identityStatus.verifiedAt : null}
           identityStale={identityStatus.verified ? identityStatus.stale : false}
+          freePlanDocsUsedThisMonth={freePlanUsage?.usedThisMonth ?? null}
+          freePlanDocCredits={freePlanUsage?.docCredits ?? null}
         />
       </div>
     </main>

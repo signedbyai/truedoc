@@ -172,6 +172,18 @@ export function seatsOverLimit(memberCount: number, plan: string | null | undefi
 // the service-role admin client. Both clients are structurally the same
 // underlying `SupabaseClient`, so this widens the type without changing
 // behavior for any existing session-based caller.
+// Extracted 2026-08-01 so the Free-tier Settings usage display (see
+// getFreePlanDocUsage below) and the actual cap check here can't drift
+// apart on the definition of "this month" — both need the exact same
+// boundary or the number shown to a Free user could disagree with the
+// number that actually blocks them.
+function startOfCurrentMonthUTC(): Date {
+  const d = new Date();
+  d.setUTCDate(1);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
 export async function checkFreePlanDocCap(
   // Bare `SupabaseClient` (no generics) — both the session client
   // (createServerClient) and the admin client (createAdminClient) are
@@ -190,9 +202,7 @@ export async function checkFreePlanDocCap(
   const { data: org } = await supabase.from("organizations").select("plan, doc_credits").eq("id", orgId).single();
   if (org && org.plan !== "free") return null;
 
-  const startOfMonth = new Date();
-  startOfMonth.setUTCDate(1);
-  startOfMonth.setUTCHours(0, 0, 0, 0);
+  const startOfMonth = startOfCurrentMonthUTC();
 
   const { count } = await supabase
     .from("documents")
@@ -249,4 +259,31 @@ export async function checkFreePlanDocCap(
     );
   }
   return null;
+}
+
+// Read-only counterpart to checkFreePlanDocCap above — same query, no
+// side effects (never spends a credit or logs a cap hit), for surfacing
+// "X of 3 used this month" + credit balance in Console's Free-tier
+// Settings tab (2026-08-01, direct ask: a Free org referring someone
+// should actually be able to see their seal-credits balance go up
+// somewhere, not just discover it worked the next time they hit the cap).
+// Deliberately counts every document this month, not just Verified Badge
+// seals — matches exactly what the cap enforces, since for a Free console
+// user sealing is in practice their only console action anyway (templates
+// stay Pro+-only, see CONSOLE_FREE_TIER_SCOPE.md), and showing a
+// seal-specific count that could disagree with the number that actually
+// blocks them would be more confusing than accurate.
+export async function getFreePlanDocUsage(
+  supabase: SupabaseClient,
+  orgId: string
+): Promise<{ usedThisMonth: number; docCredits: number }> {
+  const [{ data: org }, { count }] = await Promise.all([
+    supabase.from("organizations").select("doc_credits").eq("id", orgId).single(),
+    supabase
+      .from("documents")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", orgId)
+      .gte("created_at", startOfCurrentMonthUTC().toISOString()),
+  ]);
+  return { usedThisMonth: count ?? 0, docCredits: org?.doc_credits ?? 0 };
 }

@@ -193,6 +193,8 @@ export function ConsoleWorkspace({
   identityVerifiedName,
   identityVerifiedAt,
   identityStale,
+  freePlanDocsUsedThisMonth,
+  freePlanDocCredits,
 }: {
   plan: string;
   hasAccess: boolean;
@@ -217,6 +219,13 @@ export function ConsoleWorkspace({
   identityVerifiedName: string | null;
   identityVerifiedAt: string | null;
   identityStale: boolean;
+  /** Free-tier usage display (2026-08-01, direct ask: a Free org that
+   *  earns referral seal credits should be able to see the balance
+   *  somewhere, not just discover it worked the next time they hit the
+   *  cap). null for Pro+ orgs (they get ConsoleUsagePanel instead) and for
+   *  locked/no-access orgs — see console/app/page.tsx's fetch gate. */
+  freePlanDocsUsedThisMonth: number | null;
+  freePlanDocCredits: number | null;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [initialMessages, setInitialMessages] = useState<Bubble[]>([]);
@@ -350,6 +359,39 @@ export function ConsoleWorkspace({
           initialCapCents={initialCapCents}
           showIntro={showIntro}
         />
+      )}
+      {/* Free-tier counterpart to ConsoleUsagePanel above (2026-08-01,
+          direct ask): a Free org that refers someone and earns seal
+          credits had no way to actually see the balance anywhere — the
+          number only ever showed up indirectly, by the cap not blocking
+          them one extra time. Same two-tile card styling as
+          ConsoleUsagePanel's "This period" block. Documents this month
+          counts every document, not just Verified Badge seals — matches
+          exactly what checkFreePlanDocCap enforces (getFreePlanDocUsage in
+          plan.ts is its read-only counterpart, same query), since sealing
+          is a Free console user's only real console action anyway
+          (templates stay Pro+-only). Server-rendered per page load, same
+          freshness as identityVerified/etc. above — reopening Console
+          after a referral reward fires (or after using a credit) shows the
+          new number, no live-polling infrastructure added for this. */}
+      {hasAccess && plan === "free" && freePlanDocsUsedThisMonth !== null && (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p className="text-sm font-medium text-neutral-300">This month</p>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="rounded-xl bg-white/[0.04] p-3">
+              <p className="text-xs text-neutral-500">Documents used</p>
+              <p className="mt-0.5 text-xl font-semibold text-white">{freePlanDocsUsedThisMonth} of 3 free</p>
+            </div>
+            <div className="rounded-xl bg-white/[0.04] p-3">
+              <p className="text-xs text-neutral-500">Credits available</p>
+              <p className="mt-0.5 text-xl font-semibold text-white">{freePlanDocCredits ?? 0}</p>
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-neutral-500">
+            Credits are spent automatically once you&apos;re past the free 3 — earn more by referring a friend (see
+            the gift icon above).
+          </p>
+        </div>
       )}
       {/* Verified Badge (2026-08-01, moved from /dashboard/settings) — same
           `hasAccess` gate as the usage panel above: Verified Badge is
