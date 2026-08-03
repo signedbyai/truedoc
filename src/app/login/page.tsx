@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { sanitizeNextPath } from "@/lib/safe-redirect";
+import { LoginValuePanel } from "@/components/login-value-panel";
 import { sendMagicLink, signInWithPassword, sendPasswordReset, verifyLoginCode } from "./actions";
 
 type AuthView = "email" | "password";
@@ -275,239 +276,246 @@ function LoginPageInner() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-12">
-      <Link href="/" className="mb-8">
-        <Image src="/brand/signedby-lockup-yellow-badge-beta-micro-small.png" alt="SignedBy" width={266} height={64} className="h-7 w-auto" priority />
-      </Link>
+    <main className="flex min-h-screen flex-col bg-slate-50 lg:flex-row">
+      {/* Value panel (LOGIN_VALUE_PANEL_SCOPE.md) — left of the form on
+          desktop, a compact banner above it on mobile via the panel's own
+          responsive classes. Shown on both sign-in and sign-up views. */}
+      <LoginValuePanel />
 
-      <div className="w-full max-w-sm rounded-xl border border-slate-200/60 bg-white p-8 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
-        <div className="mb-6 text-center">
-          {sentEmail ? (
-            <>
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-50">
-                <Lock className="h-5 w-5 text-yellow-600" aria-hidden="true" />
+      <div className="flex flex-1 flex-col items-center justify-center px-4 py-12">
+        <Link href="/" className="mb-8">
+          <Image src="/brand/signedby-lockup-yellow-badge-beta-micro-small.png" alt="SignedBy" width={266} height={64} className="h-7 w-auto" priority />
+        </Link>
+
+        <div className="w-full max-w-sm rounded-xl border border-slate-200/60 bg-white p-8 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
+          <div className="mb-6 text-center">
+            {sentEmail ? (
+              <>
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-50">
+                  <Lock className="h-5 w-5 text-yellow-600" aria-hidden="true" />
+                </div>
+                <h1 className="text-xl font-semibold text-slate-900">Confirmation code</h1>
+                <p className="mt-1 text-sm text-slate-500">Enter the code from your email.</p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-xl font-semibold text-slate-900">
+                  {isSignup ? "Create your account" : "Welcome back"}
+                </h1>
+                <p className="mt-1 text-sm text-slate-500">
+                  {isSignup ? "Free to start — no credit card required." : "Sign in to continue to SignedBy."}
+                </p>
+              </>
+            )}
+          </div>
+
+          {view === "email" ? (
+            <div className="space-y-4">
+              {sentEmail ? (
+                <div className="space-y-4">
+                  <p className="text-center text-sm text-slate-600">
+                    Code sent to <span className="font-medium text-slate-900">{sentEmail}</span>
+                  </p>
+                  <div className="space-y-2">
+                    <p className="text-center text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Confirmation code
+                    </p>
+                    <div className="flex justify-center gap-2">
+                      {otpDigits.map((digit, i) => (
+                        <input
+                          key={i}
+                          ref={(el) => {
+                            otpRefs.current[i] = el;
+                          }}
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          pattern="[0-9]*"
+                          maxLength={1}
+                          value={digit}
+                          onChange={(e) => handleOtpChange(i, e.target.value)}
+                          onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                          onPaste={handleOtpPaste}
+                          disabled={isPending}
+                          aria-label={`Digit ${i + 1} of 6`}
+                          className="h-12 w-10 rounded-md border border-slate-300 text-center text-lg font-semibold text-slate-900 transition-shadow focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:shadow-[0_0_12px_rgba(250,204,21,0.55)] disabled:opacity-50"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-center text-xs text-slate-400">Or click the sign-in link in that same email.</p>
+                  {isPending && <p className="text-center text-xs text-slate-400">Verifying…</p>}
+                  {status === "error" && <p className="text-center text-sm text-red-600">{message}</p>}
+                  {resendNotice && <p className="text-center text-xs text-emerald-600">{resendNotice}</p>}
+
+                  <div className="flex items-center gap-3 pt-1">
+                    <div className="h-px flex-1 bg-slate-200" />
+                  </div>
+
+                  <p className="text-center text-xs text-slate-500">
+                    Didn&apos;t receive the code?{" "}
+                    <button
+                      type="button"
+                      onClick={handleResendCode}
+                      disabled={isPending}
+                      className="underline underline-offset-2 disabled:opacity-50"
+                    >
+                      Resend code
+                    </button>{" "}
+                    ·{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSentEmail("");
+                        setResendNotice("");
+                        resetStatus();
+                      }}
+                      className="underline underline-offset-2"
+                    >
+                      Use a different email
+                    </button>
+                  </p>
+                </div>
+              ) : (
+                <form action={handleMagicLink} className="space-y-3">
+                  {/* Read server-side by sendMagicLink and appended to the
+                      emailed link's redirect target, so clicking the actual
+                      email link (instead of typing the code) still preserves
+                      where we came from. */}
+                  {next && <input type="hidden" name="next" value={next} />}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email" className="sr-only">
+                      Email
+                    </Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      required
+                      placeholder="Email address"
+                      className="border-yellow-400 shadow-[0_0_0_3px_rgba(250,204,21,0.35)] focus-visible:border-yellow-400 focus-visible:ring-yellow-400 focus-visible:shadow-[0_0_0_3px_rgba(250,204,21,0.35)]"
+                    />
+                  </div>
+                  {status === "error" && <p className="text-sm text-red-600">{message}</p>}
+                  <Button type="submit" className="w-full" disabled={isPending}>
+                    {isPending ? "Sending…" : "Continue with email"}
+                  </Button>
+                </form>
+              )}
+
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-slate-200" />
+                <span className="text-xs text-slate-400">or</span>
+                <div className="h-px flex-1 bg-slate-200" />
               </div>
-              <h1 className="text-xl font-semibold text-slate-900">Confirmation code</h1>
-              <p className="mt-1 text-sm text-slate-500">Enter the code from your email.</p>
-            </>
-          ) : (
-            <>
-              <h1 className="text-xl font-semibold text-slate-900">
-                {isSignup ? "Create your account" : "Welcome back"}
-              </h1>
-              <p className="mt-1 text-sm text-slate-500">
-                {isSignup ? "Free to start — no credit card required." : "Sign in to continue to SignedBy."}
+
+              <div className="flex justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleOAuth("google")}
+                  disabled={oauthLoading !== null}
+                  aria-label="Continue with Google"
+                  title="Continue with Google"
+                  className="flex h-12 w-12 items-center justify-center rounded-md border border-slate-300 bg-white transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <GoogleIcon />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOAuth("azure")}
+                  disabled={oauthLoading !== null}
+                  aria-label="Continue with Microsoft"
+                  title="Continue with Microsoft"
+                  className="flex h-12 w-12 items-center justify-center rounded-md border border-slate-300 bg-white transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <MicrosoftIcon />
+                </button>
+              </div>
+
+              <p className="text-center text-xs text-slate-500">
+                <button type="button" onClick={() => switchView("password")} className="underline underline-offset-2">
+                  Use a password instead
+                </button>
               </p>
-            </>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={() => switchView("email")}
+                className="text-xs text-slate-500 underline underline-offset-2"
+              >
+                ← Use email link instead
+              </button>
+
+              {passwordMode === "signin" && (
+                <form action={handlePasswordSignIn} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pw-email">Email</Label>
+                    <Input id="pw-email" name="email" type="email" required placeholder="you@company.com" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pw-password">Password</Label>
+                    <Input id="pw-password" name="password" type="password" required placeholder="Your password" />
+                  </div>
+                  {status === "error" && <p className="text-sm text-red-600">{message}</p>}
+                  <Button type="submit" className="w-full" disabled={isPending}>
+                    {isPending ? "Signing in…" : "Sign in"}
+                  </Button>
+                  <div className="flex justify-end text-xs text-slate-500">
+                    <button type="button" onClick={() => switchPasswordMode("forgot")} className="underline underline-offset-2">
+                      Forgot password?
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {passwordMode === "forgot" && (
+                <form action={handleForgotPassword} className="space-y-4">
+                  {status === "sent" ? (
+                    <p className="text-sm text-slate-600">{message}</p>
+                  ) : (
+                    <>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="fp-email">Email</Label>
+                        <Input id="fp-email" name="email" type="email" required placeholder="you@company.com" />
+                      </div>
+                      {status === "error" && <p className="text-sm text-red-600">{message}</p>}
+                      <Button type="submit" className="w-full" disabled={isPending}>
+                        {isPending ? "Sending…" : "Send reset link"}
+                      </Button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => switchPasswordMode("signin")}
+                    className="text-xs text-slate-500 underline underline-offset-2"
+                  >
+                    Back to sign in
+                  </button>
+                </form>
+              )}
+            </div>
           )}
         </div>
 
-        {view === "email" ? (
-          <div className="space-y-4">
-            {sentEmail ? (
-              <div className="space-y-4">
-                <p className="text-center text-sm text-slate-600">
-                  Code sent to <span className="font-medium text-slate-900">{sentEmail}</span>
-                </p>
-                <div className="space-y-2">
-                  <p className="text-center text-xs font-medium uppercase tracking-wide text-slate-500">
-                    Confirmation code
-                  </p>
-                  <div className="flex justify-center gap-2">
-                    {otpDigits.map((digit, i) => (
-                      <input
-                        key={i}
-                        ref={(el) => {
-                          otpRefs.current[i] = el;
-                        }}
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        pattern="[0-9]*"
-                        maxLength={1}
-                        value={digit}
-                        onChange={(e) => handleOtpChange(i, e.target.value)}
-                        onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                        onPaste={handleOtpPaste}
-                        disabled={isPending}
-                        aria-label={`Digit ${i + 1} of 6`}
-                        className="h-12 w-10 rounded-md border border-slate-300 text-center text-lg font-semibold text-slate-900 transition-shadow focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:shadow-[0_0_12px_rgba(250,204,21,0.55)] disabled:opacity-50"
-                      />
-                    ))}
-                  </div>
-                </div>
-                <p className="text-center text-xs text-slate-400">Or click the sign-in link in that same email.</p>
-                {isPending && <p className="text-center text-xs text-slate-400">Verifying…</p>}
-                {status === "error" && <p className="text-center text-sm text-red-600">{message}</p>}
-                {resendNotice && <p className="text-center text-xs text-emerald-600">{resendNotice}</p>}
-
-                <div className="flex items-center gap-3 pt-1">
-                  <div className="h-px flex-1 bg-slate-200" />
-                </div>
-
-                <p className="text-center text-xs text-slate-500">
-                  Didn&apos;t receive the code?{" "}
-                  <button
-                    type="button"
-                    onClick={handleResendCode}
-                    disabled={isPending}
-                    className="underline underline-offset-2 disabled:opacity-50"
-                  >
-                    Resend code
-                  </button>{" "}
-                  ·{" "}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSentEmail("");
-                      setResendNotice("");
-                      resetStatus();
-                    }}
-                    className="underline underline-offset-2"
-                  >
-                    Use a different email
-                  </button>
-                </p>
-              </div>
-            ) : (
-              <form action={handleMagicLink} className="space-y-3">
-                {/* Read server-side by sendMagicLink and appended to the
-                    emailed link's redirect target, so clicking the actual
-                    email link (instead of typing the code) still preserves
-                    where we came from. */}
-                {next && <input type="hidden" name="next" value={next} />}
-                <div className="space-y-1.5">
-                  <Label htmlFor="email" className="sr-only">
-                    Email
-                  </Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    placeholder="Email address"
-                    className="border-yellow-400 shadow-[0_0_0_3px_rgba(250,204,21,0.35)] focus-visible:border-yellow-400 focus-visible:ring-yellow-400 focus-visible:shadow-[0_0_0_3px_rgba(250,204,21,0.35)]"
-                  />
-                </div>
-                {status === "error" && <p className="text-sm text-red-600">{message}</p>}
-                <Button type="submit" className="w-full" disabled={isPending}>
-                  {isPending ? "Sending…" : "Continue with email"}
-                </Button>
-              </form>
-            )}
-
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-slate-200" />
-              <span className="text-xs text-slate-400">or</span>
-              <div className="h-px flex-1 bg-slate-200" />
-            </div>
-
-            <div className="flex justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => handleOAuth("google")}
-                disabled={oauthLoading !== null}
-                aria-label="Continue with Google"
-                title="Continue with Google"
-                className="flex h-12 w-12 items-center justify-center rounded-md border border-slate-300 bg-white transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50"
-              >
-                <GoogleIcon />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleOAuth("azure")}
-                disabled={oauthLoading !== null}
-                aria-label="Continue with Microsoft"
-                title="Continue with Microsoft"
-                className="flex h-12 w-12 items-center justify-center rounded-md border border-slate-300 bg-white transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50"
-              >
-                <MicrosoftIcon />
-              </button>
-            </div>
-
-            <p className="text-center text-xs text-slate-500">
-              <button type="button" onClick={() => switchView("password")} className="underline underline-offset-2">
-                Use a password instead
-              </button>
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <button
-              type="button"
-              onClick={() => switchView("email")}
-              className="text-xs text-slate-500 underline underline-offset-2"
-            >
-              ← Use email link instead
-            </button>
-
-            {passwordMode === "signin" && (
-              <form action={handlePasswordSignIn} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="pw-email">Email</Label>
-                  <Input id="pw-email" name="email" type="email" required placeholder="you@company.com" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="pw-password">Password</Label>
-                  <Input id="pw-password" name="password" type="password" required placeholder="Your password" />
-                </div>
-                {status === "error" && <p className="text-sm text-red-600">{message}</p>}
-                <Button type="submit" className="w-full" disabled={isPending}>
-                  {isPending ? "Signing in…" : "Sign in"}
-                </Button>
-                <div className="flex justify-end text-xs text-slate-500">
-                  <button type="button" onClick={() => switchPasswordMode("forgot")} className="underline underline-offset-2">
-                    Forgot password?
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {passwordMode === "forgot" && (
-              <form action={handleForgotPassword} className="space-y-4">
-                {status === "sent" ? (
-                  <p className="text-sm text-slate-600">{message}</p>
-                ) : (
-                  <>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="fp-email">Email</Label>
-                      <Input id="fp-email" name="email" type="email" required placeholder="you@company.com" />
-                    </div>
-                    {status === "error" && <p className="text-sm text-red-600">{message}</p>}
-                    <Button type="submit" className="w-full" disabled={isPending}>
-                      {isPending ? "Sending…" : "Send reset link"}
-                    </Button>
-                  </>
-                )}
-                <button
-                  type="button"
-                  onClick={() => switchPasswordMode("signin")}
-                  className="text-xs text-slate-500 underline underline-offset-2"
-                >
-                  Back to sign in
-                </button>
-              </form>
-            )}
-          </div>
-        )}
+        <p className="mt-6 text-sm text-slate-500">
+          {isSignup ? (
+            <>
+              Already have an account?{" "}
+              <Link href="/login" className="font-medium text-slate-900 underline underline-offset-2">
+                Log in
+              </Link>
+            </>
+          ) : (
+            <>
+              New to SignedBy?{" "}
+              <Link href="/login?intent=signup" className="font-medium text-slate-900 underline underline-offset-2">
+                Sign up free
+              </Link>
+            </>
+          )}
+        </p>
       </div>
-
-      <p className="mt-6 text-sm text-slate-500">
-        {isSignup ? (
-          <>
-            Already have an account?{" "}
-            <Link href="/login" className="font-medium text-slate-900 underline underline-offset-2">
-              Log in
-            </Link>
-          </>
-        ) : (
-          <>
-            New to SignedBy?{" "}
-            <Link href="/login?intent=signup" className="font-medium text-slate-900 underline underline-offset-2">
-              Sign up free
-            </Link>
-          </>
-        )}
-      </p>
     </main>
   );
 }
