@@ -1,14 +1,39 @@
 # Scope: Tiered seal-credit referrals for Free console, Pro+ unchanged
 
-Status: SCOPED AND DECIDED 2026-08-03, not built. Direct request: a
-referral program for Free-tier console, gift-box style like the
-dashboard's existing referral card, rewarding **seal credits** instead of
-a month-off, tiered so 3+ successful referrals unlocks a **"Super
-Referrer"** boost. Pro+ keeps "give a month, get a month." All four open
-questions below are resolved — layer-on-top (not replace), 5/10 credits at
-a 3-referral threshold, reward the referred side too (3 credits), and the
-plan-change edge case resolved via reward-time plan checking (Option A).
-Nothing built yet — awaiting a go-ahead to implement.
+Status: SCOPED 2026-08-03, **BUILT 2026-08-04** (migration + deploy owed).
+Direct request: a referral program for Free-tier console, gift-box style
+like the dashboard's existing referral card, rewarding **seal credits**
+instead of a month-off, tiered so 3+ successful referrals unlocks a
+**"Super Referrer"** boost. Pro+ keeps "give a month, get a month." All
+four open questions below are resolved — layer-on-top (not replace), 5/10
+credits at a 3-referral threshold, reward the referred side too (3
+credits), and the plan-change edge case resolved via reward-time plan
+checking (Option A).
+
+**Build note — a real conflict caught between two parts of this same doc,
+resolved in the code, not as originally drafted.** The "Data model"
+section below reuses `referrals.status` implicitly, and the "Super
+Referrer" implementation note explicitly says to compute it via `status =
+'rewarded' and reward_type = 'seal_credits'` — which would require the new
+seal-credit trigger to move `status` to `'rewarded'`. But
+`rewardReferrerOnFirstPayment` (the *existing*, unmodified webhook path)
+already guards on `referral.status !== "pending"` and bails — so moving
+`status` at seal time would silently break the "layer on top, don't
+replace; background eligibility stays" decision (#1 below) the moment a
+referred org sealed a badge before ever subscribing. Built it so `status`/
+`qualified_at`/`rewarded_at` stay 100% owned by the old payment path,
+untouched; the new program only ever writes `reward_type`/
+`credits_granted`/`referred_credits_granted`, and Super Referrer counting
+uses `reward_type = 'seal_credits' and credits_granted > 0` instead of
+`status`. Both programs can now independently fire on the same referral
+row, which is what was actually decided. See migration
+`0046_referral_seal_credits.sql`'s comment and `referral.ts`'s
+`grantSealCreditReferralReward` for the full reasoning.
+
+One more judgment call not explicitly in this doc: the referred org's
+welcome credit (3 credits) is gated on the *referred* org still being on
+the free plan at grant time too, mirroring Option A's own "don't mint dead
+`doc_credits`" reasoning applied symmetrically.
 
 ## Correcting a framing assumption before scoping the rest
 
