@@ -6,6 +6,8 @@ import { FlagValues } from "flags/react";
 import { CtaLink } from "@/components/cta-link";
 import { ctaColorFlag } from "@/flags";
 import { consoleUrl } from "@/lib/console-host";
+import { getRequestCurrency } from "@/lib/currency.server";
+import { formatConsoleOveragePrice } from "@/lib/currency";
 
 // The top-of-funnel play this page is the real destination for (see
 // VERIFIED_BADGE_SCOPE.md's "The catch" section): freelancers already are
@@ -53,45 +55,59 @@ const START_HREF = consoleUrl(
   "/login?intent=signup&next=/app&utm_source=verified_badge&utm_medium=cta&utm_campaign=verified_badge_page"
 );
 
-const FAQ = [
-  {
-    q: "Does this prove my work wasn't written or made with AI?",
-    a: "No — and it doesn't claim to. A Verified Badge proves this exact file existed, unaltered, as of a cryptographically verified timestamp, sealed by an identity-verified person. That's a real, different, useful claim from \"an AI detector says this is human,\" which is exactly why AI detectors have a false-positive problem in the first place: they're guessing at authorship, not proving timestamp and integrity.",
-  },
-  {
-    q: "What does the client actually see?",
-    a: "A badge on your deliverable — a QR code, the SignedBy mark, and a short verification link as plain text, so it reads as legitimate even printed or screenshotted. Scanning or visiting it lands on a public ledger page: your name, when the file was sealed, and confirmation it hasn't been altered since. No account or login needed to check it.",
-  },
-  {
-    q: "What if my identity check is old?",
-    a: "Your first seal verifies your identity via a government-ID check (about a minute, hosted by Stripe). Later seals reuse that same verified check rather than re-scanning your ID every time — cheaper and faster. The ledger page always shows \"identity verified on [date]\" alongside \"sealed on [date]\" as two separate facts, so it's clear if the identity check itself is from earlier than this specific seal.",
-  },
-  {
-    q: "Does this work for non-PDF files?",
-    a: "PDFs only for now. If your finished work is a design export, code, or something else, export or print it to a PDF first, then seal that.",
-  },
-  {
-    q: "What plan do I need?",
-    a: "Any plan, including Free — Console/MCP access now comes with every account, no card required. Free includes 3 document-seals a month. Pro plan or higher raises that to 50 free document-seals a month, then $0.20 per seal, same metering as Console's other actions. It's reached by chatting with Console (\"seal this file\") or through the seal_document tool if you're wiring in an AI agent — see the developer docs.",
-  },
-  {
-    q: "What actually makes the timestamp \"cryptographically verified\"?",
-    a: "Every seal is submitted to a real Time Stamping Authority (Sectigo's public RFC 3161 service, with FreeTSA as an automatic fallback if Sectigo can't be reached) that signs the file's hash together with the time. That's independently verifiable by anyone, trusting only the TSA — not just a date in SignedBy's own database. The ledger page at signedby.ai/verify shows which TSA backed a given seal.",
-  },
-];
-
-const faqJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: FAQ.map((item) => ({
-    "@type": "Question",
-    name: item.q,
-    acceptedAnswer: { "@type": "Answer", text: item.a },
-  })),
-};
+// FAQ built by a function, not a plain module-level const, since one
+// answer below quotes Console's per-seal overage rate and now needs the
+// resolved visitor currency (2026-08-01, direct follow-up: "make sure the
+// CTA page for verified-badge uses the same local price rather than
+// always USD") — currency is only known once request headers/cookies are
+// read inside the async page component, not at module load time.
+function buildFaq(overagePrice: string) {
+  return [
+    {
+      q: "Does this prove my work wasn't written or made with AI?",
+      a: "No — and it doesn't claim to. A Verified Badge proves this exact file existed, unaltered, as of a cryptographically verified timestamp, sealed by an identity-verified person. That's a real, different, useful claim from \"an AI detector says this is human,\" which is exactly why AI detectors have a false-positive problem in the first place: they're guessing at authorship, not proving timestamp and integrity.",
+    },
+    {
+      q: "What does the client actually see?",
+      a: "A badge on your deliverable — a QR code, the SignedBy mark, and a short verification link as plain text, so it reads as legitimate even printed or screenshotted. Scanning or visiting it lands on a public ledger page: your name, when the file was sealed, and confirmation it hasn't been altered since. No account or login needed to check it.",
+    },
+    {
+      q: "What if my identity check is old?",
+      a: "Your first seal verifies your identity via a government-ID check (about a minute, hosted by Stripe). Later seals reuse that same verified check rather than re-scanning your ID every time — cheaper and faster. The ledger page always shows \"identity verified on [date]\" alongside \"sealed on [date]\" as two separate facts, so it's clear if the identity check itself is from earlier than this specific seal.",
+    },
+    {
+      q: "Does this work for non-PDF files?",
+      a: "PDFs only for now. If your finished work is a design export, code, or something else, export or print it to a PDF first, then seal that.",
+    },
+    {
+      q: "What plan do I need?",
+      a: `Any plan, including Free — Console/MCP access now comes with every account, no card required. Free includes 3 document-seals a month. Pro plan or higher raises that to 50 free document-seals a month, then ${overagePrice} per seal, same metering as Console's other actions. It's reached by chatting with Console ("seal this file") or through the seal_document tool if you're wiring in an AI agent — see the developer docs.`,
+    },
+    {
+      q: "What actually makes the timestamp \"cryptographically verified\"?",
+      a: "Every seal is submitted to a real Time Stamping Authority (Sectigo's public RFC 3161 service, with FreeTSA as an automatic fallback if Sectigo can't be reached) that signs the file's hash together with the time. That's independently verifiable by anyone, trusting only the TSA — not just a date in SignedBy's own database. The ledger page at signedby.ai/verify shows which TSA backed a given seal.",
+    },
+  ];
+}
 
 export default async function VerifiedBadgePage() {
   const ctaColor = await ctaColorFlag();
+  // Same geo/cookie resolution the pricing pages and checkout routes use
+  // (2026-08-01, direct ask) — see formatConsoleOveragePrice's own doc
+  // comment in currency.ts for what this does and doesn't fix (marketing
+  // copy only, not real Stripe billing).
+  const currency = await getRequestCurrency();
+  const overagePrice = formatConsoleOveragePrice(currency);
+  const FAQ = buildFaq(overagePrice);
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQ.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
+    })),
+  };
 
   return (
     <main className="flex min-h-screen flex-col bg-white">
@@ -200,7 +216,7 @@ export default async function VerifiedBadgePage() {
         <h2 className="text-2xl font-semibold text-slate-900">Generate Your Proof</h2>
         <p className="mt-2 text-sm text-slate-600">
           Console/MCP, free to start — 3 seals a month included, no card required. Need more? Pro plan or higher
-          gets 50 free document-seals a month, then $0.20 per seal.
+          gets 50 free document-seals a month, then {overagePrice} per seal.
         </p>
         <CtaLink href={START_HREF} className="mt-5" color={ctaColor} page="verified-badge" position="footer">
           Generate Your Proof →

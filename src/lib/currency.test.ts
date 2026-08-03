@@ -5,6 +5,7 @@ import {
   formatPrice,
   otherCurrencies,
   formatCreditPackPrice,
+  formatConsoleOveragePrice,
   type Currency,
 } from "./currency";
 
@@ -150,5 +151,33 @@ describe("formatCreditPackPrice", () => {
   // here silently falling through to something wrong instead of USD.
   it("falls back to the USD price (amount AND symbol together) for a currency with no table entry at all", () => {
     expect(formatCreditPackPrice("JPY" as unknown as Currency)).toBe("$5");
+  });
+});
+
+// 2026-08-01, direct ask: "make sure the CTA page for verified-badge uses
+// the same local price rather than always USD" — this is the fix for
+// Console's $0.20/doc overage rate quoted on /verified-badge and
+// /console (display only, see the doc comment on
+// CONSOLE_OVERAGE_DISPLAY_CENTS above for why this doesn't touch real
+// Stripe billing).
+describe("formatConsoleOveragePrice", () => {
+  it("formats USD/EUR at the same nominal 20¢/20c (EUR at 1.0x, matches the credit pack's EUR ratio)", () => {
+    expect(formatConsoleOveragePrice("USD")).toBe("$0.20");
+    expect(formatConsoleOveragePrice("EUR")).toBe("€0.20");
+  });
+
+  it("formats GBP/CHF at the ~0.86x discount, sharing one number", () => {
+    expect(formatConsoleOveragePrice("GBP")).toBe("£0.17");
+    expect(formatConsoleOveragePrice("CHF")).toBe("CHF 0.17");
+  });
+
+  // ₹8 isn't a new number invented for this fix — it's the exact figure
+  // RAZORPAY_INDIA_SCOPE.md already recommended for this same rate.
+  it("formats INR as a whole rupee amount, no decimals", () => {
+    expect(formatConsoleOveragePrice("INR")).toBe("₹8");
+  });
+
+  it("falls back to the USD price for a currency with no table entry at all", () => {
+    expect(formatConsoleOveragePrice("JPY" as unknown as Currency)).toBe("$0.20");
   });
 });

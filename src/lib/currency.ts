@@ -154,3 +154,46 @@ export function formatCreditPackPrice(currency: Currency): string {
   const symbol = PRICE_TABLE[priced].symbol;
   return symbol.length > 1 ? `${symbol} ${amount}` : `${symbol}${amount}`;
 }
+
+// Console's metered per-document overage rate ($0.20, `CONSOLE_OVERAGE_CENTS`
+// in console-usage.ts) — DISPLAY ONLY, for the two pre-signup marketing
+// pages that quote it (`/verified-badge`, `/console`), added 2026-08-01
+// direct follow-up ("make sure the CTA page for verified-badge uses the
+// same local price rather than always USD"). Same conversion ratios as
+// everywhere else in this file: EUR at 1.0x nominal, GBP/CHF at ~0.86x
+// (20¢ → 17p/17 rappen), INR at the ~55%-off PPP ratio — ₹8, which isn't
+// a new number invented for this, it's the exact figure
+// RAZORPAY_INDIA_SCOPE.md already recommended for this same rate back on
+// 2026-08-03 ("~₹8/doc... $0.20 nominal x 84 x 0.45 ~ ₹7.56").
+//
+// IMPORTANT — this does NOT touch what a paying org is actually billed.
+// `CONSOLE_OVERAGE_CENTS` (console-usage.ts) itself stays a single USD
+// number driving the real spend-cap math and the logged-in usage panel —
+// deliberately untouched here, out of scope for a marketing-copy fix and
+// a materially bigger change (real customer billing display, not a
+// pre-signup page). See [[console-overage-price-gap]] for the existing,
+// separate, still-open gap on that side: the real Stripe metered Price
+// objects per currency aren't confirmed configured, so a non-USD
+// customer's actual overage billing may not match either this page's
+// copy or the dashboard's own $-denominated panel yet regardless of this
+// change — this only makes the *marketing* copy consistent with the rest
+// of the site's currency-adaptive convention instead of uniquely
+// hardcoded to USD.
+const CONSOLE_OVERAGE_DISPLAY_CENTS: Partial<Record<Currency, number>> = {
+  USD: 20,
+  EUR: 20,
+  GBP: 17,
+  CHF: 17,
+  INR: 800,
+};
+
+// "$0.20" / "£0.17" / "₹8" — whole INR rupees show with no decimals
+// (Number.isInteger), every other currency's sub-unit price shows two.
+// Same both-halves-fall-back-together reasoning as formatCreditPackPrice.
+export function formatConsoleOveragePrice(currency: Currency): string {
+  const priced = CONSOLE_OVERAGE_DISPLAY_CENTS[currency] !== undefined ? currency : "USD";
+  const amount = CONSOLE_OVERAGE_DISPLAY_CENTS[priced]! / 100;
+  const amountStr = Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+  const symbol = PRICE_TABLE[priced].symbol;
+  return symbol.length > 1 ? `${symbol} ${amountStr}` : `${symbol}${amountStr}`;
+}

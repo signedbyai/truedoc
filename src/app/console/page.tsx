@@ -10,6 +10,8 @@ import { ctaColorFlag } from "@/flags";
 import { isConsoleHost, consoleUrl } from "@/lib/console-host";
 import { getUserAndOrg } from "@/lib/org";
 import { planHasFeature } from "@/lib/plan";
+import { getRequestCurrency } from "@/lib/currency.server";
+import { formatConsoleOveragePrice } from "@/lib/currency";
 
 // Copy rewrite 2026-08-01 (direct instruction, following a console
 // sign-up/login audit): this page previously read as Pro-or-nothing
@@ -80,6 +82,13 @@ const FOOTER_LINKS = (
 
 export default async function ConsolePage() {
   const ctaColor = await ctaColorFlag();
+  // Same geo/cookie resolution the pricing pages and checkout routes use
+  // (2026-08-01, direct ask on /verified-badge, applied here too since
+  // this page had the identical "$0.20 per document" hardcoded-USD gap —
+  // see formatConsoleOveragePrice's doc comment in currency.ts for what
+  // this does and doesn't fix: marketing copy only, not real Stripe
+  // billing, see [[console-overage-price-gap]]).
+  const overagePrice = formatConsoleOveragePrice(await getRequestCurrency());
 
   // This page renders two ways: rewritten to console.signedby.ai's root
   // (see middleware.ts) and directly at signedby.ai/console (kept for SEO
@@ -276,7 +285,7 @@ export default async function ConsolePage() {
           <ul className="list-inside list-disc space-y-1">
             <li><strong className="text-slate-100">50 document-sends</strong> free every month via console, on any plan — Pro, Team, or Business.</li>
             <li>
-              <strong className="text-slate-100">$0.20 per document</strong> sent beyond that, billed monthly alongside your
+              <strong className="text-slate-100">{overagePrice} per document</strong> sent beyond that, billed monthly alongside your
               subscription — console is metered on every plan, including Business. This is separate from
               Business&apos;s existing unlimited, included access to the plain API (see{" "}
               <Link href="/developers" className="underline hover:text-white">
