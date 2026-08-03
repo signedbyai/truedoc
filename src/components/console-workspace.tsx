@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { FileText, History, Home, Settings, X } from "lucide-react";
+import { FileText, History, Home, LogOut, MoreHorizontal, Settings, X } from "lucide-react";
 import type { ConsoleBillingState } from "@/lib/console-usage";
 import { ConsoleChat, type Bubble } from "@/components/console-chat";
 import { ConsoleUsagePanel } from "@/components/console-usage-panel";
@@ -12,6 +12,86 @@ import { ConsolePlanStatus } from "@/components/console-plan-status";
 import { VerifiedBadgeSettings } from "@/components/verified-badge-settings";
 import { ConsoleUpgradePanel, ConsoleLockedChat } from "@/components/console-upgrade-panel";
 import { ReferralGiftButton } from "@/components/referral-gift-button";
+import { createClient } from "@/lib/supabase/client";
+
+/** Pill icon #4 (2026-08-04, direct instruction: "put settings and logout
+ *  in a three dots icon in the pill so the pill does not get too big" —
+ *  Settings used to be its own icon, and adding a logout icon alongside it
+ *  plus the newly-added referral gift icon would have made the pill five
+ *  icons wide). Collapses Settings (still a same-shell tab switch, via
+ *  `onSettings`) and a real sign-out (same `supabase.auth.signOut()` +
+ *  full navigation pattern as `logout-link.tsx`/`dashboard-nav.tsx`'s own
+ *  `logout()` — duplicated rather than imported, since neither existing
+ *  helper renders as a plain menu item) into one dropdown, keeping the
+ *  pill itself at four icons (Home/History/Templates/⋯) plus the referral
+ *  gift icon.
+ *
+ *  `align="left"` (see referral-gift-button.tsx's own comment) applies
+ *  here too — same narrow-left-column context, same fix. */
+function ConsolePillMoreMenu({ active, onSettings }: { active: boolean; onSettings: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function logout() {
+    setLoggingOut(true);
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    // Full navigation (not router.push) so every bit of client state tied
+    // to the old session is gone — same reasoning as logout-link.tsx.
+    window.location.href = "/login";
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-label="More"
+        aria-expanded={open}
+        title="More"
+        className={`flex h-8 w-8 items-center justify-center rounded-full ${
+          active || open ? "bg-white/10 text-white" : "text-neutral-300 hover:bg-white/10 hover:text-white"
+        }`}
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
+
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-hidden="true"
+            tabIndex={-1}
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-40 cursor-default"
+          />
+          <div className="absolute left-0 top-full z-50 mt-2 w-40 overflow-hidden rounded-xl border border-white/10 bg-neutral-900 py-1 shadow-lg shadow-black/40 backdrop-blur">
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onSettings();
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10 hover:text-white"
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              disabled={loggingOut}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10 hover:text-white disabled:opacity-50"
+            >
+              <LogOut className="h-4 w-4" />
+              {loggingOut ? "Logging out…" : "Log out"}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 /** Top-level client wrapper for /console/app (2026-07-31 layout pass) —
  *  owns the state that has to be shared between the history sidebar and
@@ -262,11 +342,14 @@ export function ConsoleWorkspace({
   // lists could still in principle be starved the same way by a future
   // change elsewhere in this component.
   //
-  // 2026-08-04: a fifth icon, ReferralGiftButton, was added after the pill
-  // (Home/History/Templates/Settings) — it's not a tab, it's a
-  // self-contained popover (own fetch, own open/close state), so it just
-  // sits alongside the tab buttons rather than participating in
-  // desktopSidebarTab/mobileSheetTab at all.
+  // 2026-08-04: ReferralGiftButton was added alongside the pill
+  // (Home/History/Templates/⋯) — it's not a tab, it's a self-contained
+  // popover (own fetch, own open/close state), so it just sits alongside
+  // the tab buttons rather than participating in desktopSidebarTab/
+  // mobileSheetTab at all. Same day, direct instruction: Settings moved
+  // off its own icon and, together with a new Log out action, into a
+  // ConsolePillMoreMenu ("⋯") — adding both a referral icon and a logout
+  // icon separately would have made the pill six icons wide.
   const desktopSidebarBody = (
     <div className="flex min-h-[240px] flex-1 flex-col">
       <div className="mb-2 flex justify-center">
@@ -301,23 +384,15 @@ export function ConsoleWorkspace({
           >
             <FileText className="h-4 w-4" />
           </button>
-          <button
-            type="button"
-            onClick={() => setDesktopSidebarTab("settings")}
-            aria-label="Settings"
-            title="Settings"
-            className={`flex h-8 w-8 items-center justify-center rounded-full ${
-              desktopSidebarTab === "settings" ? "bg-white/10 text-white" : "text-neutral-300 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            <Settings className="h-4 w-4" />
-          </button>
+          <ConsolePillMoreMenu active={desktopSidebarTab === "settings"} onSettings={() => setDesktopSidebarTab("settings")} />
           {/* Referral entry point (2026-08-04, direct feedback: the gift
               button existed on the main dashboard nav but nowhere inside
               console.signedby.ai, Free or Pro+) — same self-contained
               ReferralGiftButton the dashboard nav uses, `variant="pill"` for
-              the dark-on-dark styling to match its four siblings here. */}
-          <ReferralGiftButton variant="pill" />
+              the dark-on-dark styling to match its siblings here.
+              `align="left"` fixes the popover disappearing off the left edge
+              of the window at wide viewports — see that prop's own comment. */}
+          <ReferralGiftButton variant="pill" align="left" />
         </div>
       </div>
       {!hasAccess ? (
@@ -391,18 +466,13 @@ export function ConsoleWorkspace({
               >
                 <FileText className="h-4 w-4" />
               </button>
-              <button
-                type="button"
-                onClick={() => openMobileSheet("settings")}
-                aria-label="Settings"
-                title="Settings"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 hover:bg-white/10 hover:text-white"
-              >
-                <Settings className="h-4 w-4" />
-              </button>
+              <ConsolePillMoreMenu
+                active={mobileSheetOpen && mobileSheetTab === "settings"}
+                onSettings={() => openMobileSheet("settings")}
+              />
               {/* Same referral entry point as the desktop pill above — see
                   that button's comment. */}
-              <ReferralGiftButton variant="pill" />
+              <ReferralGiftButton variant="pill" align="left" />
             </div>
           </div>
 

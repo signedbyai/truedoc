@@ -17,13 +17,33 @@ import { Gift, Copy, Check, X } from "lucide-react";
 // `variant="pill"` (2026-08-04, direct feedback: the referral entry point
 // existed on the main dashboard nav but not anywhere inside
 // console.signedby.ai, on either Free or Pro+) — sized and themed to sit
-// as a fifth icon in console-workspace.tsx's dark floating pill
-// (Home/History/Templates/Settings), matching those buttons' own h-8 w-8/
+// as an icon in console-workspace.tsx's dark floating pill
+// (Home/History/Templates/⋯), matching those buttons' own h-8 w-8/
 // text-neutral-300/hover:bg-white/10 styling exactly, with a dark popover
 // instead of the light one the dashboard's "icon"/"label" variants use.
+//
+// `align` (2026-08-04, direct bug report: "on full screen only the
+// referral popover disappears off to the left of the window") — the
+// popover used to always anchor `right-0` (grow leftward from the
+// button), which is fine in the dashboard nav (button sits near the
+// right edge of a wide bar, plenty of room to its left) but breaks
+// inside console-workspace.tsx's narrow left-hand pill: on a wide/full-
+// screen viewport a 288px-wide popover growing left from an icon that's
+// already close to the page's left edge runs past x=0 and is clipped by
+// the browser viewport, not just its own container (an `absolute`
+// element isn't bounded by its non-`relative` ancestors' widths, only by
+// the actual browser window). `align="left"` flips it to grow rightward
+// instead, which is safe there since the wide chat pane fills the space
+// immediately to the right.
 const SEEN_KEY = "sb_ref_gift_seen";
 
-export function ReferralGiftButton({ variant = "icon" }: { variant?: "icon" | "label" | "pill" }) {
+export function ReferralGiftButton({
+  variant = "icon",
+  align = "right",
+}: {
+  variant?: "icon" | "label" | "pill";
+  align?: "left" | "right";
+}) {
   const [link, setLink] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [open, setOpen] = useState(false);
@@ -125,11 +145,11 @@ export function ReferralGiftButton({ variant = "icon" }: { variant?: "icon" | "l
             className="fixed inset-0 z-40 cursor-default"
           />
           <div
-            className={
+            className={`absolute top-full z-50 mt-2 w-72 ${align === "left" ? "left-0" : "right-0"} ${
               dark
-                ? "absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-white/10 bg-neutral-900 p-4 shadow-lg shadow-black/40 backdrop-blur"
-                : "absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-lg"
-            }
+                ? "rounded-xl border border-white/10 bg-neutral-900 p-4 shadow-lg shadow-black/40 backdrop-blur"
+                : "rounded-xl border border-slate-200 bg-white p-4 shadow-lg"
+            }`}
           >
             <div className="flex items-start justify-between">
               <p className={`text-sm font-semibold ${dark ? "text-white" : "text-slate-900"}`}>
