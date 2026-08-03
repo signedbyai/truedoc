@@ -915,14 +915,23 @@ export function ConsoleChat({
    *  Pro — the credit-pack top-up (CONSOLE_FREE_TIER_SCOPE.md item #8,
    *  built 2026-08-03). Same shape as subscribeToPro above (POST, redirect
    *  to the returned Checkout url) but against the one-time-payment route
-   *  instead of the subscription one — no body needed, there's only one
-   *  pack size (see stripe.ts). */
+   *  instead of the subscription one.
+   *
+   *  `source: "console"` (2026-08-01, direct bug report) — without this,
+   *  Stripe Checkout's back arrow used the route's default
+   *  /dashboard/billing cancel_url, which sits on the main signedby.ai
+   *  domain and so silently exited console.signedby.ai entirely when
+   *  clicked. See the route's own bodySchema comment. */
   const [creditsLoading, setCreditsLoading] = useState(false);
   async function buyCreditPack() {
     setError("");
     setCreditsLoading(true);
     try {
-      const res = await fetch("/api/billing/credits/checkout", { method: "POST" });
+      const res = await fetch("/api/billing/credits/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: "console" }),
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.url) {
         throw new Error(data.error || "Couldn't start checkout — try again.");

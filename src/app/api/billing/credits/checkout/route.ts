@@ -1,9 +1,25 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { getUserAndOrg } from "@/lib/org";
 import { getStripe, appUrl, creditPackPriceFor, CREDIT_PACK_CREDITS } from "@/lib/stripe";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getRequestCurrency } from "@/lib/currency.server";
 import { normalizeCurrency, type Currency } from "@/lib/currency";
+import { consoleUrl } from "@/lib/console-host";
+
+// `source` (2026-08-01, direct bug report: buying credits from Console's
+// capReached bubble sent someone all the way back to signedby.ai after
+// Stripe Checkout — its back arrow always uses the Checkout Session's
+// `cancel_url`, which was hardcoded to /dashboard/billing on the main
+// domain regardless of where the purchase started, a real cross-subdomain
+// "exit console" for the one caller that actually lives on
+// console.signedby.ai). A small closed enum, not an open "next" path —
+// there are only two real callers of this route (console-chat.tsx,
+// new-document-client.tsx), and the server picks the actual return URL
+// from a hardcoded pair below rather than trusting anything client-
+// supplied, so this can't become an open-redirect vector the way a raw
+// URL/path param would need sanitizing against.
+const bodySchema = z.object({ source: z.enum(["console", "dashboard"]).optional() });
 
 // Pay-as-you-go credit pack checkout (CONSOLE_FREE_TIER_SCOPE.md item #8,
 // built 2026-08-03) — a one-time $5 purchase for 25 extra document seals,
@@ -21,9 +37,16 @@ import { normalizeCurrency, type Currency } from "@/lib/currency";
 // object (see stripe.ts for why that's actually simpler here, not
 // harder — no per-currency Price to create in the Stripe dashboard first).
 //
-// No request body needed — there's exactly one pack (see stripe.ts), not a
-// menu of sizes, so there's nothing for the client to choose.
-export async function POST() {
+export async function POST(request: Request) {
+  // Lenient on purpose (unlike /api/billing/checkout's strict 400 on a bad
+  // body) — a missing/malformed body here just means "don't know where
+  // this came from," which safely falls back to the existing
+  // /dashboard/billing behavior below rather than blocking checkout over
+  // what's ultimately a return-URL nicety.
+  const json = await request.json().catch(() => ({}));
+  const parsed = bodySchema.safeParse(json);
+  const source = parsed.success ? parsed.data.source : undefined;
+
   const ctx = await getUserAndOrg();
   if (!ctx) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   const { supabase, user, orgId } = ctx;
@@ -94,13 +117,18 @@ export async function POST() {
           quantity: 1,
         },
       ],
-      // Same hardcoded /dashboard/billing landing spot the subscription
-      // checkout uses today — the "return to wherever you actually came
-      // from" refinement (CONSOLE_FREE_TIER_SCOPE.md's 1a) is a known,
-      // still-deferred gap for both flows, not something this route
-      // solves on its own.
-      success_url: `${appUrl()}/dashboard/billing?credits=1`,
-      cancel_url: `${appUrl()}/dashboard/billing?credits_canceled=1`,
+      // console.signedby.ai/app for the console caller (both the
+      // completed-purchase landing spot AND, more importantly, what
+      // Stripe Checkout's own back-arrow uses — see the bodySchema
+      // comment above), the existing /dashboard/billing spot for
+      // everyone else. The exact "return to wherever you actually came
+      // from within the dashboard" refinement (CONSOLE_FREE_TIER_SCOPE.md's
+      // 1a) is still a known, deferred gap for the non-console caller —
+      // this only closes the console cross-subdomain case that was
+      // actually reported.
+      success_url: source === "console" ? `${consoleUrl("/app")}?credits=1` : `${appUrl()}/dashboard/billing?credits=1`,
+      cancel_url:
+        source === "console" ? `${consoleUrl("/app")}?credits_canceled=1` : `${appUrl()}/dashboard/billing?credits_canceled=1`,
       // metadata (not subscription_data — this is a one-time payment, no
       // subscription object exists) is what the webhook keys off of to
       // route this to grantCreditPack() instead of the plan-sync path.

@@ -78,10 +78,20 @@ export function NewDocumentClient({
   // (CONSOLE_FREE_TIER_SCOPE.md item #8, built 2026-08-03), offered here
   // too since this is the other real surface someone hits the 3-doc cap
   // through. Same POST-then-redirect shape as that bubble's buyCreditPack.
+  // `source: "dashboard"` sent explicitly (2026-08-01, alongside the
+  // console-side fix for a real bug there) — this surface already lives
+  // on signedby.ai, same as the route's default /dashboard/billing return
+  // spot, so behavior is unchanged; explicit rather than relying on the
+  // route's fallback so this doesn't silently start meaning something
+  // else if that default ever changes.
   async function buyCreditPack() {
     setCreditsLoading(true);
     try {
-      const res = await fetch("/api/billing/credits/checkout", { method: "POST" });
+      const res = await fetch("/api/billing/credits/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: "dashboard" }),
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.url) {
         throw new Error(data.error || "Couldn't start checkout — try again.");
