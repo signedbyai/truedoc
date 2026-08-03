@@ -37,7 +37,21 @@ export const metadata: Metadata = {
 // plain dashboard signup magic-quote links to. Free on every plan, not
 // Pro+-gated — that was a stale assumption in this comment and the page's
 // own meta DESCRIPTION until 2026-08-01, see CONSOLE_FREE_TIER_SCOPE.md.
-const START_HREF = consoleUrl("/login?intent=signup&next=/app");
+// utm_* params added 2026-08-01 (direct ask, following the console
+// sign-up/login audit: "how many visited, clicked, then logged in" turned
+// out to be unanswerable — Vercel Web Analytics isn't enabled on the
+// project, and even if it were, nothing tied a click on this page to a
+// later console sign-in). Reuses the existing first-touch attribution
+// pipeline as-is (attribution-capture.tsx/attribution-claim.tsx/migration
+// 0024, see [[signup-attribution]]) rather than building something new —
+// AttributionCapture already stashes any utm_* it finds on ANY page load
+// into localStorage (first touch only), so it picks these up the moment
+// the browser lands on /login with them in the URL, no changes needed
+// there. Source/medium/campaign chosen to read naturally alongside real ad
+// UTMs in the same signup_utm_* columns later.
+const START_HREF = consoleUrl(
+  "/login?intent=signup&next=/app&utm_source=verified_badge&utm_medium=cta&utm_campaign=verified_badge_page"
+);
 
 const FAQ = [
   {

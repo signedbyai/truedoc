@@ -6,6 +6,7 @@ import { getConsoleBillingState } from "@/lib/console-usage";
 import { ConsoleWorkspace } from "@/components/console-workspace";
 import { consoleAppNextPath } from "@/lib/console-host";
 import { resolveIdentityStatus } from "@/lib/identity";
+import { AttributionClaim } from "@/components/attribution-claim";
 
 // /console/app (moved from /dashboard/console 2026-07-30 — see
 // src/app/console/app/layout.tsx for why) — the actual interactive
@@ -111,6 +112,16 @@ export default async function ConsoleAppPage({
   return (
     <main className="px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-6xl">
+        {/* This page previously never claimed first-touch attribution at all
+            (2026-08-01 finding, following the console sign-up/login audit)
+            — AttributionClaim only lived on /dashboard/page.tsx, but a
+            console-only signup (e.g. from /verified-badge's CTA, see the
+            utm_* params added there) lands here directly and never visits
+            /dashboard (auth/callback special-cases next=/app straight to
+            consoleUrl("/app")). Mounted unconditionally, not gated behind
+            hasAccess — Free/locked orgs are exactly the cohort this was
+            missing for. See [[signup-attribution]]. */}
+        <AttributionClaim />
         <ConsoleWorkspace
           plan={org.plan ?? "free"}
           hasAccess={hasAccess}
