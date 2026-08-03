@@ -62,10 +62,11 @@ describe("computeQuoteTotals", () => {
 });
 
 describe("quoteCurrencyForAppCurrency", () => {
-  it("maps each of the app's 4 billing currencies to its quote symbol", () => {
+  it("maps each of the app's 5 billing currencies to its quote symbol", () => {
     expect(quoteCurrencyForAppCurrency("USD")).toBe("$");
     expect(quoteCurrencyForAppCurrency("EUR")).toBe("€");
     expect(quoteCurrencyForAppCurrency("GBP")).toBe("£");
     expect(quoteCurrencyForAppCurrency("CHF")).toBe("CHF");
+    expect(quoteCurrencyForAppCurrency("INR")).toBe("₹");
   });
 });

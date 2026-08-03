@@ -30,6 +30,11 @@ describe("currencyForCountry", () => {
     }
   });
 
+  it("maps India to INR", () => {
+    expect(currencyForCountry("IN")).toBe("INR");
+    expect(currencyForCountry("in")).toBe("INR");
+  });
+
   it("maps everyone else to USD", () => {
     for (const c of ["US", "CA", "AU", "PL", "SE", "DK", "ID", "JP"]) {
       expect(currencyForCountry(c)).toBe("USD");
@@ -49,6 +54,7 @@ describe("normalizeCurrency", () => {
     expect(normalizeCurrency("usd")).toBe("USD");
     expect(normalizeCurrency("gbp")).toBe("GBP");
     expect(normalizeCurrency("CHF")).toBe("CHF");
+    expect(normalizeCurrency("inr")).toBe("INR");
   });
 
   it("rejects anything else", () => {
@@ -84,11 +90,21 @@ describe("formatPrice", () => {
     expect(formatPrice("USD", "free", { withPeriod: true })).toBe("$0");
     expect(formatPrice("EUR", "free")).toBe("€0");
   });
+
+  // INR (2026-08-03, RAZORPAY_INDIA_SCOPE.md's V0.5) — a genuine PPP
+  // discount, not an FX-rounding premium like GBP/CHF above, so these
+  // numbers are deliberately far below a straight $-to-₹ conversion.
+  it("uses the PPP-discounted INR amounts, single-glyph symbol (no space)", () => {
+    expect(formatPrice("INR", "starter", { withPeriod: true })).toBe("₹259/mo");
+    expect(formatPrice("INR", "team", { withPeriod: true })).toBe("₹529/mo");
+    expect(formatPrice("INR", "business")).toBe("₹1099");
+    expect(formatPrice("INR", "free")).toBe("₹0");
+  });
 });
 
 describe("otherCurrencies", () => {
-  it("returns the three a visitor can switch to", () => {
-    expect(otherCurrencies("EUR")).toEqual(["USD", "GBP", "CHF"]);
-    expect(otherCurrencies("USD")).toEqual(["EUR", "GBP", "CHF"]);
+  it("returns the other four a visitor can switch to", () => {
+    expect(otherCurrencies("EUR")).toEqual(["USD", "GBP", "CHF", "INR"]);
+    expect(otherCurrencies("USD")).toEqual(["EUR", "GBP", "CHF", "INR"]);
   });
 });

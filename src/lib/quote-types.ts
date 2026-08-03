@@ -41,10 +41,13 @@ export const MAX_TAX_RATE_PERCENT = 100;
 // English doesn't mean the visitor is in the US or UK) and it's already
 // exactly the "what currency is this person in" answer the rest of the app
 // relies on for billing — one source of truth, not two disagreeing guesses.
-// Same 4 currencies pricing supports; CHF (unlike $/€/£) isn't a single
+// Same 5 currencies pricing supports (INR added 2026-08-03,
+// RAZORPAY_INDIA_SCOPE.md's V0.5); CHF (unlike $/€/£/₹) isn't a single
 // glyph, so callers that print it (quote-to-pdf.ts, MagicQuoteForm) add a
-// space before the amount — see formatAmount in both.
-export const QUOTE_CURRENCY_SYMBOLS = ["$", "€", "£", "CHF"] as const;
+// space before the amount — see formatAmount in both. ₹ is a single JS
+// string-length-1 glyph like the others, so it falls into the same
+// no-space branch as $/€/£ with no extra handling needed.
+export const QUOTE_CURRENCY_SYMBOLS = ["$", "€", "£", "CHF", "₹"] as const;
 export type QuoteCurrencySymbol = (typeof QUOTE_CURRENCY_SYMBOLS)[number];
 
 const CURRENCY_TO_QUOTE_SYMBOL: Record<Currency, QuoteCurrencySymbol> = {
@@ -52,6 +55,7 @@ const CURRENCY_TO_QUOTE_SYMBOL: Record<Currency, QuoteCurrencySymbol> = {
   EUR: "€",
   GBP: "£",
   CHF: "CHF",
+  INR: "₹",
 };
 
 // Server callers (the "new document" page) resolve the visitor's real

@@ -16,7 +16,7 @@
 // formatters. The request-reading helper (geo + cookie) lives in
 // currency.server.ts, which is server-only.
 
-export type Currency = "USD" | "EUR" | "GBP" | "CHF";
+export type Currency = "USD" | "EUR" | "GBP" | "CHF" | "INR";
 export type PlanKey = "free" | "starter" | "team" | "business";
 
 // The 20 euro-area countries, plus the microstates and territories that use
@@ -34,12 +34,20 @@ const STERLING = new Set(["GB", "IM", "JE", "GG"]);
 // Switzerland and Liechtenstein (which uses the Swiss franc).
 const FRANC = new Set(["CH", "LI"]);
 
+// India (RAZORPAY_INDIA_SCOPE.md's "V0.5" — Stripe-only, no Razorpay yet).
+// Deliberately a Set of one, matching the shape of the others, rather than
+// a plain `=== "IN"` check — keeps this branch structurally identical to
+// EUROZONE/STERLING/FRANC so a later Razorpay-routed version (or any
+// broader PPP market) is a one-line addition, not a rewrite.
+const INDIA = new Set(["IN"]);
+
 export function currencyForCountry(country: string | null | undefined): Currency {
   if (!country) return "USD";
   const code = country.toUpperCase();
   if (EUROZONE.has(code)) return "EUR";
   if (STERLING.has(code)) return "GBP";
   if (FRANC.has(code)) return "CHF";
+  if (INDIA.has(code)) return "INR";
   return "USD";
 }
 
@@ -48,7 +56,7 @@ export function currencyForCountry(country: string | null | undefined): Currency
 // and at checkout, so what someone picks is what they're charged.
 export const CURRENCY_COOKIE = "sb_currency";
 
-const CURRENCIES: Currency[] = ["USD", "EUR", "GBP", "CHF"];
+const CURRENCIES: Currency[] = ["USD", "EUR", "GBP", "CHF", "INR"];
 
 export function normalizeCurrency(value: string | null | undefined): Currency | null {
   const up = value?.toUpperCase() as Currency | undefined;
@@ -59,11 +67,24 @@ export function normalizeCurrency(value: string | null | undefined): Currency | 
 // is selected by picking that currency's Stripe price — we never send an
 // amount to Stripe from here, so these figures MUST match the amounts on the
 // corresponding Stripe prices.
+// INR (2026-08-03, RAZORPAY_INDIA_SCOPE.md's "V0.5" probe): NOT held to the
+// same "~6-15% premium over USD" convention as EUR/GBP/CHF above — this is
+// a deliberate PPP (purchasing-power-parity) discount, not an FX-rounding
+// choice. ~55% off the nominal $-to-₹ conversion (₹588 at a ~84 rate),
+// matching the common "Tier 3" PPP discount SaaS pricing frameworks use
+// for India, and landing comfortably under the RBI's ₹15,000-per-debit
+// additional-authentication threshold so a UPI/recurring mandate (once
+// built — see the scope doc) never needs re-approval on renewal. Team and
+// Business get the same ~45%-of-nominal ratio applied for a consistent
+// table, but this is a V0.5, Stripe-cards-only probe scoped around the
+// Pro price specifically — see the scope doc before assuming Team/Business
+// India pricing is an active go-to-market push.
 export const PRICE_TABLE: Record<Currency, { symbol: string; code: Currency; plans: Record<PlanKey, number> }> = {
   USD: { symbol: "$", code: "USD", plans: { free: 0, starter: 7, team: 14, business: 29 } },
   EUR: { symbol: "€", code: "EUR", plans: { free: 0, starter: 7, team: 14, business: 29 } },
   GBP: { symbol: "£", code: "GBP", plans: { free: 0, starter: 6, team: 12, business: 25 } },
   CHF: { symbol: "CHF", code: "CHF", plans: { free: 0, starter: 6, team: 12, business: 25 } },
+  INR: { symbol: "₹", code: "INR", plans: { free: 0, starter: 259, team: 529, business: 1099 } },
 };
 
 // "$0" / "$7" / "$7/mo", and "CHF 7/mo" — multi-letter codes read better with

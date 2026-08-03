@@ -43,11 +43,30 @@ export const PLAN_PRICE_IDS_CHF: Record<PlanId, string | undefined> = {
   business: process.env.STRIPE_PRICE_BUSINESS_CHF,
 };
 
+// INR (RAZORPAY_INDIA_SCOPE.md's "V0.5" — Stripe cards only, no Razorpay/
+// UPI yet). IMPORTANT deploy-order gotcha, same shape as the other
+// per-currency tables' "falls back to USD" comment above, but worth
+// spelling out explicitly here because the gap is more visible for a
+// brand-new currency than for an existing one: until
+// STRIPE_PRICE_STARTER_INR (etc.) is actually set in Vercel, an Indian
+// visitor sees currency.ts's ₹259 on /pricing, but priceIdFor()'s
+// fallback below sends them to Stripe Checkout on the USD $7 Price
+// instead — a real, visible price-mismatch bug, not just a missing
+// discount. Create the Stripe Price objects (INR, recurring monthly,
+// ₹259/₹529/₹1099) and set these three env vars BEFORE this currency
+// goes live in `currencyForCountry`, not after.
+export const PLAN_PRICE_IDS_INR: Record<PlanId, string | undefined> = {
+  starter: process.env.STRIPE_PRICE_STARTER_INR,
+  team: process.env.STRIPE_PRICE_TEAM_INR,
+  business: process.env.STRIPE_PRICE_BUSINESS_INR,
+};
+
 const PRICE_TABLES_BY_CURRENCY: Record<Currency, Record<PlanId, string | undefined>> = {
   USD: PLAN_PRICE_IDS,
   EUR: PLAN_PRICE_IDS_EUR,
   GBP: PLAN_PRICE_IDS_GBP,
   CHF: PLAN_PRICE_IDS_CHF,
+  INR: PLAN_PRICE_IDS_INR,
 };
 
 // Currency-aware price selection: that currency's price when configured,
@@ -85,6 +104,12 @@ export const CONSOLE_METERED_PRICE_IDS: Record<Currency, string | undefined> = {
   EUR: process.env.STRIPE_PRICE_CONSOLE_METERED_EUR,
   GBP: process.env.STRIPE_PRICE_CONSOLE_METERED_GBP,
   CHF: process.env.STRIPE_PRICE_CONSOLE_METERED_CHF,
+  // Left unset on purpose (RAZORPAY_INDIA_SCOPE.md's V0.5 is flat-rate-Pro
+  // only) — unlike priceIdFor's USD fallback above, consoleMeteredPriceIdFor
+  // has NO fallback by design (see the comment on it): an INR Console org
+  // just stays on local-only usage tracking, no live Stripe metered
+  // reporting, until this is actually configured. Safe, not a bug.
+  INR: process.env.STRIPE_PRICE_CONSOLE_METERED_INR,
 };
 
 export function consoleMeteredPriceIdFor(currency: string): string | undefined {
