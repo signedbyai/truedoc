@@ -365,6 +365,15 @@ export type ConsoleChatTurnResult =
   | { type: "message"; content: string }
   | { type: "confirm"; tool: string; arguments: Record<string, unknown>; content: string }
   | { type: "error"; error: string }
+  // seal_document's needs-identity-verification failure (2026-08-01,
+  // direct bug report: the plain-text "message" version below told
+  // someone to go open Settings, but had no actual way to get there — the
+  // only nearby clickable thing was the "Get a Verified Badge" attach
+  // button itself, which just reopened the file picker again, so
+  // following the instruction looked like it silently did nothing).
+  // Distinct type so console-chat.tsx can render a real "Open Settings"
+  // button wired to onOpenSettings instead of plain prose.
+  | { type: "needs_identity"; content: string }
   // seal_document's success case (2026-08-01, direct feedback: the raw
   // verify URL is a full SHA-512 hash — unwieldy to select/copy by hand,
   // and the sealed PDF/certificate/badge were only reachable via a trip to
@@ -413,8 +422,8 @@ export async function runConsoleChatTurn(params: {
       // reporting a generic error, since there's a real next step to take.
       if ("needsIdentityVerification" in result && result.needsIdentityVerification) {
         return {
-          type: "message",
-          content: `${result.error} Open Settings right here in Console (the gear icon on mobile, or the panel on the left on desktop) to verify — it only takes about a minute, then come back and try sealing again.`,
+          type: "needs_identity",
+          content: `${result.error} It only takes about a minute, then come back and try sealing again.`,
         };
       }
       return { type: "message", content: `Couldn't do that: ${result.error}` };

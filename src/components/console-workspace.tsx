@@ -535,6 +535,18 @@ export function ConsoleWorkspace({
               onConversationSaved={handleSaved}
               certificateModePreference={certificateModePreference}
               plan={plan}
+              // Bug fix 2026-08-01, direct report: the needs_identity
+              // bubble's "Open Settings" button used to be plain text with
+              // nowhere to actually go. Sets both the desktop tab and the
+              // mobile sheet's tab+open state — only one of the two is
+              // ever visible at a given viewport (desktop aside is `hidden
+              // lg:flex`, the mobile sheet wrapper is `lg:hidden`), so
+              // setting both here is simpler and safe rather than trying
+              // to detect viewport in this one callback.
+              onOpenSettings={() => {
+                setDesktopSidebarTab("settings");
+                openMobileSheet("settings");
+              }}
             />
           ) : (
             <ConsoleLockedChat />

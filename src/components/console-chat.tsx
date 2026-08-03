@@ -59,6 +59,14 @@ export type Bubble =
       // treatment as certificateModeChoice/sealed above rather than plain
       // text buried in the thread.
       capReached?: boolean;
+      // seal_document's needs-identity-verification failure (2026-08-01,
+      // direct bug report: this used to be plain text telling someone to
+      // "open Settings," with nothing actually clickable — the only nearby
+      // interactive element was the "Get a Verified Badge" attach button,
+      // so trying to act on the instruction just reopened the file picker
+      // instead of going anywhere near identity verification). Renders a
+      // real "Open Settings" button wired to the onOpenSettings prop.
+      openSettings?: boolean;
     };
 
 /** Copies `text` to the clipboard on click/tap and flashes a brief check
@@ -487,6 +495,7 @@ export function ConsoleChat({
   onConversationSaved,
   certificateModePreference = "ask",
   plan = "free",
+  onOpenSettings,
 }: {
   /** The conversation's id if this is reopening a past chat, or null for a
    *  brand new one. Only read at mount time — console-workspace.tsx forces
@@ -517,6 +526,13 @@ export function ConsoleChat({
    *  feature." Defaults to "free" (the safer default if this prop is ever
    *  omitted — undershows options rather than over-promising them). */
   plan?: string;
+  /** Switches console-workspace.tsx's own Settings tab open (desktop
+   *  aside and mobile sheet both — that parent decides which is actually
+   *  visible; see its own onOpenSettings wiring). Used by the
+   *  needs_identity bubble's "Open Settings" button (2026-08-01, direct
+   *  bug report) so that flow can actually navigate there instead of just
+   *  telling someone to. */
+  onOpenSettings?: () => void;
 } = {}) {
   const isFreePlan = plan === "free";
   const router = useRouter();
@@ -797,6 +813,11 @@ export function ConsoleChat({
           },
         ]);
         router.refresh();
+      } else if (data.type === "needs_identity") {
+        setMessages((cur) => [
+          ...cur,
+          { role: "assistant", content: String(data.content ?? ""), openSettings: true },
+        ]);
       } else {
         setMessages((cur) => [...cur, { role: "assistant", content: String(data.content ?? "") }]);
         router.refresh(); // refreshes the usage panel's server-fetched numbers
@@ -1347,8 +1368,13 @@ export function ConsoleChat({
                     </button>
                   </div>
                 )}
-                {(m.confirm || m.link) && (
+                {(m.confirm || m.link || m.openSettings) && (
                   <div className="mt-2 flex flex-wrap gap-2">
+                    {m.openSettings && (
+                      <Button type="button" variant="cta" size="sm" onClick={() => onOpenSettings?.()}>
+                        Open Settings
+                      </Button>
+                    )}
                     {m.link && (
                       <a
                         href={m.link.href}
