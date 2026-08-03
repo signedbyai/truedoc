@@ -19,6 +19,39 @@ display prices, and per-plan Stripe Price ID lookups
 and the full Razorpay build remain unbuilt, pending real conversion data
 from this probe.
 
+## How to monitor V0.5 (no new code needed)
+
+Nothing in this codebase currently tags country at signup or logs a
+pricing/checkout funnel (checked 2026-08-04 — `organizations` has no
+`country` column, checkout only tags `metadata.currency`, and the only
+event-log tables, `audit_events`/`plan_cap_hits`, don't cover this path).
+Two existing tools cover it well enough without building anything new:
+
+- **Stripe Dashboard, filtered `currency: inr`** — the decisive number.
+  Payments tab, `currency eq inr`, split by `succeeded` vs `failed` =
+  the real decline rate on India-issued cards. This is the number that
+  actually answers "is cards-only good enough," since a high decline
+  rate is exactly the pain UPI would fix. Subscriptions tab gives count
+  + MRR of paying INR customers.
+- **Vercel Web Analytics, `requestPath eq '/pricing'` by `country`** —
+  top-of-funnel: how many India visitors saw pricing at all, so
+  views → INR-checkout-started (Stripe) → completed can be turned into a
+  real conversion rate instead of just an absolute count.
+
+## Trigger for moving to Lean V1
+
+Give V0.5 a few weeks of real traffic before deciding. Move to Lean V1
+(Razorpay/UPI, see below) if either holds: (a) INR card decline rate
+stays meaningfully elevated vs. other currencies — the direct signal
+that cards-only is the blocker, not price or interest; or (b) India
+`/pricing` traffic is real (dozens+ of views/week) but INR checkouts
+stay near zero for several weeks running — interest without conversion.
+If INR subscriptions are converting at a normal rate with normal decline
+rates, there's no urgency — let V0.5 run and revisit later. Either way,
+worth opening the Razorpay KYC/onboarding conversation now in parallel,
+since that timeline is on them, not engineering, and can't be
+short-circuited by writing code faster.
+
 ## Read this first: the real gating step isn't engineering
 
 Before any of the code below matters, **SignedBy needs to onboard as a
