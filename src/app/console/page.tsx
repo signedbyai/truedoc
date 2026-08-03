@@ -92,9 +92,14 @@ export default async function ConsolePage() {
   // happens to render similar content.
   const onConsoleHost = isConsoleHost((await headers()).get("host"));
   const loginHref = onConsoleHost ? "/login?next=/app" : consoleUrl("/login?next=/app");
+  // utm_* added 2026-08-01, same pass that tagged /verified-badge's CTA and
+  // fixed console/app/page.tsx to actually claim it (see [[signup-attribution]])
+  // — this page's signup CTA was one of the untagged ones found in that
+  // same sweep.
+  const SIGNUP_UTM = "&utm_source=console&utm_medium=cta&utm_campaign=console_page";
   const signupHref = onConsoleHost
-    ? "/login?intent=signup&next=/app"
-    : consoleUrl("/login?intent=signup&next=/app");
+    ? `/login?intent=signup&next=/app${SIGNUP_UTM}`
+    : consoleUrl(`/login?intent=signup&next=/app${SIGNUP_UTM}`);
 
   // Skip the pitch for someone who's already signed in and already has
   // access — direct instruction (2026-07-31): typing console.signedby.ai

@@ -27,7 +27,12 @@ export const metadata: Metadata = {
 
 // mode=quote opens the Magic Quote tab directly (see new-document-client.tsx's
 // initialMode) instead of dropping someone on the Upload tab.
-const START_HREF = "/login?intent=signup&next=" + encodeURIComponent("/dashboard/documents/new?mode=quote");
+// utm_* added 2026-08-01 (see [[signup-attribution]]) so signups from this
+// page are actually attributable — previously untagged.
+const START_HREF =
+  "/login?intent=signup&next=" +
+  encodeURIComponent("/dashboard/documents/new?mode=quote") +
+  "&utm_source=magic_quote&utm_medium=cta&utm_campaign=magic_quote_page";
 
 const FAQ = [
   {

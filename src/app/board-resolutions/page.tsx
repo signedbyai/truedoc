@@ -31,6 +31,9 @@ export const metadata: Metadata = {
 const RESOLUTION_TEMPLATE_SLUGS = ["board-resolution-template", "shareholder-consent-template"];
 const resolutionTemplates = TEMPLATE_PAGES.filter((t) => RESOLUTION_TEMPLATE_SLUGS.includes(t.slug));
 
+// utm_* added 2026-08-01 (see [[signup-attribution]]) — previously untagged.
+const SIGNUP_HREF = "/login?intent=signup&utm_source=board_resolutions&utm_medium=cta&utm_campaign=board_resolutions_page";
+
 const WHY = [
   {
     title: "Real templates, not a blank page",
@@ -100,7 +103,7 @@ export default async function BoardResolutionsPage() {
           full-time corporate secretary. Send the resolution, everyone signs, you&apos;re done.
         </p>
         <div className="mt-2 flex flex-col items-center gap-2">
-          <CtaLink href="/login?intent=signup" color={ctaColor} page="board-resolutions" position="hero">
+          <CtaLink href={SIGNUP_HREF} color={ctaColor} page="board-resolutions" position="hero">
             Start for free →
           </CtaLink>
           <p className="text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
@@ -153,7 +156,7 @@ export default async function BoardResolutionsPage() {
       <section className="mx-auto w-full max-w-3xl px-6 pb-20 text-center">
         <h2 className="text-2xl font-semibold text-slate-900">Try SignedBy free</h2>
         <p className="mt-2 text-sm text-slate-600">3 documents a month, no credit card, upgrade only if you need more.</p>
-        <CtaLink href="/login?intent=signup" className="mt-5" color={ctaColor} page="board-resolutions" position="footer">
+        <CtaLink href={SIGNUP_HREF} className="mt-5" color={ctaColor} page="board-resolutions" position="footer">
           Start for free →
         </CtaLink>
         <div className="mt-5">

@@ -24,6 +24,9 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
+// utm_* added 2026-08-01 (see [[signup-attribution]]) — previously untagged.
+const SIGNUP_HREF = "/login?intent=signup&utm_source=templates&utm_medium=cta&utm_campaign=templates_page";
+
 export default async function TemplatesIndexPage() {
   const ctaColor = await ctaColorFlag();
 
@@ -71,7 +74,7 @@ export default async function TemplatesIndexPage() {
           Upload any PDF, or describe what you need and let AI draft a starting point.
         </p>
         <div className="mt-5 flex flex-col items-center gap-2">
-          <CtaLink href="/login?intent=signup" color={ctaColor} page="templates" position="footer">
+          <CtaLink href={SIGNUP_HREF} color={ctaColor} page="templates" position="footer">
             Start for free →
           </CtaLink>
           <p className="text-xs text-slate-400">Free on every plan, including Free. No credit card required.</p>

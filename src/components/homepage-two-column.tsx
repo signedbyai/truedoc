@@ -61,8 +61,10 @@ export function HomepageTwoColumn({ currency, ctaColor }: { currency: Currency; 
             SignedBy is a fast, affordable alternative for e-Signatures — built for solo professionals
             and small teams who sign a handful of documents each month, not a whole sales floor.
           </p>
+          {/* utm_* added 2026-08-01, see homepage-current.tsx's matching
+              comment — utm_content="v20" distinguishes this variant. */}
           <CtaLink
-            href="/login?intent=signup"
+            href="/login?intent=signup&utm_source=homepage&utm_medium=cta&utm_campaign=homepage_page&utm_content=v20"
             className="mt-7"
             color={ctaColor}
             page="homepage"

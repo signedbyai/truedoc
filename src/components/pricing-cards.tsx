@@ -9,6 +9,14 @@ import { cn } from "@/lib/utils";
 import { CURRENCY_COOKIE, formatPrice, otherCurrencies, type Currency, type PlanKey } from "@/lib/currency";
 import type { CtaColor } from "@/flags";
 
+// utm_* added 2026-08-01 (see [[signup-attribution]]) — previously
+// untagged. Only reached when !isLoggedIn (the free-tier "Get started" and
+// the other tiers' "Sign in to subscribe" fallback), which in practice
+// means the public /pricing page — dashboard/billing.tsx's usage of this
+// same component always has isLoggedIn true, since that route requires
+// auth to reach at all.
+const SIGNUP_HREF = "/login?intent=signup&utm_source=pricing&utm_medium=cta&utm_campaign=pricing_page";
+
 type PlanId = "starter" | "team" | "business";
 
 const PLANS: {
@@ -146,7 +154,7 @@ export function PricingCards({
                         {isCurrent ? "Current plan" : "Included"}
                       </Button>
                     ) : (
-                      <Link href="/login?intent=signup" className="block">
+                      <Link href={SIGNUP_HREF} className="block">
                         <Button variant="outline" className="w-full">
                           Get started
                         </Button>
@@ -162,7 +170,7 @@ export function PricingCards({
                     </Button>
                   ) : (
                     <CtaLink
-                      href="/login?intent=signup"
+                      href={SIGNUP_HREF}
                       size="default"
                       className="w-full"
                       color={ctaColor}

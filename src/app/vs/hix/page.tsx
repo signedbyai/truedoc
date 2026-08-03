@@ -21,6 +21,9 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: SHARED_IMAGE },
 };
 
+// utm_* added 2026-08-01 (see [[signup-attribution]]) — previously untagged.
+const SIGNUP_HREF = "/login?intent=signup&utm_source=vs_hix&utm_medium=cta&utm_campaign=vs_hix_page";
+
 type Row = { label: string; signedby: string; competitor: string };
 
 const PRICING_ROWS: Row[] = [
@@ -99,7 +102,7 @@ export default async function VsHixPage() {
           Dutch platform for accountancy firms, built around deep integrations with bookkeeping software and hands-on
           onboarding.
         </p>
-        <CtaLink href="/login?intent=signup" color={ctaColor} page="vs-hix" position="hero">
+        <CtaLink href={SIGNUP_HREF} color={ctaColor} page="vs-hix" position="hero">
           Start for free →
         </CtaLink>
         <p className="text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
@@ -144,7 +147,7 @@ export default async function VsHixPage() {
       <section className="mx-auto w-full max-w-3xl px-6 pb-20 text-center">
         <h2 className="text-2xl font-semibold text-slate-900">Try SignedBy free</h2>
         <p className="mt-2 text-sm text-slate-600">3 documents a month, no credit card, upgrade only if you need more.</p>
-        <CtaLink href="/login?intent=signup" className="mt-5" color={ctaColor} page="vs-hix" position="footer">
+        <CtaLink href={SIGNUP_HREF} className="mt-5" color={ctaColor} page="vs-hix" position="footer">
           Start for free →
         </CtaLink>
       </section>

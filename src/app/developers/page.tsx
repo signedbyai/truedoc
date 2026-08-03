@@ -22,6 +22,9 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
+// utm_* added 2026-08-01 (see [[signup-attribution]]) — previously untagged.
+const SIGNUP_HREF = "/login?intent=signup&utm_source=developers&utm_medium=cta&utm_campaign=developers_page";
+
 function CodeBlock({ children }: { children: string }) {
   return (
     <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-all rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs leading-relaxed text-slate-700">
@@ -140,7 +143,7 @@ export default async function DevelopersPage() {
           the $7/mo Pro plan (50 free document-sends a month, then billed per document) and becomes fully
           unlimited on Business ($29/mo) — no separate developer plan to buy first.
         </p>
-        <CtaLink href="/login?intent=signup" color={ctaColor} page="developers" position="hero">
+        <CtaLink href={SIGNUP_HREF} color={ctaColor} page="developers" position="hero">
           Start for free →
         </CtaLink>
         <p className="text-xs text-slate-400">No credit card required — 3 free documents every month to try it.</p>
@@ -592,7 +595,7 @@ function verify(rawBody, signatureHeader, secret) {
           Sign up free — you can generate a key today. Upgrade to Pro ($7/mo) for real usage, or Business
           ($29/mo) for unlimited access and webhooks.
         </p>
-        <CtaLink href="/login?intent=signup" className="mt-5" color={ctaColor} page="developers" position="footer">
+        <CtaLink href={SIGNUP_HREF} className="mt-5" color={ctaColor} page="developers" position="footer">
           Start for free →
         </CtaLink>
       </section>

@@ -286,8 +286,13 @@ function StatusScreen({
               Sign documents.
             </span>
           </p>
+          {/* utm_* added 2026-08-01 (see [[signup-attribution]]) — a
+              distinct source from signing-view.tsx's decline-specific
+              growth CTA (same campaign, different touchpoint: this one
+              covers every dead-end status screen — already signed,
+              declined, voided, expired — not just an active decline). */}
           <a
-            href="/login?intent=signup"
+            href="/login?intent=signup&utm_source=signer_status_screen&utm_medium=growth_cta&utm_campaign=signer_to_sender"
             className="mt-3 inline-block rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
           >
             Create your free SignedBy account

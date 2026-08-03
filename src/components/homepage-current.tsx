@@ -118,8 +118,13 @@ export function HomepageCurrent({ currency, ctaColor }: { currency: Currency; ct
               we want pressed was the least coloured element on screen. The
               value icons move below the fold, so up here yellow means exactly
               one thing: press this. */}
+        {/* utm_* added 2026-08-01 (see [[signup-attribution]]) — previously
+            untagged, and utm_content distinguishes this from
+            homepage-two-column.tsx's "v20" variant so the running
+            homepage-layout-ab-test can compare actual signup attribution,
+            not just cta_click CTR. */}
         <CtaLink
-          href="/login?intent=signup"
+          href="/login?intent=signup&utm_source=homepage&utm_medium=cta&utm_campaign=homepage_page&utm_content=current"
           className="mt-7"
           color={ctaColor}
           page="homepage"

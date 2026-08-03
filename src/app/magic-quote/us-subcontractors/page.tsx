@@ -37,7 +37,11 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: OG_IMAGE },
 };
 
-const START_HREF = "/login?intent=signup&next=" + encodeURIComponent("/dashboard/documents/new?mode=quote");
+// utm_* added 2026-08-01 (see [[signup-attribution]]) — previously untagged.
+const START_HREF =
+  "/login?intent=signup&next=" +
+  encodeURIComponent("/dashboard/documents/new?mode=quote") +
+  "&utm_source=magic_quote_us_subcontractors&utm_medium=cta&utm_campaign=magic_quote_us_subcontractors_page";
 
 const FAQ = [
   {

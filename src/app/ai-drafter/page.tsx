@@ -28,7 +28,11 @@ export const metadata: Metadata = {
 // initialMode) rather than dropping someone on the Upload tab and making
 // them find it themselves — the whole point of a feature-specific landing
 // page is that the click matches the destination.
-const START_HREF = "/login?intent=signup&next=" + encodeURIComponent("/dashboard/documents/new?mode=draft");
+// utm_* added 2026-08-01 (see [[signup-attribution]]) — previously untagged.
+const START_HREF =
+  "/login?intent=signup&next=" +
+  encodeURIComponent("/dashboard/documents/new?mode=draft") +
+  "&utm_source=ai_drafter&utm_medium=cta&utm_campaign=ai_drafter_page";
 
 const FAQ = [
   {

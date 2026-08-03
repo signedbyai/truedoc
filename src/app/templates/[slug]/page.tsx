@@ -53,9 +53,12 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
   // rewrite is what needs Pro. ?type= preselects the right template in
   // the AI Drafter once they get there either way (see
   // dashboard/documents/new/page.tsx).
+  // utm_* added 2026-08-01 (see [[signup-attribution]]) — previously
+  // untagged, and per-template rather than one shared "templates" value so
+  // it's possible to see which individual template pages actually convert.
   const useTemplateHref = `/login?intent=signup&next=${encodeURIComponent(
     `/dashboard/documents/new?type=${page.documentType}`
-  )}`;
+  )}&utm_source=templates&utm_medium=cta&utm_campaign=template_${page.slug}`;
 
   const faqJsonLd = {
     "@context": "https://schema.org",
