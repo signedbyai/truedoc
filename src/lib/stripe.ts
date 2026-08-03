@@ -104,11 +104,20 @@ export const CONSOLE_METERED_PRICE_IDS: Record<Currency, string | undefined> = {
   EUR: process.env.STRIPE_PRICE_CONSOLE_METERED_EUR,
   GBP: process.env.STRIPE_PRICE_CONSOLE_METERED_GBP,
   CHF: process.env.STRIPE_PRICE_CONSOLE_METERED_CHF,
-  // Left unset on purpose (RAZORPAY_INDIA_SCOPE.md's V0.5 is flat-rate-Pro
-  // only) — unlike priceIdFor's USD fallback above, consoleMeteredPriceIdFor
-  // has NO fallback by design (see the comment on it): an INR Console org
-  // just stays on local-only usage tracking, no live Stripe metered
-  // reporting, until this is actually configured. Safe, not a bug.
+  // INR (2026-08-03) — a 4th Stripe Price object is needed here, same as
+  // the three flat-plan ones: metered/graduated pricing, INR, recurring,
+  // reported via the Billing Meters API same as the other currencies.
+  // Recommend ~₹8/doc, matching the flat plan prices' ~55%-off-nominal PPP
+  // discount ($0.20 nominal x 84 x 0.45 ~ ₹7.56) rather than a straight
+  // FX conversion (~₹16.8) — a heavy Console user in India shouldn't end
+  // up paying proportionally MORE than a light single-subscription one
+  // just because only the flat price got the PPP treatment. Until this
+  // env var is set, consoleMeteredPriceIdFor has NO USD-fallback by
+  // design (see the comment above) — an Indian Console org just stays on
+  // local-only usage tracking, no live Stripe metered reporting. Safe
+  // (never blocks or misbills), but it IS a real revenue gap, not just a
+  // display gap, unlike the flat-plan fallback above: SignedBy simply
+  // doesn't invoice that org's overage at all until this is configured.
   INR: process.env.STRIPE_PRICE_CONSOLE_METERED_INR,
 };
 

@@ -331,7 +331,7 @@ converts on a card, and let that inform whether the Razorpay investment
 (lean V1 or full) is worth prioritizing. It's not a substitute for the
 original request, it's a cheap way to de-risk it.
 
-**BUILT 2026-08-03 — one real pre-deploy blocker, not optional:**
+**BUILT 2026-08-03 — pre-deploy blockers, not optional:**
 `currency.ts`/`stripe.ts` are wired (INR added to `Currency`,
 `currencyForCountry("IN") → "INR"`, ₹259/₹529/₹1099 display prices,
 `PLAN_PRICE_IDS_INR` reading `STRIPE_PRICE_STARTER_INR` /
@@ -341,6 +341,22 @@ visitor would see ₹259 on `/pricing` and land on a $7 USD Stripe
 Checkout page**, a real, visible price-mismatch bug, not a cosmetic gap.
 **Create the three INR Stripe Price objects (recurring monthly, ₹259 /
 ₹529 / ₹1099) and set the three env vars in Vercel before this deploys.**
+
+**Console metered overage also needs its own 4th Price object.**
+`CONSOLE_METERED_PRICE_IDS` (the per-doc overage billing above the
+50-free/month allowance) gained an `INR` slot reading
+`STRIPE_PRICE_CONSOLE_METERED_INR` — same pattern as the EUR/GBP/CHF
+metered prices already configured there. Recommend ~₹8/doc (the same
+~55%-off-nominal PPP ratio as the flat plan prices, not a straight FX
+conversion of $0.20 (~₹16.8) — otherwise a heavy Console user in India
+pays proportionally more than a light single-subscription one, which
+undercuts the whole point of PPP pricing). Unlike the flat-plan
+fallback, `consoleMeteredPriceIdFor` has **no USD fallback by design** —
+until this is configured, an Indian Pro+ org using Console just stays on
+local-only usage tracking with no live Stripe billing for their
+overage. Safe (never misbills or blocks), but it's a real revenue gap
+until set, not just a display one.
+
 Everything else (checkout route, webhook, pricing page, currency
 switcher, Magic Quote's currency picker) already works unmodified — INR
 rides the same currency-resolution pipeline every other currency uses,
