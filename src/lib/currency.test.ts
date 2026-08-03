@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { currencyForCountry, normalizeCurrency, formatPrice, otherCurrencies, formatCreditPackPrice } from "./currency";
+import {
+  currencyForCountry,
+  normalizeCurrency,
+  formatPrice,
+  otherCurrencies,
+  formatCreditPackPrice,
+  type Currency,
+} from "./currency";
 
 describe("currencyForCountry", () => {
   it("maps eurozone countries to EUR", () => {
@@ -129,7 +136,19 @@ describe("formatCreditPackPrice", () => {
     expect(formatCreditPackPrice("CHF")).toBe("CHF 4");
   });
 
-  it("falls back to the USD price for a currency with no entry (e.g. INR)", () => {
-    expect(formatCreditPackPrice("INR")).toBe("₹5");
+  // INR added as a direct follow-up (2026-08-01) after the EUR/GBP/CHF
+  // fix above — ₹199, the PPP-discounted price, not a straight $-to-₹
+  // conversion (see the doc comment on CREDIT_PACK_PRICE_CENTS).
+  it("formats INR at its PPP-discounted price, single-glyph symbol (no space)", () => {
+    expect(formatCreditPackPrice("INR")).toBe("₹199");
+  });
+
+  // Defensive coverage: every real Currency has a row in
+  // CREDIT_PACK_PRICE_CENTS as of this test, so exercising the actual
+  // fallback path needs a value outside the type — guards against a
+  // future currency being added to `Currency` without a matching price
+  // here silently falling through to something wrong instead of USD.
+  it("falls back to the USD price (amount AND symbol together) for a currency with no table entry at all", () => {
+    expect(formatCreditPackPrice("JPY" as unknown as Currency)).toBe("$5");
   });
 });

@@ -114,22 +114,43 @@ export function otherCurrencies(current: Currency): Currency[] {
 // convention as PRICE_TABLE above, reusing that table's exact per-currency
 // ratios rather than inventing new ones: $5 → €5 (EUR at 1.0x nominal,
 // same as the flat plans), £4 and CHF 4 (both at ~0.86x, GBP and CHF
-// always sharing one number in PRICE_TABLE too). INR intentionally not
-// included — see stripe.ts's creditPackPriceFor doc comment for why, and
-// for what an unpriced currency falls back to.
+// always sharing one number in PRICE_TABLE too).
+//
+// INR added same day, direct follow-up ("please include INR in this") —
+// same ~55%-off-nominal PPP ratio PRICE_TABLE's INR row and the Console
+// metered-overage INR price both use (RAZORPAY_INDIA_SCOPE.md's "V0.5"),
+// not a straight FX conversion: $5 * ~84 ≈ ₹420 nominal, discounted to a
+// clean ₹199 (≈0.47x nominal, in the same ~0.44-0.48x band as the other
+// INR prices here) rather than an unrounded ₹185. Unlike the flat plan
+// prices, this is a one-time Checkout payment (mode: "payment"), not a
+// recurring mandate — so the RBI's ₹15,000 additional-factor-
+// authentication threshold that constrained the *subscription* INR
+// prices doesn't apply here at all; ₹199 has headroom to spare either
+// way. `creditPackPriceFor` in stripe.ts still keeps a currency-code
+// fallback for defensiveness (any future currency added to the `Currency`
+// type without a row here falls back to USD amount+code together, not a
+// silent near-free mischarge), but every currency this app actually
+// resolves visitors to today has a real entry below now.
 export const CREDIT_PACK_PRICE_CENTS: Partial<Record<Currency, number>> = {
   USD: 500,
   EUR: 500,
   GBP: 400,
   CHF: 400,
+  INR: 19900,
 };
 
 // "$5" / "£4" / "CHF 4" — client-safe (no Stripe SDK import), used by the
 // console chat "Buy 25 more" button so its label always matches what
-// checkout will actually charge, instead of a hardcoded "$5".
+// checkout will actually charge, instead of a hardcoded "$5". Falls back
+// to BOTH the USD amount and the USD symbol together for an unpriced
+// currency, same "never fall back on just one half" reasoning as
+// stripe.ts's creditPackPriceFor — a currency missing from
+// CREDIT_PACK_PRICE_CENTS would also have no real reason to be missing
+// from PRICE_TABLE only, so mixing a fallback amount with a real
+// currency's symbol was never a case worth supporting.
 export function formatCreditPackPrice(currency: Currency): string {
-  const cents = CREDIT_PACK_PRICE_CENTS[currency] ?? CREDIT_PACK_PRICE_CENTS.USD!;
-  const amount = cents / 100;
-  const symbol = PRICE_TABLE[currency].symbol;
+  const priced = CREDIT_PACK_PRICE_CENTS[currency] !== undefined ? currency : "USD";
+  const amount = CREDIT_PACK_PRICE_CENTS[priced]! / 100;
+  const symbol = PRICE_TABLE[priced].symbol;
   return symbol.length > 1 ? `${symbol} ${amount}` : `${symbol}${amount}`;
 }

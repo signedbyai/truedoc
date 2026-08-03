@@ -146,18 +146,19 @@ export function appUrl() {
 // (formatCreditPackPrice) without this server-only module ever reaching
 // the client bundle.
 //
-// INR intentionally NOT in that table yet — the India pricing work
-// (RAZORPAY_INDIA_SCOPE.md) was scoped specifically around the recurring
-// Pro subscription price, not this one-time product. Unlike the flat plan
-// prices (priceIdFor falling back to a USD *Price object* while Checkout
-// still reports the currency as USD to the customer, since Checkout
-// derives currency from whichever Price it's given), creditPackPriceFor
-// below falls back to BOTH the USD amount and the USD currency code
-// together — so an Indian visitor sees/pays a plain $5 via price_data,
-// same experience as before this fix, rather than the amount alone
-// falling back while `currency` stays "inr" (which would silently charge
-// ₹5.00 — essentially free — since price_data has no fallback machinery
-// of its own the way a pre-created Price object does).
+// INR added same day as a direct follow-up (see currency.ts's
+// CREDIT_PACK_PRICE_CENTS doc comment for the ₹199 price itself) — so
+// every currency this app resolves visitors to has a real row now. The
+// fallback below still matters defensively: unlike the flat plan prices
+// (priceIdFor falling back to a USD *Price object* while Checkout still
+// reports the currency as USD to the customer, since Checkout derives
+// currency from whichever Price it's given), price_data has no fallback
+// machinery of its own — if a future currency were ever added to the
+// `Currency` type without a row in that table, falling back to the
+// amount alone while `currency` stayed on the new, unpriced code would
+// silently charge a near-free amount (e.g. an unpriced JPY visitor
+// charged ¥5 — a few cents). So this falls back to BOTH the USD amount
+// and the USD currency code together, never just one.
 export function creditPackPriceFor(currency: Currency): { currency: Currency; amountCents: number } {
   const amountCents = CREDIT_PACK_PRICE_CENTS[currency];
   if (amountCents === undefined) return { currency: "USD", amountCents: CREDIT_PACK_PRICE_CENTS.USD! };
