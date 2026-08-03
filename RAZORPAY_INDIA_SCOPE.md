@@ -1,6 +1,9 @@
 # Scope: Razorpay + India PPP tier — smart gateway router
 
-Status: SCOPED 2026-08-03; **V0.5 BUILT same day**, not yet deployed.
+Status: SCOPED 2026-08-03; **V0.5 BUILT same day, all 4 Stripe Price
+objects created, env vars + deploy are the only remaining step** (not
+something I can do — no Vercel env-var-write tool available; user's own
+manual step, same as every other Stripe env var this session).
 Direct request, prompted by traffic data showing a Reddit-driven surge to
 `/verified-badge`: add Razorpay as a second payment gateway for Indian
 customers, routed automatically by location, defaulting to UPI Intent for
@@ -330,6 +333,19 @@ onboarding timeline — ship the INR price on Stripe, see if anyone
 converts on a card, and let that inform whether the Razorpay investment
 (lean V1 or full) is worth prioritizing. It's not a substitute for the
 original request, it's a cheap way to de-risk it.
+
+**All four Stripe Price objects created 2026-08-03** — Pro
+`price_1U0GWmAakFH9efzt9yxRmbkB`, Team `price_1U0GXbAakFH9efzt08ISIab8`,
+Business `price_1U0GYEAakFH9efztBGwQrW61`, Console metered
+`price_1U0GdvAakFH9efztwCoN9R19`. **Only remaining step: set the four
+env vars below in Vercel, then deploy** — no code changes left.
+
+```
+STRIPE_PRICE_STARTER_INR=price_1U0GWmAakFH9efzt9yxRmbkB
+STRIPE_PRICE_TEAM_INR=price_1U0GXbAakFH9efzt08ISIab8
+STRIPE_PRICE_BUSINESS_INR=price_1U0GYEAakFH9efztBGwQrW61
+STRIPE_PRICE_CONSOLE_METERED_INR=price_1U0GdvAakFH9efztwCoN9R19
+```
 
 **BUILT 2026-08-03 — pre-deploy blockers, not optional:**
 `currency.ts`/`stripe.ts` are wired (INR added to `Currency`,
