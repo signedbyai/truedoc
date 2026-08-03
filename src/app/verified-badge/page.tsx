@@ -35,7 +35,7 @@ const START_HREF = consoleUrl("/login?intent=signup&next=/app");
 const FAQ = [
   {
     q: "Does this prove my work wasn't written or made with AI?",
-    a: "No — and it doesn't claim to. A Verified Badge proves this exact file existed, unaltered, as of a specific verified timestamp, sealed by an identity-verified person. That's a real, different, useful claim from \"an AI detector says this is human,\" which is exactly why AI detectors have a false-positive problem in the first place: they're guessing at authorship, not proving timestamp and integrity.",
+    a: "No — and it doesn't claim to. A Verified Badge proves this exact file existed, unaltered, as of a cryptographically verified timestamp, sealed by an identity-verified person. That's a real, different, useful claim from \"an AI detector says this is human,\" which is exactly why AI detectors have a false-positive problem in the first place: they're guessing at authorship, not proving timestamp and integrity.",
   },
   {
     q: "What does the client actually see?",
@@ -52,6 +52,10 @@ const FAQ = [
   {
     q: "What plan do I need?",
     a: "Verified Badge is Console/MCP — Pro plan or higher, metered the same as Console's other actions (50 free document-seals a month, then billed per seal). It's reached by chatting with Console (\"seal this file\") or through the seal_document tool if you're wiring in an AI agent — see the developer docs.",
+  },
+  {
+    q: "What actually makes the timestamp \"cryptographically verified\"?",
+    a: "Every seal is submitted to a real Time Stamping Authority (Sectigo's public RFC 3161 service, with FreeTSA as an automatic fallback if Sectigo can't be reached) that signs the file's hash together with the time. That's independently verifiable by anyone, trusting only the TSA — not just a date in SignedBy's own database. The ledger page at signedby.ai/verify shows which TSA backed a given seal.",
   },
 ];
 

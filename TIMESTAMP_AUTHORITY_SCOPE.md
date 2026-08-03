@@ -1,6 +1,19 @@
 # RFC 3161 trusted timestamp — scope
 
-Status: SCOPED 2026-08-01, not built. Follow-on to the badge-copy audit
+Status: BUILT 2026-08-03, on direct instruction. Sectigo-primary/FreeTSA-
+fallback via `pdf-rfc3161`, migration 0045 (timestamp_token/timestamp_tsa/
+timestamp_gen_time on audit_events), wired into generate-signed-pdf.ts
+(timestamps finalBytes as the LAST step, after addCertificatePage —
+deliberate deviation from this doc's original plug-in point, see that
+file's comment for the ByteRange/resave-invalidation reasoning) and
+verified-badge-actions.ts's "separate" branch. All "Copy surfaces to
+update" below are done: badge footer, certificate page (generic/TSA-
+agnostic line only — drawn before the timestamp exists), /verify +
+/api/verify (TSA-branched, FreeTSA caveat), /verified-badge FAQ, hero
+image regenerated. Migration + deploy owed — cannot be verified against
+real Sectigo/FreeTSA network calls from the sandbox (network restriction),
+so a live round trip needs post-deploy confirmation. /privacy + /dpa
+disclosure line NOT done (flagged, not required). Follow-on to the badge-copy audit
 that caught Verified Badge overclaiming "cryptographically verified
 timestamp" ([[verified-badge-image-missing-text-fix]]-adjacent — see
 `badge-asset.tsx`'s 2026-08-01 footer fix) when the timestamp today is

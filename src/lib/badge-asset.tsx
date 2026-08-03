@@ -116,7 +116,13 @@ export async function generateCertificateBadge(verifyUrl: string): Promise<Buffe
  *  per-document ledger page), the SignedBy mark, and the verification URL
  *  as visible text, so it reads as legitimate even printed or screenshotted,
  *  not only when scanned (VERIFIED_BADGE_SCOPE.md #5). */
-export async function generateVerifiedBadgeImage(verifyUrl: string): Promise<Buffer> {
+// hasTrustedTimestamp (TIMESTAMP_AUTHORITY_SCOPE.md, 2026-08-03): optional
+// because this function is also called once at build time for the
+// marketing hero image (no real document, no timestamp to check) — only
+// the two real per-document download routes have an actual document row
+// to read timestamp_tsa from, and can pass a real true/false. Left
+// undefined/false renders the pre-existing (still accurate) footer copy.
+export async function generateVerifiedBadgeImage(verifyUrl: string, hasTrustedTimestamp?: boolean): Promise<Buffer> {
   const [markDataUri, qrDataUrl] = await Promise.all([
     loadMarkDataUri(),
     QRCode.toDataURL(verifyUrl, { width: 420, margin: 1, color: { dark: "#0f172a", light: "#ffffffff" } }),
@@ -189,9 +195,17 @@ export async function generateVerifiedBadgeImage(verifyUrl: string): Promise<Buf
             the more careful language the certificate PDF page already
             used ("reflects the identity check and file hash captured at
             the time of sealing" — see generate-signed-pdf.ts). */}
+        {/* hasTrustedTimestamp (TIMESTAMP_AUTHORITY_SCOPE.md, 2026-08-03):
+            adds the RFC 3161 timestamp claim only for documents that
+            actually got one — a real Sectigo/FreeTSA-signed token, not just
+            this database row's created_at. Falls back to the same wording
+            fixed 2026-08-01 above for documents sealed before this
+            feature shipped, or where both TSAs failed at seal time. */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 34 }}>
           <div style={{ display: "flex", fontSize: 10.5, color: "#94a3b8", textAlign: "center" }}>
-            Unaltered since sealed. File hash and identity cryptographically verified.
+            {hasTrustedTimestamp
+              ? "Unaltered since sealed. File hash, identity, and timestamp cryptographically verified."
+              : "Unaltered since sealed. File hash and identity cryptographically verified."}
           </div>
         </div>
       </div>

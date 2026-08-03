@@ -23,7 +23,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const { data: completedEvent } = await supabase
     .from("audit_events")
-    .select("document_hash")
+    .select("document_hash, timestamp_tsa")
     .eq("document_id", id)
     .eq("event_type", "completed")
     .maybeSingle();
@@ -33,7 +33,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   try {
     const verifyUrl = `${appUrl()}/verify?hash=${completedEvent.document_hash}`;
-    const png = await generateVerifiedBadgeImage(verifyUrl);
+    const png = await generateVerifiedBadgeImage(verifyUrl, Boolean(completedEvent.timestamp_tsa));
     return new NextResponse(new Uint8Array(png), {
       headers: {
         "Content-Type": "image/png",

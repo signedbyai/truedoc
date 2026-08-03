@@ -167,9 +167,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     });
 
     try {
-      const { hash } = await generateSignedPdf(document.id);
+      const { hash, timestamp } = await generateSignedPdf(document.id);
       if (completedEvent) {
-        await admin.from("audit_events").update({ document_hash: hash }).eq("id", completedEvent.id);
+        await admin
+          .from("audit_events")
+          .update({
+            document_hash: hash,
+            // RFC 3161 trusted timestamp (TIMESTAMP_AUTHORITY_SCOPE.md,
+            // 2026-08-03) — same conditional-merge pattern as
+            // verified-badge-actions.ts's own completed-event update.
+            ...(timestamp
+              ? { timestamp_tsa: timestamp.tsa, timestamp_gen_time: timestamp.genTime, timestamp_token: timestamp.token }
+              : {}),
+          })
+          .eq("id", completedEvent.id);
       }
     } catch (err) {
       // Don't block completion on PDF generation — the doc is still legally

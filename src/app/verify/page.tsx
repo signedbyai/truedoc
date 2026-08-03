@@ -16,9 +16,35 @@ type Result =
       isVerifiedBadge: boolean;
       sealedBy: string | null;
       identityVerifiedAt: string | null;
+      timestampTsa: "sectigo" | "freetsa" | null;
+      timestampGenTime: string | null;
     }
   | { verified: false }
   | null;
+
+// RFC 3161 trusted timestamp (TIMESTAMP_AUTHORITY_SCOPE.md, 2026-08-03).
+// Sectigo chains to an already-trusted root, so a Sectigo-backed timestamp
+// needs no caveat. FreeTSA uses a self-signed CA — real RFC 3161 proof, but
+// independently re-verifying it (rather than trusting SignedBy's own report
+// here) requires manually installing FreeTSA's root certificate first, so
+// that nuance has to stay visible rather than implying the two are
+// equivalent.
+function TimestampRow({ tsa, genTime }: { tsa: "sectigo" | "freetsa"; genTime: string | null }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <dt className="text-emerald-700">Trusted timestamp</dt>
+      <dd className="text-right font-medium">
+        {tsa === "sectigo" ? "Sectigo (RFC 3161)" : "FreeTSA (RFC 3161)"}
+        {genTime && <span className="block text-xs font-normal text-emerald-700">{new Date(genTime).toLocaleString()}</span>}
+        {tsa === "freetsa" && (
+          <span className="block text-xs font-normal text-emerald-700">
+            Independently re-verifying this token requires installing FreeTSA&apos;s root certificate.
+          </span>
+        )}
+      </dd>
+    </div>
+  );
+}
 
 function VerifyPageInner() {
   const searchParams = useSearchParams();
@@ -117,6 +143,7 @@ function VerifyPageInner() {
                   <dd className="text-right font-medium">{new Date(result.identityVerifiedAt).toLocaleDateString()}</dd>
                 </div>
               )}
+              {result.timestampTsa && <TimestampRow tsa={result.timestampTsa} genTime={result.timestampGenTime} />}
               {result.orgName && (
                 <div className="flex justify-between gap-4">
                   <dt className="text-emerald-700">Organization</dt>
@@ -125,7 +152,12 @@ function VerifyPageInner() {
               )}
             </dl>
             <p className="mt-3 text-xs text-emerald-700">
-              This confirms the file existed, unaltered, as of the sealed timestamp above, sealed by a
+              {result.timestampTsa
+                ? // Honest only once a real RFC 3161 token exists for this
+                  // document — see TimestampRow above for the
+                  // Sectigo/FreeTSA distinction, which still applies.
+                  "This confirms the file existed, unaltered, as of a cryptographically verified timestamp, sealed by a"
+                : "This confirms the file existed, unaltered, as of the sealed timestamp above, sealed by a"}{" "}
               verified individual. It doesn&apos;t certify the file&apos;s contents weren&apos;t AI-generated —
               only that it hasn&apos;t changed since this timestamp.
             </p>
@@ -148,6 +180,7 @@ function VerifyPageInner() {
                 <dt className="text-emerald-700">Signers</dt>
                 <dd className="text-right font-medium">{result.signerCount}</dd>
               </div>
+              {result.timestampTsa && <TimestampRow tsa={result.timestampTsa} genTime={result.timestampGenTime} />}
               {result.orgName && (
                 <div className="flex justify-between gap-4">
                   <dt className="text-emerald-700">Sent via</dt>

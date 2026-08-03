@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getFromR2, uploadToR2 } from "@/lib/r2";
 import { appUrl } from "@/lib/email";
 import { generateCertificateBadge } from "@/lib/badge-asset";
+import { timestampWithFallback, type TimestampTsa } from "@/lib/timestamp-authority";
 
 // If the uploaded PDF already had its own interactive form fields (an
 // "AcroForm" — e.g. an existing fillable contract template), they're
@@ -135,7 +136,7 @@ export async function stampFields(
 export async function generateSignedPdf(
   documentId: string,
   opts?: { sealed?: { identityVerifiedName: string; identityVerifiedAt: string | null } }
-): Promise<{ key: string; hash: string }> {
+): Promise<{ key: string; hash: string; timestamp?: { tsa: TimestampTsa; genTime: string; token: Buffer } }> {
   const admin = createAdminClient();
 
   const { data: doc } = await admin
@@ -202,11 +203,39 @@ export async function generateSignedPdf(
   });
 
   const finalBytes = await pdfDoc.save();
+
+  // RFC 3161 trusted timestamp (TIMESTAMP_AUTHORITY_SCOPE.md, built
+  // 2026-08-03) — applied HERE, on finalBytes, as the very last mutation
+  // before upload. Deliberately NOT applied earlier (e.g. before
+  // addCertificatePage, as the scope doc originally sketched): pdf-rfc3161
+  // embeds an RFC 3161 DocTimeStamp as a ByteRange-based PDF signature over
+  // whatever bytes it's given, and any later pdfDoc.save() call is a full,
+  // non-incremental rewrite (that's how pdf-lib works) — it would silently
+  // invalidate that signature the moment addCertificatePage's own
+  // pdfDoc.save() ran afterward. Timestamping finalBytes instead means the
+  // uploaded PDF is the very last thing produced, nothing resaves it after.
+  // One consequence: the certificate page's own drawn text (below, in
+  // addCertificatePage) is written BEFORE this timestamp exists, so it can
+  // only say a timestamp is applied in general, not name the specific TSA
+  // or time — that specific claim lives on /verify and the badge-image
+  // download routes instead, both of which render after this point.
+  // Non-blocking: never throws, returns null on total failure, in which
+  // case finalBytes (untouched) is uploaded and no timestamp fields are
+  // persisted — same honest database-only fallback as before this feature.
+  const timestamped = await timestampWithFallback(finalBytes);
+  const uploadBytes = timestamped ? timestamped.pdf : finalBytes;
+
   const key = `${doc.org_id}/${documentId}/signed-${documentId}.pdf`;
-  await uploadToR2(key, Buffer.from(finalBytes), "application/pdf");
+  await uploadToR2(key, Buffer.from(uploadBytes), "application/pdf");
   await admin.from("documents").update({ signed_file_path: key }).eq("id", documentId);
 
-  return { key, hash };
+  return {
+    key,
+    hash,
+    timestamp: timestamped
+      ? { tsa: timestamped.tsa, genTime: timestamped.genTime.toISOString(), token: Buffer.from(timestamped.token) }
+      : undefined,
+  };
 }
 
 export type CertificatePageOpts = {
@@ -316,6 +345,24 @@ export async function addCertificatePage(pdfDoc: PDFDocument, opts: CertificateP
   y -= 11;
   page.drawText(opts.hash, { x: margin, y, size: 7, font, color: gray });
   y -= 20;
+
+  // Generic, TSA-agnostic line (TIMESTAMP_AUTHORITY_SCOPE.md, 2026-08-03).
+  // This page is drawn and saved BEFORE generateSignedPdf's final save
+  // step, which is where the actual RFC 3161 timestamp gets applied (see
+  // that function's comment) — so at the moment this text is drawn, it's
+  // not yet known which TSA will succeed, or whether one will at all. Kept
+  // deliberately vague for that reason; the specific TSA name and time are
+  // only ever claimed on /verify and the badge-image download routes,
+  // which render after sealing completes and can check what actually
+  // happened for this document.
+  page.drawText("Visit signedby.ai/verify to check whether a trusted third-party timestamp is on file.", {
+    x: margin,
+    y,
+    size: 7,
+    font,
+    color: gray,
+  });
+  y -= 16;
 
   // QR + mark badge (2026-08-01), replacing what used to be two lines of
   // plain-text "paste the hash at signedby.ai/verify" instructions — a QR

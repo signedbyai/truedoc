@@ -6,6 +6,7 @@ import { appUrl } from "@/lib/email";
 import { checkConsoleCap, recordConsoleUsage } from "@/lib/console-usage";
 import { getOrgIdentityStatus } from "@/lib/identity";
 import { generateSignedPdf, buildStandaloneCertificatePdf, flattenOriginalForm } from "@/lib/generate-signed-pdf";
+import { timestampWithFallback, type TimestampTsa } from "@/lib/timestamp-authority";
 import type { ConsoleActionError } from "@/lib/console-actions";
 import { auditProvenance } from "@/lib/console-actions";
 
@@ -139,6 +140,13 @@ export async function sealDocumentAction(params: {
   let hash: string;
   let hasSignedFile = false;
   let hasCertificateFile = false;
+  // RFC 3161 trusted timestamp (TIMESTAMP_AUTHORITY_SCOPE.md, 2026-08-03).
+  // "separate" mode has no signed_file_path — buildStandaloneCertificatePdf's
+  // output IS the only sealed artifact that exists for this document, so
+  // it's timestamped directly, same as generateSignedPdf does internally
+  // for appended/both. Whichever branch runs, at most one timestamp is
+  // captured per seal (there's only one completed_event row to attach it to).
+  let timestamp: { tsa: TimestampTsa; genTime: string; token: Buffer } | undefined;
 
   try {
     if (certificateMode === "separate") {
@@ -149,7 +157,7 @@ export async function sealDocumentAction(params: {
       const { body: originalBytes } = await getFromR2(doc.file_path);
       hash = crypto.createHash("sha512").update(originalBytes).digest("hex");
 
-      const certBytes = await buildStandaloneCertificatePdf({
+      let certBytes = await buildStandaloneCertificatePdf({
         title: doc.title,
         documentId: doc.id,
         hash,
@@ -157,6 +165,16 @@ export async function sealDocumentAction(params: {
         ipBySigner: new Map(),
         sealed: { identityVerifiedName: identity.name, identityVerifiedAt: identity.verifiedAt },
       });
+      // Timestamp the standalone certificate as the last step before
+      // upload — same reasoning as generate-signed-pdf.ts (a later pdf-lib
+      // resave would invalidate an RFC 3161 signature), and nothing here
+      // mutates certBytes again after this. Non-blocking: null just means
+      // no timestamp, certBytes stays as built above.
+      const timestamped = await timestampWithFallback(certBytes);
+      if (timestamped) {
+        certBytes = Buffer.from(timestamped.pdf);
+        timestamp = { tsa: timestamped.tsa, genTime: timestamped.genTime.toISOString(), token: Buffer.from(timestamped.token) };
+      }
       const certKey = `${orgId}/${doc.id}/certificate-${doc.id}.pdf`;
       await uploadToR2(certKey, Buffer.from(certBytes), "application/pdf");
       await admin.from("documents").update({ certificate_file_path: certKey }).eq("id", doc.id);
@@ -164,15 +182,22 @@ export async function sealDocumentAction(params: {
     } else {
       // appended or both — generateSignedPdf's existing pipeline (load,
       // flatten, stamp zero fields since there's nothing to stamp for a
-      // self-sign seal, hash, append the certificate page, upload as
-      // signed_file_path). Reused wholesale rather than duplicated.
+      // self-sign seal, hash, append the certificate page, timestamp,
+      // upload as signed_file_path). Reused wholesale rather than
+      // duplicated — its own timestamp is what gets persisted below.
       const result = await generateSignedPdf(doc.id, {
         sealed: { identityVerifiedName: identity.name, identityVerifiedAt: identity.verifiedAt },
       });
       hash = result.hash;
       hasSignedFile = true;
+      timestamp = result.timestamp;
 
       if (certificateMode === "both") {
+        // "both" mode's separate certificate copy deliberately does NOT get
+        // its own independent timestamp call — it's built from the same
+        // hash/signers as the already-timestamped signed_file_path above,
+        // and one real TSA round trip per seal (not per artifact) is the
+        // right unit here, same as the hash itself is computed once.
         const certBytes = await buildStandaloneCertificatePdf({
           title: doc.title,
           documentId: doc.id,
@@ -214,7 +239,15 @@ export async function sealDocumentAction(params: {
     .select("id")
     .single();
   if (completedEvent) {
-    await admin.from("audit_events").update({ document_hash: hash }).eq("id", completedEvent.id);
+    await admin
+      .from("audit_events")
+      .update({
+        document_hash: hash,
+        ...(timestamp
+          ? { timestamp_tsa: timestamp.tsa, timestamp_gen_time: timestamp.genTime, timestamp_token: timestamp.token }
+          : {}),
+      })
+      .eq("id", completedEvent.id);
   }
 
   if (metered) await recordConsoleUsage(orgId);
