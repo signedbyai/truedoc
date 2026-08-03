@@ -51,7 +51,7 @@ const FAQ = [
   },
   {
     q: "What plan do I need?",
-    a: "Verified Badge is Console/MCP — Pro plan or higher, metered the same as Console's other actions (50 free document-seals a month, then billed per seal). It's reached by chatting with Console (\"seal this file\") or through the seal_document tool if you're wiring in an AI agent — see the developer docs.",
+    a: "Any plan, including Free — Console/MCP access now comes with every account, no card required. Free includes 3 document-seals a month. Pro plan or higher raises that to 50 free document-seals a month, then $0.20 per seal, same metering as Console's other actions. It's reached by chatting with Console (\"seal this file\") or through the seal_document tool if you're wiring in an AI agent — see the developer docs.",
   },
   {
     q: "What actually makes the timestamp \"cryptographically verified\"?",
@@ -97,11 +97,32 @@ export default async function VerifiedBadgePage() {
           and one bad guess shouldn&apos;t cost you the relationship. Pre-verify your human effort: seal the finished
           file, get a scannable proof badge, embed it on the deliverable.
         </p>
-        <div className="mt-2 flex flex-col items-center gap-2">
+        <div className="relative mt-2 flex flex-col items-center gap-2">
+          {/* Free-tier console access announcement (CONSOLE_FREE_TIER_SCOPE.md,
+              shipped 2026-08-02) — styled as a popover/callout above the CTA
+              so it reads as a fresh update rather than static page copy.
+              Real claim, not a promo exaggeration: consoleAccess now
+              includes "free" and checkFreePlanDocCap's existing 3-doc/mo
+              cap applies with no template required for Verified Badge
+              sealing specifically — see that scope doc's "real constraint
+              found mid-build" section. */}
+          <div className="mb-1 flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800 shadow-sm">
+            <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            </span>
+            We just unlocked free developer &amp; console access — seal your first 3 documents free today.
+            <span
+              className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-emerald-200 bg-emerald-50"
+              aria-hidden="true"
+            />
+          </div>
           <CtaLink href={START_HREF} color={ctaColor} page="verified-badge" position="hero">
             Generate Your Proof →
           </CtaLink>
-          <p className="text-xs text-slate-400">Pro plan or higher. First seal takes about a minute to set up.</p>
+          <p className="text-xs text-slate-400">
+            Free to start — 3 seals a month, no card required. Pro plan or higher for higher volume.
+          </p>
         </div>
       </section>
 
@@ -157,8 +178,8 @@ export default async function VerifiedBadgePage() {
       <section className="mx-auto w-full max-w-3xl px-6 py-10 text-center">
         <h2 className="text-2xl font-semibold text-slate-900">Generate Your Proof</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Console/MCP, Pro plan or higher. 50 free document-seals a month, then billed per seal — same metering as
-          every other Console action.
+          Console/MCP, free to start — 3 seals a month included, no card required. Need more? Pro plan or higher
+          gets 50 free document-seals a month, then $0.20 per seal.
         </p>
         <CtaLink href={START_HREF} className="mt-5" color={ctaColor} page="verified-badge" position="footer">
           Generate Your Proof →
