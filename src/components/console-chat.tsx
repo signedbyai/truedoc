@@ -434,18 +434,6 @@ const MAX_TEMPLATE_FILE_BYTES = 25 * 1024 * 1024;
 // flag) — both only get offered the review link below, never a one-click
 // save straight to a reusable template.
 
-// Prefills the composer with a friendly nudge the very first time anyone on
-// this browser opens a brand-new console chat (2026-07-31, direct ask) — a
-// real, editable/sendable value in the textarea itself, not just placeholder
-// text, so a first-time user can get a response with a single tap of Send
-// before they've figured out what to ask. Tracked in localStorage (not a
-// cookie — see the project's standing preference to avoid new cookies) so it
-// only ever fires once per browser, and only ever on a genuinely empty new
-// chat — reopening a past conversation or a chat that already has a draft
-// typed never overwrites it.
-const FIRST_OPEN_PROMPT_KEY = "signedby-console-first-open-prompt-seen";
-const FIRST_OPEN_PROMPT_TEXT = "Let me know what you can do…";
-
 // First-use explainer for the paperclip button (2026-07-31, direct ask —
 // was a browser-native `title` tooltip only, easy to miss and not
 // discoverable on mobile where there's no hover at all). Same
@@ -578,29 +566,6 @@ export function ConsoleChat({
   // deliberately only covers the safe-to-interrupt case (the model still
   // deciding what to do), never the point of no return.
   const abortRef = useRef<AbortController | null>(null);
-
-  // See FIRST_OPEN_PROMPT_KEY above. Runs once on mount, client-only (a
-  // useEffect rather than a useState initializer, so the server-rendered
-  // and first client render both start from the same empty string and
-  // there's no hydration mismatch).
-  useEffect(() => {
-    if (conversationId || initialMessages.length > 0) return;
-    try {
-      if (window.localStorage.getItem(FIRST_OPEN_PROMPT_KEY)) return;
-      window.localStorage.setItem(FIRST_OPEN_PROMPT_KEY, "1");
-      // Deferred a tick — same react-hooks/set-state-in-effect workaround
-      // used elsewhere in the app (new-document-button.tsx, field-editor.tsx).
-      Promise.resolve().then(() => setInput((cur) => cur || FIRST_OPEN_PROMPT_TEXT));
-    } catch {
-      // Storage can throw (private browsing, blocked storage) — a missed
-      // one-time nudge isn't worth surfacing an error for.
-    }
-    // Deliberately mount-only — conversationId/initialMessages are only
-    // ever meant to be read as they were at mount here (see the prop docs
-    // above: console-workspace.tsx remounts this component via `key`
-    // whenever either should actually change).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // See PAPERCLIP_INTRO_KEY above.
   useEffect(() => {
