@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import type { Currency } from "@/lib/currency";
+import { CREDIT_PACK_PRICE_CENTS, type Currency } from "@/lib/currency";
 
 export type PlanId = "starter" | "team" | "business";
 
@@ -130,12 +130,37 @@ export function appUrl() {
 }
 
 // Pay-as-you-go credit pack (CONSOLE_FREE_TIER_SCOPE.md item #8, built
-// 2026-08-03, price changed same day $10→$5) — a single $5/25-seal pack,
-// USD only for v1 (no EUR/GBP/CHF variant the way the subscription plans
-// have — the original ask didn't call for multi-currency, and a fixed USD
-// price keeps this a one-line price_data object instead of another
-// per-currency table). Priced via Stripe Checkout's inline price_data
-// rather than a dashboard-created Price object, so there's nothing to
-// configure in Stripe before this works — see /api/billing/credits/checkout.
-export const CREDIT_PACK_PRICE_USD_CENTS = 500;
+// 2026-08-03, price changed same day $10→$5) — a single 25-seal pack.
+// Priced via Stripe Checkout's inline price_data rather than a
+// dashboard-created Price object, so unlike the subscription plans
+// (PLAN_PRICE_IDS_EUR/GBP/CHF above) there's nothing to configure in
+// Stripe before a new currency works here — see
+// /api/billing/credits/checkout.
+//
+// Went EUR/GBP/CHF-aware 2026-08-01 (direct bug report: a Europe-based
+// visitor still saw and was charged a flat $5 — this was USD-only at
+// launch, "the original ask didn't call for multi-currency"). The actual
+// price table (CREDIT_PACK_PRICE_CENTS) lives in currency.ts, not here —
+// that file is client-safe (no Stripe SDK import), so the console chat
+// "Buy 25 more" button can format the same table directly
+// (formatCreditPackPrice) without this server-only module ever reaching
+// the client bundle.
+//
+// INR intentionally NOT in that table yet — the India pricing work
+// (RAZORPAY_INDIA_SCOPE.md) was scoped specifically around the recurring
+// Pro subscription price, not this one-time product. Unlike the flat plan
+// prices (priceIdFor falling back to a USD *Price object* while Checkout
+// still reports the currency as USD to the customer, since Checkout
+// derives currency from whichever Price it's given), creditPackPriceFor
+// below falls back to BOTH the USD amount and the USD currency code
+// together — so an Indian visitor sees/pays a plain $5 via price_data,
+// same experience as before this fix, rather than the amount alone
+// falling back while `currency` stays "inr" (which would silently charge
+// ₹5.00 — essentially free — since price_data has no fallback machinery
+// of its own the way a pre-created Price object does).
+export function creditPackPriceFor(currency: Currency): { currency: Currency; amountCents: number } {
+  const amountCents = CREDIT_PACK_PRICE_CENTS[currency];
+  if (amountCents === undefined) return { currency: "USD", amountCents: CREDIT_PACK_PRICE_CENTS.USD! };
+  return { currency, amountCents };
+}
 export const CREDIT_PACK_CREDITS = 25;

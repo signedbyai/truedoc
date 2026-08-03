@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { currencyForCountry, normalizeCurrency, formatPrice, otherCurrencies } from "./currency";
+import { currencyForCountry, normalizeCurrency, formatPrice, otherCurrencies, formatCreditPackPrice } from "./currency";
 
 describe("currencyForCountry", () => {
   it("maps eurozone countries to EUR", () => {
@@ -106,5 +106,30 @@ describe("otherCurrencies", () => {
   it("returns the other four a visitor can switch to", () => {
     expect(otherCurrencies("EUR")).toEqual(["USD", "GBP", "CHF", "INR"]);
     expect(otherCurrencies("USD")).toEqual(["EUR", "GBP", "CHF", "INR"]);
+  });
+});
+
+// 2026-08-01, direct bug report: the credit-pack "Buy 25 more" button
+// showed a flat "$5" regardless of visitor currency — this table/formatter
+// is the fix (see the doc comment on CREDIT_PACK_PRICE_CENTS above).
+describe("formatCreditPackPrice", () => {
+  it("formats USD with a leading symbol, no space", () => {
+    expect(formatCreditPackPrice("USD")).toBe("$5");
+  });
+
+  it("formats EUR at the same nominal amount as USD (1.0x, matches PRICE_TABLE's EUR ratio)", () => {
+    expect(formatCreditPackPrice("EUR")).toBe("€5");
+  });
+
+  it("formats GBP at the ~0.86x discount (matches PRICE_TABLE's GBP ratio)", () => {
+    expect(formatCreditPackPrice("GBP")).toBe("£4");
+  });
+
+  it("formats CHF with a space (multi-char symbol), same number as GBP", () => {
+    expect(formatCreditPackPrice("CHF")).toBe("CHF 4");
+  });
+
+  it("falls back to the USD price for a currency with no entry (e.g. INR)", () => {
+    expect(formatCreditPackPrice("INR")).toBe("₹5");
   });
 });

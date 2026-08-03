@@ -6,6 +6,7 @@ import Image from "next/image";
 import { ArrowUp, Check, ChevronDown, Copy, ExternalLink, FileText, FileUp, Paperclip, ShieldCheck, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { parseNdjsonLine, splitNdjsonLines } from "@/lib/ndjson";
+import { formatCreditPackPrice, type Currency } from "@/lib/currency";
 
 // The console chat pane (CONSOLE_UX_SCOPE.md #2). Talks to
 // POST /api/console/chat, which runs a Mistral tool-calling loop over a
@@ -495,6 +496,7 @@ export function ConsoleChat({
   onConversationSaved,
   certificateModePreference = "ask",
   plan = "free",
+  currency = "USD",
   onOpenSettings,
 }: {
   /** The conversation's id if this is reopening a past chat, or null for a
@@ -526,6 +528,15 @@ export function ConsoleChat({
    *  feature." Defaults to "free" (the safer default if this prop is ever
    *  omitted — undershows options rather than over-promising them). */
   plan?: string;
+  /** Resolved visitor currency (2026-08-01, direct bug report: the "Buy 25
+   *  more" credit-pack button said a hardcoded "$5" regardless of where
+   *  the visitor actually was, which could disagree with what checkout
+   *  charges once that route became currency-aware — see stripe.ts's
+   *  creditPackPriceFor). Same getRequestCurrency() resolution the
+   *  checkout route itself uses, threaded down from console/app/page.tsx.
+   *  Defaults to USD, same as every other currency-aware surface in this
+   *  app when nothing else is known. */
+  currency?: Currency;
   /** Switches console-workspace.tsx's own Settings tab open (desktop
    *  aside and mobile sheet both — that parent decides which is actually
    *  visible; see its own onOpenSettings wiring). Used by the
@@ -1364,7 +1375,7 @@ export function ConsoleChat({
                       onClick={buyCreditPack}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5 disabled:pointer-events-none disabled:opacity-50"
                     >
-                      {creditsLoading ? "Starting checkout…" : "Buy 25 more ($5)"}
+                      {creditsLoading ? "Starting checkout…" : `Buy 25 more (${formatCreditPackPrice(currency)})`}
                     </button>
                   </div>
                 )}

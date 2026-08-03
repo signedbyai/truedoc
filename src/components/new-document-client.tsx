@@ -13,6 +13,7 @@ import { AiDraftForm } from "@/components/ai-draft-form";
 import { MagicQuoteForm } from "@/components/magic-quote-form";
 import type { QuoteCurrencySymbol } from "@/lib/quote-types";
 import type { DraftDocumentType } from "@/lib/ai-draft-types";
+import { formatCreditPackPrice, type Currency } from "@/lib/currency";
 
 // Shared by all four tab states (upload, AI Drafter, the locked AI Drafter
 // upsell, and Magic Quote) so they stay the same size as labels change.
@@ -32,6 +33,7 @@ export function NewDocumentClient({
   defaultQuoteCurrency,
   initialDocumentType,
   initialMode,
+  currency = "USD",
 }: {
   hasAiDraft: boolean;
   defaultQuoteCurrency: QuoteCurrencySymbol;
@@ -48,6 +50,13 @@ export function NewDocumentClient({
   // could apply (it implies "draft" anyway), so existing /templates links
   // are unaffected.
   initialMode?: "draft" | "quote";
+  /** Resolved visitor currency (2026-08-01, direct bug report against the
+   *  matching console chat button: "Buy 25 more" here said a hardcoded
+   *  "$5" regardless of where the visitor actually was — see
+   *  stripe.ts's creditPackPriceFor, the checkout route this button
+   *  redirects to). Same getRequestCurrency() resolution
+   *  defaultQuoteCurrency above is already derived from. */
+  currency?: Currency;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -368,7 +377,7 @@ export function NewDocumentClient({
                         onClick={buyCreditPack}
                         className="font-medium underline disabled:pointer-events-none disabled:opacity-50"
                       >
-                        {creditsLoading ? "Starting checkout…" : "Buy 25 more ($5)"}
+                        {creditsLoading ? "Starting checkout…" : `Buy 25 more (${formatCreditPackPrice(currency)})`}
                       </button>
                     </>
                   )}

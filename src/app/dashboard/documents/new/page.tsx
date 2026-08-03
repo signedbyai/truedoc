@@ -51,6 +51,7 @@ export default async function NewDocumentPage({
       defaultQuoteCurrency={defaultQuoteCurrency}
       initialDocumentType={initialDocumentType}
       initialMode={initialMode}
+      currency={requestCurrency}
     />
   );
 }

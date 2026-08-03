@@ -101,3 +101,35 @@ export function formatPrice(currency: Currency, plan: PlanKey, opts?: { withPeri
 export function otherCurrencies(current: Currency): Currency[] {
   return CURRENCIES.filter((c) => c !== current);
 }
+
+// Credit pack (CONSOLE_FREE_TIER_SCOPE.md item #8) — a one-time 25-seal
+// top-up, priced via Stripe Checkout's inline price_data rather than a
+// dashboard Price object (see stripe.ts's creditPackPriceFor, the
+// server-side checkout counterpart to this — same table, imported from
+// here rather than duplicated, so the console chat button's label can
+// never disagree with what checkout actually charges).
+//
+// Went EUR/GBP/CHF-aware 2026-08-01 (direct bug report: a Europe-based
+// visitor still saw and was charged a flat $5). Same ~6-15%-premium
+// convention as PRICE_TABLE above, reusing that table's exact per-currency
+// ratios rather than inventing new ones: $5 → €5 (EUR at 1.0x nominal,
+// same as the flat plans), £4 and CHF 4 (both at ~0.86x, GBP and CHF
+// always sharing one number in PRICE_TABLE too). INR intentionally not
+// included — see stripe.ts's creditPackPriceFor doc comment for why, and
+// for what an unpriced currency falls back to.
+export const CREDIT_PACK_PRICE_CENTS: Partial<Record<Currency, number>> = {
+  USD: 500,
+  EUR: 500,
+  GBP: 400,
+  CHF: 400,
+};
+
+// "$5" / "£4" / "CHF 4" — client-safe (no Stripe SDK import), used by the
+// console chat "Buy 25 more" button so its label always matches what
+// checkout will actually charge, instead of a hardcoded "$5".
+export function formatCreditPackPrice(currency: Currency): string {
+  const cents = CREDIT_PACK_PRICE_CENTS[currency] ?? CREDIT_PACK_PRICE_CENTS.USD!;
+  const amount = cents / 100;
+  const symbol = PRICE_TABLE[currency].symbol;
+  return symbol.length > 1 ? `${symbol} ${amount}` : `${symbol}${amount}`;
+}

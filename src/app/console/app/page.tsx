@@ -7,6 +7,7 @@ import { ConsoleWorkspace } from "@/components/console-workspace";
 import { consoleAppNextPath } from "@/lib/console-host";
 import { resolveIdentityStatus } from "@/lib/identity";
 import { AttributionClaim } from "@/components/attribution-claim";
+import { getRequestCurrency } from "@/lib/currency.server";
 
 // /console/app (moved from /dashboard/console 2026-07-30 — see
 // src/app/console/app/layout.tsx for why) — the actual interactive
@@ -116,6 +117,14 @@ export default async function ConsoleAppPage({
   // fed by billingState above, this is the Free-only counterpart.
   const freePlanUsage = hasAccess && org.plan === "free" ? await getFreePlanDocUsage(supabase, orgId) : null;
 
+  // Same geo/cookie resolution the pricing pages and checkout routes use
+  // (2026-08-01, direct bug report: the "Buy 25 more" credit-pack button
+  // said a hardcoded "$5" regardless of where the visitor actually was —
+  // see stripe.ts's creditPackPriceFor). Only matters for Free orgs (the
+  // only ones who ever see that button), but resolved unconditionally
+  // since it's a cheap header/cookie read, not a DB query.
+  const currency = await getRequestCurrency();
+
   return (
     <main className="px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-6xl">
@@ -146,6 +155,7 @@ export default async function ConsoleAppPage({
           identityStale={identityStatus.verified ? identityStatus.stale : false}
           freePlanDocsUsedThisMonth={freePlanUsage?.usedThisMonth ?? null}
           freePlanDocCredits={freePlanUsage?.docCredits ?? null}
+          currency={currency}
         />
       </div>
     </main>

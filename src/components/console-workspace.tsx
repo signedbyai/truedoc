@@ -10,6 +10,7 @@ import { ConsoleUsagePanel } from "@/components/console-usage-panel";
 import { ConsoleHistorySidebar } from "@/components/console-history-sidebar";
 import { ConsoleTemplatesList } from "@/components/console-templates-list";
 import { ConsolePlanStatus } from "@/components/console-plan-status";
+import type { Currency } from "@/lib/currency";
 import { VerifiedBadgeSettings } from "@/components/verified-badge-settings";
 import { ConsoleUpgradePanel, ConsoleLockedChat } from "@/components/console-upgrade-panel";
 import { ReferralGiftButton } from "@/components/referral-gift-button";
@@ -195,6 +196,7 @@ export function ConsoleWorkspace({
   identityStale,
   freePlanDocsUsedThisMonth,
   freePlanDocCredits,
+  currency,
 }: {
   plan: string;
   hasAccess: boolean;
@@ -226,6 +228,10 @@ export function ConsoleWorkspace({
    *  locked/no-access orgs — see console/app/page.tsx's fetch gate. */
   freePlanDocsUsedThisMonth: number | null;
   freePlanDocCredits: number | null;
+  /** Resolved visitor currency, threaded straight through to ConsoleChat's
+   *  "Buy 25 more" credit-pack button (2026-08-01, direct bug report — see
+   *  that component's own prop doc). */
+  currency: Currency;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [initialMessages, setInitialMessages] = useState<Bubble[]>([]);
@@ -577,6 +583,7 @@ export function ConsoleWorkspace({
               onConversationSaved={handleSaved}
               certificateModePreference={certificateModePreference}
               plan={plan}
+              currency={currency}
               // Bug fix 2026-08-01, direct report: the needs_identity
               // bubble's "Open Settings" button used to be plain text with
               // nowhere to actually go. Sets both the desktop tab and the
