@@ -4,6 +4,7 @@ import { sendSignerInviteEmail } from "@/lib/email";
 import { checkEmailDomainHasMx } from "@/lib/validate-email-domain";
 import { checkConsoleCap, recordConsoleUsage } from "@/lib/console-usage";
 import { planHasFeature } from "@/lib/plan";
+import { getReferralSummary, type ReferralSummary } from "@/lib/referral";
 
 // Shared action functions behind the console chat (src/app/api/console/chat)
 // and the API-key-authenticated bulk-send endpoint
@@ -406,6 +407,20 @@ export async function listTemplatesAction(orgId: string): Promise<{ ok: true; te
     return { ok: false, error: "Couldn't list templates.", status: 500 };
   }
   return { ok: true, templates: data || [] };
+}
+
+/** Not one of the original v1 tools either, added 2026-08-04 after a real
+ *  gap: the console chat had no way to answer "do you have a referral
+ *  program" / "what's my referral link" and, with no tool covering it,
+ *  Mistral improvised a wrong answer ("SignedBy doesn't have a formal
+ *  referral program"). Read-only, no confirmation needed — same shape as
+ *  listTemplatesAction. Reuses referral.ts's getReferralSummary wholesale
+ *  so the chat's answer always matches the dashboard/console UI's own
+ *  referral card. */
+export async function getReferralInfoAction(orgId: string): Promise<{ ok: true; referral: ReferralSummary } | ConsoleActionError> {
+  const summary = await getReferralSummary(createAdminClient(), orgId);
+  if (!summary) return { ok: false, error: "Couldn't generate a referral link.", status: 500 };
+  return { ok: true, referral: summary };
 }
 
 export async function voidDocumentAction(

@@ -132,3 +132,73 @@ export async function grantSealCreditReferralReward(admin: SupabaseClient, refer
     .update({ reward_type: "seal_credits", credits_granted: referrerCredits, referred_credits_granted: referredCredits })
     .eq("id", referral.id);
 }
+
+export type ReferralSummary = {
+  code: string;
+  link: string;
+  rewardedCount: number;
+  plan: string;
+  rewardType: "pro_month" | "seal_credits";
+  creditsPerReferral: number;
+  isSuperReferrer: boolean;
+  sealCreditsRewardedCount: number;
+};
+
+/**
+ * Assembles the current org's referral program summary — lazily assigning a
+ * `referral_code` the first time it's asked for (retrying on the rare
+ * unique collision), then computing both reward programs' counters. Shared
+ * by `/api/referral/me` (dashboard + console UI, both `referral-card.tsx`/
+ * `referral-gift-button.tsx`) and the console chat's `get_referral_link`
+ * tool (`console-actions.ts`'s `getReferralInfoAction`), so every surface
+ * agrees on the same numbers. Returns null only if code generation fails
+ * after 5 attempts (an extremely unlikely unique-collision streak) —
+ * callers turn that into a 500/error response.
+ */
+export async function getReferralSummary(admin: SupabaseClient, orgId: string): Promise<ReferralSummary | null> {
+  const { data: org } = await admin.from("organizations").select("referral_code, plan").eq("id", orgId).single();
+  let code = org?.referral_code ?? null;
+  const plan = org?.plan ?? "free";
+
+  if (!code) {
+    for (let attempt = 0; attempt < 5 && !code; attempt++) {
+      const candidate = generateReferralCode();
+      const { error } = await admin.from("organizations").update({ referral_code: candidate }).eq("id", orgId);
+      if (!error) code = candidate;
+    }
+    if (!code) return null;
+  }
+
+  // "Converted" = the referred org paid and the referrer was credited (the
+  // original pro_month program's own counter — unchanged, still what Pro+'s
+  // card copy reads).
+  const { count: rewardedCount } = await admin
+    .from("referrals")
+    .select("id", { count: "exact", head: true })
+    .eq("referrer_org_id", orgId)
+    .eq("status", "rewarded");
+
+  // Seal-credits program's own counter. Deliberately NOT filtered by status
+  // — that column stays owned by the pro_month path (see
+  // grantSealCreditReferralReward above); credits_granted > 0 is this
+  // program's own "did it actually pay out" signal.
+  const { count: sealCreditsRewardedCount } = await admin
+    .from("referrals")
+    .select("id", { count: "exact", head: true })
+    .eq("referrer_org_id", orgId)
+    .eq("reward_type", "seal_credits")
+    .gt("credits_granted", 0);
+
+  const isSuperReferrer = (sealCreditsRewardedCount ?? 0) >= SUPER_REFERRER_THRESHOLD;
+
+  return {
+    code,
+    link: referralLink(code),
+    rewardedCount: rewardedCount ?? 0,
+    plan,
+    rewardType: plan === "free" ? "seal_credits" : "pro_month",
+    creditsPerReferral: isSuperReferrer ? SEAL_CREDITS_SUPER_REFERRER : SEAL_CREDITS_STANDARD,
+    isSuperReferrer,
+    sealCreditsRewardedCount: sealCreditsRewardedCount ?? 0,
+  };
+}

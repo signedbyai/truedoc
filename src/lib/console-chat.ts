@@ -6,6 +6,7 @@ import {
   listTemplatesAction,
   voidDocumentAction,
   saveAsTemplateAction,
+  getReferralInfoAction,
 } from "@/lib/console-actions";
 import { sealDocumentAction } from "@/lib/verified-badge-actions";
 
@@ -35,7 +36,9 @@ const CONFIRM_REQUIRED = new Set(["send_document", "bulk_send", "save_as_templat
 
 const SYSTEM_PROMPT =
   "You are SignedBy Console, an assistant that sends, tracks, and manages e-signature documents on the user's " +
-  "SignedBy account by calling the tools provided. Only take an action the user has clearly asked for. Never, " +
+  "SignedBy account by calling the tools provided. SignedBy does have a referral program — use " +
+  "get_referral_link whenever asked about it, rather than saying one doesn't exist. Only take an action the " +
+  "user has clearly asked for. Never, " +
   "under any circumstance, invent or guess a template_id or document_id. The user never sees or works with " +
   "raw ids — they refer to things by name, recipient, or recency ('the NDA', 'the one I just sent to jane', " +
   "'this', 'the latest one'), and it's your job to resolve that to the real id yourself, invisibly. You can " +
@@ -178,6 +181,18 @@ const TOOLS = [
       parameters: { type: "object", properties: { document_id: { type: "string" } }, required: ["document_id"] },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_referral_link",
+      description:
+        "Get the user's SignedBy referral program details: their unique referral link, which reward program " +
+        "applies to their current plan, the reward amounts, and their progress so far (including Super Referrer " +
+        "status). Use this whenever the user asks about referrals, invites, a referral link, or how to earn " +
+        "rewards or credits for referring others — SignedBy does have a referral program.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
 ] as const;
 
 type MistralToolCall = { id: string; function: { name: string; arguments: string } };
@@ -219,6 +234,7 @@ type ToolExecutionResult =
   | Awaited<ReturnType<typeof voidDocumentAction>>
   | Awaited<ReturnType<typeof saveAsTemplateAction>>
   | Awaited<ReturnType<typeof sealDocumentAction>>
+  | Awaited<ReturnType<typeof getReferralInfoAction>>
   | { ok: false; error: string; status: number };
 
 async function executeTool(orgId: string, metered: boolean, name: string, args: Record<string, unknown>): Promise<ToolExecutionResult> {
@@ -257,6 +273,8 @@ async function executeTool(orgId: string, metered: boolean, name: string, args: 
       return listTemplatesAction(orgId);
     case "void_document":
       return voidDocumentAction(orgId, String(args.document_id ?? ""));
+    case "get_referral_link":
+      return getReferralInfoAction(orgId);
     case "save_as_template":
       return saveAsTemplateAction({
         orgId,
@@ -336,6 +354,8 @@ function toolStatusPhrase(name: string, args: Record<string, unknown>): string {
       return "Saving as a template…";
     case "seal_document":
       return "Sealing the document…";
+    case "get_referral_link":
+      return "Looking up your referral program…";
     default:
       return "Working on it…";
   }

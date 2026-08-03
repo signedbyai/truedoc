@@ -11,6 +11,7 @@ import { ConsoleTemplatesList } from "@/components/console-templates-list";
 import { ConsolePlanStatus } from "@/components/console-plan-status";
 import { VerifiedBadgeSettings } from "@/components/verified-badge-settings";
 import { ConsoleUpgradePanel, ConsoleLockedChat } from "@/components/console-upgrade-panel";
+import { ReferralGiftButton } from "@/components/referral-gift-button";
 
 /** Top-level client wrapper for /console/app (2026-07-31 layout pass) —
  *  owns the state that has to be shared between the history sidebar and
@@ -260,6 +261,12 @@ export function ConsoleWorkspace({
   // Kept even now that Settings is its own tab, since History/Templates
   // lists could still in principle be starved the same way by a future
   // change elsewhere in this component.
+  //
+  // 2026-08-04: a fifth icon, ReferralGiftButton, was added after the pill
+  // (Home/History/Templates/Settings) — it's not a tab, it's a
+  // self-contained popover (own fetch, own open/close state), so it just
+  // sits alongside the tab buttons rather than participating in
+  // desktopSidebarTab/mobileSheetTab at all.
   const desktopSidebarBody = (
     <div className="flex min-h-[240px] flex-1 flex-col">
       <div className="mb-2 flex justify-center">
@@ -305,6 +312,12 @@ export function ConsoleWorkspace({
           >
             <Settings className="h-4 w-4" />
           </button>
+          {/* Referral entry point (2026-08-04, direct feedback: the gift
+              button existed on the main dashboard nav but nowhere inside
+              console.signedby.ai, Free or Pro+) — same self-contained
+              ReferralGiftButton the dashboard nav uses, `variant="pill"` for
+              the dark-on-dark styling to match its four siblings here. */}
+          <ReferralGiftButton variant="pill" />
         </div>
       </div>
       {!hasAccess ? (
@@ -387,6 +400,9 @@ export function ConsoleWorkspace({
               >
                 <Settings className="h-4 w-4" />
               </button>
+              {/* Same referral entry point as the desktop pill above — see
+                  that button's comment. */}
+              <ReferralGiftButton variant="pill" />
             </div>
           </div>
 
