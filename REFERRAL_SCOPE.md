@@ -35,6 +35,27 @@ welcome credit (3 credits) is gated on the *referred* org still being on
 the free plan at grant time too, mirroring Option A's own "don't mint dead
 `doc_credits`" reasoning applied symmetrically.
 
+**Follow-up same day, 2026-08-04 — the program had zero entry points
+inside console.signedby.ai.** Direct feedback: the referral gift icon only
+ever lived on the main dashboard nav, and the console chat, asked directly,
+answered "SignedBy doesn't have a formal referral program" — because
+nothing gave it that fact or a way to look it up. Fixed both, on Free and
+Pro+ console alike:
+- **UI**: `referral-gift-button.tsx` gained `variant="pill"` (dark theme,
+  sized to match console's existing Home/History/Templates/Settings
+  floating pill), wired into both the desktop and mobile pills in
+  `console-workspace.tsx` as a fifth icon.
+- **Chat**: new read-only `get_referral_link` tool in `console-chat.ts`
+  (backed by `getReferralInfoAction` in `console-actions.ts`), plus one
+  line in the system prompt stating the program exists and naming the
+  tool — the tool list alone wasn't confidently triggering on a meta
+  question like "do you have a referral program."
+- Refactored the actual query logic (code assignment, both programs'
+  counters) out of `/api/referral/me/route.ts` into a shared
+  `getReferralSummary` in `referral.ts`, so the dashboard nav, console UI,
+  and console chat are now provably reading the same numbers instead of
+  three separate implementations that could drift.
+
 ## Correcting a framing assumption before scoping the rest
 
 The request frames this as "Free gets something new, Pro+ keeps what it has
