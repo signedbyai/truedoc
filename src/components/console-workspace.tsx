@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { FileText, History, Home, LogOut, MoreHorizontal, Settings, X } from "lucide-react";
+import { History, Home, LogOut, MoreHorizontal, Settings, ShieldCheck, X } from "lucide-react";
 import type { ConsoleBillingState } from "@/lib/console-usage";
 import { ConsoleChat, type Bubble } from "@/components/console-chat";
 import { ConsoleUsagePanel } from "@/components/console-usage-panel";
 import { ConsoleHistorySidebar } from "@/components/console-history-sidebar";
-import { ConsoleTemplatesList } from "@/components/console-templates-list";
+import { ConsoleVerifiedBadgeList } from "@/components/console-verified-badge-list";
 import { ConsolePlanStatus } from "@/components/console-plan-status";
 import type { Currency } from "@/lib/currency";
 import { VerifiedBadgeSettings } from "@/components/verified-badge-settings";
@@ -16,6 +16,8 @@ import { ConsoleUpgradePanel, ConsoleLockedChat } from "@/components/console-upg
 import { ReferralGiftButton } from "@/components/referral-gift-button";
 import { createClient } from "@/lib/supabase/client";
 import { computePopoverPosition, type PopoverCoords } from "@/lib/popover-position";
+import { consoleUrl } from "@/lib/console-host";
+import type { ConsoleHeroIconColor } from "@/flags";
 
 const MORE_MENU_WIDTH = 160; // w-40
 
@@ -28,8 +30,9 @@ const MORE_MENU_WIDTH = 160; // w-40
  *  full navigation pattern as `logout-link.tsx`/`dashboard-nav.tsx`'s own
  *  `logout()` — duplicated rather than imported, since neither existing
  *  helper renders as a plain menu item) into one dropdown, keeping the
- *  pill itself at four icons (Home/History/Templates/⋯) plus the referral
- *  gift icon.
+ *  pill itself at four icons (Home/History/Verified Badge/⋯, the third one
+ *  renamed from Templates 2026-08-04 — see desktopSidebarBody below) plus
+ *  the referral gift icon.
  *
  *  Portal-based dropdown, same fix and same reason as
  *  referral-gift-button.tsx's popover (see that file's comment in full):
@@ -197,6 +200,7 @@ export function ConsoleWorkspace({
   freePlanDocsUsedThisMonth,
   freePlanDocCredits,
   currency,
+  heroIconVariant,
 }: {
   plan: string;
   hasAccess: boolean;
@@ -232,6 +236,11 @@ export function ConsoleWorkspace({
    *  "Buy 25 more" credit-pack button (2026-08-01, direct bug report — see
    *  that component's own prop doc). */
   currency: Currency;
+  /** Console empty-state hero icon color test (2026-08-04,
+   *  CONSOLE_VERIFIED_BADGE_FOCUS_REDESIGN_SCOPE.md) — resolved server-side
+   *  in console/app/page.tsx via consoleHeroIconFlag, threaded straight
+   *  through to ConsoleChat's own empty state. */
+  heroIconVariant: ConsoleHeroIconColor;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [initialMessages, setInitialMessages] = useState<Bubble[]>([]);
@@ -252,16 +261,16 @@ export function ConsoleWorkspace({
   // separate entry points — History and Settings now open the same sheet
   // scrolled to, and titled after, the relevant section instead of always
   // showing everything at once).
-  const [mobileSheetTab, setMobileSheetTab] = useState<"history" | "templates" | "settings">("history");
+  const [mobileSheetTab, setMobileSheetTab] = useState<"history" | "sealed" | "settings">("history");
   // Desktop-only equivalent of mobileSheetTab (2026-08-02, direct
   // instruction: fold Settings into the same pill as a third tab, default
   // to it on first load, and add a Home icon that jumps back to the main
   // dashboard — see desktopSidebarBody below for the full pill). Defaults
   // to "settings" rather than "history" — only desktop's default changed;
   // the mobile sheet above still opens on History by default, unchanged.
-  const [desktopSidebarTab, setDesktopSidebarTab] = useState<"history" | "templates" | "settings">("settings");
+  const [desktopSidebarTab, setDesktopSidebarTab] = useState<"history" | "sealed" | "settings">("settings");
 
-  function openMobileSheet(tab: "history" | "templates" | "settings") {
+  function openMobileSheet(tab: "history" | "sealed" | "settings") {
     setEverOpened(true);
     setMobileSheetTab(tab);
     setMobileSheetOpen(true);
@@ -341,13 +350,13 @@ export function ConsoleWorkspace({
       <ConsoleHistorySidebar activeId={activeId} onSelect={handleSelect} onNewChat={handleNewChat} refreshToken={historyRefreshToken} />
     </div>
   );
-  const templatesBody = (
+  const sealedBody = (
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <ConsoleTemplatesList activeConversationId={activeId} />
+      <ConsoleVerifiedBadgeList />
     </div>
   );
   const upgradeOrHistoryBody = hasAccess ? historyBody : <ConsoleUpgradePanel />;
-  const upgradeOrTemplatesBody = hasAccess ? templatesBody : <ConsoleUpgradePanel />;
+  const upgradeOrSealedBody = hasAccess ? sealedBody : <ConsoleUpgradePanel />;
   const settingsBody = (
     <>
       {/* plan !== "free" (2026-08-02, CONSOLE_FREE_TIER_SCOPE.md) — this
@@ -450,9 +459,9 @@ export function ConsoleWorkspace({
       <div className="mb-2 flex justify-center">
         <div className="inline-flex items-center gap-0.5 rounded-full border border-white/10 bg-neutral-800/90 p-1 shadow-lg shadow-black/40 backdrop-blur">
           <Link
-            href="https://signedby.ai/dashboard"
-            aria-label="Dashboard"
-            title="Dashboard"
+            href={consoleUrl("/")}
+            aria-label="Console home"
+            title="Console home"
             className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 hover:bg-white/10 hover:text-white"
           >
             <Home className="h-4 w-4" />
@@ -470,14 +479,14 @@ export function ConsoleWorkspace({
           </button>
           <button
             type="button"
-            onClick={() => setDesktopSidebarTab("templates")}
-            aria-label="Templates"
-            title="Templates"
+            onClick={() => setDesktopSidebarTab("sealed")}
+            aria-label="Verified Badge"
+            title="Verified Badge"
             className={`flex h-8 w-8 items-center justify-center rounded-full ${
-              desktopSidebarTab === "templates" ? "bg-white/10 text-white" : "text-neutral-300 hover:bg-white/10 hover:text-white"
+              desktopSidebarTab === "sealed" ? "bg-white/10 text-white" : "text-neutral-300 hover:bg-white/10 hover:text-white"
             }`}
           >
-            <FileText className="h-4 w-4" />
+            <ShieldCheck className="h-4 w-4" />
           </button>
           <ConsolePillMoreMenu active={desktopSidebarTab === "settings"} onSettings={() => setDesktopSidebarTab("settings")} />
           {/* Referral entry point (2026-08-04, direct feedback: the gift
@@ -492,8 +501,8 @@ export function ConsoleWorkspace({
       </div>
       {!hasAccess ? (
         <ConsoleUpgradePanel />
-      ) : desktopSidebarTab === "templates" ? (
-        templatesBody
+      ) : desktopSidebarTab === "sealed" ? (
+        sealedBody
       ) : desktopSidebarTab === "settings" ? (
         settingsBody
       ) : (
@@ -536,9 +545,9 @@ export function ConsoleWorkspace({
           <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center lg:hidden">
             <div className="pointer-events-auto inline-flex items-center gap-0.5 rounded-full border border-white/10 bg-neutral-800/90 p-1 shadow-lg shadow-black/40 backdrop-blur">
               <Link
-                href="https://signedby.ai/dashboard"
-                aria-label="Dashboard"
-                title="Dashboard"
+                href={consoleUrl("/")}
+                aria-label="Console home"
+                title="Console home"
                 className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 hover:bg-white/10 hover:text-white"
               >
                 <Home className="h-4 w-4" />
@@ -554,12 +563,12 @@ export function ConsoleWorkspace({
               </button>
               <button
                 type="button"
-                onClick={() => openMobileSheet("templates")}
-                aria-label="Templates"
-                title="Templates"
+                onClick={() => openMobileSheet("sealed")}
+                aria-label="Verified Badge"
+                title="Verified Badge"
                 className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 hover:bg-white/10 hover:text-white"
               >
-                <FileText className="h-4 w-4" />
+                <ShieldCheck className="h-4 w-4" />
               </button>
               <ConsolePillMoreMenu
                 active={mobileSheetOpen && mobileSheetTab === "settings"}
@@ -584,6 +593,7 @@ export function ConsoleWorkspace({
               certificateModePreference={certificateModePreference}
               plan={plan}
               currency={currency}
+              heroIconVariant={heroIconVariant}
               // Bug fix 2026-08-01, direct report: the needs_identity
               // bubble's "Open Settings" button used to be plain text with
               // nowhere to actually go. Sets both the desktop tab and the
@@ -622,7 +632,7 @@ export function ConsoleWorkspace({
           <div className="mx-auto h-1 w-10 shrink-0 rounded-full bg-white/15" />
           <div className="flex shrink-0 items-center justify-between">
             <p className="text-sm font-medium text-white">
-              {mobileSheetTab === "history" ? "History" : mobileSheetTab === "templates" ? "Templates" : "Settings"}
+              {mobileSheetTab === "history" ? "History" : mobileSheetTab === "sealed" ? "Verified Badge" : "Settings"}
             </p>
             <button
               type="button"
@@ -635,7 +645,7 @@ export function ConsoleWorkspace({
           </div>
           {everOpened && (
             <div className="flex flex-1 flex-col gap-4">
-              {mobileSheetTab === "history" ? upgradeOrHistoryBody : mobileSheetTab === "templates" ? upgradeOrTemplatesBody : settingsBody}
+              {mobileSheetTab === "history" ? upgradeOrHistoryBody : mobileSheetTab === "sealed" ? upgradeOrSealedBody : settingsBody}
             </div>
           )}
         </div>

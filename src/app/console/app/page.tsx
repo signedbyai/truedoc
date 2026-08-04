@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { FlagValues } from "flags/react";
 import { getUserAndOrg } from "@/lib/org";
 import { planHasFeature, getFreePlanDocUsage } from "@/lib/plan";
 import { getConsoleBillingState } from "@/lib/console-usage";
@@ -8,6 +9,7 @@ import { consoleAppNextPath } from "@/lib/console-host";
 import { resolveIdentityStatus } from "@/lib/identity";
 import { AttributionClaim } from "@/components/attribution-claim";
 import { getRequestCurrency } from "@/lib/currency.server";
+import { consoleHeroIconFlag } from "@/flags";
 
 // /console/app (moved from /dashboard/console 2026-07-30 — see
 // src/app/console/app/layout.tsx for why) — the actual interactive
@@ -125,9 +127,16 @@ export default async function ConsoleAppPage({
   // since it's a cheap header/cookie read, not a DB query.
   const currency = await getRequestCurrency();
 
+  // Hero icon color test (2026-08-04, CONSOLE_VERIFIED_BADGE_FOCUS_REDESIGN_
+  // SCOPE.md) — resolved unconditionally like the other flags on this page,
+  // cheap and doesn't depend on `hasAccess` since the empty-state hero
+  // renders for every plan including locked/Free.
+  const heroIconVariant = await consoleHeroIconFlag();
+
   return (
     <main className="px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-6xl">
+        <FlagValues values={{ "console-hero-icon-color": heroIconVariant }} />
         {/* This page previously never claimed first-touch attribution at all
             (2026-08-01 finding, following the console sign-up/login audit)
             — AttributionClaim only lived on /dashboard/page.tsx, but a
@@ -156,6 +165,7 @@ export default async function ConsoleAppPage({
           freePlanDocsUsedThisMonth={freePlanUsage?.usedThisMonth ?? null}
           freePlanDocCredits={freePlanUsage?.docCredits ?? null}
           currency={currency}
+          heroIconVariant={heroIconVariant}
         />
       </div>
     </main>
