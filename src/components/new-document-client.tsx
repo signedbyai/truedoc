@@ -210,7 +210,7 @@ export function NewDocumentClient({
                 wraps on a narrow column. */}
             <span className="inline-flex items-center justify-center gap-1.5">
               <Upload className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-              Upload a file
+              Sign a file
             </span>
           </button>
           {/* Free on every plan (2026-07-21) — no locked/upsell state needed,
@@ -308,7 +308,7 @@ export function NewDocumentClient({
               {/* Was "New document" — identical to the page's own h1 right
                   above it (2026-07-25). Matches the tab's own label instead,
                   same as how the Magic Quote tab/card title already agree. */}
-              <CardTitle>Upload a file</CardTitle>
+              <CardTitle>Sign a file</CardTitle>
               <CardDescription>Upload a PDF, then place signature fields on the next screen.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
