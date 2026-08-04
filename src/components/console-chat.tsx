@@ -2,11 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { ArrowUp, Check, ChevronDown, Copy, ExternalLink, FileText, FileUp, Paperclip, ShieldCheck, Square, X } from "lucide-react";
+import { track } from "@vercel/analytics";
+import { ArrowUp, Check, ChevronDown, Copy, ExternalLink, FileText, FileUp, Paperclip, ShieldCheck, Square, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { parseNdjsonLine, splitNdjsonLines } from "@/lib/ndjson";
 import { formatCreditPackPrice, type Currency } from "@/lib/currency";
+import type { ConsoleHeroIconColor } from "@/flags";
+
+// Which control actually opened the file picker / received the drop for a
+// Verified Badge seal (CONSOLE_VERIFIED_BADGE_FOCUS_REDESIGN_SCOPE.md,
+// 2026-08-04) — carried through to the seal's own audit event metadata
+// (see verified-badge-actions.ts) so "which of the three do people use"
+// is answerable with a single grouped query, and also fired as a
+// "console_upload_started" analytics event (see sealSelectedFile below)
+// for the icon-color test's upload-start metric.
+type EntryPoint = "dropzone" | "seal_button" | "paperclip";
 
 // The console chat pane (CONSOLE_UX_SCOPE.md #2). Talks to
 // POST /api/console/chat, which runs a Mistral tool-calling loop over a
@@ -45,7 +55,7 @@ export type Bubble =
       // document_id from a just-finished upload should never be something
       // the model has to guess or resolve, only something the UI already
       // has in hand.
-      certificateModeChoice?: { documentId: string; filename: string };
+      certificateModeChoice?: { documentId: string; filename: string; entryPoint: EntryPoint };
       // seal_document's result (2026-08-01, direct feedback) — renders a
       // copy-link button plus inline download buttons for whichever files
       // this seal actually produced, instead of the raw verify URL and a
@@ -498,6 +508,7 @@ export function ConsoleChat({
   plan = "free",
   currency = "USD",
   onOpenSettings,
+  heroIconVariant = "blue",
 }: {
   /** The conversation's id if this is reopening a past chat, or null for a
    *  brand new one. Only read at mount time — console-workspace.tsx forces
@@ -544,6 +555,12 @@ export function ConsoleChat({
    *  bug report) so that flow can actually navigate there instead of just
    *  telling someone to. */
   onOpenSettings?: () => void;
+  /** Empty-state hero icon color test (2026-08-04, CONSOLE_VERIFIED_BADGE_
+   *  FOCUS_REDESIGN_SCOPE.md) — resolved server-side via consoleHeroIconFlag
+   *  and threaded straight through from console/app/page.tsx via
+   *  console-workspace.tsx. Defaults to "blue", same fallback posture as
+   *  every other prop here that has a real default value. */
+  heroIconVariant?: ConsoleHeroIconColor;
 } = {}) {
   const isFreePlan = plan === "free";
   const router = useRouter();
@@ -559,9 +576,17 @@ export function ConsoleChat({
   // to the recipient-list file picker (2026-08-01, see MAX_TEMPLATE_FILE_BYTES
   // above).
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  // Visual feedback only, no logic depends on it — hero dropzone
+  // (2026-08-04) border/background highlight while a file is dragged over.
+  const [heroDragActive, setHeroDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const templateFileInputRef = useRef<HTMLInputElement>(null);
   const verifiedBadgeFileInputRef = useRef<HTMLInputElement>(null);
+  // Set immediately before verifiedBadgeFileInputRef is opened (or read
+  // directly on a real drop) so handleVerifiedBadgeFileSelected/
+  // sealSelectedFile below know which of the three entry points this
+  // upload came from — see the EntryPoint type doc comment up top.
+  const pendingEntryPointRef = useRef<EntryPoint>("paperclip");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   // Tracks whether the user has deliberately scrolled up to read earlier
@@ -859,7 +884,8 @@ export function ConsoleChat({
     bubbleIndex: number,
     documentId: string,
     filename: string,
-    mode: "appended" | "separate" | "both"
+    mode: "appended" | "separate" | "both",
+    entryPoint: EntryPoint
   ) {
     const modeLabel =
       mode === "appended" ? "appended to the file" : mode === "separate" ? "kept as a separate certificate" : "both — appended and separate";
@@ -874,7 +900,7 @@ export function ConsoleChat({
         {
           role: "assistant",
           content: `Ready to seal "${filename}" — ${modeLabel}. Confirm?`,
-          confirm: { tool: "seal_document", arguments: { document_id: documentId, certificate_mode: mode } },
+          confirm: { tool: "seal_document", arguments: { document_id: documentId, certificate_mode: mode, entry_point: entryPoint } },
         },
       ];
     });
@@ -1121,11 +1147,19 @@ export function ConsoleChat({
    *  as-is. Ends either with a conversational appended/separate/both
    *  question (certificateModePreference === "ask", the default) or
    *  straight to a confirm bubble using the org's standing Settings
-   *  preference. */
-  async function handleVerifiedBadgeFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || loading) return;
+   *  preference.
+   *
+   *  Split into this shared core plus three thin call sites (2026-08-04,
+   *  CONSOLE_VERIFIED_BADGE_FOCUS_REDESIGN_SCOPE.md) — the paperclip's
+   *  hidden-input onChange (handleVerifiedBadgeFileSelected below), the new
+   *  hero dropzone's onDrop, and the new "Seal this file" button, which all
+   *  now feed the exact same upload/confirm plumbing rather than each
+   *  having their own copy — the only thing that differs per entry point is
+   *  which value gets recorded, not how the seal itself works. That was a
+   *  direct decision: reuse the existing chat-confirm flow rather than
+   *  build a second, more direct seal path. */
+  async function sealSelectedFile(file: File, entryPoint: EntryPoint) {
+    if (loading) return;
     setError("");
 
     if (!/\.pdf$/i.test(file.name)) {
@@ -1136,6 +1170,12 @@ export function ConsoleChat({
       setError("That file's too large — try one under 25MB.");
       return;
     }
+
+    // Fired on every real attempt, not just successful ones — the
+    // icon-color test's metric is upload-start, and an abandoned upload
+    // (e.g. a bad file type caught above) still tells us which entry
+    // point someone reached for first. See flags.ts's consoleHeroIconFlag.
+    track("console_upload_started", { entry_point: entryPoint, icon_variant: heroIconVariant });
 
     dismissPaperclipIntro();
     setLoading(true);
@@ -1178,7 +1218,7 @@ export function ConsoleChat({
         assistantBubble = {
           role: "assistant",
           content: `Got "${file.name}." Want the certificate appended to the file, kept as a separate document, or both? (Change the default any time in Settings.)`,
-          certificateModeChoice: { documentId, filename: file.name },
+          certificateModeChoice: { documentId, filename: file.name, entryPoint },
         };
       } else {
         const modeLabel =
@@ -1190,7 +1230,10 @@ export function ConsoleChat({
         assistantBubble = {
           role: "assistant",
           content: `Got "${file.name}." Ready to seal it — ${modeLabel}, per your Settings preference. Confirm?`,
-          confirm: { tool: "seal_document", arguments: { document_id: documentId, certificate_mode: certificateModePreference } },
+          confirm: {
+            tool: "seal_document",
+            arguments: { document_id: documentId, certificate_mode: certificateModePreference, entry_point: entryPoint },
+          },
         };
       }
 
@@ -1201,6 +1244,18 @@ export function ConsoleChat({
       setLoading(false);
       setStatus("");
     }
+  }
+
+  /** Thin wrapper around sealSelectedFile for the hidden file input's own
+   *  onChange — shared by the paperclip attach-menu button, the hero
+   *  dropzone's click-to-browse, and the "Seal this file" button, all of
+   *  which set pendingEntryPointRef immediately before opening this same
+   *  input rather than each managing their own file input. */
+  async function handleVerifiedBadgeFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    await sealSelectedFile(file, pendingEntryPointRef.current);
   }
 
   return (
@@ -1240,44 +1295,92 @@ export function ConsoleChat({
           className="flex h-full flex-col gap-4 overflow-y-auto px-1 pb-32 lg:pb-1"
           style={composerOverlapPx !== null ? { paddingBottom: composerOverlapPx } : undefined}
         >
-          {/* Verified Badge promo (2026-08-02, direct ask) — replaces the old
-              plain ">_" prompt + one long paragraph covering every feature
-              equally. Leads with a small thumbnail of the same
-              /hero-verified-badge.png asset the /verified-badge landing page
-              and its OG card already use (real product screenshot, not a
-              mockup), plus a short bolded line naming the feature — the rest
-              of what console can do (send/bulk-send/status/void) is
-              compressed into one small trailing line instead of its own
-              paragraph, so Verified Badge reads as the headline rather than
-              one clause buried in a longer sentence. */}
+          {/* Upload-first hero (2026-08-04, CONSOLE_VERIFIED_BADGE_FOCUS_
+              REDESIGN_SCOPE.md) — replaces the 2026-08-02 promo block, which
+              only ever told people where the paperclip was rather than
+              putting an upload target in front of them. Direct goal: get
+              someone uploading a file immediately on first use. Three entry
+              points now feed the exact same sealSelectedFile flow (see that
+              function's own doc comment) — a real drag-and-drop dropzone, a
+              "Seal this file" button under it that also just opens the file
+              picker, and the composer's paperclip below, unchanged — shown
+              together rather than split-tested, so entry_point (threaded
+              into the seal's own audit metadata) can answer which one
+              people actually reach for. Icon color (blue vs. yellow) is a
+              real, separate flag-driven test — see heroIconVariant's prop
+              doc and flags.ts's consoleHeroIconFlag. */}
           {messages.length === 0 && (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-              <div className="w-28 overflow-hidden rounded-lg border border-white/10 shadow-lg shadow-black/40">
-                <Image
-                  src="/hero-verified-badge.png"
-                  alt="A Verified Badge — the SignedBy mark, a scannable QR code, and a verification link"
-                  width={640}
-                  height={820}
-                  className="h-auto w-full"
-                />
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 px-2 text-center">
+              <div
+                className={`flex h-14 w-14 items-center justify-center rounded-2xl shadow-lg shadow-black/40 ${
+                  heroIconVariant === "yellow" ? "bg-yellow-300" : "bg-[#142040]"
+                }`}
+              >
+                <ShieldCheck className={`h-7 w-7 ${heroIconVariant === "yellow" ? "text-slate-900" : "text-[#7cb2f9]"}`} aria-hidden="true" />
               </div>
-              <p className="max-w-xs text-base text-neutral-300">
-                Get a <span className="font-semibold text-white">Verified Badge</span>{" "}
-                for proof — seal a finished file and embed a scannable QR that proves it&apos;s unaltered and
-                identity-verified. Use the{" "}
-                <Paperclip className="inline h-3 w-3 -translate-y-px" aria-hidden="true" /> icon below.
+
+              <h2 className="text-base font-medium text-white">
+                {isFreePlan ? "Claim your free Verified Badge" : "Generate your Verified Badge"}
+              </h2>
+              <p className="max-w-xs text-sm text-neutral-400">
+                Seal your first file to generate cryptographic proof it&apos;s unaltered and identity-verified.
               </p>
+
+              <label
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setHeroDragActive(true);
+                }}
+                onDragLeave={() => setHeroDragActive(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setHeroDragActive(false);
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) void sealSelectedFile(file, "dropzone");
+                }}
+                className={`mt-1 flex w-full max-w-xs cursor-pointer flex-col items-center gap-2 rounded-2xl border-[1.5px] border-dashed px-4 py-6 text-center transition-colors ${
+                  heroDragActive ? "border-white/40 bg-white/5" : "border-white/20"
+                }`}
+              >
+                <input
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) void sealSelectedFile(file, "dropzone");
+                  }}
+                />
+                <UploadCloud className="h-5 w-5 text-neutral-400" aria-hidden="true" />
+                <p className="text-xs font-medium text-white">Drop a file, or tap to browse</p>
+              </label>
+
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => {
+                  pendingEntryPointRef.current = "seal_button";
+                  verifiedBadgeFileInputRef.current?.click();
+                }}
+                className="flex w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-yellow-300 px-4 py-2.5 text-sm font-medium text-slate-900 hover:bg-yellow-200 disabled:opacity-50"
+              >
+                <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+                Seal this file
+              </button>
+
+              <p className="text-[11px] text-neutral-600">Secured via SHA-512</p>
+
               {/* Free plan (2026-08-02, CONSOLE_FREE_TIER_SCOPE.md): this
-                  second line used to promise send/bulk-send/status/void,
-                  none of which Free can actually reach (they need an
-                  existing template, and template-saving is Pro+-only) —
-                  showing it would just set up a dead end. Free's real
-                  console value is Verified Badge sealing, already the
-                  headline above, so there's nothing more worth adding here. */}
+                  line used to promise send/bulk-send/status/void, none of
+                  which Free can actually reach (they need an existing
+                  template, and template-saving is Pro+-only) — showing it
+                  would just set up a dead end. Free's real console value is
+                  Verified Badge sealing, already the headline above. */}
               {!isFreePlan && (
-                <p className="max-w-xs text-xs text-neutral-600">
-                  Console can also send, bulk-send, check status, or void — e.g. &ldquo;send the NDA template to
-                  jane@acme.com&rdquo;.
+                <p className="mt-1 max-w-xs text-xs text-neutral-600">
+                  Or just tell me what you need — send, bulk-send, check status, or void, e.g. &ldquo;send the NDA
+                  template to jane@acme.com&rdquo;.
                 </p>
               )}
             </div>
@@ -1301,7 +1404,15 @@ export function ConsoleChat({
                         size="sm"
                         variant="outline"
                         disabled={loading}
-                        onClick={() => chooseCertificateMode(i, m.certificateModeChoice!.documentId, m.certificateModeChoice!.filename, mode)}
+                        onClick={() =>
+                          chooseCertificateMode(
+                            i,
+                            m.certificateModeChoice!.documentId,
+                            m.certificateModeChoice!.filename,
+                            mode,
+                            m.certificateModeChoice!.entryPoint
+                          )
+                        }
                       >
                         {mode === "appended" ? "Appended" : mode === "separate" ? "Separate" : "Both"}
                       </Button>
@@ -1607,6 +1718,7 @@ export function ConsoleChat({
                     type="button"
                     onClick={() => {
                       setAttachMenuOpen(false);
+                      pendingEntryPointRef.current = "paperclip";
                       verifiedBadgeFileInputRef.current?.click();
                     }}
                     className="flex w-full items-start gap-2.5 px-3.5 py-3 text-left hover:bg-white/5"
