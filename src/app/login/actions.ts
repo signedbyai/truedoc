@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sanitizeNextPath } from "@/lib/safe-redirect";
 import { isDisposableEmailAddress } from "@/lib/disposable-email";
+import { isFirstLogin } from "@/lib/first-login";
 
 /** Best-effort client IP from standard proxy headers — server actions don't get a Request object. */
 async function clientIp() {
@@ -87,9 +88,9 @@ export async function verifyLoginCode(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
   if (error) return { error: "That code is incorrect or has expired." };
-  return { success: true };
+  return { success: true, firstLogin: isFirstLogin(data.user) };
 }
 
 export async function signInWithPassword(formData: FormData) {
@@ -105,9 +106,9 @@ export async function signInWithPassword(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: error.message };
-  return { success: true };
+  return { success: true, firstLogin: isFirstLogin(data.user) };
 }
 
 // Password-based sign-UP was removed 2026-07-14 -- it sent Supabase's

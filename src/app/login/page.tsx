@@ -166,7 +166,11 @@ function LoginPageInner() {
         setOtpDigits(Array(6).fill(""));
         otpRefs.current[0]?.focus();
       } else {
-        window.location.href = next ?? "/dashboard";
+        // First-ever sign-in lands on the upload flow instead of the
+        // dashboard — direct instruction, 2026-08-04. Every later login
+        // still goes to `next` or the dashboard as before.
+        const firstLogin = "firstLogin" in result && result.firstLogin === true;
+        window.location.href = next ?? (firstLogin ? "/dashboard/documents/new" : "/dashboard");
       }
     });
   }
@@ -226,7 +230,8 @@ function LoginPageInner() {
         setStatus("error");
         setMessage(result.error);
       } else {
-        window.location.href = next ?? "/dashboard";
+        const firstLogin = "firstLogin" in result && result.firstLogin === true;
+        window.location.href = next ?? (firstLogin ? "/dashboard/documents/new" : "/dashboard");
       }
     });
   }
