@@ -5,9 +5,21 @@ import { getStripe, priceIdFor, appUrl, type PlanId } from "@/lib/stripe";
 import { referralCouponId } from "@/lib/referral";
 import { getRequestCurrency } from "@/lib/currency.server";
 import { normalizeCurrency, type Currency } from "@/lib/currency";
+import { consoleUrl } from "@/lib/console-host";
 
+// `source` (2026-08-05, direct bug report: "when I was in the stripe
+// checkout for the Pro plan I wanted to go back but it took me out of the
+// console and back to the root signedby.ai") — the exact same
+// cross-subdomain cancel_url bug already fixed once for the credit-pack
+// route (see api/billing/credits/checkout/route.ts's bodySchema comment)
+// but missed here, the OTHER real Console caller of a Checkout session
+// (console-chat.tsx's subscribeToPro). Same closed-enum shape, same
+// reasoning: only two real callers of this route (console-chat.tsx,
+// pricing-cards.tsx), so the server picks the actual return URL from a
+// hardcoded pair below rather than trusting a client-supplied path.
 const bodySchema = z.object({
   plan: z.enum(["starter", "team", "business"]),
+  source: z.enum(["console", "dashboard"]).optional(),
 });
 
 export async function POST(request: Request) {
@@ -22,6 +34,7 @@ export async function POST(request: Request) {
   }
 
   const plan: PlanId = parsed.data.plan;
+  const source = parsed.data.source;
 
   // Same geo/cookie resolution the pricing pages use, so a visitor is charged
   // the currency they were shown. The price id is resolved further down, once
@@ -102,8 +115,12 @@ export async function POST(request: Request) {
       // (USD or EUR), so Checkout derives the currency from it — no session
       // `currency` override needed.
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${appUrl()}/dashboard/billing?success=1`,
-      cancel_url: `${appUrl()}/dashboard/billing?canceled=1`,
+      // console.signedby.ai/app for the console caller (both the
+      // completed-upgrade landing spot AND, more importantly, what Stripe
+      // Checkout's own back arrow uses), the existing /dashboard/billing
+      // spot for everyone else — same split as the credit-pack route.
+      success_url: source === "console" ? `${consoleUrl("/app")}?success=1` : `${appUrl()}/dashboard/billing?success=1`,
+      cancel_url: source === "console" ? `${consoleUrl("/app")}?canceled=1` : `${appUrl()}/dashboard/billing?canceled=1`,
       ...(referralContext && coupon ? { discounts: [{ coupon }] } : {}),
       subscription_data: { metadata: { org_id: orgId, plan, currency } },
       metadata: { org_id: orgId, plan, currency, ...(referralContext ? { referral_context: referralContext } : {}) },

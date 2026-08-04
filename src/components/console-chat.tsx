@@ -911,11 +911,15 @@ export function ConsoleChat({
    *  starts a real Stripe Checkout session and redirects there, the exact
    *  same client-side call pricing-cards.tsx's own subscribe() makes
    *  (POST /api/billing/checkout {plan}, then window.location.href the
-   *  returned url). Lands on /dashboard/billing?success=1 same as every
-   *  other upgrade path today — returning to this same conversation after
-   *  checkout is a separate, not-yet-built piece (cross-subdomain redirect
-   *  safety between signedby.ai and console.signedby.ai needs its own
-   *  pass, see CONSOLE_FREE_TIER_SCOPE.md). */
+   *  returned url).
+   *
+   *  `source: "console"` (2026-08-05, direct bug report: Checkout's own
+   *  back arrow took someone all the way out of console.signedby.ai and
+   *  back to the root signedby.ai domain) — same fix, same reasoning as
+   *  buyCreditPack's own `source: "console"` below: without it, the route
+   *  falls back to its default /dashboard/billing success/cancel URLs,
+   *  which sit on the main domain. Now lands back on console.signedby.ai/app
+   *  either way (success or cancel) instead. */
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   async function subscribeToPro() {
     setError("");
@@ -924,7 +928,7 @@ export function ConsoleChat({
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: "starter" }),
+        body: JSON.stringify({ plan: "starter", source: "console" }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.url) {
