@@ -29,7 +29,6 @@ export const ctaColorFlag = flag<CtaColor>({
 // on this file (acd1b52) if that one is ever needed again too. Currently
 // unused while the homepage layout test below is paused (2026-07-27) — kept
 // rather than deleted since resuming that test needs it back immediately.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function hashString(input: string): number {
   let hash = 5381;
   for (let i = 0; i < input.length; i++) {
@@ -86,4 +85,32 @@ export const homepageVariantFlag = flag<HomepageVariant>({
   description:
     "Homepage layout test: current centred single-column hero vs the v20 two-column layout (product shot above the fold) previously kept on dev as a preview. PAUSED 2026-07-27 — decide() short-circuits to \"current\" for everyone.",
   options: HOMEPAGE_VARIANTS.map((value) => ({ value })),
+});
+
+// Console empty-state hero icon color test — started 2026-08-04. See
+// CONSOLE_VERIFIED_BADGE_FOCUS_REDESIGN_SCOPE.md for the full write-up:
+// a dark-navy square with a light-blue shield-check icon vs. the brand
+// yellow square with a navy icon, tested to see which one gets more
+// traction before locking one in — same "see which one gets more
+// traction" framing as the concluded CTA color test above, so it gets
+// the same treatment: a real flag, cookieless, hash-bucketed, not a
+// subjective pick. Measured against upload-start (see
+// console-chat.tsx's sealSelectedFile, which fires a
+// "console_upload_started" analytics event carrying this variant),
+// not a page view — the whole point of this redesign is getting someone
+// to upload immediately, not just look at the hero.
+export const CONSOLE_HERO_ICON_COLORS = ["blue", "yellow"] as const;
+export type ConsoleHeroIconColor = (typeof CONSOLE_HERO_ICON_COLORS)[number];
+
+export const consoleHeroIconFlag = flag<ConsoleHeroIconColor>({
+  key: "console-hero-icon-color",
+  identify,
+  decide({ entities }) {
+    const key = entities?.visitorKey ?? "anonymous";
+    const bucket = hashString(key) % CONSOLE_HERO_ICON_COLORS.length;
+    return CONSOLE_HERO_ICON_COLORS[bucket];
+  },
+  defaultValue: "blue",
+  description: "Console empty-state hero icon color test: blue badge icon vs. yellow, measured against upload-start rate.",
+  options: CONSOLE_HERO_ICON_COLORS.map((value) => ({ value })),
 });
