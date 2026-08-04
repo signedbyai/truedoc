@@ -238,11 +238,11 @@ export function NewDocumentClient({
             )}
           >
             {/* Icons on all three tabs (2026-07-25) so AI Drafter/Magic Quote
-                read as distinct from plain upload even without the ai-comet
-                glow — reduced-motion visitors only get a static ring, and
-                color/motion alone shouldn't be the only signal. Small
-                (h-3.5) and shrink-0 so they hold their size if a label
-                wraps on a narrow column. */}
+                read as distinct from plain upload without relying on color
+                alone. Small (h-3.5) and shrink-0 so they hold their size if
+                a label wraps on a narrow column. Neither AI tab glows
+                anymore (2026-08-05) — see the dropzone below, which now
+                carries that "press here" signal instead. */}
             <span className="inline-flex items-center justify-center gap-1.5">
               <Upload className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
               Sign a file
@@ -255,10 +255,6 @@ export function NewDocumentClient({
             onClick={() => setMode("quote")}
             className={cn(
               MODE_TAB_CLASS,
-              // Same shared-comet rule as the AI Drafter tab below: glows
-              // only in the initial "upload" state, and hops to Magic
-              // Quote's own "Describe the job" box once chosen.
-              mode === "upload" && "ai-comet",
               mode === "quote"
                 ? "border-slate-900 bg-slate-900 text-white"
                 : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -274,13 +270,6 @@ export function NewDocumentClient({
               onClick={() => setMode("draft")}
               className={cn(
                 MODE_TAB_CLASS,
-                // Comet lives on this button only in the initial "upload"
-                // state, same as the Magic Quote tab above — choosing either
-                // AI mode turns both off, not just the one clicked, since
-                // they're two answers to the same "which way in?" prompt.
-                // Once AI Drafter itself is chosen, the comet hops to the
-                // "Describe what you need" box (see ai-draft-form).
-                mode === "upload" && "ai-comet",
                 mode === "draft"
                   ? "border-slate-900 bg-slate-900 text-white"
                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -367,9 +356,18 @@ export function NewDocumentClient({
                   if (dropped) handleFileChosen(dropped, "dropzone");
                 }}
                 onClick={() => fileInputRef.current?.click()}
-                className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors ${
-                  isDragging ? "border-slate-900 bg-slate-100" : "border-slate-300 hover:bg-slate-50"
-                }`}
+                className={cn(
+                  "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors",
+                  isDragging ? "border-slate-900 bg-slate-100" : "border-slate-300 hover:bg-slate-50",
+                  // Moved here from the Magic Quote/AI Drafter tabs
+                  // (2026-08-05, direct ask) — this dropzone is the actual
+                  // primary action on this page, not those two tabs, so the
+                  // "press here" glow belongs on it instead. Off once a file
+                  // is chosen (the zone switches to showing the filename,
+                  // and the primary action moves to the Upload & continue
+                  // button below — see its own black/yellow color test).
+                  !file && "upload-glow"
+                )}
               >
                 <input
                   ref={fileInputRef}

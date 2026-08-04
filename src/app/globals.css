@@ -121,8 +121,8 @@ body[data-immersive="1"] [data-dashboard-content] {
   padding-bottom: 0 !important;
 }
 
-/* Marks AI-powered actions (Suggest fields, AI Drafter, What am I signing?,
-   new-document AI tab). Was an orbiting comet — a conic
+/* Marks AI-powered actions (Suggest fields, AI Drafter, What am I signing?).
+   Was an orbiting comet — a conic
    gradient rotating a bright dot around the border — which drew the eye but
    read as a loading spinner, and the moving highlight caught the frame at
    random angles in screenshots. Now a slow yellow glow breathing on the
@@ -134,11 +134,24 @@ body[data-immersive="1"] [data-dashboard-content] {
    box-shadow: Tailwind builds focus rings out of box-shadow too, so animating
    it directly would override the focus-visible ring on these buttons and lose
    the keyboard focus indicator. Animating the pseudo-element's opacity keeps
-   both. */
-.ai-comet {
+   both.
+
+   .upload-glow (2026-08-05, direct ask) shares this exact visual mechanism
+   but is a DIFFERENT signal — "press here," not "AI lives here." Moved off
+   new-document-client.tsx's Magic Quote/AI Drafter tabs and onto the
+   upload dropzone instead: that's the actual primary action on that page,
+   and pointing the same glow at two AI tabs was steering attention away
+   from it. Kept as a separate class rather than reusing .ai-comet directly
+   so the two meanings ("AI-powered" vs. "primary action") don't blur —
+   .ai-comet's other call sites (field-editor.tsx, signing-view.tsx,
+   ai-draft-form.tsx, magic-quote-form.tsx) are genuinely AI features and
+   should stay that way. */
+.ai-comet,
+.upload-glow {
   position: relative;
 }
-.ai-comet::after {
+.ai-comet::after,
+.upload-glow::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -158,7 +171,8 @@ body[data-immersive="1"] [data-dashboard-content] {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ai-comet::after {
+  .ai-comet::after,
+  .upload-glow::after {
     animation: none;
     opacity: 0.55;
   }
