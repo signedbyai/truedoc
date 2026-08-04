@@ -32,6 +32,9 @@ export default async function DashboardPage() {
     .from("documents")
     .select("id, title, status, page_count, created_at")
     .eq("org_id", orgId)
+    // Verified Badge seals stay Console-only, out of the Signing Dashboard
+    // — see CONSOLE_VERIFIED_BADGE_PROVENANCE_SCOPE.md.
+    .eq("is_verified_badge", false)
     .order("created_at", { ascending: false })
     .limit(5);
 
@@ -48,7 +51,8 @@ export default async function DashboardPage() {
   const { data: allStatuses } = await supabase
     .from("documents")
     .select("status")
-    .eq("org_id", orgId);
+    .eq("org_id", orgId)
+    .eq("is_verified_badge", false);
   const stats = workspaceStats(tallyStatuses((allStatuses ?? []).map((d) => d.status)));
 
   // Monthly gift-card draw progress. Deliberately a different number from the

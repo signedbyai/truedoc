@@ -54,7 +54,11 @@ export default async function DocumentsPage({
   let query = supabase
     .from("documents")
     .select("id, title, status, page_count, created_at", { count: "exact" })
-    .eq("org_id", orgId);
+    .eq("org_id", orgId)
+    // Verified Badge seals are self-sign documents, not real signing
+    // activity — keep them out of the Signing Dashboard entirely (Console
+    // is their home). See CONSOLE_VERIFIED_BADGE_PROVENANCE_SCOPE.md.
+    .eq("is_verified_badge", false);
 
   if (status && STATUS_OPTIONS.includes(status as (typeof STATUS_OPTIONS)[number])) {
     query = query.eq("status", status);
