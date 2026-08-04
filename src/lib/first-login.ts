@@ -26,7 +26,7 @@
 const FIRST_LOGIN_WINDOW_MS = 30 * 60_000;
 
 export function isFirstLogin(
-  user: { created_at: string; last_sign_in_at: string | null } | null | undefined
+  user: { created_at: string; last_sign_in_at?: string | null } | null | undefined
 ): boolean {
   if (!user?.last_sign_in_at) return false;
   const created = new Date(user.created_at).getTime();
