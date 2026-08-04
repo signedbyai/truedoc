@@ -49,10 +49,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     // so show them the Signed screen. `document.status` is re-read on every
     // request, so it reflects completion caused by that earlier submit.
     const speedStat = await fetchSignerSpeedStat(admin, signer.id);
+    // Same hash lookup as the /status recovery route — a retried submit on
+    // an already-completed document shouldn't render a plainer confirmation
+    // screen (missing the certificate QR) than the original request did.
+    let replayHash: string | null = null;
+    if (document.status === "completed") {
+      const { data: completedEvent } = await admin
+        .from("audit_events")
+        .select("document_hash")
+        .eq("document_id", document.id)
+        .eq("event_type", "completed")
+        .maybeSingle();
+      replayHash = completedEvent?.document_hash ?? null;
+    }
     return NextResponse.json({
       success: true,
       completed: document.status === "completed",
       speedStat,
+      hash: replayHash,
       alreadySigned: true,
     });
   }
@@ -146,6 +160,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
   const outcome = computeSigningOutcome(allSigners || [], signer.id);
   const documentCompleted = outcome.documentCompleted;
+  // Captured outside the try block below so it can ride on this route's own
+  // response — the completing signer's own confirmation screen needs the
+  // hash to render the certificate/verify QR (CERTIFICATE_VISIBILITY_
+  // PROMOTION_SCOPE.md, 2026-08-04) via /api/certificate-qr?hash=... and
+  // link to /verify?hash=.... Returning the bare hash rather than a full
+  // built URL keeps this consistent with how every other verify surface
+  // (badge routes, /verify itself) treats the hash as the portable public
+  // key. Stays null if generateSignedPdf fails; the screen just omits the
+  // QR in that case rather than blocking completion.
+  let documentHash: string | null = null;
 
   if (outcome.documentCompleted) {
     await admin.from("documents").update({ status: "completed" }).eq("id", document.id);
@@ -168,6 +192,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
     try {
       const { hash, timestamp } = await generateSignedPdf(document.id);
+      documentHash = hash;
       if (completedEvent) {
         await admin
           .from("audit_events")
@@ -272,5 +297,5 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       );
   }
 
-  return NextResponse.json({ success: true, completed: documentCompleted, speedStat });
+  return NextResponse.json({ success: true, completed: documentCompleted, speedStat, hash: documentHash });
 }
