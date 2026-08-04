@@ -340,11 +340,18 @@ export function NewDocumentClient({
         ) : (
           <Card>
             <CardHeader>
-              {/* Was "New document" — identical to the page's own h1 right
-                  above it (2026-07-25). Matches the tab's own label instead,
-                  same as how the Magic Quote tab/card title already agree. */}
-              <CardTitle>Sign a file</CardTitle>
-              <CardDescription>Upload a PDF, then place signature fields on the next screen.</CardDescription>
+              {/* Was "New document" (2026-07-25), then briefly matched the
+                  tab's own "Sign a file" label the way Magic Quote's
+                  tab/card title agree. Card copy updated 2026-08-05, direct
+                  ask — deliberately diverges from the tab label now: "Sign a
+                  file" stays as the compact tab text (width-constrained,
+                  shared row with Magic Quote/AI Drafter), while the card
+                  itself has room to be more explanatory. Leads with the
+                  outcome (a signed document) and the description now names
+                  the actual next step (send it out), not just the
+                  field-placement step in between. */}
+              <CardTitle>Get a document signed</CardTitle>
+              <CardDescription>Upload a PDF you already have, place signature fields, and send it out.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div
