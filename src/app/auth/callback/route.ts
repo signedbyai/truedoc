@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { consoleUrl } from "@/lib/console-host";
 import { isFirstLogin } from "@/lib/first-login";
+import { recordSignupOriginHost } from "@/lib/signup-origin";
 
 // Handles the redirect from the Supabase magic-link email (and, via
 // login/page.tsx's handleOAuth, Google/Microsoft), exchanges the code for
@@ -42,6 +43,16 @@ export async function GET(request: Request) {
     const supabase = await createClient(response);
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      const firstLogin = isFirstLogin(data.user);
+      if (firstLogin && data.user) {
+        // signedby.ai vs console.signedby.ai (2026-08-04, direct ask) — this
+        // route always runs on the fixed signedby.ai domain (see doc comment
+        // above), so a Host header here would be wrong every time. `next ===
+        // "/app"` is the reliable signal instead: it's only ever baked into
+        // the magic-link's emailRedirectTo when the login page was reached
+        // via console/app/page.tsx's own auth gate (consoleAppNextPath).
+        await recordSignupOriginHost(data.user.id, next === "/app" ? "console.signedby.ai" : "signedby.ai");
+      }
       // First-ever sign-in (no explicit ?next destination requested) lands
       // on the upload flow instead of the dashboard — direct instruction,
       // 2026-08-04, matching login/actions.ts's verifyLoginCode/
@@ -51,7 +62,7 @@ export async function GET(request: Request) {
       // exact response object (see comment above) — the Location header is
       // still just a plain response header at this point, safe to update
       // before returning.
-      if (!rawNext && isFirstLogin(data.user)) {
+      if (!rawNext && firstLogin) {
         response.headers.set("Location", `${origin}/dashboard/documents/new`);
       }
       return response;

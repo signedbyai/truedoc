@@ -6,6 +6,8 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { sanitizeNextPath } from "@/lib/safe-redirect";
 import { isDisposableEmailAddress } from "@/lib/disposable-email";
 import { isFirstLogin } from "@/lib/first-login";
+import { recordSignupOriginHost } from "@/lib/signup-origin";
+import { isConsoleHost } from "@/lib/console-host";
 
 /** Best-effort client IP from standard proxy headers — server actions don't get a Request object. */
 async function clientIp() {
@@ -90,7 +92,21 @@ export async function verifyLoginCode(formData: FormData) {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
   if (error) return { error: "That code is incorrect or has expired." };
-  return { success: true, firstLogin: isFirstLogin(data.user) };
+  const firstLogin = isFirstLogin(data.user);
+  // signedby.ai vs console.signedby.ai (2026-08-04, direct ask) — /login is
+  // served unrewritten on both hosts (middleware.ts only rewrites "/" and
+  // "/app"), so the Host header here reflects whichever one the person
+  // actually signed up on. Only recorded on a genuine first login — see
+  // recordSignupOriginHost's own doc comment for why this can't just reuse
+  // getUserAndOrg() here. Awaited, not fire-and-forget — a detached promise
+  // risks getting cut off once this action's response is sent on Vercel's
+  // serverless runtime, and this is a single fast admin-client update, not
+  // something worth risking silent data loss to shave off.
+  if (firstLogin && data.user) {
+    const originHost = isConsoleHost((await headers()).get("host")) ? "console.signedby.ai" : "signedby.ai";
+    await recordSignupOriginHost(data.user.id, originHost);
+  }
+  return { success: true, firstLogin };
 }
 
 export async function signInWithPassword(formData: FormData) {
@@ -108,7 +124,13 @@ export async function signInWithPassword(formData: FormData) {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: error.message };
-  return { success: true, firstLogin: isFirstLogin(data.user) };
+  const firstLogin = isFirstLogin(data.user);
+  // See verifyLoginCode's matching comment — same reasoning applies here.
+  if (firstLogin && data.user) {
+    const originHost = isConsoleHost((await headers()).get("host")) ? "console.signedby.ai" : "signedby.ai";
+    await recordSignupOriginHost(data.user.id, originHost);
+  }
+  return { success: true, firstLogin };
 }
 
 // Password-based sign-UP was removed 2026-07-14 -- it sent Supabase's
