@@ -9,23 +9,26 @@ import { Gift, Sparkles, HeartHandshake, Copy, Check, X, Share2 } from "lucide-r
 // sheet — link + native share button — instead of the old inline link box.
 // Dismissible; the claim runs regardless of whether it shows.
 //
-// Plan-conditional copy (REFERRAL_SCOPE.md, 2026-08-03): Free orgs get the
-// new seal-credits pitch (lower bar — no payment needed from the referred
-// friend), Pro+ keeps the original "give a month, get a month" copy
-// unchanged, headline and all. Both read off the same /api/referral/me
-// response — see that route for how rewardType/creditsPerReferral/
-// isSuperReferrer are derived.
+// Plan-conditional copy (REFERRAL_SCOPE.md, 2026-08-03) briefly made this
+// card show a seal-credits pitch to Free orgs. Reverted 2026-08-04: the
+// main dashboard always shows the original "give a month, get a month"
+// copy again, regardless of plan — the seal-credits pitch now lives only
+// on console.signedby.ai (ReferralGiftButton's console-pill render sites
+// still branch on plan; this component intentionally no longer does).
+// Still reads /api/referral/me for plan/credit fields in case a future
+// dashboard surface needs them, but `isFree` is pinned false so none of
+// that data changes what renders here.
 export function ReferralCard() {
   const [link, setLink] = useState<string | null>(null);
   const [rewardedCount, setRewardedCount] = useState(0);
-  const [plan, setPlan] = useState<string>("free");
+  const [, setPlan] = useState<string>("free");
   const [creditsPerReferral, setCreditsPerReferral] = useState(5);
   const [isSuperReferrer, setIsSuperReferrer] = useState(false);
   const [sealCreditsRewardedCount, setSealCreditsRewardedCount] = useState(0);
   const [dismissed, setDismissed] = useState(true);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const isFree = plan === "free";
+  const isFree = false;
 
   useEffect(() => {
     // 1. Claim a pending referral, if this user just signed up via a link.

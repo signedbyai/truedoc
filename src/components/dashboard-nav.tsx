@@ -201,7 +201,7 @@ export function DashboardNav({
           </div>
 
           <div className="flex items-center gap-3">
-            <ReferralGiftButton variant="label" />
+            <ReferralGiftButton variant="label" forceProMonthCopy />
             <FeedbackButton variant="pill" firstName={firstName} />
             <OrgSwitcher orgs={orgs} activeOrgId={activeOrgId} />
             <div className="relative">
@@ -277,7 +277,7 @@ export function DashboardNav({
           <Image src="/brand/signedby-lockup-yellow-badge-micro-small.png" alt="SignedBy" width={230} height={64} className="h-7 w-auto" priority />
         </Link>
         <div className="flex items-center gap-1">
-          <ReferralGiftButton variant="icon" />
+          <ReferralGiftButton variant="icon" forceProMonthCopy />
           <FeedbackButton variant="icon" firstName={firstName} />
         </div>
       </header>

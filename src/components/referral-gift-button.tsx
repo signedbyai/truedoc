@@ -13,8 +13,16 @@ import { computePopoverPosition, type PopoverCoords } from "@/lib/popover-positi
 // nagging.
 //
 // Plan-conditional copy (REFERRAL_SCOPE.md, 2026-08-03) — same branch as
-// ReferralCard: Free gets the seal-credits pitch, Pro+ keeps "give a month,
-// get a month" unchanged.
+// ReferralCard originally used: Free gets the seal-credits pitch, Pro+
+// keeps "give a month, get a month" unchanged.
+//
+// 2026-08-04, direct instruction: the main dashboard's referral entry
+// points should always show "give a month, get a month" again, regardless
+// of plan — only console.signedby.ai keeps the seal-credits pitch for
+// Free orgs. Rather than fork this component, `forceProMonthCopy` lets the
+// two dashboard-nav.tsx render sites opt back into the unconditional
+// original copy while console-workspace.tsx's pill render sites keep the
+// plan branch untouched.
 //
 // `variant="pill"` (2026-08-04, direct feedback: the referral entry point
 // existed on the main dashboard nav but not anywhere inside
@@ -70,9 +78,11 @@ const POPOVER_WIDTH = 288; // w-72
 export function ReferralGiftButton({
   variant = "icon",
   align = "right",
+  forceProMonthCopy = false,
 }: {
   variant?: "icon" | "label" | "pill";
   align?: "left" | "right" | "center";
+  forceProMonthCopy?: boolean;
 }) {
   const [link, setLink] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -81,7 +91,7 @@ export function ReferralGiftButton({
   const [copied, setCopied] = useState(false);
   const [plan, setPlan] = useState<string>("free");
   const [creditsPerReferral, setCreditsPerReferral] = useState(5);
-  const isFree = plan === "free";
+  const isFree = !forceProMonthCopy && plan === "free";
   const [seen, setSeen] = useState(true); // assume seen until we know otherwise, avoids a dot-flash
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
