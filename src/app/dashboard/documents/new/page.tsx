@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
+import { FlagValues } from "flags/react";
 import { getUserAndOrg } from "@/lib/org";
 import { planHasFeature } from "@/lib/plan";
 import { getRequestCurrency } from "@/lib/currency.server";
 import { quoteCurrencyForAppCurrency } from "@/lib/quote-types";
 import { DOCUMENT_TYPES, type DraftDocumentType } from "@/lib/ai-draft-types";
+import { uploadContinueButtonColorFlag } from "@/flags";
 import { NewDocumentClient } from "@/components/new-document-client";
 
 export default async function NewDocumentPage({
@@ -45,13 +47,23 @@ export default async function NewDocumentPage({
   const initialDocumentType = DOCUMENT_TYPES.some((t) => t.id === type) ? (type as DraftDocumentType) : undefined;
   const initialMode = mode === "quote" ? "quote" : mode === "draft" ? "draft" : undefined;
 
+  // "Upload & continue" button color test (2026-08-05, direct ask) —
+  // resolved unconditionally, cheap and independent of hasAiDraft/mode
+  // since the Upload tab (and its button) is reachable regardless of which
+  // tab initially renders.
+  const uploadButtonColorVariant = await uploadContinueButtonColorFlag();
+
   return (
-    <NewDocumentClient
-      hasAiDraft={hasAiDraft}
-      defaultQuoteCurrency={defaultQuoteCurrency}
-      initialDocumentType={initialDocumentType}
-      initialMode={initialMode}
-      currency={requestCurrency}
-    />
+    <>
+      <FlagValues values={{ "upload-continue-button-color": uploadButtonColorVariant }} />
+      <NewDocumentClient
+        hasAiDraft={hasAiDraft}
+        defaultQuoteCurrency={defaultQuoteCurrency}
+        initialDocumentType={initialDocumentType}
+        initialMode={initialMode}
+        currency={requestCurrency}
+        uploadButtonColorVariant={uploadButtonColorVariant}
+      />
+    </>
   );
 }

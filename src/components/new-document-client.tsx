@@ -35,6 +35,7 @@ export function NewDocumentClient({
   initialDocumentType,
   initialMode,
   currency = "USD",
+  uploadButtonColorVariant = "black",
 }: {
   hasAiDraft: boolean;
   defaultQuoteCurrency: QuoteCurrencySymbol;
@@ -58,6 +59,12 @@ export function NewDocumentClient({
    *  redirects to). Same getRequestCurrency() resolution
    *  defaultQuoteCurrency above is already derived from. */
   currency?: Currency;
+  /** "Upload & continue" button color test (2026-08-05,
+   *  uploadContinueButtonColorFlag in flags.ts) — "black" is the
+   *  current/default look, "yellow" reuses the existing `cta` Button
+   *  variant. Defaults to "black" so this component still renders
+   *  sensibly if ever used somewhere the flag isn't resolved. */
+  uploadButtonColorVariant?: "black" | "yellow";
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -145,6 +152,16 @@ export function NewDocumentClient({
   //   3. finalize — our API validates the PDF and creates the record
   async function handleUpload() {
     if (!file) return;
+
+    // "Upload & continue" button color test (2026-08-05, direct ask) —
+    // fired on the click itself, same "counts intent, not final success"
+    // philosophy as signing_upload_started above: the button color can
+    // only plausibly affect whether someone clicks it, not whether the
+    // network upload afterward succeeds, so gating this on the upload's
+    // eventual outcome would just add noise to the thing actually being
+    // measured. See uploadContinueButtonColorFlag in flags.ts.
+    track("signing_continue_clicked", { button_color: uploadButtonColorVariant });
+
     setStatus("uploading");
     setErrorMessage("");
     setShowUpgrade(false);
@@ -412,7 +429,12 @@ export function NewDocumentClient({
                 </p>
               )}
 
-              <Button className="w-full" disabled={!file || status === "uploading"} onClick={handleUpload}>
+              <Button
+                className="w-full"
+                variant={uploadButtonColorVariant === "yellow" ? "cta" : "default"}
+                disabled={!file || status === "uploading"}
+                onClick={handleUpload}
+              >
                 {status === "uploading" ? "Uploading…" : "Upload & continue"}
               </Button>
             </CardContent>
