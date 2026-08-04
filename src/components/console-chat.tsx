@@ -6,7 +6,7 @@ import { track } from "@vercel/analytics";
 import { ArrowUp, Check, ChevronDown, Copy, ExternalLink, FileText, FileUp, Paperclip, ShieldCheck, Square, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { parseNdjsonLine, splitNdjsonLines } from "@/lib/ndjson";
-import { formatCreditPackPrice, type Currency } from "@/lib/currency";
+import { formatCreditPackPrice, formatPrice, type Currency } from "@/lib/currency";
 import type { ConsoleHeroIconColor } from "@/flags";
 
 // Which control actually opened the file picker / received the drop for a
@@ -461,6 +461,13 @@ const MAX_TEMPLATE_FILE_BYTES = 25 * 1024 * 1024;
 // dismissed either by the explicit X or automatically the first time
 // someone actually attaches a file (they've now discovered it either way).
 const PAPERCLIP_INTRO_KEY = "signedby-console-paperclip-intro-dismissed";
+
+// capReached bubble v1/v2 (2026-08-05, direct ask: "let's just start with
+// the top up for now as a v1 and then add the pro + top up as the v2 in a
+// few days") — Top up ships alone first; Upgrade to Pro's button/subtext
+// stay fully built (subscribeToPro, upgradeLoading, the JSX below) but
+// gated behind this flag so v2 is a one-line flip, not a rebuild.
+const SHOW_UPGRADE_TO_PRO = false;
 
 /** Reads /api/console/chat's streamed NDJSON body, forwarding each
  *  {type:"status"} line to onStatus as it arrives and returning whatever
@@ -1397,7 +1404,22 @@ export function ConsoleChat({
                 {m.content}
               </div>
             ) : (
-              <div key={i} className="mr-auto max-w-[90%] text-base leading-relaxed text-neutral-200">
+              <div
+                key={i}
+                // Extra top clearance ONLY on a capReached bubble, mobile
+                // only (2026-08-05, direct ask — the mobile pill nav is
+                // deliberately unpadded-for everywhere else, see its own
+                // "no reserved top padding" comment a few lines up in
+                // console-workspace.tsx; a blanket top-padding fix there
+                // would recreate the exact solid-bar look that pill design
+                // replaced). Scoped to just this one bubble type instead:
+                // in a short conversation this is the first or second
+                // message, landing right under the floating pill with its
+                // buttons half-covered — pushing just this bubble down
+                // clears it without adding any permanent gap for every
+                // other message/every other conversation length.
+                className={`mr-auto max-w-[90%] text-base leading-relaxed text-neutral-200 ${m.capReached ? "mt-10 lg:mt-0" : ""}`}
+              >
                 <AssistantContent content={m.content} />
                 {m.certificateModeChoice && (
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -1480,10 +1502,24 @@ export function ConsoleChat({
                   </div>
                 )}
                 {m.capReached && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <Button type="button" variant="cta" size="sm" disabled={upgradeLoading} onClick={subscribeToPro}>
-                      {upgradeLoading ? "Starting checkout…" : "Upgrade to Pro"}
-                    </Button>
+                  // v1: Top up only (see SHOW_UPGRADE_TO_PRO above). Short
+                  // price/quantity subtext under the button (2026-08-05,
+                  // direct ask: "the upgrade to pro does not tell me how
+                  // many seals i get per month") — this bubble is the
+                  // Free-tier org's blanket-cap wall (see reportUploadError
+                  // above), so +25 docs is exactly what a Free org gets
+                  // from this button.
+                  <div className="mt-2 flex flex-wrap gap-3">
+                    {SHOW_UPGRADE_TO_PRO && (
+                      <div className="flex flex-col items-center gap-1">
+                        <Button type="button" variant="cta" size="sm" disabled={upgradeLoading} onClick={subscribeToPro}>
+                          {upgradeLoading ? "Starting checkout…" : "Upgrade to Pro"}
+                        </Button>
+                        <p className="text-[11px] text-neutral-500">
+                          50 docs {formatPrice(currency, "starter", { withPeriod: true })}
+                        </p>
+                      </div>
+                    )}
                     {/* Credit pack top-up (2026-08-03) — the cheaper, no-subscription
                         alternative sitting right next to Upgrade to Pro, per
                         CONSOLE_FREE_TIER_SCOPE.md item #8. Not the shared
@@ -1492,15 +1528,21 @@ export function ConsoleChat({
                         dashboard pages, and would look out of place against
                         this dark chat surface. Matches the existing
                         Certificate/Badge-image secondary-action links a few
-                        lines below instead. */}
-                    <button
-                      type="button"
-                      disabled={creditsLoading}
-                      onClick={buyCreditPack}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5 disabled:pointer-events-none disabled:opacity-50"
-                    >
-                      {creditsLoading ? "Starting checkout…" : `Buy 25 more (${formatCreditPackPrice(currency)})`}
-                    </button>
+                        lines below instead. Relabeled "Buy 25 more ($X)" →
+                        "Top up" + a subtext line (2026-08-05) once the price
+                        moved into that subtext, so the button label itself
+                        wouldn't say the number twice. */}
+                    <div className="flex flex-col items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={creditsLoading}
+                        onClick={buyCreditPack}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5 disabled:pointer-events-none disabled:opacity-50"
+                      >
+                        {creditsLoading ? "Starting checkout…" : "Top up"}
+                      </button>
+                      <p className="text-[11px] text-neutral-500">+25 docs {formatCreditPackPrice(currency)}</p>
+                    </div>
                   </div>
                 )}
                 {(m.confirm || m.link || m.openSettings) && (
