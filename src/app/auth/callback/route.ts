@@ -53,16 +53,20 @@ export async function GET(request: Request) {
         // via console/app/page.tsx's own auth gate (consoleAppNextPath).
         await recordSignupOriginHost(data.user.id, next === "/app" ? "console.signedby.ai" : "signedby.ai");
       }
-      // First-ever sign-in (no explicit ?next destination requested) lands
-      // on the upload flow instead of the dashboard — direct instruction,
-      // 2026-08-04, matching login/actions.ts's verifyLoginCode/
-      // signInWithPassword. Mutating the already-built redirect Location
+      // Every sign-in with no explicit ?next destination (not just the
+      // first) lands on the new-document flow instead of the dashboard
+      // list — direct instruction, 2026-08-04: get people straight to
+      // signing docs, don't waste their time on a stop at the dashboard
+      // first. Matches login/page.tsx's verifyLoginCode/signInWithPassword
+      // handlers. Console is unaffected — its own login links always carry
+      // an explicit next=/app (see console/page.tsx), so rawNext is never
+      // empty on that path. Mutating the already-built redirect Location
       // rather than branching the NextResponse.redirect(...) call above,
       // since exchangeCodeForSession's cookie writes already targeted this
       // exact response object (see comment above) — the Location header is
       // still just a plain response header at this point, safe to update
       // before returning.
-      if (!rawNext && firstLogin) {
+      if (!rawNext) {
         response.headers.set("Location", `${origin}/dashboard/documents/new`);
       }
       return response;

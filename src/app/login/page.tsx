@@ -166,11 +166,13 @@ function LoginPageInner() {
         setOtpDigits(Array(6).fill(""));
         otpRefs.current[0]?.focus();
       } else {
-        // First-ever sign-in lands on the upload flow instead of the
-        // dashboard — direct instruction, 2026-08-04. Every later login
-        // still goes to `next` or the dashboard as before.
-        const firstLogin = "firstLogin" in result && result.firstLogin === true;
-        window.location.href = next ?? (firstLogin ? "/dashboard/documents/new" : "/dashboard");
+        // Every sign-in (not just the first) lands on the new-document
+        // flow instead of the dashboard list — direct instruction,
+        // 2026-08-04: get people straight to signing docs, don't waste
+        // their time on a stop at the dashboard first. `next` still wins
+        // when the login was reached with an explicit destination (a
+        // template landing page, Magic Quote, console's own next=/app).
+        window.location.href = next ?? "/dashboard/documents/new";
       }
     });
   }
@@ -230,8 +232,8 @@ function LoginPageInner() {
         setStatus("error");
         setMessage(result.error);
       } else {
-        const firstLogin = "firstLogin" in result && result.firstLogin === true;
-        window.location.href = next ?? (firstLogin ? "/dashboard/documents/new" : "/dashboard");
+        // See handleVerifyCode's matching comment — same reasoning applies here.
+        window.location.href = next ?? "/dashboard/documents/new";
       }
     });
   }
