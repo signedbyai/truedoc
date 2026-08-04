@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { track } from "@vercel/analytics";
 import { UploadCloud, Upload, Sparkles, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,7 +105,17 @@ export function NewDocumentClient({
     }
   }
 
-  function handleFileChosen(f: File) {
+  // entryPoint distinguishes the two ways into this single dropzone (it's
+  // both a drag-drop target and a click-to-browse trigger on the same
+  // element — see the onDrop/onClick handlers below) rather than three
+  // separate controls the way Console's upload-first hero has (dropzone,
+  // "Seal this file" button, paperclip) — see EntryPoint in
+  // console-chat.tsx. Same "signing_upload_started" event shape/philosophy
+  // as that one's "console_upload_started" (2026-08-05 direct ask: "add the
+  // same custom event for the new document signing"), just for this page's
+  // actual two affordances instead of copying a three-way split that
+  // doesn't exist here.
+  function handleFileChosen(f: File, entryPoint: "dropzone" | "browse") {
     if (f.type !== "application/pdf") {
       setStatus("error");
       setErrorMessage("Only PDF files are supported right now.");
@@ -115,6 +126,13 @@ export function NewDocumentClient({
       setErrorMessage("File is larger than 25MB.");
       return;
     }
+
+    // Fired once a real, valid file clears both checks above — same
+    // position/philosophy as console-chat.tsx's sealSelectedFile: this
+    // counts upload *intent*, not final success, so a later network/upload
+    // failure downstream doesn't undercount it.
+    track("signing_upload_started", { entry_point: entryPoint });
+
     setStatus("idle");
     setFile(f);
     if (!title) setTitle(f.name.replace(/\.pdf$/i, ""));
@@ -322,7 +340,7 @@ export function NewDocumentClient({
                   e.preventDefault();
                   setIsDragging(false);
                   const dropped = e.dataTransfer.files?.[0];
-                  if (dropped) handleFileChosen(dropped);
+                  if (dropped) handleFileChosen(dropped, "dropzone");
                 }}
                 onClick={() => fileInputRef.current?.click()}
                 className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors ${
@@ -336,7 +354,7 @@ export function NewDocumentClient({
                   className="hidden"
                   onChange={(e) => {
                     const chosen = e.target.files?.[0];
-                    if (chosen) handleFileChosen(chosen);
+                    if (chosen) handleFileChosen(chosen, "browse");
                   }}
                 />
                 {file ? (
