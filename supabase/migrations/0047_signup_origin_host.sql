@@ -1,0 +1,15 @@
+-- Which host the account's actual first login/signup happened on —
+-- signedby.ai (the main dashboard) or console.signedby.ai (Console) —
+-- 2026-08-04, direct ask: "I need to be able to tell what the
+-- origination of the new account was."
+--
+-- Deliberately separate from the existing signup_utm_* columns
+-- (0024_signup_attribution.sql): those capture marketing-campaign
+-- first-touch from a client-side localStorage stash and only fire when a
+-- UTM param is present. Most console.signedby.ai signups (someone typing
+-- the URL directly, or clicking a plain internal link) carry no UTM at
+-- all, so this needed its own unconditional, server-side signal rather
+-- than widening that gate. Set once, at the true first login (see
+-- isFirstLogin() in src/lib/first-login.ts), same "first write wins"
+-- posture as the UTM columns.
+alter table organizations add column if not exists signup_origin_host text;
