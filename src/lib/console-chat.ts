@@ -285,12 +285,16 @@ async function executeTool(orgId: string, metered: boolean, name: string, args: 
     case "seal_document": {
       const mode = args.certificate_mode;
       const certificateMode = mode === "separate" || mode === "both" ? mode : "appended";
+      const entryPointArg = args.entry_point;
+      const entryPoint =
+        entryPointArg === "dropzone" || entryPointArg === "seal_button" || entryPointArg === "paperclip" ? entryPointArg : undefined;
       return sealDocumentAction({
         orgId,
         documentId: String(args.document_id ?? ""),
         certificateMode,
         metered,
         source: "console",
+        entryPoint,
       });
     }
     default:

@@ -67,8 +67,17 @@ export async function sealDocumentAction(params: {
   certificateMode: CertificateMode;
   metered: boolean;
   source: "console" | "mcp";
+  /** Which UI control the file came in through — dropzone, the "Seal this
+   *  file" button, or the composer paperclip (CONSOLE_VERIFIED_BADGE_FOCUS_
+   *  REDESIGN_SCOPE.md, 2026-08-04). Only ever set for source: "console"
+   *  (console-chat.tsx's own three entry points); undefined for MCP, which
+   *  has no equivalent UI concept. Recorded on the `created` audit event's
+   *  metadata rather than a new column — same reasoning as `via_console`/
+   *  `via_mcp` below, answering "which do people use" is then a single
+   *  grouped query over audit_events instead of new schema. */
+  entryPoint?: "dropzone" | "seal_button" | "paperclip";
 }): Promise<SealResult | SealActionError> {
-  const { orgId, documentId, certificateMode, metered, source } = params;
+  const { orgId, documentId, certificateMode, metered, source, entryPoint } = params;
 
   const identity = await getOrgIdentityStatus(orgId);
   if (!identity.verified || identity.stale) {
@@ -132,7 +141,11 @@ export async function sealDocumentAction(params: {
   // trail reads identically to a normal one, just compressed into one
   // synchronous server-side action instead of a signer's own click.
   await admin.from("audit_events").insert([
-    { document_id: doc.id, event_type: "created", metadata: { verified_badge: true, ...provenance } },
+    {
+      document_id: doc.id,
+      event_type: "created",
+      metadata: { verified_badge: true, ...provenance, ...(entryPoint ? { entry_point: entryPoint } : {}) },
+    },
     { document_id: doc.id, signer_id: signer.id, event_type: "sent", metadata: { ...provenance } },
     { document_id: doc.id, signer_id: signer.id, event_type: "consent_given", metadata: { self_sign: true } },
     { document_id: doc.id, signer_id: signer.id, event_type: "signed", metadata: { self_sign: true } },
