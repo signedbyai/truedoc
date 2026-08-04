@@ -1,6 +1,18 @@
 # Console redesign: refocus entirely around Verified Badge — scope
 
-Status: SCOPED 2026-08-04, mockups only, not built. Direct feedback,
+Status: BUILT 2026-08-04, deploy owed. All five pieces shipped: Home
+repointed to console.signedby.ai's own root; Templates tab renamed
+Verified Badge, backed by a new `/api/console/verified-badge` list of
+sealed documents and their outputs; the empty-state hero rebuilt with a
+real dropzone + "Seal this file" button alongside the unchanged
+paperclip, all three feeding the same existing chat-confirm flow per
+the locked decision; `entry_point` recorded on each seal's own audit
+event so usage of the three entry points is queryable; the blue/yellow
+icon test wired as a real cookieless flag (`consoleHeroIconFlag`),
+tracked against `console_upload_started`. Not yet deployed — same debt
+as the rest of this session's work.
+
+Original scoping note, kept for the record: direct feedback,
 grounded against the current code (`console-workspace.tsx`,
 `console-chat.tsx`, `console-templates-list.tsx`) before proposing
 changes. Follows directly from this session's earlier decisions: Console
