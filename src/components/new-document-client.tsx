@@ -549,9 +549,15 @@ export function NewDocumentClient({
                 : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
             )}
           >
+            {/* Tab label shortened to "Seal a file" (2026-08-05, direct
+                ask) — matches this file's own established pattern of a
+                compact, action-first tab label paired with a more
+                explanatory Card title ("Get a Verified Badge" below),
+                same relationship as "Sign a file" / "Get a document
+                signed". */}
             <span className="inline-flex items-center justify-center gap-1.5">
               <ShieldCheck className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-              Verified Badge
+              Seal a file
             </span>
           </button>
           <button
@@ -563,9 +569,11 @@ export function NewDocumentClient({
                 : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
             )}
           >
+            {/* Shortened from "Magic Quote" (2026-08-05, direct ask) — same
+                reasoning as the Verified Badge tab above. */}
             <span className="inline-flex items-center justify-center gap-1.5">
               <Receipt className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-              Magic Quote
+              Quote
             </span>
           </button>
 
@@ -586,9 +594,11 @@ export function NewDocumentClient({
                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
               )}
             >
+              {/* Shortened from "AI Drafter" (2026-08-05, direct ask) —
+                  same reasoning as the other tabs above. */}
               <span className="inline-flex items-center justify-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                AI Drafter
+                AI Draft
               </span>
             </button>
           ) : (
@@ -607,7 +617,7 @@ export function NewDocumentClient({
             >
               <span className="inline-flex items-center justify-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                AI Drafter · Pro+
+                AI Draft · Pro+
               </span>
             </a>
           )}
@@ -654,7 +664,11 @@ export function NewDocumentClient({
         {mode === "quote" ? (
           <Card>
             <CardHeader>
-              <CardTitle>Magic Quote</CardTitle>
+              {/* "Get a Magic Quote" (2026-08-05, direct ask) — was "Magic
+                  Quote", matching this file's tab-vs-title pattern (compact
+                  tab, more explanatory card title) now that the tab itself
+                  reads just "Quote". */}
+              <CardTitle>Get a Magic Quote</CardTitle>
               <CardDescription>
                 Describe the job in plain language and get a line-item price quote to review and edit.
               </CardDescription>
@@ -666,7 +680,11 @@ export function NewDocumentClient({
         ) : mode === "badge" ? (
           <Card>
             <CardHeader>
-              <CardTitle>Seal a file</CardTitle>
+              {/* "Get a Verified Badge" (2026-08-05, direct ask) — was
+                  "Seal a file", swapped with the tab's own label (now "Seal
+                  a file") so the pairing matches this file's established
+                  compact-tab/explanatory-title pattern. */}
+              <CardTitle>Get a Verified Badge</CardTitle>
               <CardDescription>
                 Prove a file is unaltered and identity-verified, with a scannable QR proof — no signer needed.
               </CardDescription>
@@ -816,7 +834,9 @@ export function NewDocumentClient({
         ) : mode === "draft" && hasAiDraft ? (
           <Card>
             <CardHeader>
-              <CardTitle>AI-drafted document</CardTitle>
+              {/* "AI Template Drafter" (2026-08-05, direct ask) — was
+                  "AI-drafted document". */}
+              <CardTitle>AI Template Drafter</CardTitle>
               <CardDescription>
                 Describe what you need in plain language and get a starting draft to review and edit.
               </CardDescription>
@@ -829,14 +849,16 @@ export function NewDocumentClient({
           <Card>
             <CardHeader>
               {/* Was "New document" (2026-07-25), then briefly matched the
-                  tab's own "Sign a file" label the way Magic Quote's
-                  tab/card title agree. Card copy updated 2026-08-05, direct
-                  ask — deliberately diverges from the tab label now: "Sign a
-                  file" stays as the compact tab text (width-constrained,
-                  shared row with Magic Quote/AI Drafter), while the card
-                  itself has room to be more explanatory. Leads with the
-                  outcome (a signed document) and the description now names
-                  the actual next step (send it out), not just the
+                  tab's own "Sign a file" label. Card copy updated
+                  2026-08-05, direct ask — deliberately diverges from the tab
+                  label: "Sign a file" stays as the compact tab text
+                  (width-constrained, shared row with Verified Badge/Quote/
+                  AI Draft — all four now use this same compact-tab/
+                  explanatory-title pairing, e.g. "Quote" / "Get a Magic
+                  Quote"), while the card itself has room to be more
+                  explanatory. Leads with the outcome (a signed document)
+                  and the description now names the actual next step (send
+                  it out), not just the
                   field-placement step in between. */}
               <CardTitle>Get a document signed</CardTitle>
               <CardDescription>Upload a PDF you already have, place signature fields, and send it out.</CardDescription>
