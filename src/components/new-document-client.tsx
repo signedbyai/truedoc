@@ -68,6 +68,12 @@ export function NewDocumentClient({
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Separate ref/input from the dropzone's own fileInputRef (2026-08-05) —
+  // kept distinct rather than reusing one input so this button's onChange
+  // can tag its entry_point as "button" without the dropzone's onClick
+  // handler also firing (they're two different elements, but sharing one
+  // <input> would mean whichever handler bound last "owns" its onChange).
+  const buttonFileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<"upload" | "draft" | "quote">(
     initialDocumentType ? "draft" : initialMode ?? "upload"
   );
@@ -112,17 +118,22 @@ export function NewDocumentClient({
     }
   }
 
-  // entryPoint distinguishes the two ways into this single dropzone (it's
-  // both a drag-drop target and a click-to-browse trigger on the same
-  // element — see the onDrop/onClick handlers below) rather than three
-  // separate controls the way Console's upload-first hero has (dropzone,
-  // "Seal this file" button, paperclip) — see EntryPoint in
-  // console-chat.tsx. Same "signing_upload_started" event shape/philosophy
-  // as that one's "console_upload_started" (2026-08-05 direct ask: "add the
-  // same custom event for the new document signing"), just for this page's
-  // actual two affordances instead of copying a three-way split that
-  // doesn't exist here.
-  function handleFileChosen(f: File, entryPoint: "dropzone" | "browse") {
+  // entryPoint now covers three ways in, not two: the dropzone itself is
+  // still both a drag-drop target and a click-to-browse trigger ("dropzone"
+  // / "browse" — see the onDrop/onClick handlers below), and a plain
+  // "Upload" button now sits below it as its own, unambiguous affordance
+  // ("button") for anyone who'd rather not interact with the dashed box at
+  // all (2026-08-05, direct ask: "let the user choose it for the upload
+  // rather than the dotted box if they prefer"). This is genuinely the same
+  // three-entry-point shape Console's upload-first hero already has
+  // (dropzone, "Seal this file" button, paperclip — see EntryPoint in
+  // console-chat.tsx), just not copied wholesale since this page only
+  // needed the plain-button piece, not a paperclip. Same
+  // "signing_upload_started" event shape/philosophy as
+  // "console_upload_started" either way — this just widens which
+  // entry_point values show up in it, so dropzone-vs-button preference is
+  // visible in the data without any other plumbing.
+  function handleFileChosen(f: File, entryPoint: "dropzone" | "browse" | "button") {
     if (f.type !== "application/pdf") {
       setStatus("error");
       setErrorMessage("Only PDF files are supported right now.");
@@ -403,6 +414,38 @@ export function NewDocumentClient({
                   </>
                 )}
               </div>
+
+              {/* Plain "Upload" button, separate from the dropzone above
+                  (2026-08-05, direct ask) — the dropzone has always been
+                  clickable too (its onClick already opens this same file
+                  picker, tagged "browse"), but nothing about a dashed box
+                  visually reads as a button, so anyone who doesn't want to
+                  drag-and-drop or trust an unlabeled click target gets an
+                  explicit, ordinary one instead. Only shown pre-file, same
+                  as the dropzone's own placeholder copy — once a file's
+                  chosen there's nothing left to pick. */}
+              {!file && (
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-xs text-slate-400">or</span>
+                  <button
+                    type="button"
+                    onClick={() => buttonFileInputRef.current?.click()}
+                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Upload
+                  </button>
+                  <input
+                    ref={buttonFileInputRef}
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const chosen = e.target.files?.[0];
+                      if (chosen) handleFileChosen(chosen, "button");
+                    }}
+                  />
+                </div>
+              )}
 
               {file && (
                 <div className="space-y-1.5">
