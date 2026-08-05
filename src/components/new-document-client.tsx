@@ -513,11 +513,12 @@ export function NewDocumentClient({
             overflowing a narrow phone screen: four columns always split the
             card's actual width evenly, so there's nothing to overflow.
             Order (2026-08-05, VERIFIED_BADGE_DASHBOARD_SCOPE.md, direct
-            instruction): Sign a file, Verified Badge, Magic Quote, then AI
-            Drafter in the 4th column — plain tab at every breakpoint (see
-            below), confirmed against an actual mobile render rather than
-            assumed: the two-word labels already wrap onto two lines in
-            their columns at this width, same as "AI Drafter" does. */}
+            instruction): Sign, Seal, Quote, then AI Draft in the 4th
+            column — plain tab at every breakpoint (see below), confirmed
+            against an actual mobile render rather than assumed. Tab labels
+            shortened to single words the same day (direct ask, twice —
+            "Sign a file"/"Seal a file" first became "Sign"/"Seal" on a
+            later pass). */}
         <div className="relative mb-4 grid grid-cols-4 gap-2">
           <button
             onClick={() => setMode("upload")}
@@ -535,7 +536,7 @@ export function NewDocumentClient({
                 below, which now carries that "press here" signal instead. */}
             <span className="inline-flex items-center justify-center gap-1.5">
               <Upload className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-              Sign a file
+              Sign
             </span>
           </button>
           {/* Verified Badge (2026-08-05, VERIFIED_BADGE_DASHBOARD_SCOPE.md)
@@ -553,15 +554,13 @@ export function NewDocumentClient({
                 : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
             )}
           >
-            {/* Tab label shortened to "Seal a file" (2026-08-05, direct
-                ask) — matches this file's own established pattern of a
-                compact, action-first tab label paired with a more
-                explanatory Card title ("Get a Verified Badge" below),
-                same relationship as "Sign a file" / "Get a document
-                signed". */}
+            {/* Tab label shortened again to just "Seal" (2026-08-05, direct
+                ask, was "Seal a file") — matches "Sign"'s own shortening
+                the same day, keeping the compact-tab/explanatory-title
+                pattern ("Get a Verified Badge" below carries the detail). */}
             <span className="inline-flex items-center justify-center gap-1.5">
               <ShieldCheck className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-              Seal a file
+              Seal
             </span>
           </button>
           <button
@@ -853,11 +852,10 @@ export function NewDocumentClient({
           <Card>
             <CardHeader>
               {/* Was "New document" (2026-07-25), then briefly matched the
-                  tab's own "Sign a file" label. Card copy updated
-                  2026-08-05, direct ask — deliberately diverges from the tab
-                  label: "Sign a file" stays as the compact tab text
-                  (width-constrained, shared row with Verified Badge/Quote/
-                  AI Draft — all four now use this same compact-tab/
+                  tab's own label. Card copy updated 2026-08-05, direct ask
+                  — deliberately diverges from the tab label: the tab stays
+                  compact ("Sign", width-constrained, shared row with Seal/
+                  Quote/AI Draft — all four use this same compact-tab/
                   explanatory-title pairing, e.g. "Quote" / "Get a Magic
                   Quote"), while the card itself has room to be more
                   explanatory. Leads with the outcome (a signed document)
