@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { FlagValues } from "flags/react";
 import { getUserAndOrg } from "@/lib/org";
-import { planHasFeature } from "@/lib/plan";
+import { planHasFeature, getFreePlanUsage } from "@/lib/plan";
 import { getRequestCurrency } from "@/lib/currency.server";
 import { quoteCurrencyForAppCurrency } from "@/lib/quote-types";
 import { DOCUMENT_TYPES, type DraftDocumentType } from "@/lib/ai-draft-types";
@@ -34,6 +34,20 @@ export default async function NewDocumentPage({
   const { data: org } = await ctx.supabase.from("organizations").select("plan").eq("id", ctx.orgId).single();
   const hasAiDraft = planHasFeature(org?.plan, "aiDraft");
 
+  // Read-only "would the next send actually be blocked?" check (2026-08-05,
+  // direct ask) — real enforcement lives in checkFreePlanSendCap at the
+  // actual /send call, but a Free org that's already used its 3 sends AND
+  // has no doc_credits left to fall back on should see the Upgrade card the
+  // moment they try to upload a 4th, not only after placing fields and
+  // clicking Send. Credits checked here too — a Free org sitting on a
+  // referral credit isn't actually capped yet. See NewDocumentClient's
+  // sendCapReached prop doc for the staleness tradeoff this accepts.
+  let sendCapReached = false;
+  if ((org?.plan ?? "free") === "free") {
+    const usage = await getFreePlanUsage(ctx.supabase, ctx.orgId);
+    sendCapReached = usage.sendsUsedThisMonth >= 3 && usage.docCredits <= 0;
+  }
+
   // Same geo/cookie-based signal the pricing and checkout pages already use
   // (see currency.server.ts) — a materially better default for Magic
   // Quote's currency picker than guessing from the browser's language.
@@ -63,6 +77,7 @@ export default async function NewDocumentPage({
         initialMode={initialMode}
         currency={requestCurrency}
         uploadButtonColorVariant={uploadButtonColorVariant}
+        sendCapReached={sendCapReached}
       />
     </>
   );

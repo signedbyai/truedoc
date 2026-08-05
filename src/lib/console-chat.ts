@@ -378,6 +378,14 @@ export type ConsoleChatTurnResult =
   // Distinct type so console-chat.tsx can render a real "Open Settings"
   // button wired to onOpenSettings instead of plain prose.
   | { type: "needs_identity"; content: string }
+  // seal_document's Free-plan cap-hit failure (2026-08-05, direct
+  // instruction — separate 3-seals/month counter, independent of the
+  // upload-time cap-hit path new-document-client.tsx and this file's own
+  // reportUploadError used to share with it). Distinct type, same reasoning
+  // as needs_identity above: console-chat.tsx renders this as the real
+  // capReached upsell bubble (Upgrade to Pro / Buy 25 more) instead of
+  // plain "Couldn't do that: ..." prose.
+  | { type: "capReached"; content: string }
   // seal_document's success case (2026-08-01, direct feedback: the raw
   // verify URL is a full SHA-512 hash — unwieldy to select/copy by hand,
   // and the sealed PDF/certificate/badge were only reachable via a trip to
@@ -429,6 +437,9 @@ export async function runConsoleChatTurn(params: {
           type: "needs_identity",
           content: `${result.error} It only takes about a minute, then come back and try sealing again.`,
         };
+      }
+      if ("upgrade" in result && result.upgrade) {
+        return { type: "capReached", content: result.error };
       }
       return { type: "message", content: `Couldn't do that: ${result.error}` };
     }

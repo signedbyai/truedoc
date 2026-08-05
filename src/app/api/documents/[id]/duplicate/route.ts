@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUserAndOrg } from "@/lib/org";
 import { copyInR2 } from "@/lib/r2";
-import { checkFreePlanDocCap } from "@/lib/plan";
 
 // Duplicates a document (any status) into a brand-new draft in the same
 // org: same PDF (its own independent R2 copy, not a shared key — see
@@ -29,12 +28,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Document not found" }, { status: 404 });
   }
 
-  // Same free-plan monthly cap as a fresh upload (POST /api/documents) —
-  // duplicating still creates a new `documents` row, so without this check
-  // a Free org could upload once and duplicate past the limit for free.
-  const capResponse = await checkFreePlanDocCap(supabase, orgId, "duplicate");
-  if (capResponse) return capResponse;
-
+  // No free-plan cap check here as of 2026-08-05 — duplicating just creates
+  // another draft; the cap only applies once that draft is actually sent or
+  // sealed (checkFreePlanSendCap / checkFreePlanSealCap, see plan.ts).
   const documentId = crypto.randomUUID();
   const destKey = `${orgId}/${documentId}/${source.original_filename}`;
 

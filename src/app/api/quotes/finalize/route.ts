@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserAndOrg } from "@/lib/org";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { checkFreePlanDocCap } from "@/lib/plan";
 import { uploadToR2 } from "@/lib/r2";
 import { quoteToPdf } from "@/lib/quote-to-pdf";
 import { selfDisplayName } from "@/lib/frequent-signers";
@@ -78,11 +77,9 @@ export async function POST(request: Request) {
   // name, no picker/client input for this. Appended to the "From" line.
   const preparedByName = selfDisplayName(user);
 
-  // Same free-plan monthly cap as a fresh upload/duplicate/AI-draft — this
-  // still creates a new `documents` row.
-  const capResponse = await checkFreePlanDocCap(supabase, orgId, "quote_finalize");
-  if (capResponse) return capResponse;
-
+  // No free-plan cap check here as of 2026-08-05 — finalizing just creates
+  // a draft; the cap applies once that draft is actually sent or sealed
+  // (checkFreePlanSendCap / checkFreePlanSealCap, see plan.ts).
   const fromName = orgs.find((o) => o.id === orgId)?.name ?? "";
   const totals = computeQuoteTotals(items, taxRatePercent);
   const quoteDateIso = new Date().toISOString();

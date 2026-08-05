@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Rocket } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { formatCreditPackPrice, type Currency } from "@/lib/currency";
 import { findFreePosition } from "@/lib/field-geometry";
 import { resizeField } from "@/lib/field-resize";
 import { remapFieldSignerIds } from "@/lib/field-persist";
@@ -182,6 +184,8 @@ export function FieldEditor({
   isConsoleTemplatePreview = false,
   initialSignerName,
   initialSignerEmail,
+  sendCapReached = false,
+  currency = "USD",
 }: {
   documentId: string;
   // Shown in the editor's own header — the immersive editor hides the shared
@@ -254,6 +258,23 @@ export function FieldEditor({
   // instead (the name reaches the AI via quote-to-pdf.ts's Print Name line).
   initialSignerName?: string | null;
   initialSignerEmail?: string | null;
+  /** Server-computed at page load from getFreePlanUsage (2026-08-05, direct
+   *  ask: "the behaviour should still be asking to upgrade when the user
+   *  tries to upload number 4" — this is that same idea applied to Send,
+   *  which is where the real cap now lives). Real enforcement is
+   *  checkFreePlanSendCap inside POST /api/documents/[id]/send; this is a
+   *  read-only, non-blocking courtesy check so a Free org that's already
+   *  sent 3 documents this month sees the Upgrade modal the instant they
+   *  click Send on this draft, without a wasted round trip. Can go stale
+   *  within a single page visit (e.g. sending another document in a
+   *  different tab) — harmless, since handleSend's real request always
+   *  re-checks regardless of what this prop said. */
+  sendCapReached?: boolean;
+  /** Resolved visitor currency, for the same "Buy 25 more" credit-pack
+   *  price display new-document-client.tsx's cap-hit card already shows —
+   *  see that component's own prop doc. Threaded from
+   *  dashboard/documents/[id]/page.tsx's getRequestCurrency() call. */
+  currency?: Currency;
 }) {
   const router = useRouter();
   // Carries the originating conversation back with it (see
@@ -328,6 +349,16 @@ export function FieldEditor({
   // an unusual-but-real mail setup can look identical to a typo from here.
   // null = no warning pending; a non-empty array is the reasons to show.
   const [domainWarnings, setDomainWarnings] = useState<string[] | null>(null);
+  // Free-plan send-cap-hit modal (2026-08-05) — same shape/copy as
+  // new-document-client.tsx's cap-hit card, just rendered as a modal here
+  // (matching this file's existing showSendReview/domainWarnings pattern)
+  // since Send lives inline in a toolbar rather than at the bottom of a
+  // single-purpose page. Set either by sendCapReached (the upload-time-
+  // equivalent courtesy check, tripped instantly on Send) or by handleSend's
+  // real request coming back with `upgrade: true`.
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [creditsLoading, setCreditsLoading] = useState(false);
   // Sender-editable privacy notice appended to the invite email (see
   // recipient-notice.ts + supabase/migrations/0027). Re-derived from
   // initialRecipientNotice on mount: '' means the sender explicitly turned
@@ -1497,6 +1528,10 @@ export function FieldEditor({
   }
 
   async function handleSend(forceDespiteDomainWarnings = false) {
+    if (sendCapReached) {
+      setShowUpgradeModal(true);
+      return;
+    }
     if (recipients.length === 0) {
       setStatusMessage("Add at least one recipient before sending.");
       return;
@@ -1566,6 +1601,16 @@ export function FieldEditor({
         router.push("/dashboard");
         return; // keep the button disabled through navigation
       }
+      // checkFreePlanSendCap's 402 (plan.ts) — the real, authoritative cap
+      // check, same shape sendCapReached's early-bail above short-circuits
+      // for. Reachable even when sendCapReached was false at page load
+      // (e.g. sent 3 in another tab since) — same real-error-vs-upsell
+      // split as new-document-client.tsx's showUpgrade.
+      if (data.upgrade) {
+        setShowUpgradeModal(true);
+        setSending(false);
+        return;
+      }
       setStatusMessage(data.error || "Couldn't send — try again.");
       setSending(false);
     } catch {
@@ -1574,6 +1619,43 @@ export function FieldEditor({
       // Surface it and re-enable so the sender can just tap Send again.
       setStatusMessage("Couldn't send — check your connection and try again.");
       setSending(false);
+    }
+  }
+
+  // Same two options as new-document-client.tsx's cap-hit card, same
+  // POST-then-redirect shape, `source: "dashboard"` for the same
+  // cross-subdomain-cancel_url reason (2026-08-05).
+  async function upgradeToPro() {
+    setUpgradeLoading(true);
+    try {
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: "starter", source: "dashboard" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) throw new Error(data.error || "Couldn't start checkout — try again.");
+      window.location.href = data.url;
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Something went wrong.");
+      setUpgradeLoading(false);
+    }
+  }
+
+  async function buyCreditPack() {
+    setCreditsLoading(true);
+    try {
+      const res = await fetch("/api/billing/credits/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: "dashboard" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) throw new Error(data.error || "Couldn't start checkout — try again.");
+      window.location.href = data.url;
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Something went wrong.");
+      setCreditsLoading(false);
     }
   }
 
@@ -2829,6 +2911,61 @@ export function FieldEditor({
               >
                 Send anyway
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Free plan's 3-sends/month cap-hit (2026-08-05) — same copy/options
+          as new-document-client.tsx's blue upsell card (Upgrade to Pro
+          leads, credit-pack top-up second, small "view pricing plans"
+          escape hatch), just as a modal here rather than an inline card,
+          matching this file's existing showSendReview/domainWarnings
+          pattern. Set either by sendCapReached's early-bail in handleSend
+          (before any request goes out) or by the real /send call's own
+          402 with `upgrade: true`. */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+            <div className="flex items-start gap-2.5">
+              <Rocket className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" strokeWidth={1.75} />
+              <div>
+                <p className="text-sm font-medium text-slate-900">You&apos;ve used your 3 free docs this month</p>
+                <p className="mt-0.5 text-xs text-slate-500">Upgrade to Pro to send unlimited documents.</p>
+              </div>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                disabled={upgradeLoading}
+                onClick={upgradeToPro}
+                className="flex-1 border-0 bg-violet-600 text-white hover:bg-violet-700"
+              >
+                {upgradeLoading ? "Starting checkout…" : "Upgrade to Pro"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={creditsLoading}
+                onClick={buyCreditPack}
+                className="flex-1"
+              >
+                {creditsLoading ? "Starting checkout…" : `25 more for ${formatCreditPackPrice(currency)}`}
+              </Button>
+            </div>
+            <div className="mt-3 flex items-center justify-between">
+              <Link href="/pricing" className="text-xs text-blue-700 underline hover:text-blue-900">
+                view pricing plans
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowUpgradeModal(false)}
+                className="text-xs text-slate-400 hover:text-slate-600"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

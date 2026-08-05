@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserAndOrg } from "@/lib/org";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { checkFreePlanDocCap, planHasFeature } from "@/lib/plan";
+import { planHasFeature } from "@/lib/plan";
 import { uploadToR2 } from "@/lib/r2";
 import { textToPdf } from "@/lib/text-to-pdf";
 import { DOCUMENT_TYPES } from "@/lib/ai-draft-types";
@@ -56,11 +56,9 @@ export async function POST(request: Request) {
   // name, no picker/client input for this. Rendered as a line on the PDF.
   const preparedByName = selfDisplayName(user);
 
-  // Same free-plan monthly cap as a fresh upload/duplicate — this still
-  // creates a new `documents` row.
-  const capResponse = await checkFreePlanDocCap(supabase, orgId, "draft_finalize");
-  if (capResponse) return capResponse;
-
+  // No free-plan cap check here as of 2026-08-05 — finalizing just creates
+  // a draft; the cap applies once that draft is actually sent or sealed
+  // (checkFreePlanSendCap / checkFreePlanSealCap, see plan.ts).
   let pdfBytes: Buffer;
   let pageCount: number;
   try {

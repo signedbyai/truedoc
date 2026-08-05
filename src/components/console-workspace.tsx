@@ -197,7 +197,8 @@ export function ConsoleWorkspace({
   identityVerifiedName,
   identityVerifiedAt,
   identityStale,
-  freePlanDocsUsedThisMonth,
+  freePlanSealsUsedThisMonth,
+  freePlanSendsUsedThisMonth,
   freePlanDocCredits,
   currency,
   heroIconVariant,
@@ -228,9 +229,12 @@ export function ConsoleWorkspace({
   /** Free-tier usage display (2026-08-01, direct ask: a Free org that
    *  earns referral seal credits should be able to see the balance
    *  somewhere, not just discover it worked the next time they hit the
-   *  cap). null for Pro+ orgs (they get ConsoleUsagePanel instead) and for
-   *  locked/no-access orgs — see console/app/page.tsx's fetch gate. */
-  freePlanDocsUsedThisMonth: number | null;
+   *  cap). Split into independent seals/sends counts (2026-08-05 — see
+   *  getFreePlanUsage in plan.ts). null for Pro+ orgs (they get
+   *  ConsoleUsagePanel instead) and for locked/no-access orgs — see
+   *  console/app/page.tsx's fetch gate. */
+  freePlanSealsUsedThisMonth: number | null;
+  freePlanSendsUsedThisMonth: number | null;
   freePlanDocCredits: number | null;
   /** Resolved visitor currency, threaded straight through to ConsoleChat's
    *  "Buy 25 more" credit-pack button (2026-08-01, direct bug report — see
@@ -362,11 +366,11 @@ export function ConsoleWorkspace({
       {/* plan !== "free" (2026-08-02, CONSOLE_FREE_TIER_SCOPE.md) — this
           panel shows Pro+'s metered-billing figures (free allowance,
           $/doc overage, spend cap), none of which apply to Free orgs: Free
-          isn't on console's Stripe metering at all, it's capped by the
-          plain 3-documents/month wall (checkFreePlanDocCap) shared with the
-          rest of the app. Showing this panel to a Free org would display
-          real but meaningless numbers (e.g. "50 free" when their actual
-          limit is 3), not just suboptimal copy. */}
+          isn't on console's Stripe metering at all, it's capped by its own
+          flat 3-seals/month wall (checkFreePlanSealCap). Showing this panel
+          to a Free org would display real but meaningless numbers (e.g.
+          "50 free" when their actual limit is 3), not just suboptimal
+          copy. */}
       {hasAccess && initialState && plan !== "free" && (
         <ConsoleUsagePanel
           initialState={initialState}
@@ -379,23 +383,26 @@ export function ConsoleWorkspace({
           direct ask): a Free org that refers someone and earns seal
           credits had no way to actually see the balance anywhere — the
           number only ever showed up indirectly, by the cap not blocking
-          them one extra time. Same two-tile card styling as
-          ConsoleUsagePanel's "This period" block. Documents this month
-          counts every document, not just Verified Badge seals — matches
-          exactly what checkFreePlanDocCap enforces (getFreePlanDocUsage in
-          plan.ts is its read-only counterpart, same query), since sealing
-          is a Free console user's only real console action anyway
-          (templates stay Pro+-only). Server-rendered per page load, same
-          freshness as identityVerified/etc. above — reopening Console
-          after a referral reward fires (or after using a credit) shows the
-          new number, no live-polling infrastructure added for this. */}
-      {hasAccess && plan === "free" && freePlanDocsUsedThisMonth !== null && (
+          them one extra time. Three tiles, not two (2026-08-05) — sends and
+          seals became independent 3/month pools (checkFreePlanSendCap /
+          checkFreePlanSealCap in plan.ts, getFreePlanUsage is their
+          read-only counterpart), each worth showing on its own now that
+          they can genuinely disagree, rather than one combined "documents"
+          count. Server-rendered per page load, same freshness as
+          identityVerified/etc. above — reopening Console after a referral
+          reward fires (or after using a credit) shows the new number, no
+          live-polling infrastructure added for this. */}
+      {hasAccess && plan === "free" && freePlanSealsUsedThisMonth !== null && (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           <p className="text-sm font-medium text-neutral-300">This month</p>
-          <div className="mt-2 grid grid-cols-2 gap-2">
+          <div className="mt-2 grid grid-cols-3 gap-2">
             <div className="rounded-xl bg-white/[0.04] p-3">
-              <p className="text-xs text-neutral-500">Documents used</p>
-              <p className="mt-0.5 text-xl font-semibold text-white">{freePlanDocsUsedThisMonth} of 3 free</p>
+              <p className="text-xs text-neutral-500">Seals used</p>
+              <p className="mt-0.5 text-xl font-semibold text-white">{freePlanSealsUsedThisMonth} of 3 free</p>
+            </div>
+            <div className="rounded-xl bg-white/[0.04] p-3">
+              <p className="text-xs text-neutral-500">Sends used</p>
+              <p className="mt-0.5 text-xl font-semibold text-white">{freePlanSendsUsedThisMonth} of 3 free</p>
             </div>
             <div className="rounded-xl bg-white/[0.04] p-3">
               <p className="text-xs text-neutral-500">Credits available</p>
@@ -403,8 +410,8 @@ export function ConsoleWorkspace({
             </div>
           </div>
           <p className="mt-2 text-xs text-neutral-500">
-            Credits are spent automatically once you&apos;re past the free 3 — earn more by referring a friend (see
-            the gift icon above).
+            Seals and sends are separate, independent allowances. Credits are spent automatically once you&apos;re
+            past either free 3 — earn more by referring a friend (see the gift icon above).
           </p>
         </div>
       )}
@@ -594,6 +601,7 @@ export function ConsoleWorkspace({
               plan={plan}
               currency={currency}
               heroIconVariant={heroIconVariant}
+              sealCapReached={plan === "free" && freePlanSealsUsedThisMonth !== null && freePlanSealsUsedThisMonth >= 3 && (freePlanDocCredits ?? 0) <= 0}
               // Bug fix 2026-08-01, direct report: the needs_identity
               // bubble's "Open Settings" button used to be plain text with
               // nowhere to actually go. Sets both the desktop tab and the

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { FlagValues } from "flags/react";
 import { getUserAndOrg } from "@/lib/org";
-import { planHasFeature, getFreePlanDocUsage } from "@/lib/plan";
+import { planHasFeature, getFreePlanUsage } from "@/lib/plan";
 import { getConsoleBillingState } from "@/lib/console-usage";
 import { ConsoleWorkspace } from "@/components/console-workspace";
 import { consoleAppNextPath } from "@/lib/console-host";
@@ -117,7 +117,7 @@ export default async function ConsoleAppPage({
   // balance somewhere, not just discover it worked next time they hit the
   // cap). Only fetched for Free orgs — Pro+ has its own ConsoleUsagePanel
   // fed by billingState above, this is the Free-only counterpart.
-  const freePlanUsage = hasAccess && org.plan === "free" ? await getFreePlanDocUsage(supabase, orgId) : null;
+  const freePlanUsage = hasAccess && org.plan === "free" ? await getFreePlanUsage(supabase, orgId) : null;
 
   // Same geo/cookie resolution the pricing pages and checkout routes use
   // (2026-08-01, direct bug report: the "Buy 25 more" credit-pack button
@@ -171,7 +171,8 @@ export default async function ConsoleAppPage({
           identityVerifiedName={identityStatus.verified ? identityStatus.name : null}
           identityVerifiedAt={identityStatus.verified ? identityStatus.verifiedAt : null}
           identityStale={identityStatus.verified ? identityStatus.stale : false}
-          freePlanDocsUsedThisMonth={freePlanUsage?.usedThisMonth ?? null}
+          freePlanSealsUsedThisMonth={freePlanUsage?.sealsUsedThisMonth ?? null}
+          freePlanSendsUsedThisMonth={freePlanUsage?.sendsUsedThisMonth ?? null}
           freePlanDocCredits={freePlanUsage?.docCredits ?? null}
           currency={currency}
           heroIconVariant={heroIconVariant}

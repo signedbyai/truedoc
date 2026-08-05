@@ -3,6 +3,7 @@ import { getUserAndOrg } from "@/lib/org";
 import { sendSignerInviteEmail } from "@/lib/email";
 import { signersWithoutFields } from "@/lib/field-visibility";
 import { checkEmailDomainHasMx } from "@/lib/validate-email-domain";
+import { checkFreePlanSendCap } from "@/lib/plan";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -41,6 +42,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (doc.status !== "draft") {
     return NextResponse.json({ error: "This document has already been sent" }, { status: 400 });
   }
+
+  // Free plan's 3-sends/month cap (2026-08-05) — checked here, right before
+  // a document actually goes out, not at upload/draft-creation time (see
+  // plan.ts's checkFreePlanSendCap comment for why this moved). Independent
+  // of the separate 3-seals/month cap Verified Badge sealing has its own
+  // check for.
+  const capResponse = await checkFreePlanSendCap(supabase, orgId, "documents_send");
+  if (capResponse) return capResponse;
 
   const { data: signers, error: signersError } = await supabase
     .from("signers")
@@ -132,6 +141,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .from("documents")
     .update({
       status: "sent",
+      sent_at: new Date().toISOString(),
       ...(recipientNotice !== undefined ? { recipient_notice: recipientNotice } : {}),
       ...(inviteSubject !== undefined ? { invite_subject: inviteSubject } : {}),
       ...(inviteMessage !== undefined ? { invite_message: inviteMessage } : {}),

@@ -10,7 +10,7 @@ export type PlanId = "free" | "starter" | "team" | "business";
 // Shared display label for a plan id — was duplicated locally in
 // dashboard/billing/page.tsx; pulled here once dashboard/team/page.tsx and
 // dashboard/page.tsx also needed it (same "extract once a third caller shows
-// up" pattern as checkFreePlanDocCap below).
+// up" pattern as checkFreePlanCap below).
 export const PLAN_LABEL: Record<string, string> = {
   free: "Free",
   starter: "Pro",
@@ -80,10 +80,9 @@ const FEATURE_PLANS = {
   // (below) stays Pro+-only, so send_document/bulk_send — which both
   // require an existing template — are still unreachable for Free orgs in
   // practice; what Free genuinely gets is Verified Badge sealing (no
-  // template needed) through the same checkFreePlanDocCap-gated
-  // upload/finalize routes every other document creation path already
-  // uses, so the existing 3-documents/month cap applies with no new
-  // enforcement code. Pro/Team's `templates` access is what makes
+  // template needed), gated by its own checkFreePlanSealCap (3 seals/month,
+  // independent of the 3-sends/month cap — see plan.ts, 2026-08-05).
+  // Pro/Team's `templates` access is what makes
   // console.signedby.ai's send/bulk-send tools actually reachable — this
   // key alone doesn't hand out anything requiring a template. Business
   // orgs already get unlimited included access via `apiAccess` above; Pro/
@@ -158,12 +157,22 @@ export function seatsOverLimit(memberCount: number, plan: string | null | undefi
   return Math.max(0, memberCount - limit);
 }
 
-// Free plan: 3 new documents/month, regardless of how the document was
-// created (uploaded, duplicated, or AI-drafted) — every one of those ends
-// with a new `documents` row, so all three routes need this same guard or
-// a Free org could bypass the cap by duplicating/drafting past it. Kept
-// here (not re-inlined per route) after it was found byte-for-byte
-// duplicated in the upload and duplicate routes.
+// Free plan: 3 regular sends/month AND, independently, 3 Verified Badge
+// seals/month (2026-08-05, direct instruction — "the counter for the 3
+// signed docs and the counter for the verified badges are the same counter
+// but they should be separate counters... 3 sends and 3 seals"). Previously
+// this was ONE counter ("3 new documents/month") checked at document-
+// CREATION time (upload/duplicate/draft-finalize/quote-finalize all shared
+// checkFreePlanDocCap) — before it was even known whether the document
+// would end up sent to a signer or sealed as a Verified Badge, which is
+// exactly why the two had to share a pool. The fix moves each check to its
+// action's actual COMPLETION moment instead: checkFreePlanSendCap is called
+// from the send route right before a document actually goes out;
+// checkFreePlanSealCap is called from sealDocumentAction right before a
+// seal completes. Each counts by its own timestamp column (sent_at /
+// sealed_at, migration 0049) rather than documents.created_at — a Free org
+// can now upload/duplicate/draft freely, since creating a draft no longer
+// spends anything from either pool.
 //
 // Typed as the generic `SupabaseClient` (was the session-bound `createClient`
 // return type specifically) — API_TIER_SCOPE.md's free-tier API sandbox
@@ -173,10 +182,10 @@ export function seatsOverLimit(memberCount: number, plan: string | null | undefi
 // underlying `SupabaseClient`, so this widens the type without changing
 // behavior for any existing session-based caller.
 // Extracted 2026-08-01 so the Free-tier Settings usage display (see
-// getFreePlanDocUsage below) and the actual cap check here can't drift
-// apart on the definition of "this month" — both need the exact same
-// boundary or the number shown to a Free user could disagree with the
-// number that actually blocks them.
+// getFreePlanUsage below) and the actual cap checks here can't drift apart
+// on the definition of "this month" — both need the exact same boundary or
+// the numbers shown to a Free user could disagree with what actually blocks
+// them.
 function startOfCurrentMonthUTC(): Date {
   const d = new Date();
   d.setUTCDate(1);
@@ -184,19 +193,19 @@ function startOfCurrentMonthUTC(): Date {
   return d;
 }
 
-export async function checkFreePlanDocCap(
-  // Bare `SupabaseClient` (no generics) — both the session client
-  // (createServerClient) and the admin client (createAdminClient) are
-  // SupabaseClient instances with no shared Database generic declared
-  // anywhere in this codebase, so the library's own default type params
-  // apply to both without needing an explicit `any` here.
+// Shared by checkFreePlanSendCap/checkFreePlanSealCap below — everything
+// past "which column and which limit" is identical: read the org's plan +
+// credit balance, count this month's rows past the given timestamp column,
+// spend a doc_credits credit (compare-and-swap) instead of blocking if the
+// org has a balance, log the hit, and return the 402. Kept private —
+// callers only ever need one of the two typed wrappers below, never this
+// directly, so there's no ambiguity at a call site about which pool is
+// being checked.
+async function checkFreePlanCap(
   supabase: SupabaseClient,
   orgId: string,
-  // Which route/flow is calling this, for the plan_cap_hits log below —
-  // e.g. "dashboard_upload", "api_v1_documents". Free text (see
-  // 0043_plan_cap_hits.sql), not required at every call site's leisure but
-  // required here so a hit is never logged unlabeled. See each call site
-  // for its exact string.
+  countColumn: "sent_at" | "sealed_at",
+  blockedMessage: string,
   source: string
 ): Promise<NextResponse | null> {
   const { data: org } = await supabase.from("organizations").select("plan, doc_credits").eq("id", orgId).single();
@@ -208,7 +217,7 @@ export async function checkFreePlanDocCap(
     .from("documents")
     .select("id", { count: "exact", head: true })
     .eq("org_id", orgId)
-    .gte("created_at", startOfMonth.toISOString());
+    .gte(countColumn, startOfMonth.toISOString());
 
   if ((count ?? 0) >= 3) {
     // Credit pack top-up (0044_credit_packs.sql, CONSOLE_FREE_TIER_SCOPE.md
@@ -220,12 +229,14 @@ export async function checkFreePlanDocCap(
     // a stale read and take the balance negative. If the swap loses the
     // race (someone else's request spent the last credit first), this
     // falls through to the block-and-log path below rather than retrying —
-    // a single org isn't expected to have meaningful upload concurrency,
+    // a single org isn't expected to have meaningful send/seal concurrency,
     // and worst case they just see the cap message once and try again.
     // Always via a fresh admin client, same reasoning as the log below:
     // session-bound callers have no update policy on organizations.doc_credits
     // for another org's row, but every caller needs this to work for its
-    // own org regardless of which client it holds.
+    // own org regardless of which client it holds. One shared doc_credits
+    // pool spendable against EITHER cap — a referral/top-up credit isn't
+    // earmarked "for sending" or "for sealing" specifically.
     if ((org?.doc_credits ?? 0) > 0) {
       const { data: spent } = await createAdminClient()
         .from("organizations")
@@ -253,37 +264,59 @@ export async function checkFreePlanDocCap(
       console.error("plan_cap_hits log failed", err);
     }
 
-    return NextResponse.json(
-      { error: "You've hit the Free plan's 3 documents/month limit. Upgrade to keep going.", upgrade: true },
-      { status: 402 }
-    );
+    return NextResponse.json({ error: blockedMessage, upgrade: true }, { status: 402 });
   }
   return null;
 }
 
-// Read-only counterpart to checkFreePlanDocCap above — same query, no
-// side effects (never spends a credit or logs a cap hit), for surfacing
-// "X of 3 used this month" + credit balance in Console's Free-tier
-// Settings tab (2026-08-01, direct ask: a Free org referring someone
-// should actually be able to see their seal-credits balance go up
-// somewhere, not just discover it worked the next time they hit the cap).
-// Deliberately counts every document this month, not just Verified Badge
-// seals — matches exactly what the cap enforces, since for a Free console
-// user sealing is in practice their only console action anyway (templates
-// stay Pro+-only, see CONSOLE_FREE_TIER_SCOPE.md), and showing a
-// seal-specific count that could disagree with the number that actually
-// blocks them would be more confusing than accurate.
-export async function getFreePlanDocUsage(
+/** Call right before a document is actually sent to a signer (the send
+ *  route, and the REST API's create+send route, which sends in the same
+ *  call it creates in). Counts documents.sent_at this month. */
+export async function checkFreePlanSendCap(supabase: SupabaseClient, orgId: string, source: string): Promise<NextResponse | null> {
+  return checkFreePlanCap(
+    supabase,
+    orgId,
+    "sent_at",
+    "You've hit the Free plan's 3 documents/month limit. Upgrade to keep going.",
+    source
+  );
+}
+
+/** Call right before a Verified Badge seal completes (sealDocumentAction).
+ *  Counts documents.sealed_at this month — entirely independent of the
+ *  send cap above, per 2026-08-05 direct instruction. */
+export async function checkFreePlanSealCap(supabase: SupabaseClient, orgId: string, source: string): Promise<NextResponse | null> {
+  return checkFreePlanCap(
+    supabase,
+    orgId,
+    "sealed_at",
+    "You've hit the Free plan's 3 Verified Badge seals/month limit. Upgrade to keep going.",
+    source
+  );
+}
+
+// Read-only counterpart to the two checks above — same queries, no side
+// effects (never spends a credit or logs a cap hit), for surfacing "X of 3
+// sends" / "Y of 3 seals" + credit balance in Console's Free-tier Settings
+// tab (2026-08-01, direct ask: a Free org referring someone should actually
+// be able to see their seal-credits balance go up somewhere, not just
+// discover it worked the next time they hit the cap). Split into two
+// numbers (2026-08-05) now that sends and seals are genuinely independent
+// pools — showing one combined count would disagree with what actually
+// blocks a Free org at either action.
+export async function getFreePlanUsage(
   supabase: SupabaseClient,
   orgId: string
-): Promise<{ usedThisMonth: number; docCredits: number }> {
-  const [{ data: org }, { count }] = await Promise.all([
+): Promise<{ sendsUsedThisMonth: number; sealsUsedThisMonth: number; docCredits: number }> {
+  const startOfMonth = startOfCurrentMonthUTC().toISOString();
+  const [{ data: org }, { count: sendsCount }, { count: sealsCount }] = await Promise.all([
     supabase.from("organizations").select("doc_credits").eq("id", orgId).single(),
-    supabase
-      .from("documents")
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", orgId)
-      .gte("created_at", startOfCurrentMonthUTC().toISOString()),
+    supabase.from("documents").select("id", { count: "exact", head: true }).eq("org_id", orgId).gte("sent_at", startOfMonth),
+    supabase.from("documents").select("id", { count: "exact", head: true }).eq("org_id", orgId).gte("sealed_at", startOfMonth),
   ]);
-  return { usedThisMonth: count ?? 0, docCredits: org?.doc_credits ?? 0 };
+  return {
+    sendsUsedThisMonth: sendsCount ?? 0,
+    sealsUsedThisMonth: sealsCount ?? 0,
+    docCredits: org?.doc_credits ?? 0,
+  };
 }

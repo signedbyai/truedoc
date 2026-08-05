@@ -36,6 +36,7 @@ export function NewDocumentClient({
   initialMode,
   currency = "USD",
   uploadButtonColorVariant = "black",
+  sendCapReached = false,
 }: {
   hasAiDraft: boolean;
   defaultQuoteCurrency: QuoteCurrencySymbol;
@@ -65,6 +66,19 @@ export function NewDocumentClient({
    *  variant. Defaults to "black" so this component still renders
    *  sensibly if ever used somewhere the flag isn't resolved. */
   uploadButtonColorVariant?: "black" | "yellow";
+  /** Server-computed at page load from getFreePlanUsage (2026-08-05, direct
+   *  ask: "the behaviour should still be asking to upgrade when the user
+   *  tries to upload number 4"). The real enforcement now lives in
+   *  checkFreePlanSendCap at the actual /send call (field-editor.tsx) —
+   *  this is a read-only, non-blocking courtesy check so a Free org that's
+   *  already sent 3 documents this month sees the same Upgrade card right
+   *  at the "Continue" click instead of only discovering the wall after
+   *  uploading and placing fields. Can go stale within a single page visit
+   *  (e.g. sending in another tab), which is fine for a heads-up like this
+   *  — the send route always re-checks for real regardless of what this
+   *  prop said. Defaults to false so nothing changes for a plan that never
+   *  passes it (Pro+ callers never pass true here in practice). */
+  sendCapReached?: boolean;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -187,9 +201,14 @@ export function NewDocumentClient({
 
   // Direct-to-R2 upload in three steps so the file never passes through a
   // Vercel serverless function (whose request body is capped at 4.5 MB):
-  //   1. ask our API for a presigned PUT URL (also enforces auth/rate-limit/cap)
+  //   1. ask our API for a presigned PUT URL
   //   2. PUT the file straight to R2
   //   3. finalize — our API validates the PDF and creates the record
+  // Upload/finalize no longer enforce the free-plan cap themselves
+  // (2026-08-05 — see sendCapReached's doc comment above); the real check
+  // now happens at send. What follows is that: if the org's already used
+  // its 3 sends this month, skip the network round trip entirely and show
+  // the same Upgrade card immediately, right on this click.
   async function handleUpload() {
     if (!file) return;
 
@@ -201,6 +220,12 @@ export function NewDocumentClient({
     // eventual outcome would just add noise to the thing actually being
     // measured. See uploadContinueButtonColorFlag in flags.ts.
     track("signing_continue_clicked", { button_color: uploadButtonColorVariant });
+
+    if (sendCapReached) {
+      setStatus("error");
+      setShowUpgrade(true);
+      return;
+    }
 
     setStatus("uploading");
     setErrorMessage("");
@@ -471,13 +496,14 @@ export function NewDocumentClient({
                 </div>
               )}
 
-              {/* Cap-hit (showUpgrade) is only ever true from
-                  checkFreePlanDocCap's 402 — never a real failure, so it gets
-                  its own amber upsell card instead of sharing the red error
-                  line below (2026-08-05, direct ask: the old shared styling
-                  made a "buy more" moment look like something had broken).
-                  Genuine errors — bad file type, oversized file, a failed
-                  upload — keep the plain red line. */}
+              {/* Cap-hit (showUpgrade) — either the sendCapReached prop short-
+                  circuited handleUpload above, or (defensively) the upload/
+                  finalize calls came back with `upgrade: true`. Never a real
+                  failure, so it gets its own upsell card instead of sharing
+                  the red error line below (2026-08-05, direct ask: the old
+                  shared styling made a "buy more" moment look like something
+                  had broken). Genuine errors — bad file type, oversized
+                  file, a failed upload — keep the plain red line. */}
               {status === "error" && !showUpgrade && <p className="text-sm text-red-600">{errorMessage}</p>}
 
               {/* Blue "notice" card, not amber (2026-08-05, direct ask after

@@ -516,6 +516,7 @@ export function ConsoleChat({
   currency = "USD",
   onOpenSettings,
   heroIconVariant = "blue",
+  sealCapReached = false,
 }: {
   /** The conversation's id if this is reopening a past chat, or null for a
    *  brand new one. Only read at mount time — console-workspace.tsx forces
@@ -568,6 +569,18 @@ export function ConsoleChat({
    *  console-workspace.tsx. Defaults to "blue", same fallback posture as
    *  every other prop here that has a real default value. */
   heroIconVariant?: ConsoleHeroIconColor;
+  /** Server-computed at page load from getFreePlanUsage (2026-08-05, direct
+   *  ask — same reasoning as new-document-client.tsx's sendCapReached
+   *  prop). Real enforcement is checkFreePlanSealCap inside
+   *  sealDocumentAction, which fires at the confirm step and renders as the
+   *  capReached bubble (see confirmAction's `data.type === "capReached"`
+   *  branch); this is a read-only, non-blocking courtesy check so a Free
+   *  org that's already sealed 3 documents this month sees the same bubble
+   *  immediately on file-select, before spending a Mistral round trip and a
+   *  confirm click on something that's going to be capped anyway. Can go
+   *  stale within a session (e.g. sealing in another tab) — harmless, since
+   *  sealDocumentAction always re-checks for real. */
+  sealCapReached?: boolean;
 } = {}) {
   const isFreePlan = plan === "free";
   const router = useRouter();
@@ -861,6 +874,12 @@ export function ConsoleChat({
           ...cur,
           { role: "assistant", content: String(data.content ?? ""), openSettings: true },
         ]);
+      } else if (data.type === "capReached") {
+        // seal_document hit the Free plan's 3-seals/month cap (2026-08-05,
+        // separate from the upload-time cap-hit reportUploadError renders
+        // below — sealing no longer has one, this is the seal-time
+        // equivalent) — same capReached bubble treatment either way.
+        setMessages((cur) => [...cur, { role: "assistant", content: String(data.content ?? ""), capReached: true }]);
       } else {
         setMessages((cur) => [...cur, { role: "assistant", content: String(data.content ?? "") }]);
         router.refresh(); // refreshes the usage panel's server-fetched numbers
@@ -1016,15 +1035,18 @@ export function ConsoleChat({
    *  no /api/console/chat call happens until (if) "Save now" is clicked,
    *  which reuses the existing confirmAction plumbing untouched. */
   /** Shared by handleTemplateFileSelected/handleVerifiedBadgeFileSelected's
-   *  upload-url and finalize error branches — both routes already run
-   *  checkFreePlanDocCap (plan.ts) and set `upgrade: true` on that specific
-   *  402, same flag new-document-client.tsx's dashboard upload flow already
-   *  keys off. Previously every failure here, cap-hit included, just fell
-   *  through to the small red error line; a hit cap gets a real bubble with
-   *  an "Upgrade to Pro" button instead (2026-08-02,
-   *  CONSOLE_FREE_TIER_SCOPE.md's "cap-hit moment" addendum) — everything
-   *  else (a bad upload, a network error) keeps the plain red-line
-   *  treatment, since those aren't a "here's what to do next" moment. */
+   *  upload-url and finalize error branches. Originally (2026-08-02,
+   *  CONSOLE_FREE_TIER_SCOPE.md's "cap-hit moment" addendum) this is where a
+   *  hit free-plan cap turned into the capReached bubble, back when
+   *  checkFreePlanDocCap ran at upload time. As of 2026-08-05 the cap moved
+   *  to each action's actual completion (send/seal — see plan.ts), so
+   *  upload-url/finalize never set `upgrade: true` any more and this
+   *  function's `data.upgrade` branch is effectively dormant for both
+   *  callers — the real capReached moment for Verified Badge uploads is now
+   *  in confirmAction's `data.type === "capReached"` branch above, which
+   *  fires off seal_document's own result instead. Left in place rather
+   *  than deleted: harmless, and correct if either route were ever given a
+   *  reason to set `upgrade: true` again for some other check. */
   function reportUploadError(data: { error?: string; upgrade?: boolean }, fallback: string) {
     if (data.upgrade) {
       setMessages((cur) => [...cur, { role: "assistant", content: data.error || fallback, capReached: true }]);
@@ -1172,6 +1194,21 @@ export function ConsoleChat({
   async function sealSelectedFile(file: File, entryPoint: EntryPoint) {
     if (loading) return;
     setError("");
+
+    // Skip straight to the capReached bubble (2026-08-05, direct ask) — see
+    // sealCapReached's doc comment. No network call, no Mistral round trip;
+    // sealDocumentAction re-checks for real once an actual confirm happens.
+    if (sealCapReached) {
+      setMessages((cur) => [
+        ...cur,
+        {
+          role: "assistant",
+          content: "You've hit the Free plan's 3 Verified Badge seals/month limit. Upgrade to keep going.",
+          capReached: true,
+        },
+      ]);
+      return;
+    }
 
     if (!/\.pdf$/i.test(file.name)) {
       setError("Please attach a PDF to seal.");

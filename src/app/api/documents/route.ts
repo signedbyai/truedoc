@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { PDFDocument } from "pdf-lib";
 import { getUserAndOrg } from "@/lib/org";
 import { getFromR2, deleteFromR2 } from "@/lib/r2";
-import { checkFreePlanDocCap } from "@/lib/plan";
 import { keyBelongsTo } from "@/lib/upload-key";
 import { MAX_FILE_BYTES } from "./upload-url/schema";
 import { bodySchema } from "./schema";
@@ -30,11 +29,6 @@ export async function POST(request: Request) {
   if (!keyBelongsTo(orgId, documentId, key)) {
     return NextResponse.json({ error: "Invalid upload reference." }, { status: 400 });
   }
-
-  // Re-check the plan cap right before the insert (upload-url checked it too,
-  // but a burst could slip between the two calls).
-  const capResponse = await checkFreePlanDocCap(supabase, orgId, "documents_insert");
-  if (capResponse) return capResponse;
 
   // Pull the uploaded object back to validate it.
   let bytes: Buffer;

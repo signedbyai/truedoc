@@ -6,7 +6,7 @@ import { sendSignerInviteEmail } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { checkEmailDomainHasMx } from "@/lib/validate-email-domain";
 import { recordConsoleUsage } from "@/lib/console-usage";
-import { checkFreePlanDocCap } from "@/lib/plan";
+import { checkFreePlanSendCap } from "@/lib/plan";
 
 // Per-recipient authentication (PER_RECIPIENT_AUTH_SCOPE.md) — free on every
 // plan, not gated separately from apiAccess itself, same as the dashboard's
@@ -141,13 +141,15 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
 
   // Free-tier sandbox (API_TIER_SCOPE.md, direct instruction: "the 3 docs
-  // per month cap enforced on the API make it a sandbox") — same cap the
-  // dashboard UI already enforces, checked here before creating anything so
-  // a capped-out Free org gets a clean 402 instead of a partially-created
-  // document. The service-role admin client is fine here — checkFreePlanDocCap
-  // only reads/counts organizations.plan and documents, both accessible via it.
+  // per month cap enforced on the API make it a sandbox") — same send cap
+  // the dashboard's send route enforces (checkFreePlanSendCap, not the
+  // separate seal cap — this endpoint only ever creates-and-sends, never
+  // seals), checked here before creating anything so a capped-out Free org
+  // gets a clean 402 instead of a partially-created document. The
+  // service-role admin client is fine here — checkFreePlanSendCap only
+  // reads/counts organizations.plan and documents, both accessible via it.
   if (freeCapped) {
-    const capResponse = await checkFreePlanDocCap(admin, orgId, "api_v1_documents");
+    const capResponse = await checkFreePlanSendCap(admin, orgId, "api_v1_documents");
     if (capResponse) return capResponse;
   }
 
@@ -209,6 +211,7 @@ export async function POST(request: Request) {
       owner_id: org.owner_id,
       title: template.name,
       status: "sent",
+      sent_at: new Date().toISOString(),
       file_path: template.base_file_path,
       original_filename: `${template.name}.pdf`,
       page_count: template.page_count,

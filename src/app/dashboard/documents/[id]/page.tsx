@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getRequestCurrency } from "@/lib/currency.server";
 import { FieldEditor } from "@/components/field-editor";
 import { VoidDocumentButton } from "@/components/void-document-button";
 import { SignerRow } from "@/components/signer-row";
 import { AuditTrail, type AuditEvent } from "@/components/audit-trail";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
 import { buttonVariants } from "@/components/ui/button";
-import { planHasFeature } from "@/lib/plan";
+import { planHasFeature, getFreePlanUsage } from "@/lib/plan";
 import { formatEngagement } from "@/lib/page-view-tracking";
 import { latestTimestamp } from "@/lib/last-viewed";
 import { LiveViewedStatus } from "@/components/live-viewed-status";
@@ -59,7 +60,7 @@ export default async function DocumentEditorPage({
   const { data: doc } = await supabase
     .from("documents")
     .select(
-      "id, title, page_count, status, signed_file_path, payment_link_url, payment_label, docgate_url, docgate_label, open_notifications, recipient_notice, invite_subject, invite_message, expires_at, organizations(plan, auto_suggest_on_upload)"
+      "id, org_id, title, page_count, status, signed_file_path, payment_link_url, payment_label, docgate_url, docgate_label, open_notifications, recipient_notice, invite_subject, invite_message, expires_at, organizations(plan, auto_suggest_on_upload)"
     )
     .eq("id", id)
     .single();
@@ -375,6 +376,20 @@ export default async function DocumentEditorPage({
     );
   }
 
+  // Read-only "would Send actually be blocked?" check (2026-08-05, direct
+  // ask), same reasoning/staleness tradeoff as new-document-client.tsx's
+  // sendCapReached prop — this only reaches here for a draft (see the
+  // "completed"/"sent" branches above, both of which return earlier), so a
+  // Free org that's already used its 3 sends this month sees the Upgrade
+  // card the moment they open this draft's editor and hit Send, not a
+  // generic error after the request round-trips.
+  let sendCapReached = false;
+  if ((orgPlan ?? "free") === "free") {
+    const usage = await getFreePlanUsage(supabase, doc.org_id);
+    sendCapReached = usage.sendsUsedThisMonth >= 3 && usage.docCredits <= 0;
+  }
+  const currency = await getRequestCurrency();
+
   return (
     <FieldEditor
       documentId={doc.id}
@@ -398,6 +413,8 @@ export default async function DocumentEditorPage({
       cameFromConsole={from === "console"}
       consoleConversationId={from === "console" ? c ?? null : null}
       isConsoleTemplatePreview={from === "console" && consoleTemplatePreview === "1"}
+      sendCapReached={sendCapReached}
+      currency={currency}
     />
   );
 }
