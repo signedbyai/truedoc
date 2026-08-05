@@ -79,7 +79,10 @@ export function ConsoleVerifiedBadgeList() {
         Documents you&apos;ve sealed, and their outputs. Looking for a template instead? Just ask the console.
       </p>
       {items.map((doc) => {
-        const verifyUrl = doc.hash ? `https://signedby.ai/verify?hash=${doc.hash}` : null;
+        // &from=console (2026-08-05, same fix as verified-badge-actions.ts's
+        // own verifyUrl) — this list only ever renders inside Console, so
+        // every link here should point its own back link at Console too.
+        const verifyUrl = doc.hash ? `https://signedby.ai/verify?hash=${doc.hash}&from=console` : null;
         return (
           <div key={doc.id} className="rounded-xl border border-white/10 p-3">
             <div className="flex items-start justify-between gap-2">

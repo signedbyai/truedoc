@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { consoleAppUrl } from "@/lib/console-host";
 
 type Result =
   | {
@@ -49,6 +50,17 @@ function TimestampRow({ tsa, genTime }: { tsa: "sectigo" | "freetsa"; genTime: s
 function VerifyPageInner() {
   const searchParams = useSearchParams();
   const [hash, setHash] = useState(() => searchParams.get("hash") || "");
+  // ?from=console (2026-08-05, direct bug report: "the link to the
+  // verification site, when it comes from console, the back to SignedBy
+  // takes you out of console") — this page always lives on the main
+  // appUrl() domain, never console.signedby.ai, so a plain "/" back link
+  // dropped someone at the marketing homepage instead of back to their
+  // console session. Tagged onto the verifyUrl by verified-badge-actions.ts
+  // and console-verified-badge-list.tsx, both genuinely console-only
+  // sources — every other caller of this page (the dashboard document
+  // page, the signer's completed screen, a QR scan) keeps the plain "/"
+  // link, which is the right destination for those.
+  const fromConsole = searchParams.get("from") === "console";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<Result>(null);
@@ -90,8 +102,8 @@ function VerifyPageInner() {
   return (
     <main className="flex min-h-screen flex-col items-center bg-slate-50 px-6 py-16">
       <div className="w-full max-w-md">
-        <Link href="/" className="text-sm font-medium text-slate-500 hover:text-slate-700">
-          ← SignedBy
+        <Link href={fromConsole ? consoleAppUrl() : "/"} className="text-sm font-medium text-slate-500 hover:text-slate-700">
+          {fromConsole ? "← Back to console" : "← SignedBy"}
         </Link>
 
         <h1 className="mt-4 text-2xl font-semibold text-slate-900">Verify a document</h1>

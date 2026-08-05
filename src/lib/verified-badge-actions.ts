@@ -284,7 +284,16 @@ export async function sealDocumentAction(params: {
   return {
     ok: true,
     documentId: doc.id,
-    verifyUrl: `${appUrl()}/verify?hash=${hash}`,
+    // &from=console (2026-08-05, direct bug report: "the link to the
+    // verification site, when it comes from console, the back to
+    // SignedBy takes you out of console") — /verify always lives on the
+    // main appUrl() domain, never console.signedby.ai, so this link (the
+    // one console-chat.tsx's sealed bubble opens in a new tab) reads this
+    // param to point its own "← SignedBy" back link at consoleUrl("/app")
+    // instead of the plain marketing homepage. Only tagged for
+    // source: "console" — an MCP caller's verify link has no console tab
+    // to return to, so it stays the plain untagged URL.
+    verifyUrl: `${appUrl()}/verify?hash=${hash}${source === "console" ? "&from=console" : ""}`,
     hasSignedFile,
     hasCertificateFile,
   };
