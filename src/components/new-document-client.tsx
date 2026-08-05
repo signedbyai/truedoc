@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { track } from "@vercel/analytics";
-import { UploadCloud, Upload, Sparkles, Receipt, Rocket, ShieldCheck, MoreHorizontal, X } from "lucide-react";
+import { UploadCloud, Upload, Sparkles, Receipt, Rocket, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -153,7 +153,6 @@ export function NewDocumentClient({
   const [creditsLoading, setCreditsLoading] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [menuIntroOpen, setMenuIntroOpen] = useMenuIntroVisible();
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
   // Verified Badge tab state — mirrors the Sign-a-file tab's own file/
   // title/dragging/status/errorMessage/showUpgrade state above, plus one
@@ -511,10 +510,10 @@ export function NewDocumentClient({
             card's actual width evenly, so there's nothing to overflow.
             Order (2026-08-05, VERIFIED_BADGE_DASHBOARD_SCOPE.md, direct
             instruction): Sign a file, Verified Badge, Magic Quote, then AI
-            Drafter in the 4th column — on mobile that 4th column is a "•••"
-            more-menu instead of a plain tab (see below), since four visible
-            tabs got cramped at the narrowest widths tested; desktop has
-            room for all four as plain tabs with nothing tucked away. */}
+            Drafter in the 4th column — plain tab at every breakpoint (see
+            below), confirmed against an actual mobile render rather than
+            assumed: the two-word labels already wrap onto two lines in
+            their columns at this width, same as "AI Drafter" does. */}
         <div className="relative mb-4 grid grid-cols-4 gap-2">
           <button
             onClick={() => setMode("upload")}
@@ -570,106 +569,48 @@ export function NewDocumentClient({
             </span>
           </button>
 
-          {/* 4th column: AI Drafter. Two renderings of the same slot, not
-              two grid items — a plain tab (lg: and up) and a "•••" more-menu
-              trigger (below lg:) toggle via Tailwind's responsive display
-              classes on siblings inside ONE wrapping grid cell, so the grid
-              always has exactly 4 children regardless of breakpoint. Locked/
-              Free-plan state (the dashed "· Pro+" pill) renders inside
-              whichever wrapper is currently visible. */}
-          <div className="relative">
-            <div className="hidden lg:block">
-              {hasAiDraft ? (
-                <button
-                  onClick={() => setMode("draft")}
-                  className={cn(
-                    MODE_TAB_CLASS,
-                    mode === "draft"
-                      ? "border-slate-900 bg-slate-900 text-white"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  )}
-                >
-                  <span className="inline-flex items-center justify-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                    AI Drafter
-                  </span>
-                </button>
-              ) : (
-                // Same shape/position as the real tab so the feature is
-                // still discoverable, but reads as locked rather than
-                // clickable — matches the "Save as template (Pro+)" pattern
-                // in field-editor.tsx. Links straight to /pricing rather
-                // than switching into a mode the account can't use (the API
-                // would just reject it — see POST /api/documents/draft).
-                <a
-                  href="/pricing"
-                  className={cn(
-                    MODE_TAB_CLASS,
-                    "border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:text-slate-600"
-                  )}
-                >
-                  <span className="inline-flex items-center justify-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                    AI Drafter · Pro+
-                  </span>
-                </a>
+          {/* 4th column: AI Drafter, plain tab at every breakpoint
+              (2026-08-05, direct correction after seeing the actual mobile
+              render — "Verified Badge"/"Magic Quote" already wrap onto two
+              lines in their columns at this width, so "AI Drafter" fits the
+              same way; no need for a "•••" overflow trigger after all). See
+              VERIFIED_BADGE_DASHBOARD_SCOPE.md's own note that this was
+              worth checking against the real width rather than assuming. */}
+          {hasAiDraft ? (
+            <button
+              onClick={() => setMode("draft")}
+              className={cn(
+                MODE_TAB_CLASS,
+                mode === "draft"
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
               )}
-            </div>
-
-            <div className="lg:hidden">
-              <button
-                type="button"
-                onClick={() => setMoreMenuOpen((open) => !open)}
-                aria-label="More document types"
-                className={cn(
-                  MODE_TAB_CLASS,
-                  mode === "draft"
-                    ? "border-slate-900 bg-slate-900 text-white"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                )}
-              >
-                <span className="inline-flex items-center justify-center">
-                  <MoreHorizontal className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-                </span>
-              </button>
-
-              {moreMenuOpen && (
-                <>
-                  <button
-                    type="button"
-                    aria-hidden="true"
-                    tabIndex={-1}
-                    onClick={() => setMoreMenuOpen(false)}
-                    className="fixed inset-0 z-40 cursor-default"
-                  />
-                  <div className="absolute right-0 top-full z-50 mt-2 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
-                    {hasAiDraft ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMode("draft");
-                          setMoreMenuOpen(false);
-                        }}
-                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-                      >
-                        <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                        AI Drafter
-                      </button>
-                    ) : (
-                      <a
-                        href="/pricing"
-                        onClick={() => setMoreMenuOpen(false)}
-                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium text-slate-400 hover:bg-slate-50 hover:text-slate-600"
-                      >
-                        <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                        AI Drafter · Pro+
-                      </a>
-                    )}
-                  </div>
-                </>
+            >
+              <span className="inline-flex items-center justify-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                AI Drafter
+              </span>
+            </button>
+          ) : (
+            // Same shape/position as the real tab so the feature is still
+            // discoverable, but reads as locked rather than clickable —
+            // matches the "Save as template (Pro+)" pattern in
+            // field-editor.tsx. Links straight to /pricing rather than
+            // switching into a mode the account can't use (the API would
+            // just reject it — see POST /api/documents/draft).
+            <a
+              href="/pricing"
+              className={cn(
+                MODE_TAB_CLASS,
+                "border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:text-slate-600"
               )}
-            </div>
-          </div>
+            >
+              <span className="inline-flex items-center justify-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                AI Drafter · Pro+
+              </span>
+            </a>
+          )}
 
           {menuIntroOpen && (
             <>
