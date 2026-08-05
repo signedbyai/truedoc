@@ -12,6 +12,7 @@ import { formatCreditPackPrice, type Currency } from "@/lib/currency";
 import { findFreePosition } from "@/lib/field-geometry";
 import { resizeField } from "@/lib/field-resize";
 import { remapFieldSignerIds } from "@/lib/field-persist";
+import { useSendSealTransition } from "@/components/send-seal-transition";
 import { signerForArrivingSuggestion, signerForConfirmedSuggestion } from "@/lib/suggestion-binding";
 import { matchFrequentSignerByName, type MatchableSigner } from "@/lib/frequent-signer-match";
 import { DeleteDocumentButton } from "@/components/delete-document-button";
@@ -277,6 +278,7 @@ export function FieldEditor({
   currency?: Currency;
 }) {
   const router = useRouter();
+  const { trigger: triggerSendSealTransition } = useSendSealTransition();
   // Carries the originating conversation back with it (see
   // consoleConversationId's prop doc above) so console-workspace.tsx can
   // reopen the right chat instead of always landing on a blank one — the
@@ -1598,8 +1600,12 @@ export function FieldEditor({
         return;
       }
       if (res.ok) {
-        router.push("/dashboard");
-        return; // keep the button disabled through navigation
+        // Popover-then-navigate (2026-08-05) instead of a bare router.push
+        // — see send-seal-transition.tsx. sending stays true (never reset
+        // below on this path) so the button stays disabled through the
+        // transition, same as before.
+        triggerSendSealTransition("sent", "/dashboard");
+        return;
       }
       // checkFreePlanSendCap's 402 (plan.ts) — the real, authoritative cap
       // check, same shape sendCapReached's early-bail above short-circuits

@@ -2,6 +2,7 @@ import { getUserAndOrg } from "@/lib/org";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { isDevAccessAllowed } from "@/lib/dev-access";
 import { planHasFeature } from "@/lib/plan";
+import { SendSealTransitionProvider } from "@/components/send-seal-transition";
 
 // Shared shell for every /dashboard route. Renders the one navigation bar
 // (top on desktop, floating pill on mobile) around all pages — replacing the
@@ -56,11 +57,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const showConsole = false;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <DashboardNav orgs={orgs} activeOrgId={orgId} userEmail={user.email ?? ""} firstName={firstName} showConsole={showConsole} />
-      <div data-dashboard-content className="pb-24 md:pb-0">
-        {children}
+    // SendSealTransitionProvider wraps the whole shell, not just {children}
+    // (2026-08-05) — it needs to survive the route change from e.g. the
+    // field editor to the document's own page, and DashboardLayout is the
+    // nearest ancestor both routes share.
+    <SendSealTransitionProvider>
+      <div className="min-h-screen bg-slate-50">
+        <DashboardNav orgs={orgs} activeOrgId={orgId} userEmail={user.email ?? ""} firstName={firstName} showConsole={showConsole} />
+        <div data-dashboard-content className="pb-24 md:pb-0">
+          {children}
+        </div>
       </div>
-    </div>
+    </SendSealTransitionProvider>
   );
 }

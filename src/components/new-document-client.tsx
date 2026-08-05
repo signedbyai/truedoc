@@ -16,6 +16,7 @@ import type { QuoteCurrencySymbol } from "@/lib/quote-types";
 import type { DraftDocumentType } from "@/lib/ai-draft-types";
 import { formatCreditPackPrice, type Currency } from "@/lib/currency";
 import { getStripeClient } from "@/lib/stripe-client";
+import { useSendSealTransition } from "@/components/send-seal-transition";
 
 // Shared by every tab state (upload, Verified Badge, Magic Quote, AI
 // Drafter, and AI Drafter's locked upsell) so they stay the same size as
@@ -125,6 +126,7 @@ export function NewDocumentClient({
   sealCapReached?: boolean;
 }) {
   const router = useRouter();
+  const { trigger: triggerSendSealTransition } = useSendSealTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Separate ref/input from the dropzone's own fileInputRef (2026-08-05) —
   // opened by the main Upload/Continue button below in its pre-file
@@ -447,7 +449,9 @@ export function NewDocumentClient({
         }
         return;
       }
-      router.push(`/dashboard/documents/${documentId}`);
+      // Popover-then-navigate (2026-08-05) instead of a bare router.push —
+      // see send-seal-transition.tsx.
+      triggerSendSealTransition("sealed", `/dashboard/documents/${documentId}`);
     } catch {
       setBadgeStatus("error");
       setBadgeErrorMessage("Something went wrong. Check your connection and try again.");
