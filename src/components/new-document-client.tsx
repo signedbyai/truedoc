@@ -69,10 +69,12 @@ export function NewDocumentClient({
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Separate ref/input from the dropzone's own fileInputRef (2026-08-05) —
-  // kept distinct rather than reusing one input so this button's onChange
-  // can tag its entry_point as "button" without the dropzone's onClick
-  // handler also firing (they're two different elements, but sharing one
-  // <input> would mean whichever handler bound last "owns" its onChange).
+  // opened by the main Upload/Continue button below in its pre-file
+  // "Upload" state. Kept distinct rather than reusing the dropzone's input
+  // so this one's onChange can tag its entry_point as "button" without the
+  // dropzone's onClick handler also firing (two different elements —
+  // sharing one <input> would mean whichever handler bound last "owns" its
+  // onChange).
   const buttonFileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<"upload" | "draft" | "quote">(
     initialDocumentType ? "draft" : initialMode ?? "upload"
@@ -118,17 +120,16 @@ export function NewDocumentClient({
     }
   }
 
-  // entryPoint now covers three ways in, not two: the dropzone itself is
-  // still both a drag-drop target and a click-to-browse trigger ("dropzone"
-  // / "browse" — see the onDrop/onClick handlers below), and a plain
-  // "Upload" button now sits below it as its own, unambiguous affordance
-  // ("button") for anyone who'd rather not interact with the dashed box at
-  // all (2026-08-05, direct ask: "let the user choose it for the upload
-  // rather than the dotted box if they prefer"). This is genuinely the same
-  // three-entry-point shape Console's upload-first hero already has
-  // (dropzone, "Seal this file" button, paperclip — see EntryPoint in
-  // console-chat.tsx), just not copied wholesale since this page only
-  // needed the plain-button piece, not a paperclip. Same
+  // entryPoint covers three ways in: the dropzone is still both a drag-drop
+  // target and a click-to-browse trigger ("dropzone" / "browse" — see the
+  // onDrop/onClick handlers below), and the main button at the bottom of
+  // the card is now a third, unambiguous affordance ("button") for anyone
+  // who'd rather not interact with the dashed box at all (2026-08-05,
+  // direct ask: "let the user choose it for the upload rather than the
+  // dotted box if they prefer" — corrected same day from an earlier version
+  // of this change that added a *separate* button next to the dropzone;
+  // the actual ask was to repurpose the existing bottom button instead, not
+  // add a new one — see its two-label state below). Same
   // "signing_upload_started" event shape/philosophy as
   // "console_upload_started" either way — this just widens which
   // entry_point values show up in it, so dropzone-vs-button preference is
@@ -415,37 +416,25 @@ export function NewDocumentClient({
                 )}
               </div>
 
-              {/* Plain "Upload" button, separate from the dropzone above
-                  (2026-08-05, direct ask) — the dropzone has always been
-                  clickable too (its onClick already opens this same file
-                  picker, tagged "browse"), but nothing about a dashed box
-                  visually reads as a button, so anyone who doesn't want to
-                  drag-and-drop or trust an unlabeled click target gets an
-                  explicit, ordinary one instead. Only shown pre-file, same
-                  as the dropzone's own placeholder copy — once a file's
-                  chosen there's nothing left to pick. */}
-              {!file && (
-                <div className="flex items-center justify-center gap-2">
-                  <span className="text-xs text-slate-400">or</span>
-                  <button
-                    type="button"
-                    onClick={() => buttonFileInputRef.current?.click()}
-                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    Upload
-                  </button>
-                  <input
-                    ref={buttonFileInputRef}
-                    type="file"
-                    accept="application/pdf"
-                    className="hidden"
-                    onChange={(e) => {
-                      const chosen = e.target.files?.[0];
-                      if (chosen) handleFileChosen(chosen, "button");
-                    }}
-                  />
-                </div>
-              )}
+              {/* Hidden input for the main button below's "Upload" state
+                  (2026-08-05, direct ask, corrected same day — see the
+                  handleFileChosen comment above). Kept unconditionally
+                  rendered, not tied to `!file` like the dropzone's
+                  placeholder copy, since the ref has to stay valid for the
+                  button to open it regardless of file state; the button
+                  itself only calls .click() on it pre-file (post-file it
+                  runs handleUpload instead), so there's no behavior change
+                  from rendering this input at all times. */}
+              <input
+                ref={buttonFileInputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const chosen = e.target.files?.[0];
+                  if (chosen) handleFileChosen(chosen, "button");
+                }}
+              />
 
               {file && (
                 <div className="space-y-1.5">
@@ -477,13 +466,24 @@ export function NewDocumentClient({
                 </p>
               )}
 
+              {/* Was always "Upload & continue" as one label/one click
+                  (2026-08-05, direct ask, corrected same day). Now two
+                  states of the same button instead of a separate one next
+                  to the dropzone: pre-file it reads "Upload" and just opens
+                  the picker (tagged entry_point "button" — see
+                  buttonFileInputRef above); once a file's chosen it becomes
+                  "Continue" and does the actual handleUpload network chain.
+                  Never disabled pre-file (it has to be clickable to open
+                  the picker) — the old `!file` half of the disabled check
+                  only ever made sense back when this button *was*
+                  handleUpload unconditionally. */}
               <Button
                 className="w-full"
                 variant={uploadButtonColorVariant === "yellow" ? "cta" : "default"}
-                disabled={!file || status === "uploading"}
-                onClick={handleUpload}
+                disabled={status === "uploading"}
+                onClick={file ? handleUpload : () => buttonFileInputRef.current?.click()}
               >
-                {status === "uploading" ? "Uploading…" : "Upload & continue"}
+                {status === "uploading" ? "Uploading…" : file ? "Continue" : "Upload"}
               </Button>
             </CardContent>
           </Card>
