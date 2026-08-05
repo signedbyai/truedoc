@@ -215,7 +215,7 @@ function buildMcpServer(orgId: string, orgName: string): McpServer {
           .enum(["appended", "separate", "both"])
           .optional()
           .describe(
-            "'appended' bakes the certificate into the file (default). 'separate' returns the original file untouched plus a standalone certificate PDF. 'both' returns all three."
+            "'appended' bakes the certificate into the file. 'separate' returns the original file untouched plus a standalone certificate PDF. 'both' returns all three (default)."
           ),
       },
     },
@@ -260,7 +260,14 @@ function buildMcpServer(orgId: string, orgName: string): McpServer {
       const result = await sealDocumentAction({
         orgId,
         documentId,
-        certificateMode: args.certificate_mode ?? "appended",
+        // Defaults to "both" (2026-08-05, direct ask — matches Console
+        // chat's own org-level default flip in the same session, migration
+        // 0048) rather than reading the org's verified_badge_certificate_
+        // mode column: this tool never asked the appended/separate/both
+        // question in the first place (an MCP caller can't answer a
+        // conversational follow-up), so it just needs a sane default, not
+        // the same "should we skip asking" logic Console chat has.
+        certificateMode: args.certificate_mode ?? "both",
         metered: true,
         source: "mcp",
       });
