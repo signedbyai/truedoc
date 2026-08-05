@@ -280,7 +280,16 @@ export function NewDocumentClient({
   // Verified Badge tab's own file-chosen validation (2026-08-05) — same
   // rules as handleFileChosen above (PDF only, 25MB cap), separate function
   // only because it writes to the badge* state instead.
-  function handleBadgeFileChosen(f: File) {
+  //
+  // "seal_upload_started" (2026-08-05, direct ask) — was lumped into the
+  // generic "signing_upload_started" event with entry_point: "verified_
+  // badge", which buried dashboard sealing volume inside the Sign tab's own
+  // metric. Own event name now, same entry_point vocabulary ("dropzone" /
+  // "browse" / "button") as handleFileChosen's own event above, so
+  // dashboard-vs-Console upload volume is a clean side-by-side against
+  // console-chat.tsx's "console_upload_started" rather than something to
+  // untangle out of a shared bucket.
+  function handleBadgeFileChosen(f: File, entryPoint: "dropzone" | "browse" | "button") {
     if (f.type !== "application/pdf") {
       setBadgeStatus("error");
       setBadgeErrorMessage("Only PDF files are supported right now.");
@@ -291,7 +300,7 @@ export function NewDocumentClient({
       setBadgeErrorMessage("File is larger than 25MB.");
       return;
     }
-    track("signing_upload_started", { entry_point: "verified_badge" });
+    track("seal_upload_started", { entry_point: entryPoint });
     setBadgeStatus("idle");
     setBadgeFile(f);
     if (!badgeTitle) setBadgeTitle(f.name.replace(/\.pdf$/i, ""));
@@ -703,7 +712,7 @@ export function NewDocumentClient({
                   e.preventDefault();
                   setBadgeIsDragging(false);
                   const dropped = e.dataTransfer.files?.[0];
-                  if (dropped) handleBadgeFileChosen(dropped);
+                  if (dropped) handleBadgeFileChosen(dropped, "dropzone");
                 }}
                 onClick={() => badgeFileInputRef.current?.click()}
                 className={cn(
@@ -719,7 +728,7 @@ export function NewDocumentClient({
                   className="hidden"
                   onChange={(e) => {
                     const chosen = e.target.files?.[0];
-                    if (chosen) handleBadgeFileChosen(chosen);
+                    if (chosen) handleBadgeFileChosen(chosen, "browse");
                   }}
                 />
                 {badgeFile ? (
@@ -740,7 +749,7 @@ export function NewDocumentClient({
                 className="hidden"
                 onChange={(e) => {
                   const chosen = e.target.files?.[0];
-                  if (chosen) handleBadgeFileChosen(chosen);
+                  if (chosen) handleBadgeFileChosen(chosen, "button");
                 }}
               />
 

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { track } from "@vercel/analytics";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,6 +88,12 @@ export function MagicQuoteForm({
   }
 
   async function handleGenerate() {
+    // "generate_quote_started" (2026-08-05, direct ask) — no usage counter
+    // existed on this tab at all before; fired on every real attempt, not
+    // just successful generations, same "started" philosophy as the
+    // upload-side events (an AI failure downstream still counts as someone
+    // trying to use it).
+    track("generate_quote_started");
     setGenerating(true);
     setGenerateError("");
     try {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { track } from "@vercel/analytics";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,6 +54,10 @@ export function AiDraftForm({
   const selectedPlaceholder = documentTypePlaceholder(documentType, language);
 
   async function handleGenerate() {
+    // "generate_draft_started" (2026-08-05, direct ask) — no usage counter
+    // existed on this tab at all before; same "fire on every real attempt"
+    // philosophy as generate_quote_started/the upload-side events.
+    track("generate_draft_started");
     setGenerating(true);
     setGenerateError("");
     try {
