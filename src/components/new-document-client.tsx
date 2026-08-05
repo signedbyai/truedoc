@@ -834,6 +834,14 @@ export function NewDocumentClient({
                   the now-retired black/yellow button-color test (see
                   flags.ts). Icon + "Seal this file" borrowed from
                   Console's own permanently-yellow seal button. */}
+              {/* "Seal this file" from the first moment the button is seen
+                  (2026-08-05, direct ask) — was "Upload" pre-file, "Seal
+                  this file" only once a file was chosen. Click behavior is
+                  unchanged (pre-file still just opens the picker via
+                  badgeButtonFileInputRef; post-file still calls
+                  handleSealUpload) — only the label stopped naming the
+                  mechanical upload step and always states the actual call
+                  to action instead. */}
               <Button
                 className="w-full gap-1.5"
                 variant="cta"
@@ -843,13 +851,7 @@ export function NewDocumentClient({
                 {badgeStatus !== "uploading" && badgeStatus !== "verifying" && (
                   <ShieldCheck className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
                 )}
-                {badgeStatus === "uploading"
-                  ? "Uploading…"
-                  : badgeStatus === "verifying"
-                    ? "Verifying…"
-                    : badgeFile
-                      ? "Seal this file"
-                      : "Upload"}
+                {badgeStatus === "uploading" ? "Uploading…" : badgeStatus === "verifying" ? "Verifying…" : "Seal this file"}
               </Button>
             </CardContent>
           </Card>
@@ -1047,20 +1049,22 @@ export function NewDocumentClient({
               )}
 
               {/* Was always "Upload & continue" as one label/one click
-                  (2026-08-05, direct ask, corrected same day). Two states
-                  of the same button instead of a separate one next to the
-                  dropzone: pre-file it reads "Upload" and just opens the
-                  picker (tagged entry_point "button" — see
-                  buttonFileInputRef above); once a file's chosen it now
-                  reads "Sign this file" (was "Continue", 2026-08-05,
-                  direct ask, same pass as the Seal tab's "Seal this file")
-                  and does the actual handleUpload network chain. Never
-                  disabled pre-file (it has to be clickable to open the
-                  picker) — the old `!file` half of the disabled check only
-                  ever made sense back when this button *was* handleUpload
-                  unconditionally.
+                  (2026-08-05, direct ask, corrected same day), then briefly
+                  two states ("Upload" pre-file, "Sign this file" once a
+                  file was chosen). Now "Sign this file" from the first
+                  moment the button is seen (2026-08-05, direct ask, same
+                  pass as the Seal tab's matching change) — the label
+                  stopped naming the mechanical upload step and always
+                  states the actual call to action instead. Click behavior
+                  is unchanged: pre-file it still just opens the picker
+                  (tagged entry_point "button" — see buttonFileInputRef
+                  above); once a file's chosen it still runs the actual
+                  handleUpload network chain. Never disabled pre-file (it
+                  has to be clickable to open the picker) — the old `!file`
+                  half of the disabled check only ever made sense back when
+                  this button *was* handleUpload unconditionally.
 
-                  Permanently yellow now too (variant="cta", was gated on
+                  Permanently yellow (variant="cta", was gated on
                   uploadButtonColorVariant) — direct ask, borrowing
                   Console's own permanently-yellow button. This and the
                   Seal tab's matching change together retired the
@@ -1076,7 +1080,7 @@ export function NewDocumentClient({
                 onClick={file ? handleUpload : () => buttonFileInputRef.current?.click()}
               >
                 {status !== "uploading" && <Signature className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />}
-                {status === "uploading" ? "Uploading…" : file ? "Sign this file" : "Upload"}
+                {status === "uploading" ? "Uploading…" : "Sign this file"}
               </Button>
             </CardContent>
           </Card>
