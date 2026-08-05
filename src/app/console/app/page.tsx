@@ -155,8 +155,17 @@ export default async function ConsoleAppPage({
           initialCapEnabled={consoleSettings?.console_spend_cap_enabled ?? true}
           initialCapCents={consoleSettings?.console_spend_cap_cents ?? 2500}
           showIntro={!consoleSettings?.console_cap_intro_seen_at}
+          // Defaults to "both" rather than "ask" (2026-08-05, direct ask:
+          // "let's assume both for now and skip the question so people can
+          // get to the sealed file faster") — an org that's never touched
+          // this setting now skips straight to a confirm bubble with both
+          // files, no conversational appended/separate/both question first.
+          // Fully reversible per-org, self-serve, no code change needed:
+          // the Settings dropdown (verified-badge-settings.tsx) still has
+          // "Ask me every time" as a real option — this only changes what
+          // an org that's never opened that dropdown gets by default.
           certificateModePreference={
-            (consoleSettings?.verified_badge_certificate_mode as "ask" | "appended" | "separate" | "both" | undefined) ?? "ask"
+            (consoleSettings?.verified_badge_certificate_mode as "ask" | "appended" | "separate" | "both" | undefined) ?? "both"
           }
           identityVerified={identityStatus.verified}
           identityVerifiedName={identityStatus.verified ? identityStatus.name : null}
