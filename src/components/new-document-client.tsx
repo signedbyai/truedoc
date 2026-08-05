@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { track } from "@vercel/analytics";
-import { UploadCloud, Upload, Sparkles, Receipt, Rocket, ShieldCheck, X } from "lucide-react";
+import { UploadCloud, Upload, Sparkles, Receipt, Rocket, ShieldCheck, Signature, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -691,14 +691,19 @@ export function NewDocumentClient({
           </Card>
         ) : mode === "badge" ? (
           <Card>
-            <CardHeader>
-              {/* "Get a Verified Badge" (2026-08-05, direct ask) — was
-                  "Seal a file", swapped with the tab's own label (now "Seal
-                  a file") so the pairing matches this file's established
-                  compact-tab/explanatory-title pattern. */}
-              <CardTitle>Get a Verified Badge</CardTitle>
+            <CardHeader className="items-center text-center">
+              {/* Centered yellow icon badge + "Generate your Verified
+                  Badge" heading (2026-08-05, direct ask) — borrowed from
+                  Console's own uploader (console-chat.tsx's upload-prompt
+                  card), which already used this exact treatment for the
+                  same action. Replaces the plain left-aligned "Get a
+                  Verified Badge" title/description pairing. */}
+              <span className="mb-1 flex h-14 w-14 items-center justify-center rounded-2xl bg-yellow-300">
+                <ShieldCheck className="h-6 w-6 text-slate-900" strokeWidth={1.75} aria-hidden="true" />
+              </span>
+              <CardTitle>Generate your Verified Badge</CardTitle>
               <CardDescription>
-                Prove a file is unaltered and identity-verified, with a scannable QR proof — no signer needed.
+                Seal your first file to generate cryptographic proof it&apos;s unaltered and identity-verified.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -716,7 +721,9 @@ export function NewDocumentClient({
                 }}
                 onClick={() => badgeFileInputRef.current?.click()}
                 className={cn(
-                  "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors",
+                  // Rounded-2xl (was rounded-lg, 2026-08-05, direct ask) —
+                  // matches Console's own more-rounded dropzone.
+                  "flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors",
                   badgeIsDragging ? "border-slate-900 bg-slate-100" : "border-slate-300 hover:bg-slate-50",
                   !badgeFile && "upload-glow"
                 )}
@@ -735,7 +742,11 @@ export function NewDocumentClient({
                   <p className="text-sm font-medium text-slate-900">{badgeFile.name}</p>
                 ) : (
                   <>
-                    <ShieldCheck className="mb-2 h-8 w-8 text-slate-400" strokeWidth={1.5} />
+                    {/* Plain cloud-upload icon (was ShieldCheck, 2026-08-05,
+                        direct ask) — the shield now lives in the header
+                        badge above, so repeating it here read as
+                        redundant. */}
+                    <UploadCloud className="mb-2 h-8 w-8 text-slate-400" strokeWidth={1.5} />
                     <p className="text-sm font-medium text-slate-900">Click to choose a PDF, or drag one here</p>
                     <p className="mt-1 text-xs text-slate-500">Up to 25MB</p>
                   </>
@@ -827,18 +838,27 @@ export function NewDocumentClient({
                 </div>
               )}
 
+              {/* Permanently yellow (2026-08-05, direct ask) — no longer
+                  tied to uploadButtonColorVariant's black/yellow test (see
+                  the Sign tab's own button below for the matching change
+                  and its note on what that means for the test). Icon +
+                  "Seal this file" borrowed from Console's own permanently-
+                  yellow seal button. */}
               <Button
-                className="w-full"
-                variant={uploadButtonColorVariant === "yellow" ? "cta" : "default"}
+                className="w-full gap-1.5"
+                variant="cta"
                 disabled={badgeStatus === "uploading" || badgeStatus === "verifying"}
                 onClick={badgeFile ? handleSealUpload : () => badgeButtonFileInputRef.current?.click()}
               >
+                {badgeStatus !== "uploading" && badgeStatus !== "verifying" && (
+                  <ShieldCheck className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+                )}
                 {badgeStatus === "uploading"
                   ? "Uploading…"
                   : badgeStatus === "verifying"
                     ? "Verifying…"
                     : badgeFile
-                      ? "Seal"
+                      ? "Seal this file"
                       : "Upload"}
               </Button>
             </CardContent>
@@ -859,19 +879,20 @@ export function NewDocumentClient({
           </Card>
         ) : (
           <Card>
-            <CardHeader>
-              {/* Was "New document" (2026-07-25), then briefly matched the
-                  tab's own label. Card copy updated 2026-08-05, direct ask
-                  — deliberately diverges from the tab label: the tab stays
-                  compact ("Sign", width-constrained, shared row with Seal/
-                  Quote/Draft — all four use this same compact-tab/
-                  explanatory-title pairing, e.g. "Quote" / "Get a Magic
-                  Quote"), while the card itself has room to be more
-                  explanatory. Leads with the outcome (a signed document)
-                  and the description now names the actual next step (send
-                  it out), not just the
+            <CardHeader className="items-center text-center">
+              {/* Centered yellow icon badge (2026-08-05, direct ask) —
+                  same treatment borrowed for the Seal tab above, using a
+                  signature glyph in place of the shield so the two tabs
+                  read as siblings, not identical. Heading text updated to
+                  match ("Get your document signed", was "Get a document
+                  signed") — same 2026-08-05 pass, mocked up alongside the
+                  Seal tab's own copy. Description unchanged: still names
+                  the actual next step (send it out), not just the
                   field-placement step in between. */}
-              <CardTitle>Get a document signed</CardTitle>
+              <span className="mb-1 flex h-14 w-14 items-center justify-center rounded-2xl bg-yellow-300">
+                <Signature className="h-6 w-6 text-slate-900" strokeWidth={1.75} aria-hidden="true" />
+              </span>
+              <CardTitle>Get your document signed</CardTitle>
               <CardDescription>Upload a PDF you already have, place signature fields, and send it out.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -889,7 +910,9 @@ export function NewDocumentClient({
                 }}
                 onClick={() => fileInputRef.current?.click()}
                 className={cn(
-                  "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors",
+                  // Rounded-2xl (was rounded-lg, 2026-08-05, direct ask) —
+                  // matches the Seal tab's own dropzone.
+                  "flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors",
                   isDragging ? "border-slate-900 bg-slate-100" : "border-slate-300 hover:bg-slate-50",
                   // Moved here from the Magic Quote/AI Drafter tabs
                   // (2026-08-05, direct ask) — this dropzone is the actual
@@ -1034,23 +1057,38 @@ export function NewDocumentClient({
               )}
 
               {/* Was always "Upload & continue" as one label/one click
-                  (2026-08-05, direct ask, corrected same day). Now two
-                  states of the same button instead of a separate one next
-                  to the dropzone: pre-file it reads "Upload" and just opens
-                  the picker (tagged entry_point "button" — see
-                  buttonFileInputRef above); once a file's chosen it becomes
-                  "Continue" and does the actual handleUpload network chain.
-                  Never disabled pre-file (it has to be clickable to open
-                  the picker) — the old `!file` half of the disabled check
-                  only ever made sense back when this button *was*
-                  handleUpload unconditionally. */}
+                  (2026-08-05, direct ask, corrected same day). Two states
+                  of the same button instead of a separate one next to the
+                  dropzone: pre-file it reads "Upload" and just opens the
+                  picker (tagged entry_point "button" — see
+                  buttonFileInputRef above); once a file's chosen it now
+                  reads "Sign this file" (was "Continue", 2026-08-05,
+                  direct ask, same pass as the Seal tab's "Seal this file")
+                  and does the actual handleUpload network chain. Never
+                  disabled pre-file (it has to be clickable to open the
+                  picker) — the old `!file` half of the disabled check only
+                  ever made sense back when this button *was* handleUpload
+                  unconditionally.
+
+                  Permanently yellow now too (variant="cta", was
+                  uploadButtonColorVariant === "yellow" ? "cta" : "default")
+                  — direct ask, borrowing Console's own permanently-yellow
+                  button. This and the Seal tab's matching change together
+                  mean uploadButtonColorVariant's black/yellow test no
+                  longer has anywhere left to show "black": both buttons it
+                  ever applied to are yellow unconditionally now. The flag
+                  itself, its FlagValues wiring in page.tsx, and the
+                  signing_continue_clicked event's button_color property are
+                  all left in place rather than torn out here — a genuine
+                  cleanup, just a separate one from this redesign pass. */}
               <Button
-                className="w-full"
-                variant={uploadButtonColorVariant === "yellow" ? "cta" : "default"}
+                className="w-full gap-1.5"
+                variant="cta"
                 disabled={status === "uploading"}
                 onClick={file ? handleUpload : () => buttonFileInputRef.current?.click()}
               >
-                {status === "uploading" ? "Uploading…" : file ? "Continue" : "Upload"}
+                {status !== "uploading" && <Signature className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />}
+                {status === "uploading" ? "Uploading…" : file ? "Sign this file" : "Upload"}
               </Button>
             </CardContent>
           </Card>
