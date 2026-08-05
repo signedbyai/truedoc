@@ -6,7 +6,7 @@ import { track } from "@vercel/analytics";
 import { ArrowUp, Check, ChevronDown, Copy, ExternalLink, FileText, FileUp, Paperclip, ShieldCheck, Square, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { parseNdjsonLine, splitNdjsonLines } from "@/lib/ndjson";
-import { formatCreditPackPrice, formatPrice, type Currency } from "@/lib/currency";
+import { formatCreditPackPrice, type Currency } from "@/lib/currency";
 import type { ConsoleHeroIconColor } from "@/flags";
 
 // Which control actually opened the file picker / received the drop for a
@@ -1428,6 +1428,19 @@ export function ConsoleChat({
           )}
           {/* text-base (2026-07-31, direct feedback: response text was too
               small to read comfortably) — was text-sm on both bubble types. */}
+          {/* Initial top clearance, mobile only (2026-08-05, direct ask) —
+              generalizes the capReached-bubble-specific `mt-10 lg:mt-0` fix
+              below into a single spacer ahead of the whole list, since the
+              actual problem was never specific to that one bubble type: in
+              a short conversation ANY first (or second) message lands right
+              under the floating mobile pill nav, buttons/text half-covered.
+              A blanket top-padding on the scroll container itself was
+              deliberately avoided (see console-workspace.tsx's own
+              "no reserved top padding" comment) — that recreates the exact
+              solid-bar look the pill design replaced. This is narrower:
+              only present once, only before the first real message, and
+              only on mobile (lg:hidden) where the pill actually floats. */}
+          {messages.length > 0 && <div className="h-10 shrink-0 lg:hidden" aria-hidden="true" />}
           {messages.map((m, i) =>
             m.role === "user" ? (
               <div key={i} className="ml-auto max-w-[85%] rounded-2xl bg-neutral-800 px-4 py-2.5 text-base text-white">
@@ -1436,19 +1449,7 @@ export function ConsoleChat({
             ) : (
               <div
                 key={i}
-                // Extra top clearance ONLY on a capReached bubble, mobile
-                // only (2026-08-05, direct ask — the mobile pill nav is
-                // deliberately unpadded-for everywhere else, see its own
-                // "no reserved top padding" comment a few lines up in
-                // console-workspace.tsx; a blanket top-padding fix there
-                // would recreate the exact solid-bar look that pill design
-                // replaced). Scoped to just this one bubble type instead:
-                // in a short conversation this is the first or second
-                // message, landing right under the floating pill with its
-                // buttons half-covered — pushing just this bubble down
-                // clears it without adding any permanent gap for every
-                // other message/every other conversation length.
-                className={`mr-auto max-w-[90%] text-base leading-relaxed text-neutral-200 ${m.capReached ? "mt-10 lg:mt-0" : ""}`}
+                className="mr-auto max-w-[90%] text-base leading-relaxed text-neutral-200"
               >
                 <AssistantContent content={m.content} />
                 {m.certificateModeChoice && (
@@ -1571,9 +1572,13 @@ export function ConsoleChat({
                       >
                         {upgradeLoading ? "Starting checkout…" : "Upgrade to Pro"}
                       </button>
-                      <p className="text-[11px] text-neutral-500">
-                        50 docs {formatPrice(currency, "starter", { withPeriod: true })}
-                      </p>
+                      {/* No price here (2026-08-05, direct ask) — the Top up
+                          button already states its own price, and this
+                          bubble's job is just "here's what Pro unlocks," not
+                          a second place to repeat the plan's cost. Matches
+                          CONSOLE_FREE_ALLOWANCE (console-usage.ts) — keep
+                          these in sync if that constant changes again. */}
+                      <p className="text-[11px] text-neutral-500">100 seals included</p>
                     </div>
                   </div>
                 )}

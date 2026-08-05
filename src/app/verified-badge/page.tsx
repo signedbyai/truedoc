@@ -81,7 +81,7 @@ function buildFaq(overagePrice: string) {
     },
     {
       q: "What plan do I need?",
-      a: `Any plan, including Free — Console/MCP access now comes with every account, no card required. Free includes 3 document-seals a month. Pro plan or higher raises that to 50 free document-seals a month, then ${overagePrice} per seal, same metering as Console's other actions. It's reached by chatting with Console ("seal this file") or through the seal_document tool if you're wiring in an AI agent — see the developer docs.`,
+      a: `Any plan, including Free — Console/MCP access now comes with every account, no card required. Free includes 3 document-seals a month. Pro plan or higher raises that to 100 free document-seals a month, then ${overagePrice} per seal, same metering as Console's other actions. It's reached by chatting with Console ("seal this file") or through the seal_document tool if you're wiring in an AI agent — see the developer docs.`,
     },
     {
       q: "What actually makes the timestamp \"cryptographically verified\"?",
@@ -216,7 +216,7 @@ export default async function VerifiedBadgePage() {
         <h2 className="text-2xl font-semibold text-slate-900">Generate Your Proof</h2>
         <p className="mt-2 text-sm text-slate-600">
           Console/MCP, free to start — 3 seals a month included, no card required. Need more? Pro plan or higher
-          gets 50 free document-seals a month, then {overagePrice} per seal.
+          gets 100 free document-seals a month, then {overagePrice} per seal.
         </p>
         <CtaLink href={START_HREF} className="mt-5" color={ctaColor} page="verified-badge" position="footer">
           Generate Your Proof →

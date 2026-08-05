@@ -17,10 +17,14 @@ import { sendConsoleCapWarningEmail } from "@/lib/email";
 // as part of unlocking Pro/Team access to the plain REST API + webhooks —
 // stays metered rather than becoming unlimited (Console's bulk-send has no
 // volume cap of its own, see console-bulk-send-cap-removed memory), so a
-// more generous free allowance is the actual lever being pulled here. Every
-// hardcoded "20 free" mention in marketing/settings copy (developers,
-// console, dashboard/settings, verified-badge pages) needs to match this.
-export const CONSOLE_FREE_ALLOWANCE = 50;
+// more generous free allowance is the actual lever being pulled here.
+// Raised again from 50 to 100 (2026-08-05, direct instruction — triggered by
+// the Free-plan capReached bubble's Upgrade-to-Pro subtext needing to say
+// "100 seals included" truthfully rather than overpromise a number the real
+// allowance didn't match). Every hardcoded "50 free" mention in marketing/
+// settings copy (developers, console, dashboard/settings, verified-badge
+// pages) needs to match this.
+export const CONSOLE_FREE_ALLOWANCE = 100;
 // Stepped down from 25 to 20 (2026-08-03, direct instruction). IMPORTANT —
 // this constant only drives the LOCAL spend-cap math and display copy
 // (this file's computeConsoleBillingState, console-usage-panel.tsx,

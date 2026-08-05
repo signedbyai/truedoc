@@ -100,7 +100,7 @@ export default async function SettingsPage() {
               {hasApiAccess
                 ? "Wire SignedBy into your CRM, app, or onboarding flow. Use the key below to create, send, and track documents from your own code."
                 : hasConsoleAccess
-                  ? "Metered API access — 50 free document-sends a month, then billed per document. Use the key below to create, send, and track documents from your own code."
+                  ? "Metered API access — 100 free document-sends a month, then billed per document. Use the key below to create, send, and track documents from your own code."
                   : "Free plan sandbox — the same 3 documents/month the dashboard gives you, reachable via the API too. Build and test against a real account before upgrading."}
             </CardDescription>
           </CardHeader>

@@ -254,7 +254,7 @@ export default async function ConsolePage() {
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">
           <p className="text-sm font-semibold text-slate-100">Fully metered</p>
           <p className="mt-1 text-xs text-slate-400">
-            50 document-sends free every month, then billed per document beyond that — on every plan, Business
+            100 document-sends free every month, then billed per document beyond that — on every plan, Business
             included.
           </p>
         </div>
@@ -283,7 +283,7 @@ export default async function ConsolePage() {
             than a person, and needs the Pro plan or higher:
           </p>
           <ul className="list-inside list-disc space-y-1">
-            <li><strong className="text-slate-100">50 document-sends</strong> free every month via console, on any plan — Pro, Team, or Business.</li>
+            <li><strong className="text-slate-100">100 document-sends</strong> free every month via console, on any plan — Pro, Team, or Business.</li>
             <li>
               <strong className="text-slate-100">{overagePrice} per document</strong> sent beyond that, billed monthly alongside your
               subscription — console is metered on every plan, including Business. This is separate from

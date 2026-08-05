@@ -140,7 +140,7 @@ export default async function DevelopersPage() {
         <p className="max-w-xl text-lg text-slate-600">
           A REST API and outbound webhooks for wiring SignedBy into your CRM, app, or onboarding flow — create and
           send documents, get notified the moment one&apos;s signed, and sync it all back automatically. Starts on
-          the $7/mo Pro plan (50 free document-sends a month, then billed per document) and becomes fully
+          the $7/mo Pro plan (100 free document-sends a month, then billed per document) and becomes fully
           unlimited on Business ($29/mo) — no separate developer plan to buy first.
         </p>
         <CtaLink href={SIGNUP_HREF} color={ctaColor} page="developers" position="hero">
@@ -225,7 +225,7 @@ export default async function DevelopersPage() {
           <div className="rounded-xl border border-slate-200 p-5">
             <p className="text-sm font-semibold text-slate-900">Starts on Pro ($7/mo)</p>
             <p className="mt-1 text-xs text-slate-600">
-              No separate developer plan or per-seat API tier — 50 free document-sends a month on Pro/Team,
+              No separate developer plan or per-seat API tier — 100 free document-sends a month on Pro/Team,
               fully unlimited (plus webhooks) on Business ($29/mo). See how that compares to DocuSign, SignNow,
               and PandaDoc on our <Link href="/vs/docusign" className="underline">comparison pages</Link>.
             </p>
@@ -253,7 +253,7 @@ export default async function DevelopersPage() {
         <CodeBlock>{`Authorization: Bearer sb_live_...`}</CodeBlock>
         <p>
           Missing or invalid keys get a 401. What happens after that depends on your plan: Business is unlimited,
-          Pro and Team are metered (50 free document-sends/month, then billed per document — see{" "}
+          Pro and Team are metered (100 free document-sends/month, then billed per document — see{" "}
           <Link href="/console" className="underline">/console</Link> for pricing), and Free is capped at the same
           3 documents/month the dashboard gives you:
         </p>
@@ -494,7 +494,7 @@ function verify(rawBody, signatureHeader, secret) {
           <Link href="/console" className="underline">
             Console&apos;s
           </Link>{" "}
-          metered access (50 free document-sends/month, then billed per document), same metering on every plan
+          metered access (100 free document-sends/month, then billed per document), same metering on every plan
           including Business — not the plain REST API access described in Authentication above, which is metered
           on Pro/Team and unlimited on Business. See <Link href="/console" className="underline">/console</Link>{" "}
           for the full pricing.
