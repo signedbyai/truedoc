@@ -513,12 +513,12 @@ export function NewDocumentClient({
             overflowing a narrow phone screen: four columns always split the
             card's actual width evenly, so there's nothing to overflow.
             Order (2026-08-05, VERIFIED_BADGE_DASHBOARD_SCOPE.md, direct
-            instruction): Sign, Seal, Quote, then AI Draft in the 4th
-            column — plain tab at every breakpoint (see below), confirmed
-            against an actual mobile render rather than assumed. Tab labels
-            shortened to single words the same day (direct ask, twice —
-            "Sign a file"/"Seal a file" first became "Sign"/"Seal" on a
-            later pass). */}
+            instruction): Sign, Seal, Quote, then Draft in the 4th column —
+            plain tab at every breakpoint (see below), confirmed against an
+            actual mobile render rather than assumed. Tab labels shortened
+            to single words over several direct-ask passes the same day —
+            "Sign a file"/"Seal a file"/"AI Draft" became "Sign"/"Seal"/
+            "Draft". */}
         <div className="relative mb-4 grid grid-cols-4 gap-2">
           <button
             onClick={() => setMode("upload")}
@@ -601,7 +601,7 @@ export function NewDocumentClient({
                   same reasoning as the other tabs above. */}
               <span className="inline-flex items-center justify-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                AI Draft
+                Draft
               </span>
             </button>
           ) : (
@@ -620,7 +620,7 @@ export function NewDocumentClient({
             >
               <span className="inline-flex items-center justify-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                AI Draft · Pro+
+                Draft · Pro+
               </span>
             </a>
           )}
@@ -855,7 +855,7 @@ export function NewDocumentClient({
                   tab's own label. Card copy updated 2026-08-05, direct ask
                   — deliberately diverges from the tab label: the tab stays
                   compact ("Sign", width-constrained, shared row with Seal/
-                  Quote/AI Draft — all four use this same compact-tab/
+                  Quote/Draft — all four use this same compact-tab/
                   explanatory-title pairing, e.g. "Quote" / "Get a Magic
                   Quote"), while the card itself has room to be more
                   explanatory. Leads with the outcome (a signed document)
