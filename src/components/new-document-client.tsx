@@ -485,20 +485,23 @@ export function NewDocumentClient({
                   <Rocket className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" strokeWidth={1.75} />
                   <div className="flex-1 space-y-2">
                     <div>
-                      <p className="text-sm font-medium text-amber-900">You&apos;ve used your 3 free documents this month</p>
+                      <p className="text-sm font-medium text-amber-900">You&apos;ve used your 3 free docs this month</p>
                       <p className="text-xs text-amber-700">Upgrade to Pro to send unlimited documents.</p>
                     </div>
                     {/* Upgrade to Pro leads (2026-08-05, direct ask) — it's the
                         better outcome (unlimited, not just +25), so it gets
                         first position and the filled/primary treatment; the
-                        credit pack is the secondary, outline option. */}
-                    <div className="flex flex-wrap gap-2">
+                        credit pack is the secondary, outline option. Equal
+                        flex-1 widths (same direct ask) rather than
+                        content-hugging, so the two options read as a
+                        deliberate pair, not mismatched sizes. */}
+                    <div className="flex gap-2">
                       <Button
                         type="button"
                         size="sm"
                         disabled={upgradeLoading}
                         onClick={upgradeToPro}
-                        className="border-0 bg-amber-400 text-amber-950 hover:bg-amber-500"
+                        className="flex-1 border-0 bg-amber-400 text-amber-950 hover:bg-amber-500"
                       >
                         {upgradeLoading ? "Starting checkout…" : "Upgrade to Pro"}
                       </Button>
@@ -508,16 +511,19 @@ export function NewDocumentClient({
                         variant="outline"
                         disabled={creditsLoading}
                         onClick={buyCreditPack}
-                        className="bg-white"
+                        className="flex-1 bg-white"
                       >
-                        {creditsLoading ? "Starting checkout…" : `Buy 25 more for ${formatCreditPackPrice(currency)}`}
+                        {creditsLoading ? "Starting checkout…" : `25 more for ${formatCreditPackPrice(currency)}`}
                       </Button>
                     </div>
                     {/* Small escape hatch for anyone who wants to compare
                         Team/Business too, not just the two options above
                         (2026-08-05, direct ask). */}
-                    <Link href="/pricing" className="inline-block text-xs text-amber-700 underline hover:text-amber-900">
-                      View pricing plans
+                    <Link
+                      href="/pricing"
+                      className="block text-center text-xs text-amber-700 underline hover:text-amber-900"
+                    >
+                      view pricing plans
                     </Link>
                   </div>
                 </div>
