@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useRef, useState } from "react";
 import { track } from "@vercel/analytics";
-import { UploadCloud, Upload, Sparkles, Receipt } from "lucide-react";
+import { UploadCloud, Upload, Sparkles, Receipt, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -86,8 +86,36 @@ export function NewDocumentClient({
   const [errorMessage, setErrorMessage] = useState("");
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [creditsLoading, setCreditsLoading] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
 
   const MAX_FILE_BYTES = 25 * 1024 * 1024;
+
+  // "Upgrade to Pro" on the cap-hit card below (2026-08-05, direct ask: go
+  // straight to Stripe Checkout instead of the /pricing page, "so it's
+  // simple") — same POST-then-redirect shape as buyCreditPack below and as
+  // pricing-cards.tsx's subscribe(), just hardcoded to "starter" (Pro)
+  // since that's the only plan this specific upsell ever offers.
+  // `source: "dashboard"` for the same cross-subdomain-cancel_url reason
+  // buyCreditPack sends it explicitly below.
+  async function upgradeToPro() {
+    setUpgradeLoading(true);
+    try {
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: "starter", source: "dashboard" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Couldn't start checkout — try again.");
+      }
+      window.location.href = data.url;
+    } catch (err) {
+      setStatus("error");
+      setErrorMessage(err instanceof Error ? err.message : "Something went wrong.");
+      setUpgradeLoading(false);
+    }
+  }
 
   // "Buy 25 more" next to "View plans" on the cap-hit error line below —
   // same credit-pack top-up as console chat's capReached bubble
@@ -443,27 +471,56 @@ export function NewDocumentClient({
                 </div>
               )}
 
-              {status === "error" && (
-                <p className="text-sm text-red-600">
-                  {errorMessage}
-                  {showUpgrade && (
-                    <>
-                      {" "}
-                      <Link href="/pricing" className="font-medium underline">
-                        View plans
-                      </Link>{" "}
-                      ·{" "}
-                      <button
+              {/* Cap-hit (showUpgrade) is only ever true from
+                  checkFreePlanDocCap's 402 — never a real failure, so it gets
+                  its own amber upsell card instead of sharing the red error
+                  line below (2026-08-05, direct ask: the old shared styling
+                  made a "buy more" moment look like something had broken).
+                  Genuine errors — bad file type, oversized file, a failed
+                  upload — keep the plain red line. */}
+              {status === "error" && !showUpgrade && <p className="text-sm text-red-600">{errorMessage}</p>}
+
+              {status === "error" && showUpgrade && (
+                <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <Rocket className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" strokeWidth={1.75} />
+                  <div className="flex-1 space-y-2">
+                    <div>
+                      <p className="text-sm font-medium text-amber-900">You&apos;ve used your 3 free documents this month</p>
+                      <p className="text-xs text-amber-700">Upgrade to Pro to send unlimited documents.</p>
+                    </div>
+                    {/* Upgrade to Pro leads (2026-08-05, direct ask) — it's the
+                        better outcome (unlimited, not just +25), so it gets
+                        first position and the filled/primary treatment; the
+                        credit pack is the secondary, outline option. */}
+                    <div className="flex flex-wrap gap-2">
+                      <Button
                         type="button"
+                        size="sm"
+                        disabled={upgradeLoading}
+                        onClick={upgradeToPro}
+                        className="border-0 bg-amber-400 text-amber-950 hover:bg-amber-500"
+                      >
+                        {upgradeLoading ? "Starting checkout…" : "Upgrade to Pro"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
                         disabled={creditsLoading}
                         onClick={buyCreditPack}
-                        className="font-medium underline disabled:pointer-events-none disabled:opacity-50"
+                        className="bg-white"
                       >
-                        {creditsLoading ? "Starting checkout…" : `Buy 25 more (${formatCreditPackPrice(currency)})`}
-                      </button>
-                    </>
-                  )}
-                </p>
+                        {creditsLoading ? "Starting checkout…" : `Buy 25 more for ${formatCreditPackPrice(currency)}`}
+                      </Button>
+                    </div>
+                    {/* Small escape hatch for anyone who wants to compare
+                        Team/Business too, not just the two options above
+                        (2026-08-05, direct ask). */}
+                    <Link href="/pricing" className="inline-block text-xs text-amber-700 underline hover:text-amber-900">
+                      View pricing plans
+                    </Link>
+                  </div>
+                </div>
               )}
 
               {/* Was always "Upload & continue" as one label/one click
