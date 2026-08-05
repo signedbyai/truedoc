@@ -9,9 +9,11 @@ import { ApiKeySettings } from "@/components/api-key-settings";
 import { AutoSuggestSettings } from "@/components/auto-suggest-settings";
 import { FrequentSignersSettings } from "@/components/frequent-signers-settings";
 import { WebhookSettings } from "@/components/webhook-settings";
+import { IdentitySettings } from "@/components/identity-settings";
 import { Collapsible } from "@/components/collapsible";
+import { resolveIdentityStatus } from "@/lib/identity";
 
-// Grouped by concern, not by tier: Workspace (identity) → Automation & AI →
+// Grouped by concern, not by tier: Workspace → Identity → Automation & AI →
 // Integrations → Plan & team. Plan/seat management actually lives on separate
 // pages (/dashboard/billing, /dashboard/team), so the last card is a signpost
 // to them — people look for those here first.
@@ -22,11 +24,20 @@ export default async function SettingsPage() {
 
   const { data: org } = await supabase
     .from("organizations")
-    .select("name, plan, logo_url, brand_color, api_key_prefix, auto_suggest_on_upload")
+    .select(
+      "name, plan, logo_url, brand_color, api_key_prefix, auto_suggest_on_upload, identity_verified_at, identity_verified_name, verified_badge_certificate_mode"
+    )
     .eq("id", orgId)
     .single();
 
   if (!org) redirect("/dashboard");
+
+  // Same computation console/app/page.tsx already does for its own copy of
+  // this data (2026-08-05 follow-up to VERIFIED_BADGE_DASHBOARD_SCOPE.md) —
+  // one org-level identity check, two rendering surfaces.
+  const identityStatus = resolveIdentityStatus(org);
+  const certificateMode =
+    (org.verified_badge_certificate_mode as "ask" | "appended" | "separate" | "both" | undefined) ?? "both";
 
   const hasCustomBranding = planHasFeature(org.plan, "customBranding");
   const hasApiAccess = planHasFeature(org.plan, "apiAccess");
@@ -63,6 +74,35 @@ export default async function SettingsPage() {
             {/* No upgrade CTA here — BrandingSettings already says "available
                 on the Team plan" inline next to the logo and colour controls,
                 so the dashed box was a redundant second ask in the same card. */}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Identity</CardTitle>
+            <CardDescription>
+              {/* 2026-08-05 follow-up to VERIFIED_BADGE_DASHBOARD_SCOPE.md —
+                  this card didn't exist here before (a direct question:
+                  "not seeing anything in Settings under Identity, is it
+                  there but I'm missing it?"). It wasn't: the same panel only
+                  lived in Console's Settings tab, moved there 2026-08-01
+                  back when sealing was Console/MCP-only. Kept as a second
+                  surface over the same data now that both exist, not a
+                  replacement — see identity-settings.tsx's doc comment. Also
+                  the intended home for a future LinkedIn-based identity
+                  signal, per direct note. */}
+              One-time identity check, required before your first Verified Badge seal — reused across every future
+              seal after that, from this dashboard, Console, or the API.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <IdentitySettings
+              identityVerified={identityStatus.verified}
+              identityVerifiedName={identityStatus.verified ? identityStatus.name : null}
+              identityVerifiedAt={identityStatus.verified ? identityStatus.verifiedAt : null}
+              identityStale={identityStatus.verified ? identityStatus.stale : false}
+              initialCertificateMode={certificateMode}
+            />
           </CardContent>
         </Card>
 
