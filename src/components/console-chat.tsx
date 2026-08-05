@@ -462,13 +462,6 @@ const MAX_TEMPLATE_FILE_BYTES = 25 * 1024 * 1024;
 // someone actually attaches a file (they've now discovered it either way).
 const PAPERCLIP_INTRO_KEY = "signedby-console-paperclip-intro-dismissed";
 
-// capReached bubble v1/v2 (2026-08-05, direct ask: "let's just start with
-// the top up for now as a v1 and then add the pro + top up as the v2 in a
-// few days") — Top up ships alone first; Upgrade to Pro's button/subtext
-// stay fully built (subscribeToPro, upgradeLoading, the JSX below) but
-// gated behind this flag so v2 is a one-line flip, not a rebuild.
-const SHOW_UPGRADE_TO_PRO = false;
-
 /** Reads /api/console/chat's streamed NDJSON body, forwarding each
  *  {type:"status"} line to onStatus as it arrives and returning whatever
  *  the final (non-status) line was. Falls back to a plain res.json() if
@@ -1539,46 +1532,48 @@ export function ConsoleChat({
                   </div>
                 )}
                 {m.capReached && (
-                  // v1: Top up only (see SHOW_UPGRADE_TO_PRO above). Short
-                  // price/quantity subtext under the button (2026-08-05,
-                  // direct ask: "the upgrade to pro does not tell me how
-                  // many seals i get per month") — this bubble is the
-                  // Free-tier org's blanket-cap wall (see reportUploadError
-                  // above), so +25 docs is exactly what a Free org gets
-                  // from this button.
-                  <div className="mt-2 flex flex-wrap gap-3">
-                    {SHOW_UPGRADE_TO_PRO && (
-                      <div className="flex flex-col items-center gap-1">
-                        <Button type="button" variant="cta" size="sm" disabled={upgradeLoading} onClick={subscribeToPro}>
-                          {upgradeLoading ? "Starting checkout…" : "Upgrade to Pro"}
-                        </Button>
-                        <p className="text-[11px] text-neutral-500">
-                          50 docs {formatPrice(currency, "starter", { withPeriod: true })}
-                        </p>
-                      </div>
-                    )}
-                    {/* Credit pack top-up (2026-08-03) — the cheaper, no-subscription
-                        alternative sitting right next to Upgrade to Pro, per
-                        CONSOLE_FREE_TIER_SCOPE.md item #8. Not the shared
-                        Button component's "outline" variant — that's a
-                        light-background style built for the marketing/
-                        dashboard pages, and would look out of place against
-                        this dark chat surface. Matches the existing
-                        Certificate/Badge-image secondary-action links a few
-                        lines below instead. Relabeled "Buy 25 more ($X)" →
-                        "Top up" + a subtext line (2026-08-05) once the price
-                        moved into that subtext, so the button label itself
-                        wouldn't say the number twice. */}
-                    <div className="flex flex-col items-center gap-1">
-                      <button
+                  // console-native equivalent of new-document-client.tsx's
+                  // dashboard cap-hit card (2026-08-05) — same two options,
+                  // same equal-width pairing, adapted for this dark chat
+                  // surface instead of a light bordered card (a light-bg
+                  // card would look out of place here — see the older
+                  // comment this replaced). Order/emphasis deliberately
+                  // reversed from the dashboard version (Upgrade to Pro
+                  // first there): here Top up leads and gets the highlighted
+                  // `cta` treatment, Upgrade to Pro is the secondary/bordered
+                  // option, per direct ask. No "view pricing plans" link
+                  // (direct ask — dashboard's is dropped here on purpose,
+                  // not an oversight) and no per-doc overage rate on
+                  // Upgrade to Pro's subtext (direct ask: "the top up
+                  // numbers already tell that story" — +25 docs at a known
+                  // price already conveys the economics without also
+                  // spelling out $/doc on the other button).
+                  <div className="mt-2 flex gap-2">
+                    <div className="flex flex-1 flex-col items-center gap-1">
+                      <Button
                         type="button"
+                        variant="cta"
+                        size="sm"
                         disabled={creditsLoading}
                         onClick={buyCreditPack}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5 disabled:pointer-events-none disabled:opacity-50"
+                        className="w-full"
                       >
                         {creditsLoading ? "Starting checkout…" : "Top up"}
-                      </button>
+                      </Button>
                       <p className="text-[11px] text-neutral-500">+25 docs {formatCreditPackPrice(currency)}</p>
+                    </div>
+                    <div className="flex flex-1 flex-col items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={upgradeLoading}
+                        onClick={subscribeToPro}
+                        className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5 disabled:pointer-events-none disabled:opacity-50"
+                      >
+                        {upgradeLoading ? "Starting checkout…" : "Upgrade to Pro"}
+                      </button>
+                      <p className="text-[11px] text-neutral-500">
+                        50 docs {formatPrice(currency, "starter", { withPeriod: true })}
+                      </p>
                     </div>
                   </div>
                 )}
