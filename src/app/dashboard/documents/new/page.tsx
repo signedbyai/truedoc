@@ -42,10 +42,18 @@ export default async function NewDocumentPage({
   // clicking Send. Credits checked here too — a Free org sitting on a
   // referral credit isn't actually capped yet. See NewDocumentClient's
   // sendCapReached prop doc for the staleness tradeoff this accepts.
+  // Same read-only courtesy pre-check as sendCapReached, for Verified
+  // Badge's own independent 3-seals/month pool (2026-08-05,
+  // VERIFIED_BADGE_DASHBOARD_SCOPE.md) — real enforcement lives in
+  // checkFreePlanSealCap inside sealDocumentAction at the actual
+  // POST /api/documents/[id]/seal call. One getFreePlanUsage call covers
+  // both checks since it already returns both counts together.
   let sendCapReached = false;
+  let sealCapReached = false;
   if ((org?.plan ?? "free") === "free") {
     const usage = await getFreePlanUsage(ctx.supabase, ctx.orgId);
     sendCapReached = usage.sendsUsedThisMonth >= 3 && usage.docCredits <= 0;
+    sealCapReached = usage.sealsUsedThisMonth >= 3 && usage.docCredits <= 0;
   }
 
   // Same geo/cookie-based signal the pricing and checkout pages already use
@@ -59,7 +67,7 @@ export default async function NewDocumentPage({
   // the real DOCUMENT_TYPES list rather than cast directly — it's a
   // visitor-editable query param.
   const initialDocumentType = DOCUMENT_TYPES.some((t) => t.id === type) ? (type as DraftDocumentType) : undefined;
-  const initialMode = mode === "quote" ? "quote" : mode === "draft" ? "draft" : undefined;
+  const initialMode = mode === "quote" ? "quote" : mode === "draft" ? "draft" : mode === "badge" ? "badge" : undefined;
 
   // "Upload & continue" button color test (2026-08-05, direct ask) —
   // resolved unconditionally, cheap and independent of hasAiDraft/mode
@@ -78,6 +86,7 @@ export default async function NewDocumentPage({
         currency={requestCurrency}
         uploadButtonColorVariant={uploadButtonColorVariant}
         sendCapReached={sendCapReached}
+        sealCapReached={sealCapReached}
       />
     </>
   );

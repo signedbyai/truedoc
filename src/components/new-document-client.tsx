@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { track } from "@vercel/analytics";
-import { UploadCloud, Upload, Sparkles, Receipt, Rocket, X } from "lucide-react";
+import { UploadCloud, Upload, Sparkles, Receipt, Rocket, ShieldCheck, MoreHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,17 +15,18 @@ import { MagicQuoteForm } from "@/components/magic-quote-form";
 import type { QuoteCurrencySymbol } from "@/lib/quote-types";
 import type { DraftDocumentType } from "@/lib/ai-draft-types";
 import { formatCreditPackPrice, type Currency } from "@/lib/currency";
+import { getStripeClient } from "@/lib/stripe-client";
 
-// Shared by all four tab states (upload, AI Drafter, the locked AI Drafter
-// upsell, and Magic Quote) so they stay the same size as labels change.
-// No min-w here on purpose — the parent is a 3-column grid (see the JSX
-// below), so each tab's width comes from its grid column, which always
-// divides the available space three ways instead of the old fixed
-// min-w-[8rem] flex row, which added up to wider than a narrow phone
-// screen and pushed the third tab past the card's edge. text-center keeps
-// a short label centered in its column; text-xs/px-2 (vs. sm:text-sm/px-3)
-// give the longest label ("AI Drafter · Pro+") more room to fit
-// without wrapping on the narrowest columns.
+// Shared by every tab state (upload, Verified Badge, Magic Quote, AI
+// Drafter, and AI Drafter's locked upsell) so they stay the same size as
+// labels change. No min-w here on purpose — the parent is a grid (see the
+// JSX below), so each tab's width comes from its grid column, which always
+// divides the available space evenly instead of a fixed min-w flex row,
+// which could add up wider than a narrow phone screen and push a later tab
+// past the card's edge. text-center keeps a short label centered in its
+// column; text-xs/px-2 (vs. sm:text-sm/px-3) give the longest label ("AI
+// Drafter · Pro+") more room to fit without wrapping on the narrowest
+// columns.
 const MODE_TAB_CLASS =
   "w-full rounded-md border px-2 py-1.5 text-center text-xs font-medium transition-colors sm:px-3 sm:text-sm";
 
@@ -68,6 +69,7 @@ export function NewDocumentClient({
   currency = "USD",
   uploadButtonColorVariant = "black",
   sendCapReached = false,
+  sealCapReached = false,
 }: {
   hasAiDraft: boolean;
   defaultQuoteCurrency: QuoteCurrencySymbol;
@@ -77,13 +79,14 @@ export function NewDocumentClient({
   // gate below already falls back to the Upload tab in that case; no
   // special-casing needed here).
   initialDocumentType?: DraftDocumentType;
-  // Set when arriving via ?mode=quote|draft (the /magic-quote and
-  // /ai-drafter marketing pages link here this way) — lets a feature
-  // landing page open straight into the matching tab without needing a
-  // specific document type the way ?type= does. ?type= still wins when both
-  // could apply (it implies "draft" anyway), so existing /templates links
-  // are unaffected.
-  initialMode?: "draft" | "quote";
+  // Set when arriving via ?mode=quote|draft|badge (the /magic-quote,
+  // /ai-drafter, and /verified-badge marketing pages link here this way) —
+  // lets a feature landing page open straight into the matching tab without
+  // needing a specific document type the way ?type= does. ?type= still wins
+  // when both could apply (it implies "draft" anyway), so existing
+  // /templates links are unaffected. "badge" added 2026-08-05
+  // (VERIFIED_BADGE_DASHBOARD_SCOPE.md) for /verified-badge's own CTA.
+  initialMode?: "draft" | "quote" | "badge";
   /** Resolved visitor currency (2026-08-01, direct bug report against the
    *  matching console chat button: "Buy 25 more" here said a hardcoded
    *  "$5" regardless of where the visitor actually was — see
@@ -110,6 +113,16 @@ export function NewDocumentClient({
    *  prop said. Defaults to false so nothing changes for a plan that never
    *  passes it (Pro+ callers never pass true here in practice). */
   sendCapReached?: boolean;
+  /** Same shape/staleness tradeoff as sendCapReached above, but for the
+   *  independent 3-seals/month Free-plan pool (2026-08-05,
+   *  VERIFIED_BADGE_DASHBOARD_SCOPE.md) — server-computed from
+   *  getFreePlanUsage's sealsUsedThisMonth. Real enforcement lives in
+   *  checkFreePlanSealCap inside sealDocumentAction at the actual
+   *  POST /api/documents/[id]/seal call; this just skips the network
+   *  round trip and shows the Upgrade card immediately on the Verified
+   *  Badge tab's own "Continue" click. Defaults to false — Pro+ callers
+   *  never pass true here, since sealing is unlimited on every paid plan. */
+  sealCapReached?: boolean;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -121,7 +134,14 @@ export function NewDocumentClient({
   // sharing one <input> would mean whichever handler bound last "owns" its
   // onChange).
   const buttonFileInputRef = useRef<HTMLInputElement>(null);
-  const [mode, setMode] = useState<"upload" | "draft" | "quote">(
+  // Verified Badge tab's own dropzone/button file inputs (2026-08-05) —
+  // entirely separate state from the Sign-a-file tab's above rather than
+  // shared, since the two tabs' uploads feed different next steps (send-
+  // flow field placement vs. an immediate seal call) even though the
+  // upload mechanics themselves are identical (see uploadDraftDocument).
+  const badgeFileInputRef = useRef<HTMLInputElement>(null);
+  const badgeButtonFileInputRef = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<"upload" | "badge" | "draft" | "quote">(
     initialDocumentType ? "draft" : initialMode ?? "upload"
   );
   const [file, setFile] = useState<File | null>(null);
@@ -133,6 +153,22 @@ export function NewDocumentClient({
   const [creditsLoading, setCreditsLoading] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [menuIntroOpen, setMenuIntroOpen] = useMenuIntroVisible();
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+
+  // Verified Badge tab state — mirrors the Sign-a-file tab's own file/
+  // title/dragging/status/errorMessage/showUpgrade state above, plus one
+  // addition (needsIdentity) that tab has no equivalent of.
+  const [badgeFile, setBadgeFile] = useState<File | null>(null);
+  const [badgeTitle, setBadgeTitle] = useState("");
+  const [badgeIsDragging, setBadgeIsDragging] = useState(false);
+  const [badgeStatus, setBadgeStatus] = useState<"idle" | "uploading" | "verifying" | "error">("idle");
+  const [badgeErrorMessage, setBadgeErrorMessage] = useState("");
+  const [badgeShowUpgrade, setBadgeShowUpgrade] = useState(false);
+  // Set once the seal call comes back needing identity verification
+  // (sealDocumentAction's needsIdentityVerification) — the already-created,
+  // already-uploaded draft document id, so "Verify identity" can retry the
+  // seal on that same document afterward instead of re-uploading the file.
+  const [badgeNeedsIdentityDocId, setBadgeNeedsIdentityDocId] = useState<string | null>(null);
 
   function dismissMenuIntro() {
     setMenuIntroOpen(false);
@@ -240,11 +276,79 @@ export function NewDocumentClient({
     if (!title) setTitle(f.name.replace(/\.pdf$/i, ""));
   }
 
+  // Verified Badge tab's own file-chosen validation (2026-08-05) — same
+  // rules as handleFileChosen above (PDF only, 25MB cap), separate function
+  // only because it writes to the badge* state instead.
+  function handleBadgeFileChosen(f: File) {
+    if (f.type !== "application/pdf") {
+      setBadgeStatus("error");
+      setBadgeErrorMessage("Only PDF files are supported right now.");
+      return;
+    }
+    if (f.size > MAX_FILE_BYTES) {
+      setBadgeStatus("error");
+      setBadgeErrorMessage("File is larger than 25MB.");
+      return;
+    }
+    track("signing_upload_started", { entry_point: "verified_badge" });
+    setBadgeStatus("idle");
+    setBadgeFile(f);
+    if (!badgeTitle) setBadgeTitle(f.name.replace(/\.pdf$/i, ""));
+  }
+
   // Direct-to-R2 upload in three steps so the file never passes through a
   // Vercel serverless function (whose request body is capped at 4.5 MB):
   //   1. ask our API for a presigned PUT URL
   //   2. PUT the file straight to R2
   //   3. finalize — our API validates the PDF and creates the record
+  // Shared by both the Sign-a-file tab (handleUpload below) and the
+  // Verified Badge tab (handleSealUpload below) — extracted 2026-08-05 when
+  // the second caller showed up, same "extract once a real second use case
+  // exists" precedent as elsewhere in this codebase. What each caller does
+  // with the resulting document id differs (redirect straight into the
+  // field editor vs. immediately call POST /api/documents/[id]/seal), which
+  // is why this returns a plain result rather than doing the redirect
+  // itself. Neither upload/finalize enforce a free-plan cap themselves
+  // (2026-08-05) — the real checks live at each action's own completion
+  // point (send, seal); callers check their own *CapReached prop first to
+  // skip the network round trip entirely when already known to be blocked.
+  async function uploadDraftDocument(f: File, docTitle: string): Promise<{ ok: true; id: string } | { ok: false; error: string; upgrade: boolean }> {
+    const urlRes = await fetch("/api/documents/upload-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: f.name, size: f.size }),
+    });
+    const urlData = await urlRes.json();
+    if (!urlRes.ok) {
+      return { ok: false, error: urlData.error ?? "Upload failed.", upgrade: Boolean(urlData.upgrade) };
+    }
+
+    const putRes = await fetch(urlData.uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "application/pdf" },
+      body: f,
+    });
+    if (!putRes.ok) {
+      return { ok: false, error: "Upload failed. Please try again.", upgrade: false };
+    }
+
+    const finRes = await fetch("/api/documents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        documentId: urlData.documentId,
+        key: urlData.key,
+        title: docTitle,
+        filename: f.name,
+      }),
+    });
+    const finData = await finRes.json();
+    if (!finRes.ok) {
+      return { ok: false, error: finData.error ?? "Upload failed.", upgrade: Boolean(finData.upgrade) };
+    }
+    return { ok: true, id: finData.id };
+  }
+
   // Upload/finalize no longer enforce the free-plan cap themselves
   // (2026-08-05 — see sendCapReached's doc comment above); the real check
   // now happens at send. What follows is that: if the org's already used
@@ -273,51 +377,123 @@ export function NewDocumentClient({
     setShowUpgrade(false);
 
     try {
-      const urlRes = await fetch("/api/documents/upload-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: file.name, size: file.size }),
-      });
-      const urlData = await urlRes.json();
-      if (!urlRes.ok) {
+      const result = await uploadDraftDocument(file, title);
+      if (!result.ok) {
         setStatus("error");
-        setErrorMessage(urlData.error ?? "Upload failed.");
-        setShowUpgrade(Boolean(urlData.upgrade));
+        setErrorMessage(result.error);
+        setShowUpgrade(result.upgrade);
         return;
       }
-
-      const putRes = await fetch(urlData.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": "application/pdf" },
-        body: file,
-      });
-      if (!putRes.ok) {
-        setStatus("error");
-        setErrorMessage("Upload failed. Please try again.");
-        return;
-      }
-
-      const finRes = await fetch("/api/documents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          documentId: urlData.documentId,
-          key: urlData.key,
-          title,
-          filename: file.name,
-        }),
-      });
-      const finData = await finRes.json();
-      if (!finRes.ok) {
-        setStatus("error");
-        setErrorMessage(finData.error ?? "Upload failed.");
-        setShowUpgrade(Boolean(finData.upgrade));
-        return;
-      }
-      router.push(`/dashboard/documents/${finData.id}`);
+      router.push(`/dashboard/documents/${result.id}`);
     } catch {
       setStatus("error");
       setErrorMessage("Upload failed. Check your connection and try again.");
+    }
+  }
+
+  // Verified Badge tab's equivalent of handleUpload — uploads via the same
+  // shared helper, then immediately calls the seal route rather than
+  // redirecting into the field editor (a Verified Badge document has no
+  // fields to place; sealing IS the send). Three outcomes past a plain
+  // error: sealCapReached (Free's independent 3-seals/month pool, checked
+  // client-side first same as sendCapReached), the seal route's own upgrade
+  // response (defensive — same reasoning as handleUpload's), and
+  // needsIdentityVerification, which has no equivalent in the send flow at
+  // all — see handleVerifyIdentity below for how that one resolves.
+  async function handleSealUpload() {
+    if (!badgeFile) return;
+
+    if (sealCapReached) {
+      setBadgeStatus("error");
+      setBadgeShowUpgrade(true);
+      return;
+    }
+
+    setBadgeStatus("uploading");
+    setBadgeErrorMessage("");
+    setBadgeShowUpgrade(false);
+    setBadgeNeedsIdentityDocId(null);
+
+    try {
+      const uploadResult = await uploadDraftDocument(badgeFile, badgeTitle);
+      if (!uploadResult.ok) {
+        setBadgeStatus("error");
+        setBadgeErrorMessage(uploadResult.error);
+        setBadgeShowUpgrade(uploadResult.upgrade);
+        return;
+      }
+      await sealUploadedDocument(uploadResult.id);
+    } catch {
+      setBadgeStatus("error");
+      setBadgeErrorMessage("Upload failed. Check your connection and try again.");
+    }
+  }
+
+  // Split out from handleSealUpload (2026-08-05) so handleVerifyIdentity
+  // below can call this same seal step again on the already-uploaded
+  // document, once identity verification actually completes, without
+  // re-running the upload.
+  async function sealUploadedDocument(documentId: string) {
+    try {
+      const sealRes = await fetch(`/api/documents/${documentId}/seal`, { method: "POST" });
+      const sealData = await sealRes.json();
+      if (!sealRes.ok) {
+        setBadgeStatus("error");
+        if (sealData.needsIdentityVerification) {
+          setBadgeNeedsIdentityDocId(documentId);
+          setBadgeErrorMessage(sealData.error ?? "Verify your identity before sealing your first document.");
+        } else {
+          setBadgeErrorMessage(sealData.error ?? "Couldn't seal that file.");
+          setBadgeShowUpgrade(Boolean(sealData.upgrade));
+        }
+        return;
+      }
+      router.push(`/dashboard/documents/${documentId}`);
+    } catch {
+      setBadgeStatus("error");
+      setBadgeErrorMessage("Something went wrong. Check your connection and try again.");
+    }
+  }
+
+  // Stripe Identity's hosted verification modal (org-level, once-ever unless
+  // stale — see identity.ts) — same underlying flow as Console's Settings
+  // panel (verified-badge-settings.tsx), sharing its Stripe.js loader
+  // (stripe-client.ts) rather than each loading the script separately.
+  // Duplicated here rather than a single shared component, since the two
+  // surfaces need different things to happen on success (this one retries a
+  // specific pending seal; Settings just refreshes its own display) and a
+  // shared-UI extraction wasn't worth the coupling for one button + one
+  // Stripe.js call.
+  async function handleVerifyIdentity() {
+    if (!badgeNeedsIdentityDocId) return;
+    const pendingDocId = badgeNeedsIdentityDocId;
+    setBadgeStatus("verifying");
+    setBadgeErrorMessage("");
+    try {
+      const res = await fetch("/api/org/identity/start", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Couldn't start verification.");
+
+      const stripe = await getStripeClient();
+      if (!stripe) throw new Error("Identity verification isn't configured yet — contact support.");
+
+      const result = await stripe.verifyIdentity(data.clientSecret);
+      if (result.error) throw new Error(result.error.message || "Verification didn't complete.");
+
+      // Stripe's own review is sometimes near-instant, sometimes a few
+      // minutes for manual review — the webhook
+      // (src/app/api/webhooks/stripe/route.ts) is what actually sets the
+      // org columns identity.ts reads. Retrying the seal immediately is
+      // still the right move: the common case (instant review) already has
+      // the columns set by the time this line runs, and if it's not yet set
+      // this just falls back to the same needsIdentityVerification message,
+      // no worse off than before.
+      setBadgeNeedsIdentityDocId(null);
+      await sealUploadedDocument(pendingDocId);
+    } catch (err) {
+      setBadgeStatus("error");
+      setBadgeNeedsIdentityDocId(pendingDocId);
+      setBadgeErrorMessage(err instanceof Error ? err.message : "Something went wrong.");
     }
   }
 
@@ -326,14 +502,20 @@ export function NewDocumentClient({
       <div className="mx-auto max-w-xl">
         <h1 className="mb-6 text-2xl font-semibold text-slate-900">New document</h1>
 
-        {/* Every tab shares MODE_TAB_CLASS and sits in a 3-column grid, so
+        {/* Every tab shares MODE_TAB_CLASS and sits in a 4-column grid, so
             they come out the same size instead of each sizing to its own
             label — a set of unequal boxes would read as a primary option
             with afterthoughts beside it, which isn't the relationship here.
             The grid (not a min-width flex row) is what keeps this from
-            overflowing a narrow phone screen: three columns always split
-            the card's actual width evenly, so there's nothing to overflow. */}
-        <div className="relative mb-4 grid grid-cols-3 gap-2">
+            overflowing a narrow phone screen: four columns always split the
+            card's actual width evenly, so there's nothing to overflow.
+            Order (2026-08-05, VERIFIED_BADGE_DASHBOARD_SCOPE.md, direct
+            instruction): Sign a file, Verified Badge, Magic Quote, then AI
+            Drafter in the 4th column — on mobile that 4th column is a "•••"
+            more-menu instead of a plain tab (see below), since four visible
+            tabs got cramped at the narrowest widths tested; desktop has
+            room for all four as plain tabs with nothing tucked away. */}
+        <div className="relative mb-4 grid grid-cols-4 gap-2">
           <button
             onClick={() => setMode("upload")}
             className={cn(
@@ -343,20 +525,36 @@ export function NewDocumentClient({
                 : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
             )}
           >
-            {/* Icons on all three tabs (2026-07-25) so AI Drafter/Magic Quote
-                read as distinct from plain upload without relying on color
-                alone. Small (h-3.5) and shrink-0 so they hold their size if
-                a label wraps on a narrow column. Neither AI tab glows
-                anymore (2026-08-05) — see the dropzone below, which now
-                carries that "press here" signal instead. */}
+            {/* Icons on every tab (2026-07-25) so they read as distinct from
+                each other without relying on color alone. Small (h-3.5) and
+                shrink-0 so they hold their size if a label wraps on a narrow
+                column. No tab glows anymore (2026-08-05) — see the dropzone
+                below, which now carries that "press here" signal instead. */}
             <span className="inline-flex items-center justify-center gap-1.5">
               <Upload className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
               Sign a file
             </span>
           </button>
-          {/* Free on every plan (2026-07-21) — no locked/upsell state needed,
-              unlike the AI Drafter tab below. Moved ahead of AI Drafter
-              (2026-07-27) — order is now Upload, Magic Quote, AI Drafter. */}
+          {/* Verified Badge (2026-08-05, VERIFIED_BADGE_DASHBOARD_SCOPE.md)
+              — free on every plan the same way Magic Quote is (Free's own
+              independent 3-seals/month pool is enforced server-side, not by
+              hiding the tab), so no locked/upsell state needed here either,
+              unlike AI Drafter's 4th column. Sits second, ahead of Magic
+              Quote — direct instruction. */}
+          <button
+            onClick={() => setMode("badge")}
+            className={cn(
+              MODE_TAB_CLASS,
+              mode === "badge"
+                ? "border-slate-900 bg-slate-900 text-white"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+            )}
+          >
+            <span className="inline-flex items-center justify-center gap-1.5">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+              Verified Badge
+            </span>
+          </button>
           <button
             onClick={() => setMode("quote")}
             className={cn(
@@ -371,41 +569,107 @@ export function NewDocumentClient({
               Magic Quote
             </span>
           </button>
-          {hasAiDraft ? (
-            <button
-              onClick={() => setMode("draft")}
-              className={cn(
-                MODE_TAB_CLASS,
-                mode === "draft"
-                  ? "border-slate-900 bg-slate-900 text-white"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+
+          {/* 4th column: AI Drafter. Two renderings of the same slot, not
+              two grid items — a plain tab (lg: and up) and a "•••" more-menu
+              trigger (below lg:) toggle via Tailwind's responsive display
+              classes on siblings inside ONE wrapping grid cell, so the grid
+              always has exactly 4 children regardless of breakpoint. Locked/
+              Free-plan state (the dashed "· Pro+" pill) renders inside
+              whichever wrapper is currently visible. */}
+          <div className="relative">
+            <div className="hidden lg:block">
+              {hasAiDraft ? (
+                <button
+                  onClick={() => setMode("draft")}
+                  className={cn(
+                    MODE_TAB_CLASS,
+                    mode === "draft"
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  )}
+                >
+                  <span className="inline-flex items-center justify-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                    AI Drafter
+                  </span>
+                </button>
+              ) : (
+                // Same shape/position as the real tab so the feature is
+                // still discoverable, but reads as locked rather than
+                // clickable — matches the "Save as template (Pro+)" pattern
+                // in field-editor.tsx. Links straight to /pricing rather
+                // than switching into a mode the account can't use (the API
+                // would just reject it — see POST /api/documents/draft).
+                <a
+                  href="/pricing"
+                  className={cn(
+                    MODE_TAB_CLASS,
+                    "border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:text-slate-600"
+                  )}
+                >
+                  <span className="inline-flex items-center justify-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                    AI Drafter · Pro+
+                  </span>
+                </a>
               )}
-            >
-              <span className="inline-flex items-center justify-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                AI Drafter
-              </span>
-            </button>
-          ) : (
-            // Same shape/position as the real tab so the feature is still
-            // discoverable, but reads as locked rather than clickable —
-            // matches the "Save as template (Pro+)" pattern in
-            // field-editor.tsx. Links straight to /pricing rather than
-            // switching into a mode the account can't use (the API would
-            // just reject it — see POST /api/documents/draft).
-            <a
-              href="/pricing"
-              className={cn(
-                MODE_TAB_CLASS,
-                "border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:text-slate-600"
+            </div>
+
+            <div className="lg:hidden">
+              <button
+                type="button"
+                onClick={() => setMoreMenuOpen((open) => !open)}
+                aria-label="More document types"
+                className={cn(
+                  MODE_TAB_CLASS,
+                  mode === "draft"
+                    ? "border-slate-900 bg-slate-900 text-white"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                )}
+              >
+                <span className="inline-flex items-center justify-center">
+                  <MoreHorizontal className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                </span>
+              </button>
+
+              {moreMenuOpen && (
+                <>
+                  <button
+                    type="button"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                    onClick={() => setMoreMenuOpen(false)}
+                    className="fixed inset-0 z-40 cursor-default"
+                  />
+                  <div className="absolute right-0 top-full z-50 mt-2 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+                    {hasAiDraft ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode("draft");
+                          setMoreMenuOpen(false);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                        AI Drafter
+                      </button>
+                    ) : (
+                      <a
+                        href="/pricing"
+                        onClick={() => setMoreMenuOpen(false)}
+                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                        AI Drafter · Pro+
+                      </a>
+                    )}
+                  </div>
+                </>
               )}
-            >
-              <span className="inline-flex items-center justify-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                AI Drafter · Pro+
-              </span>
-            </a>
-          )}
+            </div>
+          </div>
 
           {menuIntroOpen && (
             <>
@@ -420,7 +684,7 @@ export function NewDocumentClient({
               />
               <div className="absolute left-0 right-0 top-full z-50 mt-2 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-lg">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs font-semibold text-slate-900">This is the new document menu</p>
+                  <p className="text-xs font-semibold text-slate-900">Welcome to SignedBy</p>
                   <button
                     type="button"
                     onClick={dismissMenuIntro}
@@ -456,6 +720,156 @@ export function NewDocumentClient({
             </CardHeader>
             <CardContent>
               <MagicQuoteForm defaultCurrency={defaultQuoteCurrency} />
+            </CardContent>
+          </Card>
+        ) : mode === "badge" ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Seal a file</CardTitle>
+              <CardDescription>
+                Prove a file is unaltered and identity-verified, with a scannable QR proof — no signer needed.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setBadgeIsDragging(true);
+                }}
+                onDragLeave={() => setBadgeIsDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setBadgeIsDragging(false);
+                  const dropped = e.dataTransfer.files?.[0];
+                  if (dropped) handleBadgeFileChosen(dropped);
+                }}
+                onClick={() => badgeFileInputRef.current?.click()}
+                className={cn(
+                  "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors",
+                  badgeIsDragging ? "border-slate-900 bg-slate-100" : "border-slate-300 hover:bg-slate-50",
+                  !badgeFile && "upload-glow"
+                )}
+              >
+                <input
+                  ref={badgeFileInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const chosen = e.target.files?.[0];
+                    if (chosen) handleBadgeFileChosen(chosen);
+                  }}
+                />
+                {badgeFile ? (
+                  <p className="text-sm font-medium text-slate-900">{badgeFile.name}</p>
+                ) : (
+                  <>
+                    <ShieldCheck className="mb-2 h-8 w-8 text-slate-400" strokeWidth={1.5} />
+                    <p className="text-sm font-medium text-slate-900">Click to choose a PDF, or drag one here</p>
+                    <p className="mt-1 text-xs text-slate-500">Up to 25MB</p>
+                  </>
+                )}
+              </div>
+
+              <input
+                ref={badgeButtonFileInputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const chosen = e.target.files?.[0];
+                  if (chosen) handleBadgeFileChosen(chosen);
+                }}
+              />
+
+              {badgeFile && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="badge-title">Document title</Label>
+                  <Input id="badge-title" value={badgeTitle} onChange={(e) => setBadgeTitle(e.target.value)} />
+                </div>
+              )}
+
+              {/* Identity verification gate takes precedence over the plain
+                  error line and the upgrade card below — it's neither a
+                  real failure nor a cap hit, just a one-time prerequisite
+                  (see handleVerifyIdentity's doc comment). */}
+              {badgeStatus === "error" && badgeNeedsIdentityDocId && (
+                <div className="flex items-start gap-2.5 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" strokeWidth={1.75} />
+                  <div className="flex-1 space-y-2">
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">Verify your identity to continue</p>
+                      <p className="text-xs text-blue-700">
+                        One-time check before your first Verified Badge seal — reused for every seal after.
+                      </p>
+                    </div>
+                    <Button type="button" size="sm" onClick={handleVerifyIdentity} className="w-full border-0 bg-violet-600 text-white hover:bg-violet-700">
+                      Verify identity
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {badgeStatus === "error" && !badgeNeedsIdentityDocId && !badgeShowUpgrade && (
+                <p className="text-sm text-red-600">{badgeErrorMessage}</p>
+              )}
+
+              {/* Same cap-hit treatment as the Sign-a-file tab's upgrade
+                  card, adapted to Verified Badge's own independent
+                  3-seals/month pool — "Upgrade to Pro" here means unlimited
+                  seals, not unlimited sends (2026-08-05,
+                  VERIFIED_BADGE_DASHBOARD_SCOPE.md decision 2: sealing is
+                  fully unlimited on every paid plan, no $0.20/doc overage). */}
+              {badgeStatus === "error" && !badgeNeedsIdentityDocId && badgeShowUpgrade && (
+                <div className="flex items-start gap-2.5 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                  <Rocket className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" strokeWidth={1.75} />
+                  <div className="flex-1 space-y-2">
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">You&apos;ve used your 3 free Verified Badge seals this month</p>
+                      <p className="text-xs text-blue-700">Upgrade to Pro to seal unlimited documents.</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={upgradeLoading}
+                        onClick={upgradeToPro}
+                        className="flex-1 border-0 bg-violet-600 text-white hover:bg-violet-700"
+                      >
+                        {upgradeLoading ? "Starting checkout…" : "Upgrade to Pro"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={creditsLoading}
+                        onClick={buyCreditPack}
+                        className="flex-1 bg-white"
+                      >
+                        {creditsLoading ? "Starting checkout…" : `25 more for ${formatCreditPackPrice(currency)}`}
+                      </Button>
+                    </div>
+                    <Link href="/pricing" className="block text-center text-xs text-blue-700 underline hover:text-blue-900">
+                      view pricing plans
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              <Button
+                className="w-full"
+                variant={uploadButtonColorVariant === "yellow" ? "cta" : "default"}
+                disabled={badgeStatus === "uploading" || badgeStatus === "verifying"}
+                onClick={badgeFile ? handleSealUpload : () => badgeButtonFileInputRef.current?.click()}
+              >
+                {badgeStatus === "uploading"
+                  ? "Uploading…"
+                  : badgeStatus === "verifying"
+                    ? "Verifying…"
+                    : badgeFile
+                      ? "Seal"
+                      : "Upload"}
+              </Button>
             </CardContent>
           </Card>
         ) : mode === "draft" && hasAiDraft ? (

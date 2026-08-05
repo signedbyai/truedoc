@@ -268,7 +268,9 @@ function buildMcpServer(orgId: string, orgName: string): McpServer {
         // conversational follow-up), so it just needs a sane default, not
         // the same "should we skip asking" logic Console chat has.
         certificateMode: args.certificate_mode ?? "both",
-        metered: true,
+        // No `metered` param — sealing's metered branch was retired
+        // entirely (2026-08-05, VERIFIED_BADGE_DASHBOARD_SCOPE.md decision
+        // 2): unlimited on paid plans regardless of entry point.
         source: "mcp",
       });
       if (!result.ok) return textResult({ error: result.error }, true);

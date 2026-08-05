@@ -292,7 +292,10 @@ async function executeTool(orgId: string, metered: boolean, name: string, args: 
         orgId,
         documentId: String(args.document_id ?? ""),
         certificateMode,
-        metered,
+        // No `metered` param — sealing's metered branch was retired
+        // entirely (2026-08-05, VERIFIED_BADGE_DASHBOARD_SCOPE.md decision
+        // 2). `metered` above is still threaded through to send_document/
+        // bulk_send, which keep their own metering unchanged.
         source: "console",
         entryPoint,
       });

@@ -5,9 +5,6 @@ import { ShieldCheck } from "lucide-react";
 import { FlagValues } from "flags/react";
 import { CtaLink } from "@/components/cta-link";
 import { ctaColorFlag } from "@/flags";
-import { consoleUrl } from "@/lib/console-host";
-import { getRequestCurrency } from "@/lib/currency.server";
-import { formatConsoleOveragePrice } from "@/lib/currency";
 
 // The top-of-funnel play this page is the real destination for (see
 // VERIFIED_BADGE_SCOPE.md's "The catch" section): freelancers already are
@@ -33,36 +30,37 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
-// Console-gated (Console/MCP only, no dashboard button — see the scope
-// doc's Decisions) — so the CTA sends someone to console.signedby.ai to
-// sign up, same cross-host pattern /console/page.tsx uses, rather than the
-// plain dashboard signup magic-quote links to. Free on every plan, not
-// Pro+-gated — that was a stale assumption in this comment and the page's
-// own meta DESCRIPTION until 2026-08-01, see CONSOLE_FREE_TIER_SCOPE.md.
-// utm_* params added 2026-08-01 (direct ask, following the console
-// sign-up/login audit: "how many visited, clicked, then logged in" turned
-// out to be unanswerable — Vercel Web Analytics isn't enabled on the
-// project, and even if it were, nothing tied a click on this page to a
-// later console sign-in). Reuses the existing first-touch attribution
-// pipeline as-is (attribution-capture.tsx/attribution-claim.tsx/migration
-// 0024, see [[signup-attribution]]) rather than building something new —
+// Dashboard-native as of 2026-08-05 (VERIFIED_BADGE_DASHBOARD_SCOPE.md) —
+// this CTA used to send people to console.signedby.ai to sign up
+// (Console/MCP was the only way to reach sealing at all); now it opens
+// straight into the main dashboard's New Document > Verified Badge tab, the
+// same ?mode= pattern /magic-quote's own CTA uses (see new-document-
+// client.tsx's initialMode). Console/MCP still work (sealDocumentAction is
+// shared across all three surfaces), but this page — the actual top-of-
+// funnel entry point — now points at the surface most people will actually
+// use. Free on every plan, not Pro+-gated. utm_* params added 2026-08-01
+// (direct ask, following the console sign-up/login audit: "how many
+// visited, clicked, then logged in" turned out to be unanswerable). Reuses
+// the existing first-touch attribution pipeline as-is (attribution-
+// capture.tsx/attribution-claim.tsx/migration 0024, see
+// [[signup-attribution]]) rather than building something new —
 // AttributionCapture already stashes any utm_* it finds on ANY page load
 // into localStorage (first touch only), so it picks these up the moment
 // the browser lands on /login with them in the URL, no changes needed
 // there. Source/medium/campaign chosen to read naturally alongside real ad
 // UTMs in the same signup_utm_* columns later.
-const START_HREF = consoleUrl(
-  "/login?intent=signup&next=/app&utm_source=verified_badge&utm_medium=cta&utm_campaign=verified_badge_page"
-);
+const START_HREF =
+  "/login?intent=signup&next=" +
+  encodeURIComponent("/dashboard/documents/new?mode=badge") +
+  "&utm_source=verified_badge&utm_medium=cta&utm_campaign=verified_badge_page";
 
-// FAQ built by a function, not a plain module-level const, since one
-// answer below quotes Console's per-seal overage rate and now needs the
-// resolved visitor currency (2026-08-01, direct follow-up: "make sure the
-// CTA page for verified-badge uses the same local price rather than
-// always USD") — currency is only known once request headers/cookies are
-// read inside the async page component, not at module load time.
-function buildFaq(overagePrice: string) {
-  return [
+// Plain module-level const again as of 2026-08-05 — no answer below needs a
+// resolved visitor currency anymore now that sealing has no per-seal
+// overage price at all (decision 2, VERIFIED_BADGE_DASHBOARD_SCOPE.md); it
+// briefly needed to be a function (2026-08-01) so the "What plan do I need?"
+// answer could quote Console's per-seal overage rate in the visitor's own
+// currency.
+const FAQ = [
     {
       q: "Does this prove my work wasn't written or made with AI?",
       a: "No — and it doesn't claim to. A Verified Badge proves this exact file existed, unaltered, as of a cryptographically verified timestamp, sealed by an identity-verified person. That's a real, different, useful claim from \"an AI detector says this is human,\" which is exactly why AI detectors have a false-positive problem in the first place: they're guessing at authorship, not proving timestamp and integrity.",
@@ -81,24 +79,16 @@ function buildFaq(overagePrice: string) {
     },
     {
       q: "What plan do I need?",
-      a: `Any plan, including Free — Console/MCP access now comes with every account, no card required. Free includes 3 document-seals a month. Pro plan or higher raises that to 100 free document-seals a month, then ${overagePrice} per seal, same metering as Console's other actions. It's reached by chatting with Console ("seal this file") or through the seal_document tool if you're wiring in an AI agent — see the developer docs.`,
+      a: 'Any plan, including Free, no card required. Free includes 3 Verified Badge seals a month. Pro plan or higher gets unlimited sealing, no per-seal charge. Seal a file right from your dashboard\'s New Document menu — Console chat and the seal_document MCP tool still work too, for anyone wiring in an AI agent, see the developer docs.',
     },
     {
       q: "What actually makes the timestamp \"cryptographically verified\"?",
       a: "Every seal is submitted to a real Time Stamping Authority (Sectigo's public RFC 3161 service, with FreeTSA as an automatic fallback if Sectigo can't be reached) that signs the file's hash together with the time. That's independently verifiable by anyone, trusting only the TSA — not just a date in SignedBy's own database. The ledger page at signedby.ai/verify shows which TSA backed a given seal.",
     },
   ];
-}
 
 export default async function VerifiedBadgePage() {
   const ctaColor = await ctaColorFlag();
-  // Same geo/cookie resolution the pricing pages and checkout routes use
-  // (2026-08-01, direct ask) — see formatConsoleOveragePrice's own doc
-  // comment in currency.ts for what this does and doesn't fix (marketing
-  // copy only, not real Stripe billing).
-  const currency = await getRequestCurrency();
-  const overagePrice = formatConsoleOveragePrice(currency);
-  const FAQ = buildFaq(overagePrice);
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -135,20 +125,20 @@ export default async function VerifiedBadgePage() {
           file, get a scannable proof badge, embed it on the deliverable.
         </p>
         <div className="relative mt-2 flex flex-col items-center gap-2">
-          {/* Free-tier console access announcement (CONSOLE_FREE_TIER_SCOPE.md,
-              shipped 2026-08-02) — styled as a popover/callout above the CTA
-              so it reads as a fresh update rather than static page copy.
-              Real claim, not a promo exaggeration: consoleAccess now
-              includes "free" and checkFreePlanDocCap's existing 3-doc/mo
-              cap applies with no template required for Verified Badge
-              sealing specifically — see that scope doc's "real constraint
-              found mid-build" section. */}
+          {/* Announcement callout, styled as a popover so it reads as a
+              fresh update rather than static page copy — updated 2026-08-05
+              (VERIFIED_BADGE_DASHBOARD_SCOPE.md) from the original
+              "free console access" announcement (CONSOLE_FREE_TIER_SCOPE.md,
+              2026-08-02): sealing is now a dashboard-native New Document tab,
+              not something you need Console for at all. Real claim, not a
+              promo exaggeration — see new-document-client.tsx's Verified
+              Badge tab. */}
           <div className="mb-1 flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800 shadow-sm">
             <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
             </span>
-            We just unlocked free developer &amp; console access — seal your first 3 documents free today.
+            Now built right into your dashboard — seal your first document free today.
             <span
               className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-emerald-200 bg-emerald-50"
               aria-hidden="true"
@@ -158,7 +148,7 @@ export default async function VerifiedBadgePage() {
             Generate Your Proof →
           </CtaLink>
           <p className="text-xs text-slate-400">
-            Free to start — 3 seals a month, no card required. Pro plan or higher for higher volume.
+            Free to start — 3 seals a month, no card required. Pro plan or higher for unlimited sealing.
           </p>
         </div>
       </section>
@@ -187,7 +177,7 @@ export default async function VerifiedBadgePage() {
             },
             {
               step: "2. Seal the file",
-              body: "Upload the finished PDF to Console (chat or an AI agent via the seal_document tool). SignedBy hashes it, timestamps it, and generates your badge.",
+              body: "Upload the finished PDF from your dashboard's New Document menu — Console chat and the seal_document MCP tool work too, if you're already using either. SignedBy hashes it, timestamps it, and generates your badge.",
             },
             {
               step: "3. Embed the badge",
@@ -215,8 +205,8 @@ export default async function VerifiedBadgePage() {
       <section className="mx-auto w-full max-w-3xl px-6 py-10 text-center">
         <h2 className="text-2xl font-semibold text-slate-900">Generate Your Proof</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Console/MCP, free to start — 3 seals a month included, no card required. Need more? Pro plan or higher
-          gets 100 free document-seals a month, then {overagePrice} per seal.
+          Free to start — 3 seals a month included, no card required. Need more? Pro plan or higher gets unlimited
+          sealing, no per-seal charge.
         </p>
         <CtaLink href={START_HREF} className="mt-5" color={ctaColor} page="verified-badge" position="footer">
           Generate Your Proof →

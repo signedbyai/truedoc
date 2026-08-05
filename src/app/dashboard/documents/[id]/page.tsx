@@ -60,7 +60,7 @@ export default async function DocumentEditorPage({
   const { data: doc } = await supabase
     .from("documents")
     .select(
-      "id, org_id, title, page_count, status, signed_file_path, payment_link_url, payment_label, docgate_url, docgate_label, open_notifications, recipient_notice, invite_subject, invite_message, expires_at, organizations(plan, auto_suggest_on_upload)"
+      "id, org_id, title, page_count, status, signed_file_path, is_verified_badge, certificate_file_path, certificate_mode, payment_link_url, payment_label, docgate_url, docgate_label, open_notifications, recipient_notice, invite_subject, invite_message, expires_at, organizations(plan, auto_suggest_on_upload)"
     )
     .eq("id", id)
     .single();
@@ -160,7 +160,18 @@ export default async function DocumentEditorPage({
             <h1 className="mt-2 text-2xl font-semibold text-slate-900">{doc.title}</h1>
             <div className="mt-1.5 flex items-center gap-2">
               <StatusPill tone="green" label="Completed" icon="check" />
-              <span className="text-sm text-slate-500">Every signer has signed.</span>
+              {/* Distinguishes a Verified Badge seal from an ordinary
+                  multi-party completion (2026-08-05,
+                  VERIFIED_BADGE_DASHBOARD_SCOPE.md) — without this, a
+                  self-sealed document reads as "you signed a contract with
+                  yourself," since the self-sign primitive reuses the
+                  ordinary documents/signers schema unmodified
+                  (VERIFIED_BADGE_SCOPE.md's decision 6). */}
+              {doc.is_verified_badge ? (
+                <span className="text-sm text-slate-500">Sealed with a Verified Badge.</span>
+              ) : (
+                <span className="text-sm text-slate-500">Every signer has signed.</span>
+              )}
             </div>
             <p className="mt-1">
               <LiveViewedStatus documentId={id} initialLastViewedAt={lastViewedAt} live={hasPageViewTracking} />
@@ -254,9 +265,36 @@ export default async function DocumentEditorPage({
             </ul>
 
             <div className="mt-6 flex flex-wrap items-center gap-2">
-              <a href={`/api/documents/${id}/signed-file`} className={buttonVariants({ size: "sm" })}>
-                {doc.signed_file_path ? "Download signed PDF" : "Signed PDF pending…"}
-              </a>
+              {/* A Verified Badge sealed with certificate_mode "separate"
+                  never produces a signed_file_path at all — the original
+                  stays byte-for-byte untouched by design
+                  (VERIFIED_BADGE_SCOPE.md's "byte-for-byte untouched"), so
+                  this button would otherwise sit permanently on "Signed PDF
+                  pending…" as if something were stuck, when nothing is
+                  (2026-08-05, VERIFIED_BADGE_DASHBOARD_SCOPE.md). Every
+                  other case (ordinary completions, and Verified Badge's own
+                  "appended"/"both" modes) keeps the existing button/fallback
+                  text unchanged. */}
+              {!(doc.is_verified_badge && doc.certificate_mode === "separate") && (
+                <a href={`/api/documents/${id}/signed-file`} className={buttonVariants({ size: "sm" })}>
+                  {doc.signed_file_path ? "Download signed PDF" : "Signed PDF pending…"}
+                </a>
+              )}
+              {/* Standalone certificate — only exists for Verified Badge's
+                  "separate"/"both" modes (certificate_file_path is null for
+                  every other document). No fallback/pending text needed
+                  here the way signed-file has one: sealDocumentAction sets
+                  this column synchronously in the same request that marks
+                  the document completed, so there's no gap where it's
+                  expected but not there yet. */}
+              {doc.certificate_file_path && (
+                <a
+                  href={`/api/documents/${id}/certificate`}
+                  className={buttonVariants({ variant: doc.is_verified_badge && doc.certificate_mode === "separate" ? "default" : "outline", size: "sm" })}
+                >
+                  Download certificate
+                </a>
+              )}
               <a
                 href={`/api/documents/${id}/original-file`}
                 className={buttonVariants({ variant: "outline", size: "sm" })}

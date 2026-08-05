@@ -3,7 +3,6 @@ import { PDFDocument } from "pdf-lib";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getFromR2, uploadToR2 } from "@/lib/r2";
 import { appUrl } from "@/lib/email";
-import { checkConsoleCap, recordConsoleUsage } from "@/lib/console-usage";
 import { checkFreePlanSealCap } from "@/lib/plan";
 import { getOrgIdentityStatus } from "@/lib/identity";
 import { grantSealCreditReferralReward } from "@/lib/referral";
@@ -21,9 +20,12 @@ import { auditProvenance } from "@/lib/console-actions";
 // reused across seals — see identity.ts) before its first seal, and every
 // seal after that reuses it rather than re-verifying.
 //
-// Entry points: console chat's seal_document confirm action and the MCP
-// seal_document tool, both calling this function directly — same shared-
-// action-function shape as sendDocumentAction (console-actions.ts).
+// Entry points: console chat's seal_document confirm action, the MCP
+// seal_document tool, and (2026-08-05, VERIFIED_BADGE_DASHBOARD_SCOPE.md)
+// the dashboard's own New Document > Verified Badge tab
+// (POST /api/documents/[id]/seal) — all three calling this function
+// directly, same shared-action-function shape as sendDocumentAction
+// (console-actions.ts).
 
 export type CertificateMode = "appended" | "separate" | "both";
 
@@ -75,19 +77,19 @@ export async function sealDocumentAction(params: {
   orgId: string;
   documentId: string;
   certificateMode: CertificateMode;
-  metered: boolean;
-  source: "console" | "mcp";
+  source: "console" | "mcp" | "dashboard";
   /** Which UI control the file came in through — dropzone, the "Seal this
    *  file" button, or the composer paperclip (CONSOLE_VERIFIED_BADGE_FOCUS_
    *  REDESIGN_SCOPE.md, 2026-08-04). Only ever set for source: "console"
-   *  (console-chat.tsx's own three entry points); undefined for MCP, which
-   *  has no equivalent UI concept. Recorded on the `created` audit event's
-   *  metadata rather than a new column — same reasoning as `via_console`/
-   *  `via_mcp` below, answering "which do people use" is then a single
-   *  grouped query over audit_events instead of new schema. */
+   *  (console-chat.tsx's own three entry points); undefined for MCP/
+   *  dashboard, which have no equivalent UI concept. Recorded on the
+   *  `created` audit event's metadata rather than a new column — same
+   *  reasoning as `via_console`/`via_mcp`/`via_dashboard` below, answering
+   *  "which do people use" is then a single grouped query over
+   *  audit_events instead of new schema. */
   entryPoint?: "dropzone" | "seal_button" | "paperclip";
 }): Promise<SealResult | SealActionError> {
-  const { orgId, documentId, certificateMode, metered, source, entryPoint } = params;
+  const { orgId, documentId, certificateMode, source, entryPoint } = params;
 
   const identity = await getOrgIdentityStatus(orgId);
   if (!identity.verified || identity.stale) {
@@ -102,27 +104,27 @@ export async function sealDocumentAction(params: {
   }
 
   // Free plan gets its own, independent 3-seals/month allowance (2026-08-05,
-  // direct instruction: separate counters for sends vs. seals) rather than
-  // the metered checkConsoleCap path below — Free has no Stripe subscription,
-  // so that path's 50-free-then-$0.20 math is irrelevant to it. Without this
-  // explicit branch a Free org would sail past checkConsoleCap's generous
-  // allowance with no real limit at all, now that sealing no longer has an
-  // upload-time cap (checkFreePlanDocCap, removed) to lean on. `metered` is
-  // true for every plan including Free at both call sites (console-chat's
-  // /api/console/chat route, mcp/route.ts), so it can't be used to
-  // distinguish Free here — the plan lookup below is what does.
+  // direct instruction: separate counters for sends vs. seals) — Free has no
+  // Stripe subscription, so metered billing is irrelevant to it regardless.
+  // Paid plans get unlimited sealing, full stop (2026-08-05,
+  // VERIFIED_BADGE_DASHBOARD_SCOPE.md decision 2) — sealing's own metered
+  // branch (checkConsoleCap/recordConsoleUsage) was retired entirely here,
+  // for every source including Console/MCP, once Verified Badge moved onto
+  // the dashboard's plan-based unlimited mandate: having sealing cost $0.20/
+  // doc via one door but not another would've been a confusing, hard-to-
+  // justify difference for the exact same action. CONSOLE_FREE_ALLOWANCE/
+  // checkConsoleCap remain load-bearing for Console's other metered action
+  // (bulk send via templates) — this change only touches sealing.
   const precheckAdmin = createAdminClient();
   const { data: orgPlan } = await precheckAdmin.from("organizations").select("plan").eq("id", orgId).single();
 
   if (!orgPlan || orgPlan.plan === "free") {
-    const capResponse = await checkFreePlanSealCap(precheckAdmin, orgId, source === "console" ? "console_seal" : "mcp_seal");
+    const capSource = source === "console" ? "console_seal" : source === "mcp" ? "mcp_seal" : "dashboard_seal";
+    const capResponse = await checkFreePlanSealCap(precheckAdmin, orgId, capSource);
     if (capResponse) {
       const body = (await capResponse.json()) as { error: string };
       return { ok: false, error: body.error, status: 402, upgrade: true };
     }
-  } else if (metered) {
-    const cap = await checkConsoleCap(orgId);
-    if (!cap.allowed) return { ok: false, error: cap.reason, status: 402 };
   }
 
   const { admin, doc } = await loadSealableDocument(orgId, documentId);
@@ -297,8 +299,6 @@ export async function sealDocumentAction(params: {
       })
       .eq("id", completedEvent.id);
   }
-
-  if (metered) await recordConsoleUsage(orgId);
 
   // Free-tier seal-credit referral reward (REFERRAL_SCOPE.md) — fires once,
   // on this org's first-ever seal (the qualifying event). Best-effort: a

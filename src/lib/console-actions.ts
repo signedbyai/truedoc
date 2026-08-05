@@ -75,8 +75,16 @@ export function checkSingleSignerRoleCount(fieldMap: { role: number | null }[]):
  *  the one new field a downstream consumer (audit UI, webhook payload) needs
  *  to key off of to show "sent by an AI agent." See
  *  AI_AGENT_MCP_SIGNING_SCOPE.md. */
-export function auditProvenance(source: "console" | "mcp"): Record<string, boolean> {
-  return source === "mcp" ? { via_mcp: true, agent_triggered: true } : { via_console: true };
+export function auditProvenance(source: "console" | "mcp" | "dashboard"): Record<string, boolean> {
+  // "dashboard" added 2026-08-05 (VERIFIED_BADGE_DASHBOARD_SCOPE.md) —
+  // only sealDocumentAction passes it today (send/bulk_send/void stay
+  // Console/MCP-only actions, still defaulting to "console" below). Tagged
+  // rather than left untagged like an ordinary dashboard send, so "which
+  // surface do people actually seal from" stays a single grouped
+  // audit_events query, symmetric with via_console/via_mcp.
+  if (source === "mcp") return { via_mcp: true, agent_triggered: true };
+  if (source === "dashboard") return { via_dashboard: true };
+  return { via_console: true };
 }
 
 async function loadOrgAndTemplate(orgId: string, templateId: string) {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { loadStripe, type Stripe } from "@stripe/stripe-js";
+import { getStripeClient } from "@/lib/stripe-client";
 
 // Verified Badge's two Settings additions (VERIFIED_BADGE_SCOPE.md), living
 // in Console's own Settings tab (console-workspace.tsx's settingsBody) —
@@ -24,15 +24,6 @@ import { loadStripe, type Stripe } from "@stripe/stripe-js";
 // Needs NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY set (client-side Stripe.js) —
 // distinct from the existing server-side STRIPE_SECRET_KEY, which this
 // project has never needed a publishable counterpart for until now.
-
-let stripeClientPromise: Promise<Stripe | null> | null = null;
-function getStripeClient() {
-  if (!stripeClientPromise) {
-    const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-    stripeClientPromise = key ? loadStripe(key) : Promise.resolve(null);
-  }
-  return stripeClientPromise;
-}
 
 type CertificateMode = "ask" | "appended" | "separate" | "both";
 

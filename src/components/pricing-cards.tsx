@@ -29,7 +29,16 @@ const PLANS: {
     id: "free",
     name: "Free",
     blurb: "For trying SignedBy out",
-    features: ["3 documents/mo", "1 user", "SignedBy branding on signing page"],
+    features: [
+      "3 documents/mo",
+      // Verified Badge added 2026-08-05 (VERIFIED_BADGE_DASHBOARD_SCOPE.md)
+      // — first mention of this feature anywhere on the pricing page; its
+      // own independent 3-seals/month pool, separate from the 3
+      // documents/mo above.
+      "3 Verified Badge seals/mo",
+      "1 user",
+      "SignedBy branding on signing page",
+    ],
   },
   {
     id: "starter",
@@ -37,6 +46,9 @@ const PLANS: {
     blurb: "For solo professionals",
     features: [
       "Unlimited documents",
+      // Unlimited, not metered (2026-08-05 decision 2) — sealing's
+      // $0.20/doc overage was retired entirely, not just for this surface.
+      "Verified Badge, unlimited",
       "1 user",
       "Templates & reminders",
       "AI-drafted documents",
