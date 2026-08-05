@@ -148,6 +148,12 @@ export function NewDocumentClient({
   const [creditsLoading, setCreditsLoading] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [menuIntroOpen, setMenuIntroOpen] = useMenuIntroVisible();
+  // Locked Draft tab's "available on Pro+" popover (2026-08-05, direct ask)
+  // — was a plain link straight to /pricing with "· Pro+" appended to the
+  // label; now the label stays clean and pressing the tab instead opens a
+  // small explainer with Pro+ itself as the link, dismissed by clicking
+  // anywhere else (same click-outside-overlay trick as menuIntroOpen above).
+  const [draftLockedPopoverOpen, setDraftLockedPopoverOpen] = useState(false);
 
   // Verified Badge tab state — mirrors the Sign-a-file tab's own file/
   // title/dragging/status/errorMessage/showUpgrade state above, plus one
@@ -609,21 +615,51 @@ export function NewDocumentClient({
             // Same shape/position as the real tab so the feature is still
             // discoverable, but reads as locked rather than clickable —
             // matches the "Save as template (Pro+)" pattern in
-            // field-editor.tsx. Links straight to /pricing rather than
-            // switching into a mode the account can't use (the API would
-            // just reject it — see POST /api/documents/draft).
-            <a
-              href="/pricing"
-              className={cn(
-                MODE_TAB_CLASS,
-                "border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:text-slate-600"
+            // field-editor.tsx. No "· Pro+" on the label itself anymore
+            // (2026-08-05, direct ask) — pressing the tab now opens a small
+            // popover explaining the gate instead of linking straight to
+            // /pricing, so the label stays as clean as the other three
+            // tabs and the upgrade path is one extra, undoable step rather
+            // than an immediate navigation away from the page.
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setDraftLockedPopoverOpen((v) => !v)}
+                className={cn(
+                  MODE_TAB_CLASS,
+                  "border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:text-slate-600"
+                )}
+              >
+                <span className="inline-flex items-center justify-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                  Draft
+                </span>
+              </button>
+              {draftLockedPopoverOpen && (
+                <>
+                  {/* Click-outside-to-dismiss overlay — same shape as
+                      menuIntroOpen's own popover above. */}
+                  <button
+                    type="button"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                    onClick={() => setDraftLockedPopoverOpen(false)}
+                    className="fixed inset-0 z-40 cursor-default"
+                  />
+                  <div className="absolute right-0 top-full z-50 mt-2 w-44 rounded-xl border border-slate-200 bg-white p-3 text-center shadow-lg">
+                    <p className="text-xs font-normal leading-snug text-slate-600">
+                      Draft is available on{" "}
+                      <Link
+                        href="/pricing"
+                        className="font-medium text-slate-900 underline hover:text-slate-600"
+                      >
+                        Pro+
+                      </Link>
+                    </p>
+                  </div>
+                </>
               )}
-            >
-              <span className="inline-flex items-center justify-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                Draft · Pro+
-              </span>
-            </a>
+            </div>
           )}
 
           {menuIntroOpen && (
