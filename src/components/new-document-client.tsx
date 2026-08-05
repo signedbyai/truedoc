@@ -68,7 +68,6 @@ export function NewDocumentClient({
   initialDocumentType,
   initialMode,
   currency = "USD",
-  uploadButtonColorVariant = "black",
   sendCapReached = false,
   sealCapReached = false,
 }: {
@@ -95,12 +94,6 @@ export function NewDocumentClient({
    *  redirects to). Same getRequestCurrency() resolution
    *  defaultQuoteCurrency above is already derived from. */
   currency?: Currency;
-  /** "Upload & continue" button color test (2026-08-05,
-   *  uploadContinueButtonColorFlag in flags.ts) — "black" is the
-   *  current/default look, "yellow" reuses the existing `cta` Button
-   *  variant. Defaults to "black" so this component still renders
-   *  sensibly if ever used somewhere the flag isn't resolved. */
-  uploadButtonColorVariant?: "black" | "yellow";
   /** Server-computed at page load from getFreePlanUsage (2026-08-05, direct
    *  ask: "the behaviour should still be asking to upgrade when the user
    *  tries to upload number 4"). The real enforcement now lives in
@@ -367,14 +360,13 @@ export function NewDocumentClient({
   async function handleUpload() {
     if (!file) return;
 
-    // "Upload & continue" button color test (2026-08-05, direct ask) —
-    // fired on the click itself, same "counts intent, not final success"
-    // philosophy as signing_upload_started above: the button color can
-    // only plausibly affect whether someone clicks it, not whether the
-    // network upload afterward succeeds, so gating this on the upload's
-    // eventual outcome would just add noise to the thing actually being
-    // measured. See uploadContinueButtonColorFlag in flags.ts.
-    track("signing_continue_clicked", { button_color: uploadButtonColorVariant });
+    // Fired on the click itself, same "counts intent, not final success"
+    // philosophy as signing_upload_started above — a network failure
+    // downstream still means someone tried to continue. button_color
+    // dropped from this event's payload (2026-08-05) now that the
+    // black-vs-yellow test it measured is over — see flags.ts's retired
+    // uploadContinueButtonColorFlag note.
+    track("signing_continue_clicked");
 
     if (sendCapReached) {
       setStatus("error");
@@ -838,12 +830,10 @@ export function NewDocumentClient({
                 </div>
               )}
 
-              {/* Permanently yellow (2026-08-05, direct ask) — no longer
-                  tied to uploadButtonColorVariant's black/yellow test (see
-                  the Sign tab's own button below for the matching change
-                  and its note on what that means for the test). Icon +
-                  "Seal this file" borrowed from Console's own permanently-
-                  yellow seal button. */}
+              {/* Permanently yellow (2026-08-05, direct ask) — was gated on
+                  the now-retired black/yellow button-color test (see
+                  flags.ts). Icon + "Seal this file" borrowed from
+                  Console's own permanently-yellow seal button. */}
               <Button
                 className="w-full gap-1.5"
                 variant="cta"
@@ -1070,17 +1060,15 @@ export function NewDocumentClient({
                   ever made sense back when this button *was* handleUpload
                   unconditionally.
 
-                  Permanently yellow now too (variant="cta", was
-                  uploadButtonColorVariant === "yellow" ? "cta" : "default")
-                  — direct ask, borrowing Console's own permanently-yellow
-                  button. This and the Seal tab's matching change together
-                  mean uploadButtonColorVariant's black/yellow test no
-                  longer has anywhere left to show "black": both buttons it
-                  ever applied to are yellow unconditionally now. The flag
-                  itself, its FlagValues wiring in page.tsx, and the
-                  signing_continue_clicked event's button_color property are
-                  all left in place rather than torn out here — a genuine
-                  cleanup, just a separate one from this redesign pass. */}
+                  Permanently yellow now too (variant="cta", was gated on
+                  uploadButtonColorVariant) — direct ask, borrowing
+                  Console's own permanently-yellow button. This and the
+                  Seal tab's matching change together retired the
+                  black/yellow button-color test entirely the same day
+                  (flag removed from flags.ts, prop removed here,
+                  button_color dropped from signing_continue_clicked) —
+                  neither button it ever applied to could show "black"
+                  anymore. */}
               <Button
                 className="w-full gap-1.5"
                 variant="cta"

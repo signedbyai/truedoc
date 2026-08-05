@@ -115,37 +115,9 @@ export const consoleHeroIconFlag = flag<ConsoleHeroIconColor>({
   options: CONSOLE_HERO_ICON_COLORS.map((value) => ({ value })),
 });
 
-// "Upload & continue" button color test (signedby.ai's /dashboard/documents/
-// new) — started 2026-08-05, direct ask. Same "see which one gets more
-// traction" framing and same cookieless/hash-bucketed treatment as the two
-// tests above, not a subjective pick.
-//
-// Worth knowing before reading too much into a result either way: this is
-// NOT the same question the (concluded, 2026-07-24) CTA color test already
-// answered. That test was yellow/blue/purple on marketing-page CTAs for
-// anonymous visitors deciding whether to start at all (purple won
-// decisively, yellow got zero clicks — see ctaColorFlag above). This button
-// is a different moment entirely: an already-logged-in user, mid-task, who
-// has already chosen a file and is one click from continuing — closer to
-// "does an accent color help a committed user finish a step" than "does it
-// persuade a stranger to engage." Worth testing on its own terms rather
-// than assuming the marketing result predicts it. "black" is the current,
-// unchanged default; "yellow" reuses the existing `cta` Button variant
-// (design-system.md's one reserved accent color) rather than introducing a
-// new color.
-export const UPLOAD_CONTINUE_BUTTON_COLORS = ["black", "yellow"] as const;
-export type UploadContinueButtonColor = (typeof UPLOAD_CONTINUE_BUTTON_COLORS)[number];
-
-export const uploadContinueButtonColorFlag = flag<UploadContinueButtonColor>({
-  key: "upload-continue-button-color",
-  identify,
-  decide({ entities }) {
-    const key = entities?.visitorKey ?? "anonymous";
-    const bucket = hashString(key) % UPLOAD_CONTINUE_BUTTON_COLORS.length;
-    return UPLOAD_CONTINUE_BUTTON_COLORS[bucket];
-  },
-  defaultValue: "black",
-  description:
-    "New-document page's \"Upload & continue\" button color test: current black vs. the brand yellow accent, measured against the signing_continue_clicked event.",
-  options: UPLOAD_CONTINUE_BUTTON_COLORS.map((value) => ({ value })),
-});
+// "Upload & continue" button color test — concluded 2026-08-05, direct ask,
+// same day the Sign/Seal uploader redesign made both buttons this flag ever
+// applied to permanently yellow (borrowed from Console's own uploader).
+// There's no "black" left anywhere for the flag to select, so it's retired
+// rather than left resolving to a variant nothing reads. See git history for
+// the original test setup/reasoning if this ever needs resurrecting.
