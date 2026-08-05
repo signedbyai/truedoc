@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ExternalLink, FileText, ShieldCheck } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getRequestCurrency } from "@/lib/currency.server";
@@ -7,7 +8,9 @@ import { VoidDocumentButton } from "@/components/void-document-button";
 import { SignerRow } from "@/components/signer-row";
 import { AuditTrail, type AuditEvent } from "@/components/audit-trail";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
+import { CopyLinkButton } from "@/components/copy-link-button";
 import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { planHasFeature, getFreePlanUsage } from "@/lib/plan";
 import { formatEngagement } from "@/lib/page-view-tracking";
 import { latestTimestamp } from "@/lib/last-viewed";
@@ -123,6 +126,34 @@ export default async function DocumentEditorPage({
     // 2026-08-04) — same "completed" event other routes (badge, console
     // verified-badge list) already read document_hash off of.
     const completedHash = (auditEvents || []).find((e) => e.event_type === "completed")?.document_hash ?? null;
+    // Absolute, shareable form of the same link — matches console-verified-
+    // badge-list.tsx's own verifyUrl (2026-08-05 follow-up to
+    // VERIFIED_BADGE_DASHBOARD_SCOPE.md): a sealed document's verify link is
+    // meant to be copied and handed to a client, so it needs the full host,
+    // not a relative path.
+    const verifyUrl = completedHash ? `https://signedby.ai/verify?hash=${completedHash}` : null;
+
+    // A sealed document's history is noisier than it needs to be: the
+    // self-sign primitive (VERIFIED_BADGE_SCOPE.md's decision 6) fires the
+    // same sent/consent_given/signed events a real multi-party completion
+    // would, which read as meaningless for a document you sealed to
+    // yourself. Worse, `POST /api/documents` (the finalize step every
+    // upload path — including the dashboard's own seal flow — already goes
+    // through) logs its own "created" event, and `sealDocumentAction` logs
+    // a second one on top of that when the seal happens moments later — a
+    // genuine duplicate, not two different facts. For a sealed doc, keep
+    // only the earliest "created" (the real upload moment) and "completed"
+    // (the actual seal moment) — see AuditTrail's isVerifiedBadge prop for
+    // how those two get relabeled "Document uploaded"/"Sealed with a
+    // Verified Badge".
+    const historyEvents = doc.is_verified_badge
+      ? ([
+          [...(auditEvents || [])]
+            .filter((e) => e.event_type === "created")
+            .sort((a, b) => a.created_at.localeCompare(b.created_at))[0],
+          (auditEvents || []).find((e) => e.event_type === "completed"),
+        ].filter(Boolean) as NonNullable<typeof auditEvents>)
+      : auditEvents || [];
 
     // DocGate summary line (see src/app/g/[code]/route.ts for where
     // docgate_clicked events are logged): a signer can click their link more
@@ -159,23 +190,32 @@ export default async function DocumentEditorPage({
             </nav>
             <h1 className="mt-2 text-2xl font-semibold text-slate-900">{doc.title}</h1>
             <div className="mt-1.5 flex items-center gap-2">
-              <StatusPill tone="green" label="Completed" icon="check" />
-              {/* Distinguishes a Verified Badge seal from an ordinary
-                  multi-party completion (2026-08-05,
-                  VERIFIED_BADGE_DASHBOARD_SCOPE.md) — without this, a
-                  self-sealed document reads as "you signed a contract with
-                  yourself," since the self-sign primitive reuses the
-                  ordinary documents/signers schema unmodified
-                  (VERIFIED_BADGE_SCOPE.md's decision 6). */}
+              {/* "Sealed" instead of "Completed" for a Verified Badge
+                  document (2026-08-05 follow-up to
+                  VERIFIED_BADGE_DASHBOARD_SCOPE.md, direct ask) — the pill
+                  used to say "Completed" here (and "Signed" on the signer
+                  row below) either way, which reads as "you signed a
+                  contract with yourself" for a self-sealed document, since
+                  the self-sign primitive reuses the ordinary
+                  documents/signers schema unmodified (VERIFIED_BADGE_
+                  SCOPE.md's decision 6). Same green tone/check mark either
+                  way — this is a label fix, not a new state. */}
+              <StatusPill tone="green" label={doc.is_verified_badge ? "Sealed" : "Completed"} icon="check" />
               {doc.is_verified_badge ? (
                 <span className="text-sm text-slate-500">Sealed with a Verified Badge.</span>
               ) : (
                 <span className="text-sm text-slate-500">Every signer has signed.</span>
               )}
             </div>
-            <p className="mt-1">
-              <LiveViewedStatus documentId={id} initialLastViewedAt={lastViewedAt} live={hasPageViewTracking} />
-            </p>
+            {/* "Last viewed"/live-viewing status has no meaning for a
+                document you sealed to yourself — there's no other party who
+                could be viewing it. Skipped for Verified Badge documents
+                rather than showing a permanently-empty line. */}
+            {!doc.is_verified_badge && (
+              <p className="mt-1">
+                <LiveViewedStatus documentId={id} initialLastViewedAt={lastViewedAt} live={hasPageViewTracking} />
+              </p>
+            )}
             {/* Short form of the same Document ID the Certificate of
                 Completion prints in full; /verify is the public hash-lookup
                 that proves the signed copy is genuine (V3 item #5). Links to
@@ -234,7 +274,13 @@ export default async function DocumentEditorPage({
           )}
 
           <div className="rounded-lg border border-slate-200 bg-white p-6">
-            <h2 className="text-sm font-semibold text-slate-900">Signers</h2>
+            {/* "Sealed by" instead of "Signers" for a Verified Badge
+                document (2026-08-05 follow-up) — there's exactly one row
+                here (the self-sign primitive addresses the document to the
+                org itself), so "Signers" plural reads oddly, and "Signed"
+                on that row has the same "signed a contract with myself"
+                problem the top pill had. */}
+            <h2 className="text-sm font-semibold text-slate-900">{doc.is_verified_badge ? "Sealed by" : "Signers"}</h2>
             <ul className="mt-3 space-y-2 text-sm text-slate-700">
               {(signers || []).map((s) => {
                 const engagement = engagementBySigner.get(s.id);
@@ -246,15 +292,21 @@ export default async function DocumentEditorPage({
                   <li key={s.id} className="flex items-center justify-between">
                     <span>
                       {s.name ? `${s.name} <${s.email}>` : s.email}
-                      {engagementLabel && <span className="ml-2 text-xs text-slate-400">· {engagementLabel}</span>}
-                      {!hasPageViewTracking && (
+                      {/* Engagement tracking (page views/dwell time) has
+                          nothing to show or upsell for a self-seal — there's
+                          no other party whose reading behavior would be
+                          worth tracking. */}
+                      {!doc.is_verified_badge && engagementLabel && (
+                        <span className="ml-2 text-xs text-slate-400">· {engagementLabel}</span>
+                      )}
+                      {!doc.is_verified_badge && !hasPageViewTracking && (
                         <Link href="/pricing" className="ml-2 text-xs text-slate-400 hover:text-slate-600">
                           · Engagement tracking (Pro+)
                         </Link>
                       )}
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <StatusPill tone="green" label="Signed" />
+                      <StatusPill tone="green" label={doc.is_verified_badge ? "Sealed" : "Signed"} />
                       {s.signed_at && (
                         <span className="text-xs text-slate-400">{new Date(s.signed_at).toLocaleDateString()}</span>
                       )}
@@ -265,50 +317,94 @@ export default async function DocumentEditorPage({
             </ul>
 
             <div className="mt-6 flex flex-wrap items-center gap-2">
-              {/* A Verified Badge sealed with certificate_mode "separate"
-                  never produces a signed_file_path at all — the original
-                  stays byte-for-byte untouched by design
-                  (VERIFIED_BADGE_SCOPE.md's "byte-for-byte untouched"), so
-                  this button would otherwise sit permanently on "Signed PDF
-                  pending…" as if something were stuck, when nothing is
-                  (2026-08-05, VERIFIED_BADGE_DASHBOARD_SCOPE.md). Every
-                  other case (ordinary completions, and Verified Badge's own
-                  "appended"/"both" modes) keeps the existing button/fallback
-                  text unchanged. */}
-              {!(doc.is_verified_badge && doc.certificate_mode === "separate") && (
-                <a href={`/api/documents/${id}/signed-file`} className={buttonVariants({ size: "sm" })}>
-                  {doc.signed_file_path ? "Download signed PDF" : "Signed PDF pending…"}
-                </a>
+              {doc.is_verified_badge ? (
+                // Console-parity output row (2026-08-05 follow-up to
+                // VERIFIED_BADGE_DASHBOARD_SCOPE.md) — same five outputs,
+                // same order, same icons as console-chat.tsx's own
+                // `m.sealed` block (~line 1479) and console-verified-badge-
+                // list.tsx, just light-themed for the dashboard instead of
+                // Console's dark chat surface. This is the dashboard's only
+                // "Badge image" link — it didn't exist here before.
+                <>
+                  {verifyUrl && (
+                    <>
+                      <CopyLinkButton value={verifyUrl} label="Copy verify link" />
+                      <a
+                        href={verifyUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                        Open verify page
+                      </a>
+                    </>
+                  )}
+                  {/* certificate_mode "separate" never produces a
+                      signed_file_path — the original stays byte-for-byte
+                      untouched by design (VERIFIED_BADGE_SCOPE.md's
+                      "byte-for-byte untouched") — so this button is simply
+                      omitted rather than shown as permanently pending. */}
+                  {doc.signed_file_path && doc.certificate_mode !== "separate" && (
+                    <a
+                      href={`/api/documents/${id}/signed-file`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
+                    >
+                      <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                      Sealed PDF
+                    </a>
+                  )}
+                  {doc.certificate_file_path && (
+                    <a
+                      href={`/api/documents/${id}/certificate`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
+                    >
+                      <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                      Certificate
+                    </a>
+                  )}
+                  <a
+                    href={`/api/documents/${id}/badge`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                    Badge image
+                  </a>
+                  <a
+                    href={`/api/documents/${id}/original-file`}
+                    className={buttonVariants({ variant: "outline", size: "sm" })}
+                  >
+                    Download original (unsigned)
+                  </a>
+                  <DuplicateDocumentButton documentId={id} />
+                </>
+              ) : (
+                <>
+                  <a href={`/api/documents/${id}/signed-file`} className={buttonVariants({ size: "sm" })}>
+                    {doc.signed_file_path ? "Download signed PDF" : "Signed PDF pending…"}
+                  </a>
+                  <a
+                    href={`/api/documents/${id}/original-file`}
+                    className={buttonVariants({ variant: "outline", size: "sm" })}
+                  >
+                    Download original (unsigned)
+                  </a>
+                  <DuplicateDocumentButton documentId={id} />
+                </>
               )}
-              {/* Standalone certificate — only exists for Verified Badge's
-                  "separate"/"both" modes (certificate_file_path is null for
-                  every other document). No fallback/pending text needed
-                  here the way signed-file has one: sealDocumentAction sets
-                  this column synchronously in the same request that marks
-                  the document completed, so there's no gap where it's
-                  expected but not there yet. */}
-              {doc.certificate_file_path && (
-                <a
-                  href={`/api/documents/${id}/certificate`}
-                  className={buttonVariants({ variant: doc.is_verified_badge && doc.certificate_mode === "separate" ? "default" : "outline", size: "sm" })}
-                >
-                  Download certificate
-                </a>
-              )}
-              <a
-                href={`/api/documents/${id}/original-file`}
-                className={buttonVariants({ variant: "outline", size: "sm" })}
-              >
-                Download original (unsigned)
-              </a>
-              <DuplicateDocumentButton documentId={id} />
             </div>
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-white p-6">
             <h2 className="text-sm font-semibold text-slate-900">Document history</h2>
             <div className="mt-4">
-              <AuditTrail events={(auditEvents || []) as unknown as AuditEvent[]} />
+              <AuditTrail events={historyEvents as unknown as AuditEvent[]} isVerifiedBadge={doc.is_verified_badge} />
             </div>
           </div>
         </div>

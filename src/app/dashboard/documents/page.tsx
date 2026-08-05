@@ -7,7 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DeleteDocumentButton } from "@/components/delete-document-button";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
-import { LIST_STATUS_PILL, StatusPill } from "@/components/status-pill";
+import { LIST_STATUS_PILL, StatusPill, type StatusTone } from "@/components/status-pill";
 import { formatRelativeTime, latestViewedByDocument } from "@/lib/last-viewed";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -27,6 +27,17 @@ const SORT_OPTIONS: Record<string, { column: "created_at" | "title"; ascending: 
 };
 
 const PAGE_SIZE = 20;
+
+// A sealed document is still status "completed" underneath (the self-sign
+// primitive reuses the ordinary documents/signers schema unmodified — see
+// VERIFIED_BADGE_SCOPE.md's decision 6), so it can't get its own row in
+// LIST_STATUS_PILL, which is keyed by status alone. Same tone (green dot),
+// different, more accurate label — "Sealed" is what actually happened.
+const SEALED_LIST_PILL: { tone: StatusTone; dotTone?: StatusTone; label: string } = {
+  tone: "gray",
+  dotTone: "green",
+  label: "Sealed",
+};
 
 // Strip characters that would otherwise corrupt the hand-built PostgREST
 // .or()/.in() filter strings below (comma splits conditions, parens break
@@ -53,12 +64,15 @@ export default async function DocumentsPage({
 
   let query = supabase
     .from("documents")
-    .select("id, title, status, page_count, created_at", { count: "exact" })
-    .eq("org_id", orgId)
-    // Verified Badge seals are self-sign documents, not real signing
-    // activity — keep them out of the Signing Dashboard entirely (Console
-    // is their home). See CONSOLE_VERIFIED_BADGE_PROVENANCE_SCOPE.md.
-    .eq("is_verified_badge", false);
+    .select("id, title, status, page_count, created_at, is_verified_badge", { count: "exact" })
+    .eq("org_id", orgId);
+  // Sealed documents used to be excluded here entirely (Console was their
+  // only home — CONSOLE_VERIFIED_BADGE_PROVENANCE_SCOPE.md). That's stale
+  // now that sealing is a dashboard-native New Document tab
+  // (VERIFIED_BADGE_DASHBOARD_SCOPE.md, 2026-08-05) — a document sealed from
+  // here needs to actually show up back here, not just live at its own
+  // /dashboard/documents/[id] URL right after the redirect. They get their
+  // own "Sealed" pill below rather than reading as an ordinary "Completed".
 
   if (status && STATUS_OPTIONS.includes(status as (typeof STATUS_OPTIONS)[number])) {
     query = query.eq("status", status);
@@ -242,7 +256,7 @@ export default async function DocumentsPage({
               <>
                 <ul className="divide-y divide-slate-100">
                   {documents.map((doc) => {
-                    const pill = LIST_STATUS_PILL[doc.status];
+                    const pill = doc.is_verified_badge && doc.status === "completed" ? SEALED_LIST_PILL : LIST_STATUS_PILL[doc.status];
                     return (
                     // Same shape as the dashboard's recent-documents rows
                     // (title left, status pill top-right) with the action
