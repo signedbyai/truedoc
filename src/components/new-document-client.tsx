@@ -646,8 +646,8 @@ export function NewDocumentClient({
                   </button>
                 </div>
                 <p className="mt-1 text-xs font-normal leading-snug text-slate-600">
-                  As an introduction to how SignedBy works, this is how you get a document signed. You can send 3
-                  documents for signing per month for free.
+                  As an introduction to how SignedBy works, this is how you get a document signed or sealed. You can
+                  send 3 documents to sign or seal per month for free.
                 </p>
                 <button
                   type="button"
