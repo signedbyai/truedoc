@@ -40,6 +40,18 @@ export async function sendMagicLink(formData: FormData) {
   // spend rate-limit budget validating a request that's getting rejected
   // either way.
   if (isDisposableEmailAddress(email)) {
+    // Best-effort visibility (2026-08-05, direct ask) — this rejection was
+    // previously invisible server-side, so there was no way to tell how
+    // much of the signup funnel's CTA-click-to-account drop-off this
+    // accounts for versus people just not clicking their magic link. Domain
+    // only, not the full address — enough to spot which disposable
+    // providers show up and how often, without logging a PII-bearing local
+    // part for something that never became an account. Never blocks or
+    // delays the rejection response below.
+    console.log("Signup blocked: disposable email domain", {
+      domain: email.split("@")[1]?.toLowerCase() || "unknown",
+      ip: await clientIp(),
+    });
     return { error: "Please use a permanent email address — disposable or temporary email domains aren't supported." };
   }
 
