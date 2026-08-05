@@ -480,13 +480,24 @@ export function NewDocumentClient({
                   upload — keep the plain red line. */}
               {status === "error" && !showUpgrade && <p className="text-sm text-red-600">{errorMessage}</p>}
 
+              {/* Blue "notice" card, not amber (2026-08-05, direct ask after
+                  seeing it live: amber-400 read as an off-brand second
+                  yellow sitting right above the real brand-yellow
+                  "Continue" button below — design-system.md reserves
+                  bg-yellow-300/variant="cta" for exactly one primary
+                  action per screen, never a second competing button, even
+                  in a near-miss shade). "Upgrade to Pro" uses violet-600 —
+                  not a new color, the same purple already settled on for
+                  the homepage CTA-color test (cta-link.tsx, #7C3AED) —
+                  so it reads as "the upgrade action" without competing
+                  with yellow at all. */}
               {status === "error" && showUpgrade && (
-                <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                  <Rocket className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" strokeWidth={1.75} />
+                <div className="flex items-start gap-2.5 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                  <Rocket className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" strokeWidth={1.75} />
                   <div className="flex-1 space-y-2">
                     <div>
-                      <p className="text-sm font-medium text-amber-900">You&apos;ve used your 3 free docs this month</p>
-                      <p className="text-xs text-amber-700">Upgrade to Pro to send unlimited documents.</p>
+                      <p className="text-sm font-medium text-blue-900">You&apos;ve used your 3 free docs this month</p>
+                      <p className="text-xs text-blue-700">Upgrade to Pro to send unlimited documents.</p>
                     </div>
                     {/* Upgrade to Pro leads (2026-08-05, direct ask) — it's the
                         better outcome (unlimited, not just +25), so it gets
@@ -501,7 +512,7 @@ export function NewDocumentClient({
                         size="sm"
                         disabled={upgradeLoading}
                         onClick={upgradeToPro}
-                        className="flex-1 border-0 bg-amber-400 text-amber-950 hover:bg-amber-500"
+                        className="flex-1 border-0 bg-violet-600 text-white hover:bg-violet-700"
                       >
                         {upgradeLoading ? "Starting checkout…" : "Upgrade to Pro"}
                       </Button>
@@ -521,7 +532,7 @@ export function NewDocumentClient({
                         (2026-08-05, direct ask). */}
                     <Link
                       href="/pricing"
-                      className="block text-center text-xs text-amber-700 underline hover:text-amber-900"
+                      className="block text-center text-xs text-blue-700 underline hover:text-blue-900"
                     >
                       view pricing plans
                     </Link>
