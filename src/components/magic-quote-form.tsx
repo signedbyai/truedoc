@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { track } from "@vercel/analytics";
-import { X } from "lucide-react";
+import { Receipt, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -457,7 +457,16 @@ export function MagicQuoteForm({
           checkbox. See magic-quote-feature.md for the reasoning. */}
       <p className="text-xs text-slate-500">{ql("reviewDisclaimer", language)}</p>
 
-      <Button className="w-full" disabled={!description.trim() || generating} onClick={handleGenerate}>
+      {/* Permanent yellow + leading icon (2026-08-05, direct ask) — matches
+          the Sign/Seal tabs' own buttons, reusing the Quote tab's own
+          Receipt icon. Was the plain default (black) Button variant. */}
+      <Button
+        className="w-full gap-1.5"
+        variant="cta"
+        disabled={!description.trim() || generating}
+        onClick={handleGenerate}
+      >
+        {!generating && <Receipt className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />}
         {generating ? ql("generatingQuote", language) : ql("generateQuote", language)}
       </Button>
     </div>

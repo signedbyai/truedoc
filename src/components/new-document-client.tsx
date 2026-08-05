@@ -667,12 +667,17 @@ export function NewDocumentClient({
 
         {mode === "quote" ? (
           <Card>
-            <CardHeader>
-              {/* "Get a Magic Quote" (2026-08-05, direct ask) — was "Magic
-                  Quote", matching this file's tab-vs-title pattern (compact
-                  tab, more explanatory card title) now that the tab itself
-                  reads just "Quote". */}
-              <CardTitle>Get a Magic Quote</CardTitle>
+            <CardHeader className="items-center text-center">
+              {/* Centered yellow icon badge + "Generate your Magic Quote"
+                  heading (2026-08-05, direct ask) — matches the Sign/Seal
+                  tabs' own redesign (same badge/heading/subtitle
+                  structure), reusing the tab's own Receipt icon so the
+                  badge and the tab row agree on what this tab is. Was a
+                  plain left-aligned "Get a Magic Quote" title/description. */}
+              <span className="mb-1 flex h-14 w-14 items-center justify-center rounded-2xl bg-yellow-300">
+                <Receipt className="h-6 w-6 text-slate-900" strokeWidth={1.75} aria-hidden="true" />
+              </span>
+              <CardTitle>Generate your Magic Quote</CardTitle>
               <CardDescription>
                 Describe the job in plain language and get a line-item price quote to review and edit.
               </CardDescription>
@@ -857,10 +862,16 @@ export function NewDocumentClient({
           </Card>
         ) : mode === "draft" && hasAiDraft ? (
           <Card>
-            <CardHeader>
-              {/* "AI Template Drafter" (2026-08-05, direct ask) — was
-                  "AI-drafted document". */}
-              <CardTitle>AI Template Drafter</CardTitle>
+            <CardHeader className="items-center text-center">
+              {/* Centered yellow icon badge + "Generate your document
+                  draft" heading (2026-08-05, direct ask) — matches the
+                  Sign/Seal/Quote tabs' own redesign, reusing the tab's own
+                  Sparkles icon. Was a plain left-aligned "AI Template
+                  Drafter" title/description. */}
+              <span className="mb-1 flex h-14 w-14 items-center justify-center rounded-2xl bg-yellow-300">
+                <Sparkles className="h-6 w-6 text-slate-900" strokeWidth={1.75} aria-hidden="true" />
+              </span>
+              <CardTitle>Generate your document draft</CardTitle>
               <CardDescription>
                 Describe what you need in plain language and get a starting draft to review and edit.
               </CardDescription>

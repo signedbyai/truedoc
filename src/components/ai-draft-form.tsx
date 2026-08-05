@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { track } from "@vercel/analytics";
+import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -240,11 +241,16 @@ export function AiDraftForm({
 
       {generateError && <p className="text-sm text-red-600">{generateError}</p>}
 
+      {/* Permanent yellow + leading icon (2026-08-05, direct ask) — matches
+          the Sign/Seal/Quote tabs' own buttons, reusing the Draft tab's own
+          Sparkles icon. Was the plain default (black) Button variant. */}
       <Button
-        className="w-full"
+        className="w-full gap-1.5"
+        variant="cta"
         disabled={!disclaimerChecked || !description.trim() || generating}
         onClick={handleGenerate}
       >
+        {!generating && <Sparkles className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />}
         {generating ? "Generating draft…" : "Generate draft"}
       </Button>
     </div>
