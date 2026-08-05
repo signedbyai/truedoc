@@ -25,7 +25,7 @@ export default async function SettingsPage() {
   const { data: org } = await supabase
     .from("organizations")
     .select(
-      "name, plan, logo_url, brand_color, api_key_prefix, auto_suggest_on_upload, identity_verified_at, identity_verified_name, verified_badge_certificate_mode"
+      "name, plan, logo_url, brand_color, api_key_prefix, auto_suggest_on_upload, identity_verified_at, identity_verified_name"
     )
     .eq("id", orgId)
     .single();
@@ -34,10 +34,10 @@ export default async function SettingsPage() {
 
   // Same computation console/app/page.tsx already does for its own copy of
   // this data (2026-08-05 follow-up to VERIFIED_BADGE_DASHBOARD_SCOPE.md) —
-  // one org-level identity check, two rendering surfaces.
+  // one org-level identity check, two rendering surfaces. No certificate-
+  // mode read here anymore (removed same day) — the dashboard's own seal
+  // route hardcodes "both" now, so there's no preference left to fetch.
   const identityStatus = resolveIdentityStatus(org);
-  const certificateMode =
-    (org.verified_badge_certificate_mode as "ask" | "appended" | "separate" | "both" | undefined) ?? "both";
 
   const hasCustomBranding = planHasFeature(org.plan, "customBranding");
   const hasApiAccess = planHasFeature(org.plan, "apiAccess");
@@ -101,7 +101,6 @@ export default async function SettingsPage() {
               identityVerifiedName={identityStatus.verified ? identityStatus.name : null}
               identityVerifiedAt={identityStatus.verified ? identityStatus.verifiedAt : null}
               identityStale={identityStatus.verified ? identityStatus.stale : false}
-              initialCertificateMode={certificateMode}
             />
           </CardContent>
         </Card>

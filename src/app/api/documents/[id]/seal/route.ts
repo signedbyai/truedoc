@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUserAndOrg } from "@/lib/org";
-import { sealDocumentAction, type CertificateMode } from "@/lib/verified-badge-actions";
+import { sealDocumentAction } from "@/lib/verified-badge-actions";
 
 // POST /api/documents/[id]/seal — dashboard-native Verified Badge sealing
 // (2026-08-05, VERIFIED_BADGE_DASHBOARD_SCOPE.md). Thin wrapper around the
@@ -17,29 +17,21 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
   const ctx = await getUserAndOrg();
   if (!ctx) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  const { supabase, orgId } = ctx;
+  const { orgId } = ctx;
 
-  // Certificate mode: the dashboard path never asks (2026-08-05, direct
-  // decision 4) — always the org's saved Settings preference
-  // (verified-badge-settings.tsx), with a saved "ask" (or no preference set
-  // yet, i.e. a brand-new org) treated as "both". Same effective default
-  // the MCP seal_document tool already uses, for the same underlying reason:
-  // there's no conversation here to ask the appended/separate/both question
-  // through, so it needs a sane default rather than Console chat's
-  // "ask every time" logic.
-  const { data: org } = await supabase
-    .from("organizations")
-    .select("verified_badge_certificate_mode")
-    .eq("id", orgId)
-    .single();
-  const savedMode = org?.verified_badge_certificate_mode;
-  const certificateMode: CertificateMode =
-    savedMode === "appended" || savedMode === "separate" || savedMode === "both" ? savedMode : "both";
-
+  // Always "both" (2026-08-05, direct ask, superseding decision 4's
+  // "org's saved Settings preference, ask-as-both" rule) — the dashboard
+  // never had a way to ask conversationally, and now it doesn't have a
+  // Settings toggle for it either (removed from identity-settings.tsx same
+  // day): every dashboard seal just gets both an appended and a separate
+  // certificate, no per-org preference read at all. Console/MCP are
+  // unaffected — this route is the dashboard's only caller of
+  // sealDocumentAction, so Console's own saved preference and its
+  // conversational ask keep working exactly as before.
   const result = await sealDocumentAction({
     orgId,
     documentId: id,
-    certificateMode,
+    certificateMode: "both",
     source: "dashboard",
   });
 

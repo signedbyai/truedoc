@@ -1,19 +1,27 @@
 "use client";
 
-// Light-themed twin of verified-badge-settings.tsx (2026-08-05 follow-up to
-// VERIFIED_BADGE_DASHBOARD_SCOPE.md) — same identity-status/re-verify and
-// certificate-style controls, same underlying data and endpoints
-// (/api/org/identity/start, /api/org/console-settings), styled as an
-// ordinary /dashboard/settings Card instead of Console's dark chat-surface
-// panel. That original panel moved OUT of /dashboard/settings on 2026-08-01
-// because Verified Badge was Console/MCP-only then — every bit of sealing
-// activity happened in Console, so a separate dashboard page just to verify
-// your identity was an extra hop. That premise is gone: sealing is a
-// dashboard-native New Document tab now, and every plan (including Free,
-// via its own 3-seals/month pool) can reach it, so identity verification
-// needs a home here too — not just Console's Settings tab (kept, by direct
-// decision, as a second surface over the same org-level data) or the
-// inline card that only appears mid-seal if you're not verified yet.
+// Light-themed twin of verified-badge-settings.tsx's identity half
+// (2026-08-05 follow-up to VERIFIED_BADGE_DASHBOARD_SCOPE.md) — same
+// identity-status/re-verify control, same underlying data/endpoint
+// (/api/org/identity/start), styled as an ordinary /dashboard/settings Card
+// instead of Console's dark chat-surface panel. That original panel moved
+// OUT of /dashboard/settings on 2026-08-01 because Verified Badge was
+// Console/MCP-only then — every bit of sealing activity happened in
+// Console, so a separate dashboard page just to verify your identity was
+// an extra hop. That premise is gone: sealing is a dashboard-native New
+// Document tab now, and every plan (including Free, via its own
+// 3-seals/month pool) can reach it, so identity verification needs a home
+// here too — not just Console's Settings tab (kept, by direct decision, as
+// a second surface over the same org-level data) or the inline card that
+// only appears mid-seal if you're not verified yet.
+//
+// No certificate-style control here (removed 2026-08-05, direct ask, same
+// day it was added) — the dashboard's own Seal a file tab always produces
+// both an appended and a separate certificate now
+// (api/documents/[id]/seal/route.ts hardcodes certificateMode: "both"),
+// so there's nothing left to choose from this surface. Console keeps its
+// own dropdown + conversational ask untouched, per direct instruction —
+// this was a dashboard-only simplification, not a product-wide one.
 //
 // Deliberately not gated to any plan/hasConsoleAccess check the way
 // Console's own copy is — sealing itself is free-plan-reachable now, so
@@ -23,26 +31,20 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getStripeClient } from "@/lib/stripe-client";
 
-type CertificateMode = "ask" | "appended" | "separate" | "both";
-
 export function IdentitySettings({
   identityVerified,
   identityVerifiedName,
   identityVerifiedAt,
   identityStale,
-  initialCertificateMode,
 }: {
   identityVerified: boolean;
   identityVerifiedName: string | null;
   identityVerifiedAt: string | null;
   identityStale: boolean;
-  initialCertificateMode: CertificateMode;
 }) {
   const router = useRouter();
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState("");
-  const [mode, setMode] = useState<CertificateMode>(initialCertificateMode);
-  const [savingMode, setSavingMode] = useState(false);
 
   async function startVerification() {
     setVerifying(true);
@@ -71,24 +73,6 @@ export function IdentitySettings({
     }
   }
 
-  async function saveCertificateMode(next: CertificateMode) {
-    const previous = mode;
-    setMode(next);
-    setSavingMode(true);
-    try {
-      const res = await fetch("/api/org/console-settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ certificateMode: next }),
-      });
-      if (!res.ok) setMode(previous);
-    } catch {
-      setMode(previous);
-    } finally {
-      setSavingMode(false);
-    }
-  }
-
   return (
     <div className="space-y-4">
       <div>
@@ -111,29 +95,6 @@ export function IdentitySettings({
         >
           {verifying ? "Opening verification…" : identityVerified ? "Redo verification" : "Verify identity"}
         </button>
-      </div>
-
-      <div className="border-t border-slate-100 pt-4">
-        <label htmlFor="dashboard-certificate-mode" className="block text-sm font-medium text-slate-900">
-          Certificate style
-        </label>
-        <p className="mt-1 text-xs text-slate-500">
-          What Console and the MCP tool ask (or skip asking) each time you seal a document — appended into the file,
-          kept as a separate certificate, or both. The dashboard&apos;s own Seal a file tab never asks; it just
-          follows this preference, treating &quot;Ask me every time&quot; as &quot;Always both&quot;.
-        </p>
-        <select
-          id="dashboard-certificate-mode"
-          value={mode}
-          onChange={(e) => saveCertificateMode(e.target.value as CertificateMode)}
-          disabled={savingMode}
-          className="mt-2.5 w-full max-w-xs rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 disabled:text-slate-400"
-        >
-          <option value="ask">Ask me every time</option>
-          <option value="appended">Always appended</option>
-          <option value="separate">Always separate</option>
-          <option value="both">Always both</option>
-        </select>
       </div>
     </div>
   );
