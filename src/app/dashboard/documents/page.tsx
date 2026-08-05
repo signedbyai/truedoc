@@ -7,7 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DeleteDocumentButton } from "@/components/delete-document-button";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
-import { LIST_STATUS_PILL, StatusPill, type StatusTone } from "@/components/status-pill";
+import { LIST_STATUS_PILL, SEALED_LIST_PILL, StatusPill } from "@/components/status-pill";
 import { formatRelativeTime, latestViewedByDocument } from "@/lib/last-viewed";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -27,17 +27,6 @@ const SORT_OPTIONS: Record<string, { column: "created_at" | "title"; ascending: 
 };
 
 const PAGE_SIZE = 20;
-
-// A sealed document is still status "completed" underneath (the self-sign
-// primitive reuses the ordinary documents/signers schema unmodified — see
-// VERIFIED_BADGE_SCOPE.md's decision 6), so it can't get its own row in
-// LIST_STATUS_PILL, which is keyed by status alone. Same tone (green dot),
-// different, more accurate label — "Sealed" is what actually happened.
-const SEALED_LIST_PILL: { tone: StatusTone; dotTone?: StatusTone; label: string } = {
-  tone: "gray",
-  dotTone: "green",
-  label: "Sealed",
-};
 
 // Strip characters that would otherwise corrupt the hand-built PostgREST
 // .or()/.in() filter strings below (comma splits conditions, parens break

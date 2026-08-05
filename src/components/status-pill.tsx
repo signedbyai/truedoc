@@ -141,3 +141,17 @@ export const LIST_STATUS_PILL: Record<
   declined: { tone: "red", label: "Declined" },
   voided: { tone: "gray", label: "Voided" },
 };
+
+// A sealed document is still status "completed" underneath (the self-sign
+// primitive reuses the ordinary documents/signers schema unmodified — see
+// VERIFIED_BADGE_SCOPE.md's decision 6), so it can't get its own row in
+// LIST_STATUS_PILL above, which is keyed by status alone. Same tone/dot as
+// "completed", different, more accurate label. Shared across both list
+// surfaces that show sealed documents alongside sent ones (2026-08-05,
+// follow-up to VERIFIED_BADGE_DASHBOARD_SCOPE.md): dashboard/documents/
+// page.tsx and dashboard/page.tsx's "Recent documents" card.
+export const SEALED_LIST_PILL: { tone: StatusTone; dotTone?: StatusTone; label: string } = {
+  tone: "gray",
+  dotTone: "green",
+  label: "Sealed",
+};

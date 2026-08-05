@@ -4,7 +4,7 @@ import { getUserAndOrg } from "@/lib/org";
 import { seatsOverLimit, PLAN_LABEL } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
-import { LIST_STATUS_PILL, StatusPill } from "@/components/status-pill";
+import { LIST_STATUS_PILL, SEALED_LIST_PILL, StatusPill } from "@/components/status-pill";
 import { BadgeIcon, FirstStepIcon } from "@/components/badge-icon";
 import { PrizeDrawPill } from "@/components/prize-draw-pill";
 import { tallyStatuses, workspaceStats } from "@/lib/workspace-stats";
@@ -30,11 +30,14 @@ export default async function DashboardPage() {
   // switching between real, distinct orgs was possible.
   const { data: documents } = await supabase
     .from("documents")
-    .select("id, title, status, page_count, created_at")
+    .select("id, title, status, page_count, created_at, is_verified_badge")
     .eq("org_id", orgId)
-    // Verified Badge seals stay Console-only, out of the Signing Dashboard
-    // — see CONSOLE_VERIFIED_BADGE_PROVENANCE_SCOPE.md.
-    .eq("is_verified_badge", false)
+    // Sealed documents used to be excluded here entirely (Console was their
+    // only home — CONSOLE_VERIFIED_BADGE_PROVENANCE_SCOPE.md). Stale now
+    // that sealing is a dashboard-native New Document tab
+    // (VERIFIED_BADGE_DASHBOARD_SCOPE.md, 2026-08-05, direct ask) — a
+    // document sealed from this dashboard belongs in its own "Recent
+    // documents" list. Gets its own "Sealed" pill below.
     .order("created_at", { ascending: false })
     .limit(5);
 
@@ -48,11 +51,12 @@ export default async function DashboardPage() {
   // and references auth.users (0001_init.sql), so no migration is needed and
   // history stays attributable: a user's personal count is correct from day
   // one rather than starting at zero.
-  const { data: allStatuses } = await supabase
-    .from("documents")
-    .select("status")
-    .eq("org_id", orgId)
-    .eq("is_verified_badge", false);
+  // Sealed documents count here too as of 2026-08-05 (direct ask) — they
+  // land straight in "completed" (self-sign completes synchronously), so
+  // they fall out of workspaceStats' existing sent/completed/resolved maths
+  // unchanged; nothing in workspace-stats.ts needed to change, only which
+  // rows this query includes.
+  const { data: allStatuses } = await supabase.from("documents").select("status").eq("org_id", orgId);
   const stats = workspaceStats(tallyStatuses((allStatuses ?? []).map((d) => d.status)));
 
   // Monthly gift-card draw progress. Deliberately a different number from the
@@ -225,7 +229,11 @@ export default async function DashboardPage() {
                   </p>
                   <p className="text-[15px] font-medium text-slate-900">{stats.earned.label}</p>
                   <p className="text-xs text-slate-500">
-                    {stats.sent} document{stats.sent === 1 ? "" : "s"} sent
+                    {/* "sent or sealed" (2026-08-05, direct ask) — this count
+                        now includes Verified Badge seals (see the query
+                        above), so the caption needs to say so rather than
+                        implying every one of these went out to a signer. */}
+                    {stats.sent} document{stats.sent === 1 ? "" : "s"} sent or sealed
                     {stats.next && ` · next badge at ${stats.next.threshold}`}
                   </p>
                 </div>
@@ -317,7 +325,7 @@ export default async function DashboardPage() {
             {documents && documents.length > 0 ? (
               <ul className="divide-y divide-slate-100">
                 {documents.map((doc) => {
-                  const pill = LIST_STATUS_PILL[doc.status];
+                  const pill = doc.is_verified_badge && doc.status === "completed" ? SEALED_LIST_PILL : LIST_STATUS_PILL[doc.status];
                   return (
                   <li key={doc.id} className="flex items-center justify-between gap-3 py-3">
                     <div className="min-w-0">
