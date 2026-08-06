@@ -1,0 +1,246 @@
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
+import { FlagValues } from "flags/react";
+import { CtaLink } from "@/components/cta-link";
+import { ctaColorFlag } from "@/flags";
+
+// Companion page to /verified-badge (2026-08-06, direct ask, after the
+// invoice hero image and the invoice-fraud ad angle both got built against
+// what was still the AI-detector-framed page). Same product, same signup
+// flow, different fear: /verified-badge is "prove a client's AI detector
+// is wrong about my work"; this page is "prove a scammer didn't fake my
+// invoice." Forcing both pitches onto one page/hero was the actual bug —
+// see [[verified-badge-invoice-fraud-campaign-assets]] and
+// [[verified-badge-reddit-campaign-assets]] for the two ad angles this
+// pairs with.
+//
+// Same two honesty rules as the invoice-fraud ad copy, non-negotiable:
+// never claim this "stops fraud" or guarantees a scam can't happen — it
+// proves a specific file existed, unaltered, as of a verified timestamp,
+// sealed by an identity-verified person; and don't overstate what
+// AI-generated fake invoices are doing today.
+const TITLE = "Verified Badge — prove your invoice is genuinely from you, not an AI fake | SignedBy";
+const DESCRIPTION =
+  "Seal your invoice as unaltered and identity-verified before you send it. Your client scans a code and knows instantly it's really from you. Free to start, no card required.";
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: "/verified-badge-invoices" },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/verified-badge-invoices" },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
+};
+
+// Same dashboard-native flow as /verified-badge's START_HREF (see that
+// file's comment for the full history) — utm_campaign changed so this
+// page's own signups are attributable separately from /verified-badge's,
+// same reasoning as [[signup-attribution]].
+const START_HREF =
+  "/login?intent=signup&next=" +
+  encodeURIComponent("/dashboard/documents/new?mode=badge") +
+  "&utm_source=verified_badge&utm_medium=cta&utm_campaign=verified_badge_invoice_page";
+
+// Mostly the same FAQ as /verified-badge — only the first question is
+// reframed for the invoice-fraud angle specifically; the rest (client
+// view, identity-check freshness, PDF-only, plan/pricing, TSA proof) are
+// the same real facts regardless of which fear brought someone here.
+const FAQ = [
+  {
+    q: "Does this stop someone from faking my invoice?",
+    a: "No — and it doesn't claim to. A Verified Badge proves your real invoice existed, unaltered, as of a cryptographically verified timestamp, sealed by an identity-verified person. That gives your client an actual way to check instead of just trusting that an email looks right — it isn't a guarantee nothing bad can ever happen.",
+  },
+  {
+    q: "What does the client actually see?",
+    a: "A badge on your invoice — a QR code, the SignedBy mark, and a short verification link as plain text, so it reads as legitimate even printed or screenshotted. Scanning or visiting it lands on a public ledger page: your name, when the file was sealed, and confirmation it hasn't been altered since. No account or login needed to check it.",
+  },
+  {
+    q: "What if my identity check is old?",
+    a: "Your first seal verifies your identity via a government-ID check (about a minute, hosted by Stripe). Later seals reuse that same verified check rather than re-scanning your ID every time — cheaper and faster. The ledger page always shows \"identity verified on [date]\" alongside \"sealed on [date]\" as two separate facts, so it's clear if the identity check itself is from earlier than this specific seal.",
+  },
+  {
+    q: "Does this work for non-PDF files?",
+    a: "PDFs only for now. If your invoice comes from accounting software as something else, export or print it to a PDF first, then seal that.",
+  },
+  {
+    q: "What plan do I need?",
+    a: "Any plan, including Free, no card required. Free includes 3 Verified Badge seals a month. Pro plan or higher gets unlimited sealing, no per-seal charge. Seal a file right from your dashboard's New Document menu — developers can also do this from Console chat or the API, see the developer docs.",
+  },
+  {
+    q: "What actually makes the timestamp \"cryptographically verified\"?",
+    a: "Every seal is submitted to a real Time Stamping Authority (Sectigo's public RFC 3161 service, with FreeTSA as an automatic fallback if Sectigo can't be reached) that signs the file's hash together with the time. That's independently verifiable by anyone, trusting only the TSA — not just a date in SignedBy's own database. The ledger page at signedby.ai/verify shows which TSA backed a given seal.",
+  },
+];
+
+export default async function VerifiedBadgeInvoicesPage() {
+  const ctaColor = await ctaColorFlag();
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQ.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
+    })),
+  };
+
+  return (
+    <main className="flex min-h-screen flex-col bg-white">
+      <FlagValues values={{ "cta-color": ctaColor }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+
+      <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-6">
+        <Link href="/">
+          <Image src="/brand/signedby-lockup-yellow-badge-beta-micro-small.png" alt="SignedBy" width={266} height={64} className="h-7 w-auto" priority />
+        </Link>
+        <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+          Sign in
+        </Link>
+      </header>
+
+      <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-5 px-6 py-10 text-center">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Verified Badge</p>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+          AI can fake an invoice in seconds. Prove yours is genuinely you.{" "}
+          <ShieldCheck className="inline-block h-6 w-6 -translate-y-0.5 text-slate-900 sm:h-7 sm:w-7" aria-hidden="true" />
+        </h1>
+        <p className="max-w-xl text-base text-slate-600">
+          A scammer can now knock up a convincing fake invoice with your name and branding on it in seconds, and
+          send it to one of your clients. Seal your real invoice first: a hash and identity-verified proof of what
+          you actually sent, so your client can check before they pay.
+        </p>
+        <div className="relative mt-2 flex flex-col items-center gap-2">
+          <div className="mb-1 flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800 shadow-sm">
+            <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            </span>
+            Now built right into your dashboard — seal your first document free today.
+            <span
+              className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-emerald-200 bg-emerald-50"
+              aria-hidden="true"
+            />
+          </div>
+          <CtaLink href={START_HREF} color={ctaColor} page="verified-badge-invoices" position="hero">
+            Generate Your Proof →
+          </CtaLink>
+          <p className="text-xs text-slate-400">Free to start, no card required — takes about a minute to set up.</p>
+        </div>
+      </section>
+
+      <section className="mx-auto flex w-full max-w-3xl justify-center px-6 pb-10">
+        {/* The in-context invoice mockup — this is the page it was actually
+            built for. See hero-verified-badge-invoice.png's own generation
+            comment (generate-hero-mockup.tsx) for the QR-target gotcha
+            already fixed once here. */}
+        <div className="w-full max-w-sm overflow-hidden rounded-xl border border-slate-200/60 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
+          <Image
+            src="/hero-verified-badge-invoice.png"
+            alt="A Verified Badge stamped in the corner of a freelance invoice — the SignedBy mark, a scannable QR code, and a verification link"
+            width={640}
+            height={820}
+            priority
+            sizes="(max-width: 640px) 90vw, 384px"
+            className="h-auto w-full"
+          />
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl px-6 pb-4">
+        <h2 className="text-lg font-semibold text-slate-900">How it works</h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          {[
+            {
+              step: "1. Verify once",
+              body: "A one-time government-ID check (about a minute, hosted by Stripe). Reused across every future seal — no re-scanning your ID each time.",
+            },
+            {
+              step: "2. Seal the invoice",
+              body: "Just upload your finished invoice PDF from your dashboard — SignedBy hashes it, timestamps it, and generates your badge.",
+            },
+            {
+              step: "3. Embed the badge",
+              body: "Drop the badge on your invoice before you send it. A client scans it and lands on a public ledger page — no account needed.",
+            },
+          ].map((s) => (
+            <div key={s.step} className="rounded-xl border border-slate-200 p-4">
+              <p className="text-sm font-semibold text-slate-900">{s.step}</p>
+              <p className="mt-1.5 text-sm text-slate-600">{s.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl px-6 py-8">
+        <h2 className="text-lg font-semibold text-slate-900">What this actually proves</h2>
+        <p className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          A Verified Badge is a provenance and integrity proof, not a fraud-detection tool. It confirms this exact
+          file existed, unaltered, as of a cryptographically verified timestamp, sealed by an identity-verified
+          person — a real, useful, different claim from &ldquo;this looks legitimate.&rdquo; Honest framing, on
+          purpose: overclaiming here would undercut the one thing that actually holds up under scrutiny.
+        </p>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl px-6 py-10 text-center">
+        <h2 className="text-2xl font-semibold text-slate-900">Generate Your Proof</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Free to start — 3 seals a month included, no card required. Need more? Pro plan or higher gets unlimited
+          sealing, no per-seal charge.
+        </p>
+        <CtaLink href={START_HREF} className="mt-5" color={ctaColor} page="verified-badge-invoices" position="footer">
+          Generate Your Proof →
+        </CtaLink>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl pb-12 px-6">
+        <h2 className="text-lg font-semibold text-slate-900">Frequently asked questions</h2>
+        <div className="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-200">
+          {FAQ.map((item) => (
+            <div key={item.q} className="px-5 py-4">
+              <h3 className="text-sm font-semibold text-slate-900">{item.q}</h3>
+              <p className="mt-1.5 text-sm text-slate-600">{item.a}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl px-6 pb-16">
+        <p className="text-sm text-slate-500">
+          Also on SignedBy:{" "}
+          <Link href="/console" className="underline underline-offset-2 hover:text-slate-900">
+            Console
+          </Link>{" "}
+          ·{" "}
+          <Link href="/magic-quote" className="underline underline-offset-2 hover:text-slate-900">
+            Magic Quote
+          </Link>{" "}
+          ·{" "}
+          <Link href="/verify" className="underline underline-offset-2 hover:text-slate-900">
+            Verify a document
+          </Link>{" "}
+          ·{" "}
+          <Link href="/developers" className="underline underline-offset-2 hover:text-slate-900">
+            API &amp; MCP docs
+          </Link>
+        </p>
+      </section>
+
+      <footer className="mt-auto border-t border-slate-100 px-6 py-8 text-center text-xs text-slate-400">
+        <p>© {new Date().getFullYear()} SignedBy. signedby.ai</p>
+        <p className="mt-1">A trading name of SPRK10 B.V. KVK 98888625</p>
+        <p className="mt-2 space-x-4">
+          <Link href="/pricing" className="hover:text-slate-600">
+            Pricing
+          </Link>
+          <Link href="/terms" className="hover:text-slate-600">
+            Terms
+          </Link>
+          <Link href="/privacy" className="hover:text-slate-600">
+            Privacy
+          </Link>
+        </p>
+      </footer>
+    </main>
+  );
+}
