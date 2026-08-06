@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserAndOrg } from "@/lib/org";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendSignupConversions } from "@/lib/conversion-api";
 
 // Records first-touch signup attribution onto the org, from the params the
 // browser stashed on the ad landing. Set-once: only writes if the org has no
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
   const { data: org } = await admin.from("organizations").select("signup_utm_source").eq("id", orgId).single();
   if (!org || org.signup_utm_source) return NextResponse.json({ ok: true }); // already attributed
 
-  await admin
+  const { error } = await admin
     .from("organizations")
     .update({
       signup_utm_source: parsed.data.utm_source,
@@ -51,6 +52,14 @@ export async function POST(request: Request) {
     })
     .eq("id", orgId)
     .is("signup_utm_source", null);
+
+  // Fire the server-side conversion send only on the write that actually won
+  // the set-once race, and only ever from this one attribution choke point --
+  // never call this from anywhere else, or Reddit/LinkedIn will get duplicate
+  // events for the same org.
+  if (!error && (parsed.data.rdt_cid || parsed.data.li_fat_id)) {
+    void sendSignupConversions({ orgId, rdtCid: parsed.data.rdt_cid, liFatId: parsed.data.li_fat_id }).catch(() => {});
+  }
 
   return NextResponse.json({ ok: true });
 }
