@@ -59,6 +59,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // sitemap coverage), same priority tier as the other feature/template
     // landing pages above.
     { url: `${BASE_URL}/board-resolutions`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    // Verified Badge pages -- /verified-badge and /verified-badge-invoices
+    // were both live, linked, and indexable but missing from here entirely;
+    // caught 2026-08-06 while adding /verified-badge-real-estate, the third
+    // page in the same family (see that page's own top-of-file comment).
+    { url: `${BASE_URL}/verified-badge`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE_URL}/verified-badge-invoices`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE_URL}/verified-badge-real-estate`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     // Audience-specific entry-point pages, added 2026-07-27 to test AU
     // trades and US subcontractor market entry — same feature, localized
     // framing and FAQ (see each page's own top-of-file comment).

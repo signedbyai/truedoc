@@ -1,8 +1,16 @@
 # In-document badge placement + API sealing + verification API — scope
 
-Scope only, not built (2026-08-06, direct ask, three-part question). Everything
-below is grounded in the actual current code, not assumption — see "Current
-state" for what was checked.
+Scope only, not built except where noted (2026-08-06, direct ask, three-part
+question, extended across several follow-ups). Everything below is grounded
+in the actual current code, not assumption — see "Current state" for what
+was checked. **Split into V1/V2 stages 2026-08-06** (direct ask) — V1 is the
+freelancer-facing MVP from the "doesn't feel like handing over a bunch of
+codes" conversation; V2 is the platform/API/advanced layer that isn't
+needed for that MVP to work. **V1.1/V1.2 simplified 2026-08-06** (second
+direct ask, same day) — replaced the named-preset-library design below with
+a leaner single-saved-position "Badge Placer," see that section for the
+current design; the preset-library text is kept struck through in place so
+the reasoning that led here isn't lost.
 
 ## Why this now
 
@@ -43,17 +51,50 @@ gets real ad traffic, not after.
   `timestampGenTime`. **Another app can already call this today, for free,
   with no changes.** It's just undocumented on `/developers` and not
   versioned under `/api/v1`.
+- "Payment collection" (Business tier) already exists too:
+  `documents.payment_link_url`/`payment_label`, shown as a "Pay now" button
+  on the signer-facing `/sign/[token]` page — a plain external link the org
+  already owns (e.g. their own Stripe Payment Link), deliberately not a
+  Stripe Connect charge. Completely disconnected from Verified Badge today:
+  self-sealed documents never touch the field-editor UI that sets it, and
+  `/verify` doesn't show payment info in any form.
 
-## 1. In-document badge placement (avoid obscuring content, some position control)
+## Roadmap: V1 vs V2
+
+**V1 — freelancer MVP.** Everything needed so a freelancer sealing their
+own invoices gets a genuinely clean result: the badge stamped in the
+document itself, a clear single obvious output instead of five unlabeled
+buttons, and (Business tier) a simple payment link alongside it. All of it
+ships on the dashboard, none of it needs the public API.
+- V1.1 In-document badge placement (manual, presets, no AI detection)
+- V1.2 Presets over detection, plus a Settings-level default
+- V1.3 Output page redesign (partially **built** — see status)
+- V1.4 Corner-stamp output — consolidated implementation plan
+- V1.5 Payment link QR — first cut, verify-page only
+
+**V2 — platform, API & advanced.** Everything a human freelancer using the
+dashboard never touches: programmatic sealing for integrators, the
+large-customer pricing question, and the deeper version of the payment QR.
+Nothing here blocks V1, though V2.1 (the API seal route) reuses V1.4's
+placement work once it exists.
+- V2.1 API-level seal endpoint
+- V2.2 API-seal cap/metering & pricing (deliberately dark)
+- V2.3 Verification API + callback
+- V2.4 Payment QR — in-document extension
+
+---
+
+# V1 — Freelancer MVP
+
+## V1.1 — In-document badge placement (avoid obscuring content, some position control)
 
 Two different design directions, real tradeoff between them:
 
-**A — manual placement, reusing field-editor (recommended for v1).** Before
-sealing, show the uploaded PDF with a draggable badge-position box, same UX
-`field-editor.tsx` already uses for signature/date fields — the user drags
-it to an empty corner and sees exactly what they'll get before sealing.
-Store the chosen `page`/`x`/`y`/`width` (new columns, or reuse
-`document_fields` with a new `type: 'badge'`). Realistic, reuses solved
+**A — manual placement, reusing field-editor (recommended, confirmed).**
+Before sealing, show the uploaded PDF with a draggable badge-position box,
+same UX `field-editor.tsx` already uses for signature/date fields — the
+user drags it to an empty corner and sees exactly what they'll get before
+sealing. Store the chosen `page`/`x`/`y`/`width`. Realistic, reuses solved
 infrastructure, and "avoid obscuring text" becomes the user's own judgment
 call with a live preview rather than something the software has to guess.
 Default if the user doesn't reposition it: bottom-right corner of page 1,
@@ -62,14 +103,218 @@ small (roughly matches the compact badge already used on certificate pages
 rectangle behind it so even landing over existing content stays legible
 rather than muddying into it.
 
-**B — automatic content-aware placement.** Software finds genuinely empty
-space and avoids it programmatically — would need PDF text/content position
-extraction (e.g. `pdf.js` text-layer parsing) plus heuristics to find a safe
-region, then handle the cases where no clean space exists at all (dense
-invoices, full-bleed templates). Meaningfully more work, still probabilistic
-(can get it wrong on an unusual layout), and this class of problem doesn't
-have a fully reliable off-the-shelf solution. Not recommended for v1 — (A)
-solves the real problem (a client-facing invoice with an unreadable QR
+**Simplified 2026-08-06 (second direct ask, "Badge Placer"):** confirmed as
+a single draggable *and resizable* box, not just draggable — the user drags
+to reposition and scales it to size, same two gestures `field-editor.tsx`
+already has solved separately (`dragState`/`confirmField` for position,
+`resizeField` in `lib/field-resize.ts` for size). No named-preset library
+(see V1.2 below, superseded) — one saved position per document, overwritten
+every time the user re-opens the placer and saves again. **Starting
+position, resolved 2026-08-06:** a brand-new document's placer opens at the
+org's most-recently-saved position (V1.2's friction question, now
+resolved) — bottom-right of page 1 only as the fallback for an org that's
+never saved one yet. The user always drags away from wherever it opens,
+never from a blank slate.
+
+**Minimum-size protection — flagged 2026-08-06 (direct question, correct
+concern).** Checked `lib/field-resize.ts` directly: it already enforces a
+floor (`MIN_FIELD_W = 0.02`, `MIN_FIELD_H = 0.015`), but that constant is
+sized for the smallest *existing* field type — a checkbox — not for QR
+scannability. It's real protection against the box collapsing to nothing,
+not protection against shrinking to something a phone camera can't
+resolve; the badge needs its own, larger floor.
+
+Two separate problems, both need addressing, not just one:
+- **A badge-specific minimum, larger than `MIN_FIELD_W/H`.** Real-world QR
+  guidance is roughly 1.5–2cm physical size for a reliable close-range
+  phone scan (denser payloads, like this one's URL+hash, want the higher
+  end). The compact badge (`generateCertificateBadge`, `badge-asset.tsx`)
+  is 300×130px with the QR occupying 100px of that width — the QR is
+  roughly a third of the total badge width, so keeping it scannable means
+  keeping the *whole badge box* meaningfully larger than the generic field
+  floor. This needs a real print-and-scan test to pin down an exact
+  fraction rather than a pure geometry estimate (camera quality, printer
+  DPI, and contrast all move the real-world floor around more than the
+  math alone predicts) — flagging the need for that test now rather than
+  hardcoding an unverified number. Also worth checking the *default* size
+  against whatever floor that test lands on: V1.1's "small, roughly
+  matches the existing compact badge" default was never pinned to an exact
+  number, and needs to land comfortably above the scan-reliability floor,
+  not right at its edge.
+- **Aspect-ratio lock during resize — not currently handled by
+  `resizeField`.** It moves each dragged corner independently, correct for
+  a signature/text box, wrong for the badge: the badge is a fixed-ratio
+  PNG (mark + QR + two lines of text), and free-dragging one corner would
+  stretch it — a stretched QR isn't just visually off, non-square modules
+  can genuinely fail to scan. The Badge Placer's resize handle needs to
+  scale both dimensions together off a single drag, not reuse
+  `resizeField`'s independent-corner behavior as-is.
+- **Soft warning, not just a hard clamp.** Rather than silently blocking
+  at the floor, the existing `domainWarnings` pattern in
+  `field-editor.tsx` — a warning shown but not blocking, since an unusual
+  setup can be intentional rather than a mistake — is a closer fit here
+  than a hard wall: something like "This may be too small to scan
+  reliably" if the user drags near the floor, still lets them proceed if
+  they know their own use case (e.g. a large-format print at reading
+  distance can tolerate more shrinkage than a phone-screen PDF).
+
+**Isolation from the live signer field editor — confirmed 2026-08-06
+(direct question).** Checked directly: `resizeField`/`MIN_FIELD_W`/
+`MIN_FIELD_H` are imported nowhere except `field-editor.tsx` and their own
+test file — nothing else in the codebase touches them. Combined with V1.5's
+already-established fact that self-sealed documents never reach
+`field-editor.tsx` at all today (the Verified Badge seal flow is its own
+route — `dashboard/documents/new`, `verified-badge/page.tsx`, the seal
+action route), the Badge Placer was always a new, small component on that
+separate screen, not a new mode bolted onto the live signer-field editor.
+Worth being precise about what "reusing field-editor's mechanics" (V1.4)
+actually means, though, since the aspect-ratio-lock and larger minimum
+above both need behavior the live editor doesn't have: reuse the *pattern*
+(pointer-drag math), not the same exported functions — a new
+`resizeBadge`/`MIN_BADGE_W`/`MIN_BADGE_H` living alongside the existing
+ones in `field-resize.ts` (or a sibling file), never editing
+`resizeField`'s own signature or the constants live signer fields already
+depend on. Net effect: nothing about this feature can regress the send
+flow's field editor, by construction, not just by care at build time.
+
+**Naming (confirmed 2026-08-06):**
+- The entry point is a verb, not the feature's own internal name — **"Place
+  badge"** (or "Position badge"), matching the existing toolbar tone
+  (Suggest fields, Save as Template). "Badge Placer" stays the doc/internal
+  name for the feature, not on-screen copy.
+- The saved-confirmation moment reuses the editor's existing autosave
+  "saved" pill pattern (`saveState`) rather than inventing new copy —
+  **"Position saved."**
+- The resulting output/download option (the thing "Own Placed" was
+  reaching for) is **"Custom placement"** — plain, and general enough to
+  cover portfolios and other document types the same corner-stamp applies
+  to, not invoice-specific. Replaces V1.4's earlier working name
+  "Invoice-ready copy" below.
+
+**"Ask every time" vs. "just seal fast" — confirmed 2026-08-06, default
+flipped same day (direct ask: invoices are only a slice of what gets
+sealed, most orgs shouldn't see a new step for a need they don't have).**
+
+**Where this lives — corrected 2026-08-06 (direct question caught a real
+mistake in this doc's first pass).** Originally written as living beside
+`verified-badge-settings.tsx`'s "Certificate style" row — wrong, checked
+more carefully after being asked directly. That component only renders
+inside Console's own Settings tab (`console/app/page.tsx`), and the
+dashboard's Seal flow doesn't read from it at all:
+`/api/documents/[id]/seal/route.ts` hardcodes `certificateMode: "both"`,
+with its own comment explaining why — a deliberate 2026-08-05 decision to
+keep the dashboard flow simple and disconnected from Console's settings.
+There's a stronger reason this setting can't live there anyway: Console
+and MCP sealing are conversational/programmatic callers — there's no
+dragging a box in a chat window or an API call — so "ask me every time"
+is structurally meaningless outside the dashboard. This is a
+dashboard-only setting for a dashboard-only capability.
+
+The real home is `/dashboard/settings/page.tsx`, which already has exactly
+this pattern solved: an "Identity" card was added there 2026-08-05 for the
+identical reason (a direct question — "not seeing anything in Settings
+under Identity, is it there?" — surfaced that the Console-only panel
+wasn't reachable by dashboard-only users; `identity-settings.tsx` is
+described in its own comment as "a light-themed twin" of
+`verified-badge-settings.tsx`'s identity half). The placement toggle
+follows the same fix: a new sibling **"Verified Badge"** card, right after
+the existing "Identity" one, "Badge placement" as its first row — not
+folded into the Identity card itself, which stays scoped to identity
+verification only. Persisted through a new dashboard-facing route
+mirroring `/api/org/auto-suggest`'s existing shape (a plain org-level
+boolean toggle, same pattern `auto-suggest-settings.tsx` already uses) —
+not `/api/org/console-settings`, which is Console's own route and not
+meant for dashboard-only preferences.
+
+Row shape, **opt-in, not opt-out:**
+- **"Always use last position"** (default) — the "Badge placement" row
+  doesn't render on the Seal tab at all; sealing behaves exactly as it
+  does today, unchanged, instant, silently using the org's remembered last
+  position (or bottom-right/page 1 fallback). Every org that doesn't
+  actively care about this sees zero difference from the product as it
+  exists right now.
+- **"Ask me every time"** (opt-in) — the Seal tab's "Badge placement" row
+  and the placer appear, exactly as scoped above. An org sealing invoices
+  or portfolios where placement actually matters turns this on once, in
+  Settings, and keeps it on.
+
+**Discovery is the real cost of defaulting to off — flagging, not
+solved.** An opt-in toggle nobody's told about is a feature that
+effectively doesn't exist for the exact freelancers this whole campaign
+targets. Worth a lightweight nudge somewhere — e.g. a one-time dismissible
+hint on the Seal tab the first time someone seals an invoice-like title, or
+just linking to the setting from the Console/`/verified-badge-invoices`
+marketing page's own copy — rather than leaving it purely buried in
+Settings with no pointer to it. Not designed here; flagging so it isn't
+silently forgotten at build time.
+
+**Resolved 2026-08-06 (direct ask): reuse the existing `OutputHint`
+popover on the output page, at the end of the org's first seal.** Checked
+`output-hint.tsx` and its two current call sites
+(`documents/[id]/page.tsx`) directly rather than assuming the shape: it's
+a small, generic, already-built component (localStorage-gated, shows once
+per browser per `storageKey`), currently wired to two buttons —
+`sb_output_hint_certificate_seen` ("Best for datarooms") and
+`sb_output_hint_badge_seen` ("Best for invoices"). A third instance for
+this discovery nudge is cheap to add — same component, no new UI pattern.
+
+**But the mobile capacity problem raised (direct ask) is real and
+pre-existing, confirmed by reading the code, not assumed.** The two
+current instances are fully independent — each opens purely off its own
+localStorage key with zero awareness of the other, so on a first-ever view
+both can pop open at once. Two 224px (`w-56`) popovers stacked under
+buttons that already wrap on a narrow screen very plausibly collide or run
+off-viewport today, before a third is even added. A third makes the
+"only room for one" problem certain instead of just likely.
+
+**Fix, scoped alongside adding the third hint rather than deferred:**
+sequence hints so only one is ever open per page view, not per-button
+independence. Smallest change: add an optional `active` prop to
+`OutputHint` (default `true`, so the two existing call sites are
+unaffected unless explicitly opted in) — when `active` is `false`, the
+auto-open effect skips even if the key is unseen. The parent page computes
+which single storage key is the first *unseen* one in a fixed priority
+list and passes `active` accordingly to each instance. Whichever hint
+isn't shown this visit stays unseen and gets its turn on a later visit
+once the current one is dismissed — nothing is ever silently skipped
+forever, just spread across visits instead of colliding on one.
+
+**Priority: the new hint goes first, ahead of the two existing ones, and
+is gated on the org's first seal specifically — not just "first unseen
+page view."** Matches the actual ask ("at the end of the first seal"):
+this is an onboarding moment, more valuable told once before someone's
+already sealed a dozen invoices at the wrong default than queued behind
+two file-choice hints they'll see regardless. Needs a server-computed
+"is this the org's very first seal" flag passed into the page (cheap —
+`sealsUsedThisMonth === 1` combined with no prior seal ever, mirroring
+logic `getFreePlanUsage` already computes elsewhere) rather than a plain
+localStorage check, since the moment being marked is about the org's
+history, not just this browser's popover history. Anchored to the
+Certificate button (first in the row) for simplicity, copy along the
+lines of: "You can also choose exactly where the badge lands — turn on
+'Ask me every time' under Settings, Badge placement." From the org's
+second seal onward, the Certificate/Badge image hints resume their normal
+sequenced rotation, one at a time, using the same `active`-prop mechanism.
+
+Not the same thing as the preset-library Settings row dropped earlier in
+V1.2 — that was about naming/managing several saved positions; this is a
+plain two-way switch on whether the confirmation step appears at all, not
+a management UI. Schema: `organizations.badge_placement_mode` ("ask" |
+"skip", **default "skip"**) — same two-value shape as
+`verified_badge_certificate_mode`, but its own column and its own route
+(`PATCH /api/org/badge-placement`, mirroring `/api/org/auto-suggest`'s
+existing pattern — see "Where this lives" above for why this can't reuse
+`/api/org/console-settings`). `new-document-client.tsx`'s Seal tab card
+reads it to decide whether to render the "Badge placement" row at all.
+
+**B — automatic content-aware placement (not recommended).** Software
+finds genuinely empty space and avoids it programmatically — would need PDF
+text/content position extraction (e.g. `pdf.js` text-layer parsing) plus
+heuristics to find a safe region, then handle the cases where no clean
+space exists at all (dense invoices, full-bleed templates). Meaningfully
+more work, still probabilistic (can get it wrong on an unusual layout), and
+this class of problem doesn't have a fully reliable off-the-shelf solution.
+(A) solves the real problem (a client-facing invoice with an unreadable QR
 stamped over the total line looks worse than the badge not existing at all)
 at a fraction of the cost, by putting a human in the loop.
 
@@ -80,64 +325,236 @@ mechanics (`page.drawImage` at a chosen page/x/y) are already proven code,
 just currently only ever pointed at a brand-new certificate page instead of
 an existing one.
 
-**Recommend:** keep `certificate_mode` exactly as it is today (it governs
+**Confirmed:** keep `certificate_mode` exactly as it is today (it governs
 the full certificate/audit-trail page, a separate concern), and add an
 orthogonal new option — a small in-document badge stamp, position chosen via
 (A) above, independent of whether a certificate page also gets appended.
 
-### 1a. Volume use — 2026-08-06 follow-up, answered "manual is fine, but what about volume/AI-detection"
+## V1.2 — Presets over detection (volume use) — SUPERSEDED 2026-08-06
 
-Michael's right that per-document dragging doesn't scale for someone sealing
-many invoices — but I'd separate the two things he raised, since they solve
-different problems and only one of them needs AI at all:
+**Superseded by the Badge Placer design in V1.1 above** — no named-preset
+library, no dropdown, no Settings-level default row. Left in place below
+because the reasoning still matters for one open question (see the
+friction note at the end of this section), not as the design going forward.
 
-- **The friction problem (drag every time) — solved by saved placement
-  presets, no AI needed.** An org saves a named preset once ("Invoice" →
+Per-document dragging doesn't scale for someone sealing many invoices —
+worth separating two different problems, since only one of them needs AI:
+
+- ~~The friction problem (drag every time) — solved by saved placement
+  presets, no AI needed. An org saves a named preset once ("Invoice" →
   bottom-right, this size) the first time they position a badge, then picks
-  it from a dropdown on every future seal instead of re-dragging. This is a
-  smaller, purpose-built version of the same idea Templates already solve
-  for signature fields (position something once, reuse it) — just scoped to
-  "one badge box," not a full document template with signer fields.
-- **The classification problem (is this an invoice?) — this is the part
-  that'd actually need AI, and I'd push back on making it load-bearing.**
-  Detecting "this looks like an invoice" reliably enough to *auto-apply* a
-  placement without the user looking is a real, separate reliability
-  problem (false positives on a non-invoice, false negatives on an unusual
-  invoice template) — not something to gate the core feature behind.
+  it from a dropdown on every future seal instead of re-dragging.~~
+- **The classification problem (is this an invoice?) — would need AI, and
+  isn't worth making load-bearing.** Detecting "this looks like an invoice"
+  reliably enough to *auto-apply* a placement without the user looking is a
+  real, separate reliability problem (false positives on a non-invoice,
+  false negatives on an unusual invoice template) — not something to gate
+  the core feature behind. **This half still stands — no AI detection
+  anywhere in the flow, unchanged by the simplification above.**
 
-**Recommendation: skip AI detection entirely for v1.** The user already
-knows what they just uploaded — let them pick the preset explicitly (a
-one-click dropdown, defaulting to "last used") rather than having software
-guess. AI-assisted *suggestion* ("this looks like an invoice, use your
-Invoice preset?") is a fine later enhancement once presets exist and there's
-real usage to see whether people actually want it, but it shouldn't be what
-makes the feature work in the first place.
+~~Confirmed: add a Settings-level default, not just a per-seal picker...~~
+— dropped along with the preset library; V1.1's single hardcoded
+bottom-right default replaces it.
 
-This also reframes point 2 below: rather than a new `invoice_mode` gated on
-detection, it becomes "presets" as a general concept — "Invoice" would just
-be whatever a user names their first one, not a special built-in mode.
+**Friction question — resolved 2026-08-06 (direct ask): remember-last,
+confirmed.** V1.2's preset library existed specifically to solve "a volume
+sender shouldn't have to drag every single invoice" — a brand-new
+document's Badge Placer now defaults to the **org's most recently saved**
+position instead of always hardcoding bottom-right. One remembered value,
+no naming, no dropdown, no management UI. Bottom-right/page 1 stays as the
+fallback only for an org that has never saved a position at all (see the
+schema/pipeline update in V1.4 below).
 
-**Question back:** does that direction work, or is auto-detection
-specifically something you want even at the cost of the reliability
-tradeoff above (e.g. because most of your users won't bother naming/picking
-a preset and unassisted defaults would look worse)?
+## V1.3 — Output page redesign
 
-**2026-08-06 answer: confirmed, presets-not-AI. Add a Settings-level
-default.** Beyond per-seal preset selection, add an org-level "Default
-Verified Badge placement" setting — same shape as the existing
-`organizations.verified_badge_certificate_mode` column/Settings row (read/
-written via `PATCH /api/org/console-settings`), just for placement instead
-of certificate mode. An org sets it once in Settings; every future seal uses
-it automatically unless they pick a different saved preset for that
-specific document. This is the same "org-level default, per-action
-override" shape the product already uses elsewhere, so no new pattern —
-just a new column and a new Settings row alongside the existing
-certificate-mode one.
+Grew out of checking what the document page actually shows a freelancer
+today after sealing: five buttons at once (copy verify link, open verify
+page, Sealed PDF, Certificate, Badge image) with no guidance on which one to
+actually send a client — and the two file downloads that DO exist today
+(Sealed PDF, Certificate) both print the full raw SHA-512 hash plus ESIGN/
+UETA legal text on the page, which is exactly the "handing over a bunch of
+codes" feeling to avoid.
 
-## 2. API-level seal, with a flag for in-document vs. appended
+**V1.3a. The corner stamp is a new, always-on 4th output — not a mode
+swap.** Every seal already produces certificate-mode-governed outputs
+(separate certificate / appended certificate page / both). The in-document
+corner stamp (V1.1) doesn't replace any of those — it's produced
+automatically alongside them, every time, using the org's saved placement
+preset/Settings default. So a completed seal ends up with up to four
+artifacts: the certificate-mode output(s), the existing standalone Badge
+image, and now the corner-stamped copy of the original — all real, all
+generated, none gated behind an extra toggle.
 
-Depends entirely on 1's design, in one specific way: (A)'s drag-to-place UI
-is inherently a browser interaction — an API caller can't drag anything.
+**V1.3b. Output page: one prominent option, the rest behind an expand.**
+Not hidden away entirely — an expandable "show all options" control, with
+the corner-stamped invoice (or Badge image, until V1.4 ships) as the one
+visible-by-default choice, and Sealed PDF / Certificate / verify link
+tucked under the expand for people who want the fuller audit trail.
+
+**V1.3c. Each output gets a "best for X" hint**, so the choice is
+self-explanatory instead of five unlabeled buttons. Mapping:
+- Corner-stamped invoice / Badge image → **"Best for invoices, portfolios,
+  anything you're handing straight to one client."**
+- Certificate (separate, original untouched) → **"Best for datarooms"** —
+  anywhere the original file must stay byte-for-byte unmodified and a
+  standalone proof document is filed separately.
+- Sealed PDF (appended certificate page) → **"Best for contracts"** — cases
+  where an appended certificate/audit-trail page at the end is already the
+  expected convention (this is literally what a normal signed contract's
+  own Certificate of Completion already is).
+- Copy verify link / Open verify page → not really a document choice at
+  all — reframe as "share this link instead of a file," not a 4th "best
+  for" option in the same row.
+
+**Confirmed: no detection.** Static "best for X" text next to each option,
+always shown, no document-type classification anywhere in this flow —
+consistent with V1.2's same call for placement. **Built 2026-08-06**
+(`src/components/output-hint.tsx`, commit `a3b4d4d`) — one-time dismissible
+popovers on Certificate ("Best for datarooms") and Badge image ("Best for
+invoices"). Sealed PDF and the verify link deliberately left unhinted for
+now (contracts / share-a-link framing respectively) — can extend once
+there's real usage to see if that's needed.
+
+## V1.4 — Corner-stamp output: consolidated implementation plan
+
+Everything below was decided piecemeal across V1.1/V1.2/V1.3a; this pulls
+it into one concrete, build-ready spec (still not built — this is the plan
+to hand to a build turn, not a build itself).
+
+**Schema — simplified 2026-08-06, no preset library:**
+- `documents.badge_page` / `badge_x` / `badge_y` / `badge_width` (nullable)
+  — the one saved position for this document's Badge Placer, overwritten
+  in place every time the user re-opens the placer and saves again. No
+  separate presets table, no FK — this lives directly on the document row,
+  same shape as `payment_link_url` already does.
+- `documents.badge_stamped_file_path` (nullable text) — parallel to the
+  existing `signed_file_path`/`certificate_file_path` columns, the R2 key
+  for this new artifact. Unchanged from the original plan.
+- `organizations.last_badge_page/x/y/width` (nullable) — **confirmed
+  2026-08-06**, resolving V1.2's friction question with a "yes." Read only
+  as the Badge Placer's *starting* position for a document that's never had
+  one saved yet, written every time any document's badge position is saved
+  (org-wide, not per-document). Still just four plain columns, not a preset
+  system — no name, no dropdown, no management UI.
+
+**Pipeline:** new function alongside `addCertificatePage` in
+`generate-signed-pdf.ts` — draws the existing compact badge PNG
+(`generateCertificateBadge`) onto the resolved `page`/`x`/`y`, with a light
+opaque background rectangle behind it first (the "don't muddy into existing
+content" mitigation from V1.1). Called from `sealDocumentAction`
+**unconditionally** — every seal produces this artifact regardless of
+`certificate_mode`, per V1.3a's "always-on 4th output, not a mode swap."
+Placement resolution order, simplified: this document's own saved
+`badge_x/y/width/page` if set → org's `last_badge_*` if any document has
+ever been placed → hardcoded fallback (bottom-right, page 1, small) for an
+org's very first seal.
+
+**UI:**
+- No Settings row (dropped with the preset library) — the remembered
+  position is implicit (whatever was last saved), never a named/managed
+  setting a user opens on its own.
+- **Real entry point, confirmed by reading the actual component
+  (`new-document-client.tsx`), not assumed:** the dashboard's "New
+  document" page, "Seal" tab (`mode === "badge"`) — a Card with a centered
+  yellow icon, "Generate your Verified Badge" heading, a dropzone, a
+  "Document title" input once a file's chosen, then the existing full-width
+  yellow "Seal this file" button, which today calls `handleSealUpload` →
+  `sealUploadedDocument` immediately on click (no placement step exists at
+  all right now). A new "Badge placement" row slots in after the title
+  input and before that button — small thumbnail + a **"Place badge"**
+  button — opening the placer step: a single draggable, resizable box over
+  the rendered PDF, reusing `field-editor.tsx`'s existing drag
+  (`dragState`/`confirmField`) and resize (`lib/field-resize.ts`) mechanics
+  for one non-signer box instead of per-signer fields. Opens at the org's
+  last-saved position (or bottom-right/page 1 for a first-ever seal).
+  Saving shows the existing autosave "Position saved" pill pattern, closes
+  back to this same card, and overwrites both this document's stored
+  position and the org's `last_badge_*` columns — "Seal this file" still
+  does the actual seal call, unchanged.
+- Output page: a new, now-primary button labeled **"Custom placement"**
+  using the `OutputHint` pattern already built — hint text along the lines
+  of "Best for invoices, portfolios — your original file back, badge
+  already in the corner." Once this exists, it — not the standalone Badge
+  image PNG — becomes the one prominent/visible-by-default option from
+  V1.3b; Badge image's own hint likely needs revising at that point too
+  (something like "for pasting into other tools yourself" rather than
+  "best for invoices," since the new corner-stamped file is the more
+  direct answer to that same need).
+- API (V2.1, once it exists): same placement input (explicit coordinates or
+  the fixed corner keywords — "bottom-right" etc. — V2.1 already scoped
+  these independently of the now-dropped org preset library, so no change
+  needed there) passed through identically.
+
+## V1.5 — Payment link QR: first cut (verify-page only)
+
+Confirmed direction: **reuse the org's own existing payment link, don't
+have SignedBy generate/hold one** — matching the "payment collection"
+feature's own original design choice against Stripe Connect (see "Current
+state" above).
+
+**What's actually missing:** this field is completely disconnected from
+Verified Badge today. Self-sealed documents never touch the signer flow
+`payment_link_url` is set through (`field-editor.tsx` — no fields/signers
+exist on a self-sealed doc at all), and the public `/verify` page doesn't
+show payment info in any form.
+
+**Hard constraint, not a preference: separate QR, separate label, from the
+verification badge.** The badge's value is "scan this, zero risk, just
+confirms the file's real" — fusing that with a payment prompt is the exact
+bait pattern real invoice scams use (a trustworthy-looking "verify" scan
+that turns out to route to payment), which cuts directly against the
+anti-fraud positioning this whole feature exists for. Two distinct
+elements: badge stays pure, "Scan to pay — not required to verify this
+document" is its own visually separate thing.
+
+**The V1 cut — verify-page only, no new PDF/in-document work:** add a
+Business-gated "Pay this invoice" section to the public `/verify` page,
+shown only if the sealed document has a `payment_link_url` set — rendered
+as its own QR (reusing the `qrcode` library already used elsewhere in this
+codebase) plus a plain link, clearly separated from and below the
+verification content. A client scans the badge → lands on `/verify` → sees
+the file's authenticity confirmed, and separately, if the sender chose to
+include one, a clearly-labeled payment option. Ships without touching the
+sealing pipeline, PDF generation, or V1.4's in-document work at all.
+
+**Still needs:** a UI spot to actually set `payment_link_url` for a
+self-sealed document, since the seal flow has no field-editor today —
+simplest is a plain optional input in the Verified Badge seal tab itself
+(Business-gated, matching the same field the send flow already writes),
+not an org-level Settings default — a payment link is naturally per-invoice
+(different invoice, different amount), not something to default silently
+across every future seal.
+
+**Resolved by V1.1's Badge Placer, 2026-08-06 (direct ask: "could this be
+an efficient moment to also do that"):** yes — V1.1 adds exactly the "seal
+flow has no field-editor today" gap this section names as the blocker. The
+Badge Placer screen (Business tier only sees the extra field) gets one more
+optional input below the drag/resize box: **"Payment link (optional)"**,
+writing the same `payment_link_url`/`payment_label` columns the send flow
+already uses. This is a UI-efficiency win only — it does **not** touch the
+hard separation constraint above. The badge box on the placer stays exactly
+what it is (position/size for the verification stamp); the payment link
+input is a second, clearly separate field on the same screen, and the two
+still render as two separate elements wherever they end up (in-document
+corner stamp vs. `/verify` page's own separately-labeled QR, per the V1.5
+cut below) — nothing about *where the input is collected* changes what the
+*output* looks like or claims. Gated so Free/Pro/Team orgs simply don't see
+the second field at all (matching every other Business-only touchpoint in
+this codebase), not a disabled/upsell state — the Badge Placer shouldn't be
+where a non-Business freelancer runs into an upgrade wall for something
+unrelated to their actual task.
+
+*(The in-document/physical version of this QR, printed next to the corner
+stamp itself, is V2.4 — not required to ship V1.)*
+
+---
+
+# V2 — Platform, API & advanced
+
+## V2.1 — API-level seal endpoint
+
+Depends on V1.1's design, in one specific way: manual drag-to-place UI is
+inherently a browser interaction — an API caller can't drag anything.
 Realistic options for what an API caller actually sends:
 
 - **Explicit coordinates** — caller passes `page`/`x`/`y`/`width` directly
@@ -147,51 +564,44 @@ Realistic options for what an API caller actually sends:
 - **Named presets** — `"bottom-right"` / `"bottom-left"` / `"top-right"` /
   `"top-left"`, SignedBy picks sane default size/margins. Simpler for a
   caller who just wants "put it somewhere sensible," less precise.
-- **Both** — presets as the easy default, explicit coordinates as an
-  override for callers who need it. This is what I'd build if given the
-  go-ahead — cheap to support both once (A) exists, and it's the shape most
-  document APIs in this space (DocuSign, HelloSign) actually offer.
+- **Both (confirmed)** — presets as the easy default, explicit coordinates
+  as an override for callers who need it. Cheap to support both once V1.4
+  exists, and it's the shape most document APIs in this space (DocuSign,
+  HelloSign) actually offer.
 
 New route would be `POST /api/v1/documents/[id]/seal`, authenticated the
 same way every other `/api/v1/*` route already is (`authenticateApiRequest`
 — Business unlimited, Pro/Team metered, Free capped), calling the existing
 `sealDocumentAction` with a new `source: "api"`.
 
-**Placement input: confirmed both** (explicit coordinates + named presets),
-matching 1a's presets concept above — a caller can pass a saved preset name
-or raw `page`/`x`/`y`/`width`.
+## V2.2 — API-seal cap/metering & pricing (deliberately dark)
 
-**The cap question, made concrete — 2026-08-06 follow-up ("yes both, be
-specific").** I checked `checkFreePlanSealCap` directly: today, `source` is
-*only* used for attribution logging (`plan_cap_hits.source` — which door got
-used, for the admin digest) — the actual 3-seals/month Free-tier limit is
-**one shared count** across console/MCP/dashboard already, not a separate
-budget per source. And on paid plans, sealing is unconditionally unlimited
+I checked `checkFreePlanSealCap` directly: today, `source` is *only* used
+for attribution logging (`plan_cap_hits.source` — which door got used, for
+the admin digest) — the actual 3-seals/month Free-tier limit is **one
+shared count** across console/MCP/dashboard already, not a separate budget
+per source. And on paid plans, sealing is unconditionally unlimited
 regardless of source (the cap check only runs at all `if plan === "free"`)
 — that was a deliberate 2026-08-05 decision to retire per-seal metering
 everywhere, not just for some doors.
 
-So there isn't actually a real "which pool" choice sitting in the code today
-— API seals would, by default, just slot into the existing shared behavior
-for free: **Option A — API seals share the same 3/month Free pool console/
-MCP/dashboard already use (zero new gating code, `source: "api"` is enough),
-and are fully unlimited on Pro+/Business, exactly like every other seal
-source.**
+So there isn't actually a real "which pool" choice sitting in the code
+today — API seals would, by default, just slot into the existing shared
+behavior for free: **Option A — API seals share the same 3/month Free pool
+console/MCP/dashboard already use (zero new gating code), and are fully
+unlimited on Pro+/Business, exactly like every other seal source.**
 
-Making API seals metered on paid plans — i.e. **Option B — carve out an
-exception where Pro+/Business orgs seal for free everywhere *except* the
-API, which gets a new per-seal charge** — would be a real, deliberate
-reversal of that 2026-08-05 decision, and meaningfully more work: a new
-Stripe metered price, usage-record reporting (mirroring how bulk-send
-metering already works via `console-usage.ts`), and a rationale for why API
-callers specifically should pay when a human doing the identical action via
-the dashboard doesn't.
+**Confirmed: Option B instead — a deliberate paid-tier metering exception
+for API seals, motivated by large-customer volume.** This is a real,
+deliberate reversal of the 2026-08-05 "unlimited on Pro+" decision, and
+meaningfully more work than Option A: a new Stripe metered price,
+usage-record reporting (mirroring how bulk-send metering already works via
+`console-usage.ts`).
 
-**2026-08-06 answer: it's Option B, motivated by large-customer volume —
-"yes both" meant coordinates+presets AND wanting paid-tier metering ready.**
-Explicit instruction: build nothing yet ("keep it dark until we have a real
-larger customer"), but have concrete pricing options pre-prepared so there's
-no scramble when one asks. Three shapes worth having ready, none built:
+**Explicit instruction: build none of it yet.** Keep dark until a real
+larger customer asks, but have concrete pricing options pre-prepared so
+there's no scramble when one does. Three shapes worth having ready, none
+built:
 
 - **B1 — flat per-seal metered price, API-only.** Reuses the exact metering
   machinery that already exists for Console's bulk-send (`console-usage.ts`,
@@ -218,7 +628,7 @@ real customer's ask looks like, which is exactly why this stays scoped and
 dark rather than built speculatively. Revisit this list when someone
 actually asks.
 
-## 3. Verification API + callback
+## V2.3 — Verification API + callback
 
 **The synchronous half already exists and needs no new code** —
 `GET /api/verify?hash=<hash>` is exactly "another app calls an API and gets
@@ -242,102 +652,98 @@ that would need a webhook-subscription table, a trigger point inside
 signing) — a meaningfully larger scope than the synchronous case, which
 again, already works today.
 
-**2026-08-06 answer: synchronous check-on-demand is fine for now** ("just an
+**Confirmed: synchronous check-on-demand is fine for now** ("just an
 answer back"), no webhook. **Document it somewhere** — noted here; per this
-project's own standing rule ([[feedback-scope-means-scope-only]]), answering
-this scope doc's questions isn't itself a build instruction, so the actual
-`/developers` documentation write-up is queued, not done, pending a build
-go-ahead alongside everything else here.
+project's own standing rule ([[feedback-scope-means-scope-only]]), the
+actual `/developers` documentation write-up is queued, not done, pending a
+build go-ahead.
 
-## Open decisions — all six answered 2026-08-06
+**Confirmed: leave `/api/verify` as-is for now** — noted as a possible
+future add if a caller ever needs org-scoped auth/higher rate limits
+instead of the shared IP bucket.
 
-1. ~~In-document badge: manual vs. automatic placement?~~ **Manual (A).**
-   Plus: add an org-level "Default Verified Badge placement" Settings row
-   (same shape as the existing `verified_badge_certificate_mode` setting),
-   not just a per-seal picker.
-2. ~~Badge stamp as an orthogonal option, or folded into
-   `certificate_mode`?~~ **Neither — reframed as named placement presets**
-   (1a), confirmed no AI auto-detection for v1. A user names/picks a preset
-   explicitly; software doesn't try to guess "is this an invoice."
-3. ~~API seal placement input?~~ **Both** — explicit coordinates and named
-   presets.
-4. ~~API-seal cap/metering?~~ **Option B — a deliberate paid-tier metering
-   exception for API seals, motivated by large-customer volume.** Explicit
-   instruction: build none of the three pricing shapes above (B1/B2/B3) yet
-   — keep dark until a real large customer asks, at which point pick from
-   the pre-prepared options above rather than starting from scratch.
-5. ~~Verification API: leave as-is, or also build `/api/v1/verify`?~~
-   **Leave `/api/verify` as-is for now** — noted as a possible future add
-   if a caller ever needs org-scoped auth/higher rate limits instead of the
-   shared IP bucket.
-6. ~~"Callback" meaning?~~ **Synchronous check-on-demand only, no webhook.**
-   Document the existing `/api/verify` on `/developers` when this scope
-   turns into a build — not done yet, per [[feedback-scope-means-scope-only]].
+## V2.4 — Payment QR: in-document extension
 
-## 4. Output page redesign — 2026-08-06 follow-up, from the "freelancer MVP" discussion
+Once V1.4's corner-stamp placement exists, a second physical QR could sit
+next to the badge stamp on the invoice itself, same separation rule (V1.5)
+applying in print as it does on `/verify`. Worth revisiting after V1.4
+ships, not before — not required for V1.
 
-Grew out of checking what the document page actually shows a freelancer
-today after sealing: five buttons at once (copy verify link, open verify
-page, Sealed PDF, Certificate, Badge image) with no guidance on which one to
-actually send a client — and the two file downloads that DO exist today
-(Sealed PDF, Certificate) both print the full raw SHA-512 hash plus ESIGN/
-UETA legal text on the page, which is exactly the "handing over a bunch of
-codes" feeling to avoid. Three decisions from that conversation:
+---
 
-**4a. The corner stamp is a new, always-on 4th output — not a mode swap.**
-Every seal already produces certificate-mode-governed outputs (separate
-certificate / appended certificate page / both). The in-document corner
-stamp (section 1 above) doesn't replace any of those — it's produced
-automatically alongside them, every time, using the org's saved placement
-preset/Settings default. So a completed seal ends up with up to four
-artifacts: the certificate-mode output(s), the existing standalone Badge
-image, and now the corner-stamped copy of the original — all real, all
-generated, none gated behind an extra toggle.
+## Open decisions — all answered 2026-08-06
 
-**4b. Output page: one prominent option, the rest behind an expand.** Not
-hidden away entirely — an expandable "show all options" control, with the
-corner-stamped invoice (or Badge image, until 1/1a ships) as the one
-visible-by-default choice, and Sealed PDF / Certificate / verify link
-tucked under the expand for people who want the fuller audit trail.
+**V1:**
+1. In-document badge: manual vs. automatic placement? **Manual (V1.1).**
+   ~~Plus: add an org-level "Default Verified Badge placement" Settings row
+   (V1.2), not just a per-seal picker.~~ **Superseded 2026-08-06:** no
+   Settings row, no preset library — a single draggable + resizable "Badge
+   Placer," one saved position per document, overwritten on every re-edit.
+   Naming confirmed: "Place badge" button, "Position saved" confirmation,
+   "Custom placement" output label. **New-document default, also
+   confirmed 2026-08-06:** the org's most-recently-saved position, not a
+   hardcoded bottom-right — bottom-right/page 1 only as the fallback for an
+   org's first-ever seal (`organizations.last_badge_page/x/y/width`, V1.4).
+2. Badge stamp as an orthogonal option, or folded into `certificate_mode`?
+   **Neither — reframed as named placement presets** (V1.2, now
+   superseded by the single-position Badge Placer above), confirmed no AI
+   auto-detection anywhere in V1 (placement or output hints).
+7. Payment link input, same screen as badge placement? **Yes, confirmed
+   2026-08-06** — the Badge Placer screen also resolves V1.5's "still
+   needs a UI spot" gap for Business-tier `payment_link_url`, as a second,
+   clearly separate optional field below the badge box. Doesn't change the
+   V1.5 hard separation constraint on the *output* side, only where the
+   sender types it in.
 
-**4c. Each output gets a "best for X" hint**, so the choice is self-
-explanatory instead of five unlabeled buttons. Proposed mapping (only two
-were specified directly — filling in the rest for a complete set, needs
-confirmation):
-- Corner-stamped invoice / Badge image → **"Best for invoices, portfolios,
-  anything you're handing straight to one client."**
-- Certificate (separate, original untouched) → **"Best for datarooms"**
-  (as given) — anywhere the original file must stay byte-for-byte
-  unmodified and a standalone proof document is filed separately.
-- Sealed PDF (appended certificate page) → **"Best for contracts"** — cases
-  where an appended certificate/audit-trail page at the end is already the
-  expected convention (this is literally what a normal signed contract's
-  own Certificate of Completion already is).
-- Copy verify link / Open verify page → not really a document choice at
-  all — reframe as "share this link instead of a file," not a 4th "best
-  for" option in the same row.
+**V2:**
+3. API seal placement input? **Both** — explicit coordinates and named
+   presets (V2.1).
+4. API-seal cap/metering? **Option B** — a deliberate paid-tier metering
+   exception for API seals, motivated by large-customer volume (V2.2).
+   Explicit instruction: build none of the three pricing shapes yet — keep
+   dark until a real large customer asks.
+5. Verification API: leave as-is, or also build `/api/v1/verify`? **Leave
+   `/api/verify` as-is for now** (V2.3).
+6. "Callback" meaning? **Synchronous check-on-demand only, no webhook**
+   (V2.3). Document the existing `/api/verify` on `/developers` when this
+   scope turns into a build.
 
-**Answered 2026-08-06: no detection.** Static "best for X" text next to
-each option, always shown, no document-type classification anywhere in
-this flow — consistent with 1a's same call for placement.
+## Effort (rough)
 
-## Effort (rough, pending the decisions above)
-
-- Documenting the existing `/api/verify` on `/developers`: small, no code
-  changes to the endpoint itself.
-- In-document badge placement (manual, option A) + wiring it into the
-  sealing pipeline: moderate — new UI (adapting field-editor for a single
-  badge box), a small schema addition, and a change to
+**V1:**
+- Corner-stamp placement (V1.1/V1.2/V1.4) + wiring into the sealing
+  pipeline: moderate — new UI (adapting field-editor for a single badge
+  box), a schema addition (presets table + a few columns), and a change to
   `generate-signed-pdf.ts`/`verified-badge-actions.ts` to draw on an
   existing page instead of only ever adding a new one.
-- `POST /api/v1/documents/[id]/seal`: small once the above exists — mostly
-  wiring (auth, cap-source decision, calling `sealDocumentAction` with
-  `source: "api"` and the placement params).
-- A real webhook-callback system for verification events: the largest single
-  piece here if that's what "callback" turns out to mean — new
-  subscription/delivery infrastructure, not a small addition.
+- Output page redesign (V1.3): small-to-moderate — the hints are already
+  built; the expand/prominent-option layout and the new "Invoice-ready
+  copy" button are the remaining pieces, and the latter depends on V1.4.
+- Payment link QR, verify-page cut (V1.5): small — a UI field to set
+  `payment_link_url` on a seal, a QR render on `/verify`, both reusing
+  existing infrastructure end to end.
 
-## Status: Fully scoped, all decisions answered 2026-08-06. Not built —
-awaiting an explicit go-ahead per [[feedback-scope-means-scope-only]]. B1/B2/
-B3 pricing shapes (decision 4) specifically stay dark/unbuilt until a real
-large customer surfaces, even after everything else here ships.
+**V2:**
+- `POST /api/v1/documents/[id]/seal` (V2.1): small once V1.4 exists —
+  mostly wiring (auth, calling `sealDocumentAction` with `source: "api"`
+  and the placement params).
+- Documenting the existing `/api/verify` on `/developers` (V2.3): small,
+  no code changes to the endpoint itself.
+- A real webhook-callback system (V2.3, ruled out for now): the largest
+  single piece in this whole doc if priorities ever change — new
+  subscription/delivery infrastructure, not a small addition.
+- API-seal metering (V2.2): deliberately unbuilt/dark, see above.
+
+## Status
+
+Fully scoped, all decisions answered, split into V1/V2 2026-08-06, then
+V1.1/V1.2 simplified same day into the single-position "Badge Placer"
+(preset library dropped, naming confirmed, payment-link input folded into
+the same screen for Business tier). **Built so far:** the output-page
+one-time hints (V1.3c, commit `a3b4d4d`). **Not built:** everything else in
+both V1 and V2 — all await an explicit go-ahead per
+[[feedback-scope-means-scope-only]]. All open sub-questions now answered
+(new-document default = remember org's last position, payment link folds
+into the same Badge Placer screen for Business tier). V2.2's B1/B2/B3
+pricing shapes specifically stay dark/unbuilt until a real large customer
+surfaces, even after everything else here ships.
