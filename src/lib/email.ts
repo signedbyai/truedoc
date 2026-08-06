@@ -310,11 +310,16 @@ export async function sendAdminDigestEmail(opts: {
   capHitsToday: number;
   capHitsWeek: number;
   capHitsMonth: number;
-  capHitsMonthOrgs: number;
+  capHitsBothOrgs: number;
+  capHitsSendOnlyOrgs: number;
+  capHitsSealOnlyOrgs: number;
   apiCapHitsMonth: number;
   packsSoldMonth: number;
   packsRevenueMonth: number;
   outstandingCredits: number;
+  disposableBlocksToday: number;
+  disposableBlocksWeek: number;
+  disposableBlocksMonth: number;
 }) {
   const totalOrgs = opts.freeOrgs + opts.paidOrgs;
   const row = (label: string, value: string | number) => `
@@ -368,15 +373,24 @@ export async function sendAdminDigestEmail(opts: {
           ${row("Today", opts.capHitsToday)}
           ${row("This week", opts.capHitsWeek)}
           ${row("This month", opts.capHitsMonth)}
-          ${row("Distinct orgs this month", opts.capHitsMonthOrgs)}
+          ${row("Orgs hit on both send & seal", opts.capHitsBothOrgs)}
+          ${row("Orgs hit on send only", opts.capHitsSendOnlyOrgs)}
+          ${row("Orgs hit on seal only", opts.capHitsSealOnlyOrgs)}
           ${row("Of which, via API", opts.apiCapHitsMonth)}
         </table>
 
         <h3 style="margin:0 0 4px;color:#0f172a;font-size:15px;">Credit packs ($5 / 25 seals)</h3>
-        <table style="width:100%;border-collapse:collapse;">
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
           ${row("Sold this month", opts.packsSoldMonth)}
           ${row("Revenue this month", `$${opts.packsRevenueMonth.toFixed(2)}`)}
           ${row("Outstanding credits (Free orgs)", opts.outstandingCredits)}
+        </table>
+
+        <h3 style="margin:0 0 4px;color:#0f172a;font-size:15px;">Signups blocked (disposable email)</h3>
+        <table style="width:100%;border-collapse:collapse;">
+          ${row("Today", opts.disposableBlocksToday)}
+          ${row("This week", opts.disposableBlocksWeek)}
+          ${row("This month", opts.disposableBlocksMonth)}
         </table>
       </div>
     `,

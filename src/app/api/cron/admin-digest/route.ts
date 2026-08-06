@@ -116,8 +116,34 @@ export async function GET(request: Request) {
     // whole cron over a table that could still need its migration applied.
   }
   const capHitsMonth = capHitsMonthRows?.length ?? 0;
-  const capHitsMonthOrgs = new Set((capHitsMonthRows || []).map((r) => r.org_id).filter(Boolean)).size;
   const apiCapHitsMonth = (capHitsMonthRows || []).filter((r) => r.source === "api_v1_documents").length;
+
+  // Send-vs-seal org grouping (2026-08-06, direct ask: "group together the
+  // sign and seal 3-doc cap hits, so it's three groups — cap hit users on
+  // both signs & seals, only signs and only seals"). These two caps are
+  // independent pools since 0049_split_send_seal_caps.sql, so a single org
+  // can show up under either source set (or both) within the same month.
+  // Sources are free text (see 0043_plan_cap_hits.sql), so this checks the
+  // known set rather than inferring — see checkFreePlanSendCap/
+  // checkFreePlanSealCap call sites in verified-badge-actions.ts,
+  // documents/[id]/send/route.ts, and api/v1/documents/route.ts.
+  const SEAL_CAP_SOURCES = new Set(["console_seal", "mcp_seal", "dashboard_seal"]);
+  const orgCapCategories = new Map<string, { send: boolean; seal: boolean }>();
+  for (const r of capHitsMonthRows || []) {
+    if (!r.org_id) continue;
+    const cat = orgCapCategories.get(r.org_id) ?? { send: false, seal: false };
+    if (SEAL_CAP_SOURCES.has(r.source)) cat.seal = true;
+    else cat.send = true;
+    orgCapCategories.set(r.org_id, cat);
+  }
+  let capHitsBothOrgs = 0;
+  let capHitsSendOnlyOrgs = 0;
+  let capHitsSealOnlyOrgs = 0;
+  for (const cat of orgCapCategories.values()) {
+    if (cat.send && cat.seal) capHitsBothOrgs++;
+    else if (cat.send) capHitsSendOnlyOrgs++;
+    else if (cat.seal) capHitsSealOnlyOrgs++;
+  }
 
   // Credit pack top-ups (0044_credit_packs.sql, CONSOLE_FREE_TIER_SCOPE.md
   // item #8, built 2026-08-03) — packs sold + revenue this month straight
@@ -140,6 +166,29 @@ export async function GET(request: Request) {
   const packsSoldMonth = packsMonthRows?.length ?? 0;
   const packsRevenueMonth = (packsMonthRows || []).reduce((sum, r) => sum + (r.amount_cents ?? 0), 0) / 100;
   const outstandingCredits = (freeOrgCredits || []).reduce((sum, o) => sum + (o.doc_credits ?? 0), 0);
+
+  // Disposable-email signup blocks (0050_disposable_email_blocks.sql,
+  // 2026-08-06 direct ask: "show me how many logins blocked as disposable
+  // emails"). Same non-fatal treatment as the sections above -- this table
+  // could still need its migration applied.
+  const { count: disposableBlocksToday, error: disposableBlocksTodayError } = await admin
+    .from("disposable_email_blocks")
+    .select("*", { count: "exact", head: true })
+    .gte("created_at", dayAgoDate);
+  const { count: disposableBlocksWeek, error: disposableBlocksWeekError } = await admin
+    .from("disposable_email_blocks")
+    .select("*", { count: "exact", head: true })
+    .gte("created_at", weekAgoDate);
+  const { count: disposableBlocksMonth, error: disposableBlocksMonthError } = await admin
+    .from("disposable_email_blocks")
+    .select("*", { count: "exact", head: true })
+    .gte("created_at", monthAgoDate);
+  if (disposableBlocksTodayError || disposableBlocksWeekError || disposableBlocksMonthError) {
+    console.error(
+      "Admin digest cron: disposable_email_blocks count failed",
+      disposableBlocksTodayError || disposableBlocksWeekError || disposableBlocksMonthError
+    );
+  }
 
   const dateLabel = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -165,11 +214,16 @@ export async function GET(request: Request) {
       capHitsToday: capHitsToday ?? 0,
       capHitsWeek: capHitsWeek ?? 0,
       capHitsMonth,
-      capHitsMonthOrgs,
+      capHitsBothOrgs,
+      capHitsSendOnlyOrgs,
+      capHitsSealOnlyOrgs,
       apiCapHitsMonth,
       packsSoldMonth,
       packsRevenueMonth,
       outstandingCredits,
+      disposableBlocksToday: disposableBlocksToday ?? 0,
+      disposableBlocksWeek: disposableBlocksWeek ?? 0,
+      disposableBlocksMonth: disposableBlocksMonth ?? 0,
     });
   } catch (err) {
     console.error("Admin digest cron: send failed", err);
@@ -189,10 +243,15 @@ export async function GET(request: Request) {
     capHitsToday: capHitsToday ?? 0,
     capHitsWeek: capHitsWeek ?? 0,
     capHitsMonth,
-    capHitsMonthOrgs,
+    capHitsBothOrgs,
+    capHitsSendOnlyOrgs,
+    capHitsSealOnlyOrgs,
     apiCapHitsMonth,
     packsSoldMonth,
     packsRevenueMonth,
     outstandingCredits,
+    disposableBlocksToday: disposableBlocksToday ?? 0,
+    disposableBlocksWeek: disposableBlocksWeek ?? 0,
+    disposableBlocksMonth: disposableBlocksMonth ?? 0,
   });
 }

@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sanitizeNextPath } from "@/lib/safe-redirect";
 import { isDisposableEmailAddress } from "@/lib/disposable-email";
@@ -48,10 +49,22 @@ export async function sendMagicLink(formData: FormData) {
     // providers show up and how often, without logging a PII-bearing local
     // part for something that never became an account. Never blocks or
     // delays the rejection response below.
-    console.log("Signup blocked: disposable email domain", {
-      domain: email.split("@")[1]?.toLowerCase() || "unknown",
-      ip: await clientIp(),
-    });
+    const blockedDomain = email.split("@")[1]?.toLowerCase() || "unknown";
+    const blockedIp = await clientIp();
+    console.log("Signup blocked: disposable email domain", { domain: blockedDomain, ip: blockedIp });
+    // Persisted (2026-08-06, direct ask: "show me how many logins blocked
+    // as disposable emails" in the daily digest) — see
+    // 0050_disposable_email_blocks.sql. Fresh admin client, same reasoning
+    // as checkFreePlanCap's plan_cap_hits log: this server action runs on a
+    // session-less/pre-account request, so there's no signed-in client with
+    // insert rights here even if there were a policy for one. Awaited but
+    // failure is swallowed — a logging hiccup must never block the real
+    // rejection response below.
+    try {
+      await createAdminClient().from("disposable_email_blocks").insert({ domain: blockedDomain, ip: blockedIp });
+    } catch (err) {
+      console.error("Failed to log disposable email block", err);
+    }
     return { error: "Please use a permanent email address — disposable or temporary email domains aren't supported." };
   }
 
