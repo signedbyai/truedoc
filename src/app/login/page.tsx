@@ -4,7 +4,7 @@ import { Suspense, useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Lock } from "lucide-react";
+import { Lock, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -503,6 +503,18 @@ function LoginPageInner() {
               )}
             </div>
           )}
+
+          {/* Trust line (direct ask 2026-08-06, placed below the password link
+              inside the card). Copy is grounded in privacy/page.tsx rather than
+              generic badge claims: encryption in transit/at rest and the eIDAS
+              citation are both stated verbatim in Sections 6 and 2 of the live
+              policy. Skipped "EU-Hosted" (Section 8 discloses US sub-processors)
+              and a flat "GDPR Compliant" badge (no body certifies that; Section 7
+              describes GDPR rights, not a certification) as unsupported. */}
+          <p className="mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-slate-400">
+            <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+            Bank-level encryption · eIDAS-compliant · Netherlands-based
+          </p>
         </div>
 
         <p className="mt-6 text-sm text-slate-500">
