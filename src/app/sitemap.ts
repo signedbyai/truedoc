@@ -66,6 +66,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE_URL}/verified-badge`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE_URL}/verified-badge-invoices`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE_URL}/verified-badge-real-estate`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    // Audience landing page, added 2026-08-06 -- core signing product for
+    // independent dealers/brokers/private sellers, speed angle not fraud
+    // (see that page's own top-of-file comment for why).
+    { url: `${BASE_URL}/auto-sales`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     // Audience-specific entry-point pages, added 2026-07-27 to test AU
     // trades and US subcontractor market entry — same feature, localized
     // framing and FAQ (see each page's own top-of-file comment).
