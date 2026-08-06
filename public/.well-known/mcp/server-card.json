@@ -16,5 +16,5 @@
     "type": "bearer",
     "description": "Requires a SignedBy API key (generated from Settings -> Integration & API) on the Pro plan or higher, passed as 'Authorization: Bearer sb_live_...'."
   },
-  "documentation": "https://signedby.ai/developers"
+  "documentation": "https://signedby.ai/developers.md"
 }

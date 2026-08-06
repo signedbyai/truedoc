@@ -12,12 +12,17 @@ import { NextResponse } from "next/server";
 // Deliberately no "service-desc" entries: that relation is for a formal
 // machine-readable spec (OpenAPI JSON, etc.), which doesn't exist yet --
 // only "service-doc" (human/agent-readable documentation) is linked, since
-// that's the only thing actually true today.
+// that's the only thing actually true today. /developers.md (added
+// 2026-08-06, same pass) is a real markdown transcription of /developers,
+// not a stand-in -- both are listed since they're both live.
 const catalog = {
   linkset: [
     {
       anchor: "https://signedby.ai/api/v1",
-      "service-doc": [{ href: "https://signedby.ai/developers", type: "text/html" }],
+      "service-doc": [
+        { href: "https://signedby.ai/developers", type: "text/html" },
+        { href: "https://signedby.ai/developers.md", type: "text/markdown" },
+      ],
     },
     {
       anchor: "https://signedby.ai/api/mcp",

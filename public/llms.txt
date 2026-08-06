@@ -5,6 +5,7 @@
 ## Docs
 
 - [API, webhooks & MCP reference](https://signedby.ai/developers): REST API and outbound webhooks starting on the $7/mo Pro plan, plus a Model Context Protocol server at /api/mcp for AI agents.
+- [API reference (markdown)](https://signedby.ai/developers.md): the same reference as plain text/markdown.
 - [API catalog](https://signedby.ai/.well-known/api-catalog): machine-readable index of SignedBy's public API surfaces (RFC 9727).
 - [MCP server card](https://signedby.ai/.well-known/mcp/server-card.json): machine-readable descriptor for the /api/mcp server.
 - [Pricing](https://signedby.ai/pricing): flat $7/mo unlimited plan, no per-seat pricing, 3 free documents every month.

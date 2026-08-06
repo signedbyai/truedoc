@@ -13,6 +13,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: BASE_URL, lastModified: now, changeFrequency: "weekly", priority: 1 },
     { url: `${BASE_URL}/pricing`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    // Live, indexable, and linked from the homepage footer since it exists --
+    // just never added here. Caught 2026-08-06 while building the API
+    // catalog/MCP server card (which both point agents at this page).
+    { url: `${BASE_URL}/developers`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE_URL}/vs/signnow`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${BASE_URL}/vs/docusign`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     // Was built but never listed here — added 2026-07-18.
