@@ -171,10 +171,18 @@ export default async function VerifiedBadgePage() {
       </section>
 
       <section className="mx-auto flex w-full max-w-3xl justify-center px-6 pb-10">
+        {/* Swapped 2026-08-06 (top-of-funnel review, direct ask) from the
+            badge shown in isolation to the badge in context — a real
+            invoice with it stamped in the corner. "If a user can't
+            instantly visualize what they are putting on their client
+            document within 3 seconds, they leave." Generated via next/og
+            (same renderer as badge-asset.tsx's real per-document badges),
+            see hero-verified-badge-invoice.png; the invoice content
+            (freelancer name, line items) is a mockup, not a real document. */}
         <div className="w-full max-w-sm overflow-hidden rounded-xl border border-slate-200/60 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
           <Image
-            src="/hero-verified-badge.png"
-            alt="A Verified Badge — the SignedBy mark, a scannable QR code, and a verification link, generated for a sealed document"
+            src="/hero-verified-badge-invoice.png"
+            alt="A Verified Badge stamped in the corner of a freelance invoice — the SignedBy mark, a scannable QR code, and a verification link"
             width={640}
             height={820}
             priority

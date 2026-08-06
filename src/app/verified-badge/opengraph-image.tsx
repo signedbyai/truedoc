@@ -14,7 +14,7 @@ import { ImageResponse } from "next/og";
 // output, saved to disk) rather than re-generating a fresh QR here, so
 // the OG card and the page always show byte-identical badge art and can
 // never drift out of sync with whatever the QR currently points to.
-export const alt = "SignedBy Verified Badge — pre-verify your work before a client's AI detector does";
+export const alt = "SignedBy Verified Badge — proof your work is genuinely yours, sealed by a verified human";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -63,6 +63,14 @@ export default async function VerifiedBadgeOpengraphImage() {
             <span>Seal your finished file as unaltered</span>
             <span style={{ marginTop: 4 }}>and identity-verified. No account needed to check it.</span>
           </div>
+          {/* FIXED 2026-08-06 (top-of-funnel review) — this pill still read
+              "Pro plan+ · Console/MCP" from before the 2026-08-01 Free-tier
+              pivot and the 2026-08-05 dashboard-native pivot
+              (VERIFIED_BADGE_DASHBOARD_SCOPE.md): sealing is free on every
+              plan and dashboard-native now, not Pro+/Console-MCP-only. Left
+              uncorrected, this was the first thing a cold Reddit/LinkedIn
+              click saw before the page itself even loaded — actively
+              misleading exactly the free-tier audience this page targets. */}
           <div
             style={{
               marginTop: 40,
@@ -77,7 +85,7 @@ export default async function VerifiedBadgeOpengraphImage() {
               alignSelf: "flex-start",
             }}
           >
-            Pro plan+ · Console/MCP
+            Free to start · Every plan
           </div>
         </div>
         <div style={{ display: "flex", flex: 1, justifyContent: "center" }}>
