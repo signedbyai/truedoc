@@ -126,15 +126,20 @@ export default async function AutoSalesPage() {
           hero-signer-mobile.png overlapping its bottom-right corner,
           reusing that section's own proven responsive positioning
           (30% width ceiling on mobile, overhang from sm up) rather than
-          inventing new layout math. Background swapped for a car/key
-          graphic (hero-auto-sales.png, generate-hero-auto-sales.tsx) --
-          same lucide icon family as the rest of the app, not clipart. */}
+          inventing new layout math. Background is a document mockup
+          (hero-auto-sales.png, generate-hero-auto-sales-v2.tsx) -- a
+          "Vehicle Purchase Agreement" shown in an app-chrome frame,
+          same real-product-screenshot language as the rest of the site
+          rather than clipart/illustration. Swapped 2026-08-07 after
+          direct feedback that a flat car+key icon graphic looked bad;
+          the signature field is placed bottom-left specifically so the
+          phone overlay in the corner doesn't cover it. */}
       <section className="mx-auto w-full max-w-3xl px-6 pb-10 sm:pr-12">
         <div className="relative mx-auto max-w-[32rem]">
           <div className="w-[82%] overflow-hidden rounded-xl border border-slate-200/60 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)] sm:w-full">
             <Image
               src="/hero-auto-sales.png"
-              alt="A car and a set of keys, representing the bill of sale, purchase agreement, and lease paperwork you can send"
+              alt="A vehicle purchase agreement document with a price breakdown and a buyer signature field, representing the paperwork you can send"
               width={1562}
               height={1070}
               priority
