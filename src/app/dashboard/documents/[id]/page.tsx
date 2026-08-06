@@ -9,6 +9,7 @@ import { SignerRow } from "@/components/signer-row";
 import { AuditTrail, type AuditEvent } from "@/components/audit-trail";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
 import { CopyLinkButton } from "@/components/copy-link-button";
+import { OutputHint } from "@/components/output-hint";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { planHasFeature, getFreePlanUsage } from "@/lib/plan";
@@ -357,25 +358,39 @@ export default async function DocumentEditorPage({
                     </a>
                   )}
                   {doc.certificate_file_path && (
+                    // One-time "best for X" education (2026-08-06,
+                    // IN_DOCUMENT_BADGE_AND_API_SEAL_SCOPE.md section 4c) --
+                    // no document-type detection, same static-hint call as
+                    // the placement decision above.
+                    <OutputHint
+                      storageKey="sb_output_hint_certificate_seen"
+                      hint="Best for datarooms — keeps your original file completely untouched, with proof filed separately."
+                    >
+                      <a
+                        href={`/api/documents/${id}/certificate`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
+                      >
+                        <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                        Certificate
+                      </a>
+                    </OutputHint>
+                  )}
+                  <OutputHint
+                    storageKey="sb_output_hint_badge_seen"
+                    hint="Best for invoices — a clean mark you can drop straight into it, nothing else to manage."
+                  >
                     <a
-                      href={`/api/documents/${id}/certificate`}
+                      href={`/api/documents/${id}/badge`}
                       target="_blank"
                       rel="noreferrer"
                       className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
                     >
-                      <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-                      Certificate
+                      <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                      Badge image
                     </a>
-                  )}
-                  <a
-                    href={`/api/documents/${id}/badge`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
-                  >
-                    <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                    Badge image
-                  </a>
+                  </OutputHint>
                   <a
                     href={`/api/documents/${id}/original-file`}
                     className={buttonVariants({ variant: "outline", size: "sm" })}
