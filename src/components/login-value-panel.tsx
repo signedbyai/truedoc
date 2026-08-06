@@ -13,10 +13,17 @@ import { Check } from "lucide-react";
 // Copy is verbatim from the request, checked against what's actually
 // shipped before building (see the scope doc): 3 docs/month matches the
 // live Free tier, "sign or seal" covers both regular sending and Verified
-// Badge sealing under the same cap, and Free orgs can genuinely generate
-// a real API key and call both /api/v1/* and the MCP route with it today
-// (confirmed directly in api-auth.ts / api/mcp/route.ts) — not aspirational
-// copy.
+// Badge sealing under the same cap.
+//
+// Second bullet reworded 2026-08-06 (top-of-funnel review, direct ask) —
+// this panel is shown on /login regardless of entry point, including the
+// Verified Badge funnel's freelancer/non-developer audience. The original
+// "Access API & MCP keys" bullet (still true — Free orgs can generate a
+// real API key and call both /api/v1/* and the MCP route with it, see
+// api-auth.ts / api/mcp/route.ts) read as a developer feature to that
+// audience. Swapped for the value prop that's actually relevant to them;
+// API/MCP access is still real and still mentioned elsewhere (developer
+// docs, this page's own dashboard once signed in).
 //
 // Shown on both the sign-in and sign-up views (login/page.tsx's `isSignup`
 // only toggles copy inside the existing card) — a returning user isn't
@@ -45,7 +52,7 @@ export function LoginValuePanel() {
               className="mt-0.5 h-4 w-4 flex-shrink-0 text-yellow-300"
               aria-hidden="true"
             />
-            <span>Access API &amp; MCP keys</span>
+            <span>Generate verifiable proof for clients</span>
           </li>
           <li className="flex items-start gap-2.5">
             <Check

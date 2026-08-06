@@ -13,7 +13,15 @@ import { ctaColorFlag } from "@/flags";
 // generic "prove your work" copy. Deliberately doesn't name any AI-detector
 // product by name (a wedge against a third-party pain point, not a
 // head-to-head comparison the way /vs/* pages are).
-const TITLE = "Verified Badge — pre-verify your work before a client's AI detector does | SignedBy";
+// TITLE reworded 2026-08-06 (top-of-funnel review, direct ask) — the old
+// "pre-verify your work before a client's AI detector does" reads as a
+// "beat the AI detector" promise, which directly contradicts this page's
+// own FAQ ("Does this prove my work wasn't written or made with AI? No —
+// and it doesn't claim to."). Cold traffic that clicks through on the old
+// promise and then reads the honest FAQ has every reason to feel misled and
+// bounce. Reworded to the claim the product actually makes and keeps: proof
+// of identity and integrity, not an AI-detector rebuttal.
+const TITLE = "Verified Badge — proof your work is genuinely yours, sealed by a verified human | SignedBy";
 // DESCRIPTION corrected 2026-08-01 (direct instruction, following a console
 // sign-up/login audit): this used to say "Console/MCP, Pro plan or higher,"
 // contradicting the page's own body copy below (which correctly advertises
@@ -78,8 +86,13 @@ const FAQ = [
       a: "PDFs only for now. If your finished work is a design export, code, or something else, export or print it to a PDF first, then seal that.",
     },
     {
+      // Jargon stripped 2026-08-06 (top-of-funnel review, direct ask) —
+      // same reasoning as the "How it works" step above; the MCP/agent
+      // detail moved to a plain "see the developer docs" pointer rather
+      // than being spelled out inline for an audience that isn't wiring up
+      // AI agents.
       q: "What plan do I need?",
-      a: 'Any plan, including Free, no card required. Free includes 3 Verified Badge seals a month. Pro plan or higher gets unlimited sealing, no per-seal charge. Seal a file right from your dashboard\'s New Document menu — Console chat and the seal_document MCP tool still work too, for anyone wiring in an AI agent, see the developer docs.',
+      a: "Any plan, including Free, no card required. Free includes 3 Verified Badge seals a month. Pro plan or higher gets unlimited sealing, no per-seal charge. Seal a file right from your dashboard's New Document menu — developers can also do this from Console chat or the API, see the developer docs.",
     },
     {
       q: "What actually makes the timestamp \"cryptographically verified\"?",
@@ -147,9 +160,13 @@ export default async function VerifiedBadgePage() {
           <CtaLink href={START_HREF} color={ctaColor} page="verified-badge" position="hero">
             Generate Your Proof →
           </CtaLink>
-          <p className="text-xs text-slate-400">
-            Free to start — 3 seals a month, no card required. Pro plan or higher for unlimited sealing.
-          </p>
+          {/* Micro-copy under the primary CTA reworked 2026-08-06 (top-of-
+              funnel review, direct ask) — "Pro plan or higher for unlimited
+              sealing" introduced cost-anxiety before a cold visitor has even
+              decided they want the product. Free tier is genuinely enough to
+              try this (3 seals/month, no card), so lead with speed/ease and
+              let /pricing do the selling on the plan tiers. */}
+          <p className="text-xs text-slate-400">Free to start, no card required — takes about a minute to set up.</p>
         </div>
       </section>
 
@@ -177,7 +194,13 @@ export default async function VerifiedBadgePage() {
             },
             {
               step: "2. Seal the file",
-              body: "Upload the finished PDF from your dashboard's New Document menu — Console chat and the seal_document MCP tool work too, if you're already using either. SignedBy hashes it, timestamps it, and generates your badge.",
+              // Jargon stripped 2026-08-06 (top-of-funnel review, direct
+              // ask) — "Console chat and the seal_document MCP tool" reads
+              // as a developer/API feature to a freelance designer or
+              // copywriter, not a step meant for them. The dev-facing path
+              // still exists and is still linked from the footer's "API &
+              // MCP docs" — just not front-loaded into the main funnel copy.
+              body: "Just upload your finished PDF from your dashboard — SignedBy hashes it, timestamps it, and generates your badge.",
             },
             {
               step: "3. Embed the badge",
