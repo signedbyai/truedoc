@@ -1,0 +1,23 @@
+-- Ad-platform click IDs for cookieless server-side conversion tracking
+-- (2026-08-06 direct ask: Reddit's pixel and LinkedIn's Conversions API both
+-- need a signal to match a later signup back to the ad click. The obvious
+-- signal is each platform's own click ID -- Reddit's rdt_cid, LinkedIn's
+-- li_fat_id -- which both platforms append to the landing URL as a query
+-- param with NO cookie involved, only once click-ID passing is turned on in
+-- each ad account (an account setting, not something this app configures).
+-- Deliberately NOT the pixel/Insight Tag route: Michael avoids new cookies
+-- specifically to dodge reopening privacy/legal review (see
+-- [[feedback-avoid-cookies-legal-cost]]), and both platforms' pixels drop a
+-- tracking cookie. Click-ID + server-side Conversions API needs none.
+--
+-- Captured through the exact same first-touch pipeline signup_utm_* already
+-- uses (localStorage, not a cookie -- see attribution-capture.tsx), so this
+-- is additive to 0024_signup_attribution.sql, not a new mechanism.
+--
+-- Storing the click ID alone here -- NOT sending the actual conversion event
+-- to Reddit/LinkedIn yet. That needs a conversion access token (Reddit) and
+-- a registered Conversions API app + conversion rule (LinkedIn), both of
+-- which only Michael can create on the ad-account side; wiring the actual
+-- send is the next step once those exist.
+alter table organizations add column if not exists signup_rdt_cid text;
+alter table organizations add column if not exists signup_li_fat_id text;

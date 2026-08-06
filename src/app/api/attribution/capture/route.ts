@@ -15,6 +15,11 @@ const bodySchema = z.object({
   utm_term: z.string().max(200).optional(),
   referrer: z.string().max(300).optional(),
   landing_path: z.string().max(200).optional(),
+  // Ad-platform click IDs (0051_signup_click_ids.sql) — captured cookielessly
+  // alongside the UTM params above, for a future server-side Conversions API
+  // send. Not sent to either platform yet; see that migration's comment.
+  rdt_cid: z.string().max(200).optional(),
+  li_fat_id: z.string().max(200).optional(),
 });
 
 export async function POST(request: Request) {
@@ -41,6 +46,8 @@ export async function POST(request: Request) {
       signup_utm_term: parsed.data.utm_term ?? null,
       signup_referrer: parsed.data.referrer ?? null,
       signup_landing_path: parsed.data.landing_path ?? null,
+      signup_rdt_cid: parsed.data.rdt_cid ?? null,
+      signup_li_fat_id: parsed.data.li_fat_id ?? null,
     })
     .eq("id", orgId)
     .is("signup_utm_source", null);
