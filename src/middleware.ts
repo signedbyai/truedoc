@@ -13,6 +13,23 @@ import { CONSOLE_HOST } from "@/lib/console-host";
 // (see console-host.ts, cookie-domain.ts, and the 2026-07-30 full-
 // subdomain-separation work in CONSOLE_UX_SCOPE.md for the reasoning).
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Markdown content negotiation, /developers only (2026-08-06, scoped
+  // deliberately narrow — see the isitagentready.com discoverability pass
+  // and IN_DOCUMENT_BADGE_AND_API_SEAL_SCOPE-adjacent chat). Checked actual
+  // adoption before building this: Google's crawlers don't send
+  // Accept: text/markdown at all, but Anthropic's own infrastructure and
+  // Claude-based coding tools (Claude Code, OpenCode) do — exactly the
+  // audience reading API docs, not general marketing copy, which is why
+  // this isn't extended to the homepage or anywhere else.
+  // /developers.md is a static, session-free route handler, so this
+  // rewrites and returns immediately rather than routing through
+  // updateSession below — there's no session-dependent content on it.
+  if (pathname === "/developers" && (request.headers.get("accept") ?? "").includes("text/markdown")) {
+    return NextResponse.rewrite(new URL("/developers.md", request.url));
+  }
+
   const host = request.headers.get("host");
   if (host === CONSOLE_HOST) {
     const { pathname } = request.nextUrl;
