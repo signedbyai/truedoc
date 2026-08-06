@@ -24,3 +24,5 @@ create table if not exists public.disposable_email_blocks (
 alter table public.disposable_email_blocks enable row level security;
 
 create index if not exists disposable_email_blocks_created_at_idx on public.disposable_email_blocks (created_at);
+
+	
