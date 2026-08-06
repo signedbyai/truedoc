@@ -24,7 +24,17 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: "/",
+      // /api/v1 and /api/mcp are carved out of the broader /api disallow
+      // below (2026-08-06, agent-discoverability pass): they're SignedBy's
+      // two real, documented public API surfaces (see /developers, the new
+      // MCP server card, and the API catalog at /.well-known/api-catalog),
+      // and both require an API key to do anything (401 without one), so
+      // there's nothing sensitive exposed by letting a crawler/agent see the
+      // path exists. The rest of /api -- internal routes never meant to be
+      // probed or indexed -- stays disallowed. Longest-match wins per the
+      // robots.txt spec, so these Allow entries take precedence over the
+      // broader Disallow: /api below regardless of list order.
+      allow: ["/", "/api/v1", "/api/mcp"],
       disallow: ["/dashboard", "/api", "/sign", "/team", "/auth", "/login"],
     },
     sitemap: "https://signedby.ai/sitemap.xml",

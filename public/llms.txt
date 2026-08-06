@@ -1,0 +1,38 @@
+# SignedBy
+
+> SignedBy is a lean, affordable e-signature tool for solo professionals and small teams. Upload, send, and sign in minutes -- legally binding under ESIGN and UETA. Flat $7/mo unlimited plan, no per-seat pricing, 3 free documents every month.
+
+## Docs
+
+- [API, webhooks & MCP reference](https://signedby.ai/developers): REST API and outbound webhooks starting on the $7/mo Pro plan, plus a Model Context Protocol server at /api/mcp for AI agents.
+- [API catalog](https://signedby.ai/.well-known/api-catalog): machine-readable index of SignedBy's public API surfaces (RFC 9727).
+- [MCP server card](https://signedby.ai/.well-known/mcp/server-card.json): machine-readable descriptor for the /api/mcp server.
+- [Pricing](https://signedby.ai/pricing): flat $7/mo unlimited plan, no per-seat pricing, 3 free documents every month.
+- [Security & compliance](https://signedby.ai/security): the audit trail, SHA-512 document fingerprints, ESIGN/UETA/eIDAS position, and EEA-based processing.
+- [Verify a document](https://signedby.ai/verify): independently confirm a SignedBy document is genuine by checksum, no account needed.
+
+## Product
+
+- [Home](https://signedby.ai/): overview of SignedBy's e-signature product.
+- [Console](https://signedby.ai/console): send signing requests and seal documents by chatting with an AI, or wire an agent/CRM into the metered API.
+- [Verified Badge](https://signedby.ai/verified-badge): seal a finished file as unaltered and identity-verified, then embed a scannable proof badge anyone can check with no account needed.
+- [AI Drafter](https://signedby.ai/ai-drafter): describe an agreement in plain language and get a real first draft -- freelance agreements, NDAs, waivers, and more.
+- [Magic Quote](https://signedby.ai/magic-quote): describe a job in plain language and get a line-item price quote that becomes a real signable document instantly.
+- [Free templates](https://signedby.ai/templates): ready-to-use templates for freelance agreements, NDAs, waivers, rental agreements, and more.
+- [Board resolutions & shareholder consents](https://signedby.ai/board-resolutions): get resolutions and consents signed by every director or shareholder in minutes.
+
+## Compare
+
+- [SignedBy vs SignNow](https://signedby.ai/vs/signnow)
+- [SignedBy vs DocuSign](https://signedby.ai/vs/docusign)
+- [SignedBy vs PandaDoc](https://signedby.ai/vs/pandadoc)
+- [SignedBy vs Adobe Acrobat Sign](https://signedby.ai/vs/adobe)
+- [SignedBy vs Dropbox Sign](https://signedby.ai/vs/dropbox)
+- [SignedBy vs Hix (Hix Signing)](https://signedby.ai/vs/hix)
+- [SignedBy vs BoloSign](https://signedby.ai/vs/bolosign)
+
+## Optional
+
+- [Terms of Service](https://signedby.ai/terms)
+- [Privacy Policy](https://signedby.ai/privacy)
+- [Data Processing Addendum](https://signedby.ai/dpa)

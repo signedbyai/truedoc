@@ -1,0 +1,20 @@
+{
+  "serverInfo": {
+    "name": "signedby",
+    "title": "SignedBy",
+    "version": "1.0.0",
+    "description": "Send and manage e-signature requests, and seal finished documents with a Verified Badge, on SignedBy. Every document still requires the human signer to open the link and sign it themselves -- this server can trigger a send, it can never sign on anyone's behalf."
+  },
+  "transport": {
+    "type": "streamable-http",
+    "url": "https://signedby.ai/api/mcp"
+  },
+  "capabilities": {
+    "tools": true
+  },
+  "auth": {
+    "type": "bearer",
+    "description": "Requires a SignedBy API key (generated from Settings -> Integration & API) on the Pro plan or higher, passed as 'Authorization: Bearer sb_live_...'."
+  },
+  "documentation": "https://signedby.ai/developers"
+}
