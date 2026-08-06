@@ -45,6 +45,28 @@ function MicrosoftIcon() {
   );
 }
 
+// LinkedIn's official rounded-square "in" mark — used at icon size for the
+// social sign-in button, per LinkedIn's brand guidelines. Login only (2026-
+// 08-06, direct instruction): this is a Supabase `linkedin_oidc` OAuth
+// provider like Google/Microsoft below, deliberately NOT wired into
+// Verified Badge's identity check anywhere -- standard "Sign in with
+// LinkedIn" (OIDC) only exposes openid/profile/email claims, nothing about
+// LinkedIn's own CLEAR/Persona identity-verification badge, so it can't
+// stand in for what Stripe Identity actually verifies today. See the
+// invoice-fraud campaign discussion this session for why conflating the two
+// would be a real overclaim, not just a weaker one.
+function LinkedInIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+      <rect width="24" height="24" rx="4" fill="#0A66C2" />
+      <path
+        fill="#fff"
+        d="M7.12 9.4H4.32V19.5h2.8V9.4ZM5.72 8.16a1.63 1.63 0 1 0 0-3.26 1.63 1.63 0 0 0 0 3.26ZM19.68 19.5v-5.55c0-2.97-1.59-4.35-3.7-4.35-1.71 0-2.47.94-2.9 1.6V9.4H10.3c.04.78 0 10.1 0 10.1h2.79v-5.64c0-.3.02-.6.11-.82.24-.6.79-1.22 1.71-1.22 1.21 0 1.69.92 1.69 2.27v5.41h2.79Z"
+      />
+    </svg>
+  );
+}
+
 // Slim wrapper so useSearchParams (client-only) doesn't block static
 // rendering of the rest of the page — Next requires a Suspense boundary
 // around any component that reads the search string.
@@ -84,7 +106,7 @@ function LoginPageInner() {
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState<"idle" | "sent" | "error">(() => (readOAuthErrorFromHash() ? "error" : "idle"));
   const [message, setMessage] = useState(() => readOAuthErrorFromHash() ?? "");
-  const [oauthLoading, setOauthLoading] = useState<"google" | "azure" | null>(null);
+  const [oauthLoading, setOauthLoading] = useState<"google" | "azure" | "linkedin_oidc" | null>(null);
 
   // The email we sent the code/link to -- kept separately from the form so
   // "Resend code" and the verify call both work without re-reading the
@@ -251,7 +273,7 @@ function LoginPageInner() {
     });
   }
 
-  async function handleOAuth(provider: "google" | "azure") {
+  async function handleOAuth(provider: "google" | "azure" | "linkedin_oidc") {
     setOauthLoading(provider);
     const supabase = createClient();
     // Fixed to NEXT_PUBLIC_APP_URL rather than window.location.origin —
@@ -435,6 +457,16 @@ function LoginPageInner() {
                   className="flex h-12 w-12 items-center justify-center rounded-md border border-slate-300 bg-white transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50"
                 >
                   <MicrosoftIcon />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOAuth("linkedin_oidc")}
+                  disabled={oauthLoading !== null}
+                  aria-label="Continue with LinkedIn"
+                  title="Continue with LinkedIn"
+                  className="flex h-12 w-12 items-center justify-center rounded-md border border-slate-300 bg-white transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <LinkedInIcon />
                 </button>
               </div>
 
