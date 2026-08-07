@@ -10,6 +10,7 @@ export type DraftDocumentType =
   | "waiver"
   | "boiler_maintenance"
   | "bike_rental"
+  | "watercraft_rental"
   | "board_resolution"
   | "shareholder_consent"
   | "general";
@@ -134,6 +135,34 @@ export const DOCUMENT_TYPES: { id: DraftDocumentType; labels: Localized; placeho
       it: "es. noleggio bici per il weekend, cauzione rimborsabile di 50 €, il noleggiatore risponde di danni o furto",
     },
   },
+  {
+    // Added 2026-08-07, adapted from a real Italian "Contratto di Locazione
+    // Natante" (boat rental contract, Sicily) — see boat-jet-ski-rental-
+    // agreement-template's own comment in template-pages.ts for the source
+    // details and what was kept/generalized. Covers both boats and jet skis
+    // under one type (like the source's own "natante" is a generic small-
+    // craft term) rather than splitting into two near-identical types.
+    id: "watercraft_rental",
+    labels: {
+      en: "Boat & Jet Ski Rental Agreement",
+      es: "Contrato de Alquiler de Barco y Moto Acuática",
+      fr: "Contrat de Location de Bateau et Jet-Ski",
+      de: "Boots- und Jetski-Mietvertrag",
+      pt: "Contrato de Aluguel de Barco e Jet Ski",
+      nl: "Boot- en Jetskiverhuurovereenkomst",
+      it: "Contratto di Noleggio di Barca e Moto d'Acqua",
+    },
+    placeholders: {
+      en: "e.g. half-day boat rental, €50 late-return fee, renter liable for damage or loss, valid ID required at handover",
+      es: "ej. alquiler de barco de medio día, recargo de 50 € por devolución tardía, el arrendatario responde por daños o pérdidas, identificación requerida",
+      fr: "ex. location de bateau pour une demi-journée, pénalité de retard de 50 € au retour, le locataire est responsable des dommages ou pertes, pièce d'identité requise",
+      de: "z. B. Bootsverleih für einen halben Tag, 50 € Gebühr bei verspäteter Rückgabe, Mieter haftet für Schäden oder Verlust, Ausweis erforderlich",
+      pt: "ex. aluguel de barco por meio período, taxa de 50 € por devolução atrasada, locatário responsável por danos ou perdas, documento de identificação exigido",
+      nl: "bijv. boothuur voor een halve dag, boete van €50 bij te late terugbezorging, huurder aansprakelijk voor schade of verlies, legitimatie verplicht",
+      it: "es. noleggio barca di mezza giornata, penale di 50 € per ritardo nella riconsegna, il noleggiatore risponde di danni o smarrimenti, documento d'identità richiesto",
+    },
+  },
+
   {
     id: "board_resolution",
     labels: {

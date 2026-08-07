@@ -331,6 +331,107 @@ Date: _______________________`,
   },
 
   {
+    slug: "boat-jet-ski-rental-agreement-template",
+    // Its own AI Drafter type (added 2026-08-07, see ai-draft-types.ts and
+    // draft-document.ts's TYPE_GUIDANCE) — no longer routes through the
+    // "general" catch-all. Adapted from a real "Contratto di Locazione
+    // Natante" (boat rental contract) used by a small charter operator in
+    // Castellammare del Golfo, Sicily — direct ask: "make a clean demo out
+    // of it for boat and jet ski rentals." Kept the source's substantive,
+    // distinctive clauses (ID capture at handover, a fixed late-return fee,
+    // personal liability for third-party damage the vessel causes, an
+    // insurance-review acknowledgment, an injury-liability disclaimer) since
+    // those are exactly what a real marine rental operator's contract needs
+    // and a generic rental template wouldn't think to include — rewritten in
+    // plain English and generalized to fit either a boat or a jet ski
+    // (mirroring the source's own use of "natante," a generic small-craft
+    // term), with every business/personal identifier from the actual scanned
+    // contract removed or replaced with a bracketed placeholder.
+    documentType: "watercraft_rental",
+    seoTitle: "Free Boat & Jet Ski Rental Agreement Template",
+    metaDescription:
+      "A free boat and jet ski rental agreement template covering condition at handover, ID capture, damage liability, and late-return fees. Customize it and send it for e-signature.",
+    h1: "Free Boat & Jet Ski Rental Agreement Template",
+    intro: [
+      "A boat or jet ski rental agreement is signed before handing over a vessel — recording its condition and safety equipment at handover, the rental period and price, who's liable for damage, fines, or a late return, and confirmation the renter has valid ID and has reviewed the vessel's insurance.",
+      "It matters more here than for most rental templates: a boat or jet ski carries real risk of expensive damage, a harbor-authority fine, or an injury, and a rental business that hands over a vessel worth tens of thousands on a handshake is exposed in exactly the way a signed agreement — with a timestamped audit trail — is built to prevent.",
+    ],
+    example: {
+      title: "Boat / Jet Ski Rental Agreement",
+      body: `This Rental Agreement ("Agreement") is made between [Rental Company Name] ("Owner") and [Renter Name] ("Renter").
+
+1. Vessel and Condition
+Owner rents the following watercraft to Renter: [Description — e.g. "1x jet ski, model/hull number XXXX"]. Owner delivers the vessel in good working condition, equipped with all safety equipment required by law, which Renter has inspected and accepted "as seen."
+
+2. Rental Period, Times, and Price
+The rental runs from [Start Date/Time] to [End Date/Time], at an agreed price of [Amount].
+
+3. Renter's Use and Responsibility
+Renter agrees to: provide valid identification before taking possession of the vessel; use it with the care of a reasonably prudent operator, strictly for [Purpose — e.g. "a recreational outing"]; not lend, sublet, or transfer use of the vessel to any third party; and pay the agreed price at handover.
+
+4. Liability for Damage, Loss, Fines, and Seizure
+Renter is responsible for any fines, impoundment of the vessel, or other costs arising from improper operation during the rental period, as well as any loss of onboard equipment (cushions, anchor, safety gear, etc.) or damage to the vessel itself — including damage caused by a third party Renter allowed aboard. Any damage will be assessed by a qualified technician promptly upon return and reimbursed by Renter immediately.
+
+5. Return
+The vessel must be returned to the same location, in the condition delivered, no later than the time agreed above. A late return is subject to a fee of [Late Fee — e.g. "€50"], due immediately on return.
+
+6. Personal Liability for Third-Party Damage
+Renter is personally and fully liable for any damage the vessel causes to other vessels, people, animals, or property during the rental period, including damage caused by anyone else Renter allows aboard.
+
+7. Breach and Termination
+If Renter fails to comply with this Agreement, Owner may terminate it immediately and is entitled to a penalty of [Amount, e.g. "twice the agreed rental price"], in addition to compensation for any damage suffered.
+
+8. Insurance
+Renter confirms having reviewed and accepted the insurance policy covering the vessel before this Agreement was signed. Any requested changes to coverage are at Renter's own cost and must be arranged before handover.
+
+9. Safety Acknowledgment
+Renter confirms having read and understood the applicable navigation safety rules and any local waterway or harbor regulations in effect, provided together with the vessel's documentation.
+
+10. Assumption of Risk
+Owner is not liable for any injury occurring during the rental period, except in cases of gross negligence or willful misconduct on Owner's part.
+
+11. Governing Law and Venue
+This Agreement is governed by the laws of [Jurisdiction], and any dispute arising from it will be brought before the courts of [Venue].
+
+RENTER IDENTIFICATION
+Name: [Renter Full Name]
+Date/Place of Birth: [Date and Place of Birth]
+Address: [Renter Address]
+ID Document: [Type, Number, Issuing Authority, Issue/Expiry Date]
+Phone: [Renter Phone Number]
+
+DECLARATION
+Renter specifically acknowledges having read, understood, and accepted every clause of this Agreement, including Sections 3, 4, 5, and 6 above, including on behalf of any other person included in this rental. Renter authorizes the processing of their personal data in accordance with applicable data protection law (e.g. GDPR).
+
+SIGNATURES
+
+Owner
+Signature: _______________________
+Print Name: [Owner Name]
+Date: _______________________
+
+Renter
+Signature: _______________________
+Print Name: [Renter Name]
+Date: _______________________`,
+    },
+    faq: [
+      {
+        q: "Does a liability waiver replace a boat rental agreement?",
+        a: "No — a waiver only covers the renter's own injury risk. A rental agreement additionally covers who's financially responsible for the vessel itself: damage, loss, fines, and a late return, none of which a standalone waiver addresses.",
+      },
+      {
+        q: "Should I collect the renter's ID before or after they sign?",
+        a: "Before — most marinas and harbor authorities expect a rental operator to verify a renter's identity as a matter of course, and recording it directly in the signed agreement (as this template does) keeps everything in one document instead of a separate, easy-to-lose form.",
+      },
+      {
+        q: "Can the same template cover both a boat and a jet ski rental?",
+        a: "Yes — the template describes a generic \"vessel,\" so you fill in whether it's a boat or a jet ski (and its model/hull number) each time, rather than maintaining two nearly identical documents.",
+      },
+    ],
+  },
+
+  {
     slug: "board-resolution-template",
     // Its own AI Drafter type (added 2026-08-01, see ai-draft-types.ts and
     // draft-document.ts's TYPE_GUIDANCE) — no longer routes through the

@@ -41,6 +41,15 @@ const TYPE_GUIDANCE: Record<DraftDocumentType, string> = {
     "A bicycle rental agreement typically covers: the bicycle(s) being rented and their condition at handover, " +
     "the rental period and rate, a security deposit and what it can be used against, the renter's responsibility " +
     "for damage, loss, or theft during the rental period, and the condition the bicycle must be returned in.",
+  watercraft_rental:
+    "A boat/jet ski rental agreement typically covers: the vessel being rented (type, and its condition and " +
+    "required safety equipment at handover), the rental period, times, and price, a requirement that the renter " +
+    "provide valid identification, the renter's responsibility to use it with reasonable care for its intended " +
+    "purpose only, the renter's liability for damage, loss, fines, or seizure arising during the rental (assessed " +
+    "and settled promptly on return), a fixed late-return fee, confirmation the renter has reviewed the vessel's " +
+    "insurance coverage, and the rental company's disclaimer of liability for injury during the rental period. " +
+    "Keep the vessel description generic enough to fit either a boat or a jet ski unless the user's description " +
+    "specifies one.",
   board_resolution:
     "A board resolution (unanimous written consent in lieu of a meeting) typically covers: identifying the " +
     "company, confirming this is signed by all directors acting without a live meeting, a clear statement of the " +
