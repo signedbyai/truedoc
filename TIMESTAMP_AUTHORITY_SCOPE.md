@@ -13,7 +13,23 @@ agnostic line only — drawn before the timestamp exists), /verify +
 image regenerated. Migration + deploy owed — cannot be verified against
 real Sectigo/FreeTSA network calls from the sandbox (network restriction),
 so a live round trip needs post-deploy confirmation. /privacy + /dpa
-disclosure line NOT done (flagged, not required). Follow-on to the badge-copy audit
+disclosure line NOT done (flagged, not required).
+
+**Deploy confirmed 2026-08-07 via Vercel MCP:** production is running
+commit `a834083`, which sits on top of `f03ef95` — the code is live.
+**Migration 0045 confirmed applied 2026-08-07** (direct confirmation) —
+`timestamp_token`/`timestamp_tsa`/`timestamp_gen_time` exist on
+`audit_events` in production. Code + schema are both live. **End-to-end confirmed 2026-08-07:** a real `audit_events` row shows
+`timestamp_tsa: sectigo`, `timestamp_gen_time: 2026-08-06 20:17:51+00` —
+a genuine Sectigo round trip succeeded in production. (Rows with NULL
+`document_hash`/`timestamp_tsa` alongside it are expected — `created`/
+`sent`/`signed`/`voided`/`consent_given` events never populate those
+three columns; only the `completed` event does, in both
+`verified-badge-actions.ts` and `sign/[token]/submit/route.ts` — checked
+both, this is live for regular signed documents too, not just Verified
+Badge ones, matching this doc's original "same default on both surfaces"
+recommendation.) Pipeline is fully proven — the only remaining gate on
+making public claims is the legal-copy review already flagged above. Follow-on to the badge-copy audit
 that caught Verified Badge overclaiming "cryptographically verified
 timestamp" ([[verified-badge-image-missing-text-fix]]-adjacent — see
 `badge-asset.tsx`'s 2026-08-01 footer fix) when the timestamp today is
