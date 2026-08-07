@@ -5,14 +5,21 @@ import { describe, expect, it, vi } from "vitest";
 // (signer.auth_required / auth_verified_at, PER_RECIPIENT_AUTH_SCOPE.md) used
 // to be enforced ONLY inside src/app/sign/[token]/page.tsx's server
 // component. Every one of the underlying data API routes that page's client
-// components call (GET .../ (view), GET .../file, GET .../signed-file, POST
-// .../submit, POST .../decline, GET .../status, GET .../summary, POST
-// .../payment-click, POST .../client-error) called the exact same
-// getSignerByToken() helper but never re-checked auth_required/
-// auth_verified_at itself — so anyone with a signer's raw signing_token could
-// bypass the OTP challenge entirely via direct API calls (curl, fetch, a
-// script). Confirmed with a real reproduction before the fix (both routes
-// below returned 200 with real data for an unverified signer).
+// components call (GET .../file, GET .../signed-file, POST .../submit, POST
+// .../decline, GET .../status, GET .../summary, POST .../payment-click, POST
+// .../client-error) called the exact same getSignerByToken() helper but
+// never re-checked auth_required/auth_verified_at itself — so anyone with a
+// signer's raw signing_token could bypass the OTP challenge entirely via
+// direct API calls (curl, fetch, a script). Confirmed with a real
+// reproduction before the fix (both routes below returned 200 with real data
+// for an unverified signer).
+//
+// The bare GET /api/sign/[token] (labeled "(view)" in this file's earlier
+// history) was removed 2026-08-07 as confirmed-dead code — it duplicated
+// page.tsx's own view/webhook logic, and nothing in the app ever called it
+// (see MASTER_BACKLOG.md's "Remove dead GET handler" item). Its two test
+// cases here were removed alongside it, not just left pointing at a route
+// that no longer exists.
 //
 // Any NEW signer-facing /api/sign/[token]/... route must add a case here too
 // — this file is the single place that would catch a route forgetting the
@@ -113,15 +120,6 @@ vi.mock("@/lib/rate-limit", () => ({
 }));
 
 describe("per-recipient OTP gate — every route blocks an unverified signer", () => {
-  it("GET /api/sign/[token] (view) returns 401 for an unverified signer", async () => {
-    currentSigner = unverifiedSigner;
-    const { GET } = await import("./route");
-    const res = await GET(new Request("https://signedby.ai/api/sign/tok"), {
-      params: Promise.resolve({ token: "tok" }),
-    });
-    expect(res.status).toBe(401);
-  });
-
   it("GET /api/sign/[token]/file returns 401 for an unverified signer", async () => {
     currentSigner = unverifiedSigner;
     const { GET } = await import("./file/route");
@@ -175,17 +173,6 @@ describe("per-recipient OTP gate — every route blocks an unverified signer", (
 });
 
 describe("per-recipient OTP gate — a verified signer keeps normal access", () => {
-  it("GET /api/sign/[token] (view) still returns 200 once auth_verified_at is set", async () => {
-    currentSigner = verifiedSigner;
-    const { GET } = await import("./route");
-    const res = await GET(new Request("https://signedby.ai/api/sign/tok"), {
-      params: Promise.resolve({ token: "tok" }),
-    });
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.document.title).toBe(baseDocument.title);
-  });
-
   it("GET /api/sign/[token]/file still streams the PDF once auth_verified_at is set", async () => {
     currentSigner = verifiedSigner;
     const { GET } = await import("./file/route");

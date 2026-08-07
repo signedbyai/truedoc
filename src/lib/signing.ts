@@ -65,7 +65,8 @@ export async function getSignerByToken(token: string) {
 // the cron to catch up — this shared check is what both
 // sign/[token]/page.tsx and sign/[token]/submit/route.ts call, so the two
 // can't drift out of sync with each other the way page.tsx and the old
-// api/sign/[token]/route.ts drifted on the viewed-webhook bug.
+// api/sign/[token]/route.ts drifted on the viewed-webhook bug (that route.ts
+// GET handler was confirmed-dead and deleted 2026-08-07).
 export function isPastExpiration(document: { status: string; expires_at: string | null }): boolean {
   return document.status === "sent" && Boolean(document.expires_at) && new Date(document.expires_at!) <= new Date();
 }

@@ -164,7 +164,9 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
     // api/sign/[token]/route.ts's GET handler, not realizing this page
     // (a Server Component) has its own separate "mark viewed" copy of the
     // same logic and is what the signing flow actually renders through —
-    // that route.ts handler is legacy/unreachable. `signed`/`completed`
+    // that route.ts handler was legacy/unreachable, and was deleted
+    // 2026-08-07 for exactly that reason (see auth-gate-bypass.test.ts's
+    // own updated header comment). `signed`/`completed`
     // fired fine (those routes are still live); `viewed` silently never did.
     scheduleWebhookEvent(document.org_id, "document.viewed", {
       document_id: document.id,
