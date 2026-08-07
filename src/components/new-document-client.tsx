@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { track } from "@vercel/analytics";
-import { UploadCloud, Upload, Sparkles, Receipt, Rocket, ShieldCheck, Signature, X } from "lucide-react";
+import { UploadCloud, Sparkles, Receipt, Rocket, ShieldCheck, Signature, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -542,7 +542,11 @@ export function NewDocumentClient({
                 column. No tab glows anymore (2026-08-05) — see the dropzone
                 below, which now carries that "press here" signal instead. */}
             <span className="inline-flex items-center justify-center gap-1.5">
-              <Upload className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+              {/* Was the Upload glyph (2026-08-07, direct ask) -- switched to
+                  Signature to match the icon this same file already uses for
+                  its other two Sign touchpoints (the centered badge above
+                  the dropzone and the "Sign this file" button below). */}
+              <Signature className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
               Sign
             </span>
           </button>
