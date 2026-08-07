@@ -497,6 +497,7 @@ export default async function DocumentEditorPage({
                 <SignerRow
                   key={s.id}
                   documentId={id}
+                  documentTitle={doc.title}
                   signer={s}
                   docStatus={doc.status}
                   hasReminders={hasReminders}

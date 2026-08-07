@@ -5,6 +5,7 @@ import Link from "next/link";
 import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { CopySigningLinkButton } from "@/components/copy-signing-link-button";
+import { ShareSigningLinkButton } from "@/components/share-signing-link-button";
 import { RemindSignerButton } from "@/components/remind-signer-button";
 import { formatEngagement } from "@/lib/page-view-tracking";
 import { StatusPill, SIGNER_STATUS_PILL, EMAIL_EVENT_BADGE } from "@/components/status-pill";
@@ -26,6 +27,7 @@ type Signer = {
 // being squeezed into the same inline button cluster as Copy link/Remind.
 export function SignerRow({
   documentId,
+  documentTitle,
   signer,
   docStatus,
   hasReminders,
@@ -33,6 +35,7 @@ export function SignerRow({
   engagement,
 }: {
   documentId: string;
+  documentTitle: string;
   signer: Signer;
   docStatus: string;
   hasReminders: boolean;
@@ -124,6 +127,13 @@ export function SignerRow({
         </span>
         <span className="flex items-center gap-2">
           {isNotifiable && <CopySigningLinkButton signingToken={signer.signing_token} />}
+          {isNotifiable && (
+            <ShareSigningLinkButton
+              signingToken={signer.signing_token}
+              documentTitle={documentTitle}
+              signerName={signer.name}
+            />
+          )}
           {isNotifiable &&
             (hasReminders ? (
               <RemindSignerButton documentId={documentId} signerId={signer.id} />
