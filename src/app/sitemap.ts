@@ -73,6 +73,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // Vertical landing page, added 2026-08-07 alongside the watercraft_
     // rental template/AI-drafter type — same board-resolutions pattern.
     { url: `${BASE_URL}/boat-jet-ski-rental`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    // Setup/signing guide, added 2026-08-08, linked from that page's footer.
+    { url: `${BASE_URL}/boat-jet-ski-rental/guide`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     // Audience-specific entry-point pages, added 2026-07-27 to test AU
     // trades and US subcontractor market entry — same feature, localized
     // framing and FAQ (see each page's own top-of-file comment).

@@ -218,6 +218,13 @@ export default async function BoatJetSkiRentalPage() {
         <p>© {new Date().getFullYear()} SignedBy. signedby.ai</p>
         <p className="mt-1">A trading name of SPRK10 B.V. KVK 98888625</p>
         <p className="mt-2 space-x-4">
+          {/* Setup/signing walkthrough, added 2026-08-08 (direct ask) --
+              first in the row since it's the most relevant next click for
+              this page's own audience, ahead of the generic site-wide
+              links. */}
+          <Link href="/boat-jet-ski-rental/guide" className="hover:text-slate-600">
+            Setup & signing guide
+          </Link>
           <Link href="/templates" className="hover:text-slate-600">
             Free templates
           </Link>
