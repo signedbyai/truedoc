@@ -70,6 +70,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // independent dealers/brokers/private sellers, speed angle not fraud
     // (see that page's own top-of-file comment for why).
     { url: `${BASE_URL}/auto-sales`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    // Vertical landing page, added 2026-08-07 alongside the watercraft_
+    // rental template/AI-drafter type — same board-resolutions pattern.
+    { url: `${BASE_URL}/boat-jet-ski-rental`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     // Audience-specific entry-point pages, added 2026-07-27 to test AU
     // trades and US subcontractor market entry — same feature, localized
     // framing and FAQ (see each page's own top-of-file comment).
