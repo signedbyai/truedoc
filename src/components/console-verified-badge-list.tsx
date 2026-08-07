@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, Copy, ExternalLink, FileText, ShieldCheck } from "lucide-react";
+import { ConsoleShareLinkButton, ConsoleQrLinkButton } from "@/components/console-link-actions";
 
 type SealedDocument = {
   id: string;
@@ -100,6 +101,16 @@ export function ConsoleVerifiedBadgeList() {
               {verifyUrl && (
                 <>
                   <CopyLinkButton value={verifyUrl} />
+                  <ConsoleShareLinkButton
+                    link={verifyUrl}
+                    shareText="Here's the verification link for this document:"
+                    size="xs"
+                  />
+                  <ConsoleQrLinkButton
+                    link={verifyUrl}
+                    caption="Their camera opens this document's verification page."
+                    size="xs"
+                  />
                   <a
                     href={verifyUrl}
                     target="_blank"

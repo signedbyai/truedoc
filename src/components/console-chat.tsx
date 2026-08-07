@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { track } from "@vercel/analytics";
 import { ArrowUp, Check, ChevronDown, Copy, ExternalLink, FileText, FileUp, Paperclip, ShieldCheck, Square, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConsoleShareLinkButton, ConsoleQrLinkButton } from "@/components/console-link-actions";
 import { parseNdjsonLine, splitNdjsonLines } from "@/lib/ndjson";
 import { formatCreditPackPrice, type Currency } from "@/lib/currency";
 import type { ConsoleHeroIconColor } from "@/flags";
@@ -1479,6 +1480,14 @@ export function ConsoleChat({
                 {m.sealed && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     <CopyLinkButton value={m.sealed.verifyUrl} label="Copy verify link" />
+                    <ConsoleShareLinkButton
+                      link={m.sealed.verifyUrl}
+                      shareText="Here's the verification link for this document:"
+                    />
+                    <ConsoleQrLinkButton
+                      link={m.sealed.verifyUrl}
+                      caption="Their camera opens this document's verification page."
+                    />
                     <a
                       href={m.sealed.verifyUrl}
                       target="_blank"
