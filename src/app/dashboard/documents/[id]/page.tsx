@@ -9,6 +9,8 @@ import { SignerRow } from "@/components/signer-row";
 import { AuditTrail, type AuditEvent } from "@/components/audit-trail";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
 import { CopyLinkButton } from "@/components/copy-link-button";
+import { ShareLinkButton } from "@/components/share-link-button";
+import { QrLinkButton } from "@/components/qr-link-button";
 import { OutputHint } from "@/components/output-hint";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -339,6 +341,21 @@ export default async function DocumentEditorPage({
                         <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                         Open verify page
                       </a>
+                      {/* Same "get this link onto a phone" pair added to
+                          signer-row.tsx (2026-08-07) -- a freelancer who just
+                          sealed a Verified Badge document is exactly as
+                          likely to want to text/WhatsApp/AirDrop this link
+                          to a client, or show them a QR to scan in person,
+                          as a signer is to receive a signing link that way. */}
+                      <ShareLinkButton
+                        link={verifyUrl}
+                        shareText={`Here's the verification link for "${doc.title}":`}
+                        label="Share verify link"
+                      />
+                      <QrLinkButton
+                        link={verifyUrl}
+                        caption="Their camera opens this document's verification page."
+                      />
                     </>
                   )}
                   {/* certificate_mode "separate" never produces a
