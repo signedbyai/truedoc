@@ -406,6 +406,46 @@ self-explanatory instead of five unlabeled buttons. Mapping:
   all — reframe as "share this link instead of a file," not a 4th "best
   for" option in the same row.
 
+**Always-on vs. opt-in — re-checked 2026-08-07 (direct question caught a
+real tension in this doc).** V1.3a says the corner stamp is unconditional,
+every seal; the "Ask every time" toggle (default off) only gates whether
+the Placer UI shows, not whether the stamp gets produced. Worth being
+explicit about the tradeoff that creates: if defaulted off and nobody
+opens Settings, every org's stamp sits at the hardcoded bottom-right
+fallback forever, and some of those placements will genuinely look bad
+(overlapping a total line, a logo, whatever the document happens to have
+there) — bottom-right isn't universally safe, just usually less bad than
+the alternatives.
+
+**Resolved 2026-08-07 (direct ask): ship always-on at the default, measure
+adjustment behavior, decide the toggle's default later from real data
+instead of guessing now.** Ship exactly as V1.3a/V1.1 already specify —
+stamp always produced, toggle defaults to off — but instrument it so this
+stops being a guess. **Single reference point, not two:** whatever
+position the Placer actually opens at *this time* — bottom-right/page-1
+only on an org's genuinely first-ever seal, the org's `last_badge_*`
+every time after that. Not a separate "fallback vs. remembered" split;
+just "the starting position in the editor," same thing either way.
+- On every Placer save, log the delta between the saved position and the
+  position it opened at — not just a boolean "touched," since a tiny
+  nudge and a full relocation to a different corner mean different
+  things.
+- On every seal (whether or not the Placer was opened this time), log
+  whether the final badge position matches the org's current starting
+  position exactly (never adjusted, ever) or differs from it (adjusted
+  at some point, this seal or an earlier one).
+- Surface a simple rollup (e.g. % of orgs that have ever adjusted vs.
+  never touched it) in the daily admin digest, same precedent as
+  [[plan-cap-hits-tracking]] — visible without a one-off query.
+
+Revisit after a real sample: a low adjustment rate validates the
+always-on-default behavior as sufficient (the bottom-right fallback is
+good enough that a manual step mostly isn't needed); a meaningfully high
+rate argues for flipping the toggle's default to "ask," surfacing the
+Placer more prominently, or reconsidering what the default position
+itself should be — decided from actual freelancer behavior, not
+speculation either way.
+
 **Confirmed: no detection.** Static "best for X" text next to each option,
 always shown, no document-type classification anywhere in this flow —
 consistent with V1.2's same call for placement. **Built 2026-08-06**
@@ -744,6 +784,8 @@ one-time hints (V1.3c, commit `a3b4d4d`). **Not built:** everything else in
 both V1 and V2 — all await an explicit go-ahead per
 [[feedback-scope-means-scope-only]]. All open sub-questions now answered
 (new-document default = remember org's last position, payment link folds
-into the same Badge Placer screen for Business tier). V2.2's B1/B2/B3
-pricing shapes specifically stay dark/unbuilt until a real large customer
-surfaces, even after everything else here ships.
+into the same Badge Placer screen for Business tier, always-on-vs-opt-in
+resolved 2026-08-07 by shipping always-on-at-default plus adjustment
+telemetry rather than picking blind). V2.2's B1/B2/B3 pricing shapes
+specifically stay dark/unbuilt until a real large customer surfaces, even
+after everything else here ships.
