@@ -12,7 +12,18 @@ import { QrCode, X } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export function QrLinkButton({ link, caption }: { link: string; caption?: string }) {
+// Default label renamed from plain "QR code" to "Share by QR code" (2026-08-08,
+// direct ask) -- reads as a third sharing option alongside "Share verify
+// link" (ShareLinkButton) rather than an unrelated label.
+export function QrLinkButton({
+  link,
+  caption,
+  label = "Share by QR code",
+}: {
+  link: string;
+  caption?: string;
+  label?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
@@ -40,7 +51,7 @@ export function QrLinkButton({ link, caption }: { link: string; caption?: string
         className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
       >
         <QrCode className="h-3.5 w-3.5" aria-hidden="true" />
-        QR code
+        {label}
       </button>
 
       {open && (

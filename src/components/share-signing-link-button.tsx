@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Share2 } from "lucide-react";
 
 // Companion to CopySigningLinkButton (see WHATSAPP_SIGNING_LINK_SCOPE.md's
 // "options to get this to someone's mobile phone" discussion, 2026-08-07) --
@@ -59,8 +60,18 @@ export function ShareSigningLinkButton({
   }
 
   return (
-    <button type="button" onClick={handleShare} className="text-xs font-medium text-slate-500 hover:text-slate-700">
-      {copied ? "Link copied" : "Share"}
+    // Mini icon + a more specific label than plain "Share" (2026-08-08,
+    // direct ask) -- next to CopySigningLinkButton/QrSigningLinkButton in
+    // signer-row.tsx, three plain text links with no visual distinction
+    // between them were hard to tell apart at a glance, unlike the sealed-
+    // document row's own icon-labeled Share/QR buttons.
+    <button
+      type="button"
+      onClick={handleShare}
+      className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700"
+    >
+      <Share2 className="h-3 w-3" aria-hidden="true" />
+      {copied ? "Link copied" : "Share to sign"}
     </button>
   );
 }

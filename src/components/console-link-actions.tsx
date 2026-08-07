@@ -73,13 +73,19 @@ export function ConsoleShareLinkButton({
   );
 }
 
+// Default label renamed from plain "QR code" to "Share by QR code" (2026-08-08,
+// direct ask, matching qr-link-button.tsx's own rename) -- reads as a third
+// sharing option alongside ConsoleShareLinkButton's "Share" rather than an
+// unrelated label.
 export function ConsoleQrLinkButton({
   link,
   caption,
+  label = "Share by QR code",
   size = "sm",
 }: {
   link: string;
   caption?: string;
+  label?: string;
   size?: keyof typeof SIZES;
 }) {
   const [open, setOpen] = useState(false);
@@ -105,7 +111,7 @@ export function ConsoleQrLinkButton({
     <span className="relative inline-block">
       <button type="button" onClick={handleOpen} className={cn(PILL_BASE, SIZES[size].pill)}>
         <QrCode className={SIZES[size].icon} aria-hidden="true" />
-        QR code
+        {label}
       </button>
 
       {open && (

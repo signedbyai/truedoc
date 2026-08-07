@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import QRCode from "qrcode";
-import { X } from "lucide-react";
+import { QrCode, X } from "lucide-react";
 
 // Second "get this link onto a phone" option alongside ShareSigningLinkButton
 // (see WHATSAPP_SIGNING_LINK_SCOPE.md's delivery-options discussion,
@@ -36,12 +36,15 @@ export function QrSigningLinkButton({ signingToken }: { signingToken: string }) 
 
   return (
     <span className="relative inline-block">
+      {/* Mini icon + a more specific label than plain "QR code" (2026-08-08,
+          direct ask) -- see ShareSigningLinkButton's own comment for why. */}
       <button
         type="button"
         onClick={handleOpen}
-        className="text-xs font-medium text-slate-500 hover:text-slate-700"
+        className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700"
       >
-        QR code
+        <QrCode className="h-3 w-3" aria-hidden="true" />
+        QR to sign
       </button>
 
       {open && (
