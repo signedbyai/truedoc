@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { CopySigningLinkButton } from "@/components/copy-signing-link-button";
 import { ShareSigningLinkButton } from "@/components/share-signing-link-button";
+import { QrSigningLinkButton } from "@/components/qr-signing-link-button";
 import { RemindSignerButton } from "@/components/remind-signer-button";
 import { formatEngagement } from "@/lib/page-view-tracking";
 import { StatusPill, SIGNER_STATUS_PILL, EMAIL_EVENT_BADGE } from "@/components/status-pill";
@@ -125,7 +126,10 @@ export function SignerRow({
             </>
           )}
         </span>
-        <span className="flex items-center gap-2">
+        {/* flex-wrap added here (2026-08-07) alongside the QR code button --
+            four conditional text-links plus Edit was tight enough on a
+            narrow phone width to risk overflow rather than just wrapping. */}
+        <span className="flex flex-wrap items-center gap-2">
           {isNotifiable && <CopySigningLinkButton signingToken={signer.signing_token} />}
           {isNotifiable && (
             <ShareSigningLinkButton
@@ -134,6 +138,7 @@ export function SignerRow({
               signerName={signer.name}
             />
           )}
+          {isNotifiable && <QrSigningLinkButton signingToken={signer.signing_token} />}
           {isNotifiable &&
             (hasReminders ? (
               <RemindSignerButton documentId={documentId} signerId={signer.id} />
