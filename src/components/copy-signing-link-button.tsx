@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Copy } from "lucide-react";
 
 // Fallback for the case an automated reminder/invite email never reaches a
 // signer (spam filter, corporate mail gateway, typo caught after the fact,
@@ -23,10 +24,14 @@ export function CopySigningLinkButton({ signingToken }: { signingToken: string }
   }
 
   return (
+    // Mini icon added (2026-08-08, direct ask) -- matches ShareSigningLinkButton/
+    // QrSigningLinkButton's own icon treatment in signer-row.tsx, so all three
+    // sit consistently rather than only two of three having one.
     <button
       onClick={handleCopy}
-      className="text-xs font-medium text-slate-500 hover:text-slate-700"
+      className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700"
     >
+      <Copy className="h-3 w-3" aria-hidden="true" />
       {state === "copied" ? "Link copied" : state === "error" ? "Couldn't copy" : "Copy link"}
     </button>
   );
