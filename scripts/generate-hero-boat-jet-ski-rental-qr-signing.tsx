@@ -34,7 +34,13 @@ const YELLOW_BORDER = "#fde047";
 const DARK = "#0f172a";
 
 async function main() {
-  const qrDataUrl = await QRCode.toDataURL("https://signedby.ai/sign/9f2e-boat-rental-demo", {
+  // Was a fake demo document id (signedby.ai/sign/9f2e-boat-rental-demo) --
+  // no such document exists, so scanning it hit a real error page (direct
+  // report, 2026-08-08: "QR codes in the slides give me 404's or errors").
+  // Repointed to the real, live /boat-jet-ski-rental page instead of a
+  // fake per-document link -- confirmed fine by direct instruction
+  // ("home page or one of the CTA pages" is an acceptable destination).
+  const qrDataUrl = await QRCode.toDataURL("https://signedby.ai/boat-jet-ski-rental", {
     width: 380,
     margin: 1,
     color: { dark: "#0f172a", light: "#ffffffff" },
