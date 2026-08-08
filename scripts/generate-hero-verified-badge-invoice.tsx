@@ -14,6 +14,15 @@ import { ImageResponse } from "next/og";
 // "signedby.ai/verified-badge-invoices", so the QR now actually encodes
 // that same real, live page (direct instruction: home page or a CTA page
 // is a fine destination, no need for a fake per-document link).
+//
+// Added 2026-08-08 (direct ask, same session): a large green checkmark
+// badge overlapping the QR's top-right corner, "to give the impression
+// that it's verified" -- a purely visual trust cue on this illustrative
+// hero mockup, same green/white "verified" badge convention used all over
+// the web (App Store ratings, marketplace seller badges, etc.). Not meant
+// to represent any real in-product UI element -- the real badge's own
+// verified state is the QR + "Verified & sealed" text already in this
+// mockup; this is additive polish on the marketing hero only.
 
 const WIDTH = 640;
 const HEIGHT = 820;
@@ -36,6 +45,11 @@ async function main() {
     margin: 2,
     color: { dark: NAVY, light: "#ffffffff" },
   });
+
+  const checkIconBuf = await fs.readFile(
+    path.join(process.cwd(), "public", "deck-icons", "Check-white.png")
+  );
+  const checkIconDataUri = `data:image/png;base64,${checkIconBuf.toString("base64")}`;
 
   const image = new ImageResponse(
     (
@@ -104,8 +118,54 @@ async function main() {
           <div style={{ display: "flex", flex: 1 }} />
 
           <div style={{ display: "flex", flexDirection: "row", justifyContent: "flex-end", alignItems: "flex-end", gap: 12 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- Satori's renderer, not the DOM. */}
-            <img src={qrDataUrl} width={96} height={96} alt="" />
+            <div style={{ position: "relative", display: "flex", width: 96, height: 96 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- Satori's renderer, not the DOM. */}
+              <img src={qrDataUrl} width={96} height={96} alt="" />
+              {/* Large green "verified" tick near the QR's top-right corner
+                  -- direct ask, purely a trust-cue visual on this
+                  illustrative mockup (see file header comment). Positioned
+                  entirely ABOVE the QR's own pixel bounds (top <= -badge
+                  height), not overlapping it at all: tried two overlapping
+                  placements first (top-right, then bottom-right) and both
+                  broke cv2's QR detector -- a QR's position-detection
+                  finder patterns sit at top-left/top-right/bottom-left,
+                  and even the one "safe" corner (bottom-right) turned out
+                  to still clip this payload's alignment pattern, which for
+                  a URL this long (QR version high enough to need one)
+                  lands right near that corner. Floating fully clear of the
+                  QR is the only placement that's both "near the QR" and
+                  guaranteed not to touch a single QR module. */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: -50,
+                  right: -10,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 40,
+                  height: 40,
+                  borderRadius: 999,
+                  backgroundColor: "#ffffff",
+                  boxShadow: "0 4px 10px -2px rgba(15, 23, 42, 0.35)",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 32,
+                    height: 32,
+                    borderRadius: 999,
+                    backgroundColor: "#16a34a",
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Satori's renderer, not the DOM. */}
+                  <img src={checkIconDataUri} width={20} height={20} alt="" />
+                </div>
+              </div>
+            </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <div style={{ display: "flex", width: 16, height: 16, borderRadius: 999, backgroundColor: NAVY }} />

@@ -49,6 +49,10 @@ const coloredIcons = [
   // usual Google Fonts fallback for it, so the character rendered as a
   // tofu box. An actual icon sidesteps font coverage entirely.
   { icon: "Check", outName: "Check-emerald", color: "#065f46" },
+  // White variant for the verified-badge-invoice hero's "large green tick
+  // near the QR code" (direct ask, 2026-08-08) -- sits ON a solid green
+  // circle in that mockup, so it needs to be white, not emerald-on-emerald.
+  { icon: "Check", outName: "Check-white", color: "#ffffff" },
 ];
 
 const outDir = path.join(process.cwd(), "public", "deck-icons");
