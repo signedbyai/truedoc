@@ -116,14 +116,14 @@ export default async function VerifiedBadgeInvoicesPage() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
             </span>
-            Now built right into your dashboard — seal your first document free today.
+            Secure Your Invoice for Free – Verified &amp; Tamper-Proof
             <span
               className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-emerald-200 bg-emerald-50"
               aria-hidden="true"
             />
           </div>
           <CtaLink href={START_HREF} color={ctaColor} page="verified-badge-invoices" position="hero">
-            Generate Your Proof →
+            Get Your Verified Badge Now →
           </CtaLink>
           <p className="text-xs text-slate-400">Free to start, no card required — takes about a minute to set up.</p>
         </div>
@@ -170,6 +170,23 @@ export default async function VerifiedBadgeInvoicesPage() {
             </div>
           ))}
         </div>
+
+        {/* Same card treatment as /boat-jet-ski-rental's own link to its
+            guide (2026-08-08, direct ask: build a guide for this page "similar
+            to what we did on /boat-jet-ski-rental/guide"). */}
+        <Link
+          href="/verified-badge-invoices/guide"
+          className="mt-4 block rounded-xl border border-slate-200 p-5 text-left transition-colors hover:border-slate-400"
+        >
+          <h3 className="text-base font-semibold text-slate-900">New to SignedBy? Read the sealing & sending guide</h3>
+          <p className="mt-1.5 text-sm text-slate-600">
+            Step by step: verify your identity once, and exactly what happens every time you seal and send an
+            invoice after that.
+          </p>
+          <span className="mt-3 inline-block text-sm font-medium text-slate-900 underline underline-offset-2">
+            Read the guide →
+          </span>
+        </Link>
       </section>
 
       <section className="mx-auto w-full max-w-3xl px-6 py-8">
@@ -189,7 +206,7 @@ export default async function VerifiedBadgeInvoicesPage() {
           sealing, no per-seal charge.
         </p>
         <CtaLink href={START_HREF} className="mt-5" color={ctaColor} page="verified-badge-invoices" position="footer">
-          Generate Your Proof →
+          Get Your Verified Badge Now →
         </CtaLink>
       </section>
 
@@ -230,6 +247,9 @@ export default async function VerifiedBadgeInvoicesPage() {
         <p>© {new Date().getFullYear()} SignedBy. signedby.ai</p>
         <p className="mt-1">A trading name of SPRK10 B.V. KVK 98888625</p>
         <p className="mt-2 space-x-4">
+          <Link href="/verified-badge-invoices/guide" className="hover:text-slate-600">
+            Sealing &amp; sending guide
+          </Link>
           <Link href="/pricing" className="hover:text-slate-600">
             Pricing
           </Link>
