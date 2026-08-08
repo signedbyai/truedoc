@@ -138,20 +138,21 @@ async function main() {
               <div
                 style={{
                   position: "absolute",
-                  // Enlarged 2026-08-09 (direct ask): 40->58 outer / 32->46
-                  // inner / 20->28 icon (~1.45x). Top/right offsets scaled
-                  // up to match so the badge still floats entirely above the
-                  // QR's pixel bounds with roughly the same ~10px clearance
-                  // as before -- see the placement comment above for why
-                  // that clearance is load-bearing (any overlap breaks
-                  // cv2's QR detector on this payload).
-                  top: -68,
-                  right: -14,
+                  // Enlarged twice, both 2026-08-09 (direct ask): 40->58->84
+                  // outer / 32->46->66 inner / 20->28->42 icon. Top/right
+                  // offsets scaled up to match each time so the badge still
+                  // floats entirely above the QR's pixel bounds with
+                  // roughly the same ~10px clearance as the original -- see
+                  // the placement comment above for why that clearance is
+                  // load-bearing (any overlap breaks cv2's QR detector on
+                  // this payload).
+                  top: -94,
+                  right: -20,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  width: 58,
-                  height: 58,
+                  width: 84,
+                  height: 84,
                   borderRadius: 999,
                   backgroundColor: "#ffffff",
                   boxShadow: "0 4px 10px -2px rgba(15, 23, 42, 0.35)",
@@ -162,14 +163,14 @@ async function main() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    width: 46,
-                    height: 46,
+                    width: 66,
+                    height: 66,
                     borderRadius: 999,
                     backgroundColor: "#16a34a",
                   }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element -- Satori's renderer, not the DOM. */}
-                  <img src={checkIconDataUri} width={28} height={28} alt="" />
+                  <img src={checkIconDataUri} width={42} height={42} alt="" />
                 </div>
               </div>
             </div>
