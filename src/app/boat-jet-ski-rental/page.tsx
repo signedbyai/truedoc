@@ -111,7 +111,20 @@ export default async function BoatJetSkiRentalPage() {
             over "waivers" in the actual copy -- this page's own FAQ below
             draws a real distinction between the two (a waiver alone doesn't
             cover damage/fine/late-return liability), so using "waiver" in
-            the hero would contradict the page's own answer. */}
+            the hero would contradict the page's own answer.
+
+            2026-08-08: considered swapping to "Eliminate the paperwork
+            distractions. Focus on the client experience." -- rejected, too
+            generic/SaaS-y, drops the revenue hook and clashes with this
+            vivid, money-specific subhead. Kept this headline live, but
+            Michael wants "Rental paperwork, signed. Not stuck at the
+            counter." (matches the "X, signed. Not Y." formula auto-sales
+            and board-resolutions already use) queued as an A/B test
+            candidate -- not built yet. When it's ready to build, follow the
+            homepageVariantFlag pattern in src/flags.ts (cookieless IP+UA
+            visitor bucketing via identify(), same posture as the CTA-color
+            and homepage-layout tests) rather than inventing new bucketing
+            logic. */}
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Stop losing weekend revenue to paperwork.</h1>
         <p className="max-w-xl text-base text-slate-600">
           Lines at the dock cost you money. Digitize your boat and jet ski rental agreement — capture their ID and get
