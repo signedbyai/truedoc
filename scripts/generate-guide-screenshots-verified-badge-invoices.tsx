@@ -37,8 +37,23 @@ const checkIconDataUri = `data:image/png;base64,${readFileSync(
   path.join(process.cwd(), "public", "deck-icons", "Check-emerald.png")
 ).toString("base64")}`;
 
+// deck-icons/ShieldCheck.png (navy) -- the actual icon the real Verified
+// Badge tab uses (new-document-client.tsx line 739: ShieldCheck in the
+// yellow header badge; line 897: same icon on the "Seal this file" button).
+// A placeholder rounded-square outline stood in for this before (2026-08-08
+// direct ask: "the icon in the badge and the button i believe was a
+// shield") -- fixed to reuse the real deck-icons asset instead of
+// approximating the shape by hand.
+const shieldIconDataUri = `data:image/png;base64,${readFileSync(
+  path.join(process.cwd(), "public", "deck-icons", "ShieldCheck.png")
+).toString("base64")}`;
+
 const WIDTH = 1170;
-const YELLOW = "#eab308";
+// Was #eab308 (Tailwind yellow-500) -- didn't match the app's actual yellow.
+// The real badge/button both use bg-yellow-300 (new-document-client.tsx
+// lines 738 & button.tsx's `cta` variant), and the brand mark itself
+// (src/app/icon.svg) is the same #FDE047. Fixed 2026-08-08 direct ask.
+const YELLOW = "#FDE047";
 const YELLOW_BG = "#fefce8";
 const DARK = "#0f172a";
 const VIOLET = "#7c3aed";
@@ -92,7 +107,8 @@ function badgeTabHeader(title: string, subtitle: string) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
       <div style={{ display: "flex", width: 76, height: 76, borderRadius: 22, backgroundColor: YELLOW, alignItems: "center", justifyContent: "center" }}>
-        <div style={{ display: "flex", width: 34, height: 34, borderRadius: 8, border: `5px solid ${DARK}` }} />
+        {/* eslint-disable-next-line @next/next/no-img-element -- Satori's renderer, not the DOM. */}
+        <img src={shieldIconDataUri} width={38} height={38} alt="" />
       </div>
       <span style={{ marginTop: 18, fontSize: 34, fontWeight: 700, color: DARK }}>{title}</span>
       <span style={{ marginTop: 10, fontSize: 24, color: "#64748b", lineHeight: 1.35 }}>{subtitle}</span>
@@ -150,7 +166,8 @@ const STEPS: { slug: string; label: string; height: number; content: React.React
         </div>
         <div style={{ display: "flex", flex: 1 }} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, backgroundColor: YELLOW, borderRadius: 16, padding: "24px 26px" }}>
-          <div style={{ width: 24, height: 24, borderRadius: 6, border: `4px solid ${DARK}`, display: "flex" }} />
+          {/* eslint-disable-next-line @next/next/no-img-element -- Satori's renderer, not the DOM. */}
+          <img src={shieldIconDataUri} width={26} height={26} alt="" />
           <span style={{ fontSize: 27, fontWeight: 600, color: DARK }}>Seal this file</span>
         </div>
       </div>
@@ -211,7 +228,8 @@ const STEPS: { slug: string; label: string; height: number; content: React.React
         </div>
         <div style={{ display: "flex", flex: 1 }} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, backgroundColor: YELLOW, borderRadius: 16, padding: "24px 26px" }}>
-          <div style={{ width: 24, height: 24, borderRadius: 6, border: `4px solid ${DARK}`, display: "flex" }} />
+          {/* eslint-disable-next-line @next/next/no-img-element -- Satori's renderer, not the DOM. */}
+          <img src={shieldIconDataUri} width={26} height={26} alt="" />
           <span style={{ fontSize: 27, fontWeight: 600, color: DARK }}>Seal this file</span>
         </div>
         <span style={{ marginTop: 20, fontSize: 21, color: "#94a3b8", textAlign: "center" }}>
