@@ -115,6 +115,39 @@ export const consoleHeroIconFlag = flag<ConsoleHeroIconColor>({
   options: CONSOLE_HERO_ICON_COLORS.map((value) => ({ value })),
 });
 
+// Verified Badge invoice page — pill + CTA copy test, started 2026-08-09.
+// See marketing/verified-badge-invoice-cta-test.md for the full write-up.
+// 3-way concurrent split, same methodology as the concluded cta-color test
+// above: cookieless, hash-bucketed via the shared identify() visitorKey.
+//
+// - A (current) — pill "Secure Your Invoice for Free – Verified &
+//   Tamper-Evident", button "Get Your Verified Badge Now".
+// - B — pill "Secure Your Invoice Now", button "Get Your Verified Badge".
+//   Shorter, drops the "Free"/"Tamper-Evident" claims entirely.
+// - C — pill "Make a Verified Invoice for Free", button "Get Your Verified
+//   Badge". Reframes around the action ("make") instead of a security claim.
+//
+// Intended to run 1-2 weeks (direct ask) then be read the same way as the
+// cta-color test: Vercel Analytics, `flags/verified-badge-invoice-cta`
+// breakdown cross-referenced with `cta_click` events (CtaLink already
+// passes `variant` as a plain event property too, belt-and-suspenders).
+export const VERIFIED_BADGE_INVOICE_CTA_VARIANTS = ["A", "B", "C"] as const;
+export type VerifiedBadgeInvoiceCtaVariant = (typeof VERIFIED_BADGE_INVOICE_CTA_VARIANTS)[number];
+
+export const verifiedBadgeInvoiceCtaFlag = flag<VerifiedBadgeInvoiceCtaVariant>({
+  key: "verified-badge-invoice-cta",
+  identify,
+  decide({ entities }) {
+    const key = entities?.visitorKey ?? "anonymous";
+    const bucket = hashString(key) % VERIFIED_BADGE_INVOICE_CTA_VARIANTS.length;
+    return VERIFIED_BADGE_INVOICE_CTA_VARIANTS[bucket];
+  },
+  defaultValue: "A",
+  description:
+    "Verified Badge invoice page pill + CTA copy test: A (current, security-claim framing) vs B (shorter, no claims) vs C (action framing). Started 2026-08-09, intended to run 1-2 weeks.",
+  options: VERIFIED_BADGE_INVOICE_CTA_VARIANTS.map((value) => ({ value })),
+});
+
 // "Upload & continue" button color test — concluded 2026-08-05, direct ask,
 // same day the Sign/Seal uploader redesign made both buttons this flag ever
 // applied to permanently yellow (borrowed from Console's own uploader).

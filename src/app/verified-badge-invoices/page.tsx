@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { FlagValues } from "flags/react";
 import { CtaLink } from "@/components/cta-link";
-import { ctaColorFlag } from "@/flags";
+import { ctaColorFlag, verifiedBadgeInvoiceCtaFlag, type VerifiedBadgeInvoiceCtaVariant } from "@/flags";
 
 // Companion page to /verified-badge (2026-08-06, direct ask, after the
 // invoice hero image and the invoice-fraud ad angle both got built against
@@ -73,8 +73,19 @@ const FAQ = [
   },
 ];
 
+// Pill + CTA button copy for the verified-badge-invoice-cta test (2026-08-09,
+// direct ask, see src/flags.ts and marketing/verified-badge-invoice-cta-test.md).
+// A is the pre-test copy, kept verbatim as the control.
+const CTA_COPY: Record<VerifiedBadgeInvoiceCtaVariant, { pill: string; button: string }> = {
+  A: { pill: "Secure Your Invoice for Free – Verified & Tamper-Evident", button: "Get Your Verified Badge Now →" },
+  B: { pill: "Secure Your Invoice Now", button: "Get Your Verified Badge →" },
+  C: { pill: "Make a Verified Invoice for Free", button: "Get Your Verified Badge →" },
+};
+
 export default async function VerifiedBadgeInvoicesPage() {
   const ctaColor = await ctaColorFlag();
+  const ctaVariant = await verifiedBadgeInvoiceCtaFlag();
+  const { pill: pillCopy, button: buttonCopy } = CTA_COPY[ctaVariant];
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -87,7 +98,7 @@ export default async function VerifiedBadgeInvoicesPage() {
 
   return (
     <main className="flex min-h-screen flex-col bg-white">
-      <FlagValues values={{ "cta-color": ctaColor }} />
+      <FlagValues values={{ "cta-color": ctaColor, "verified-badge-invoice-cta": ctaVariant }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-6">
@@ -116,14 +127,14 @@ export default async function VerifiedBadgeInvoicesPage() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
             </span>
-            Secure Your Invoice for Free – Verified &amp; Tamper Evident
+            {pillCopy}
             <span
               className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-emerald-200 bg-emerald-50"
               aria-hidden="true"
             />
           </div>
-          <CtaLink href={START_HREF} color={ctaColor} page="verified-badge-invoices" position="hero">
-            Get Your Verified Badge Now →
+          <CtaLink href={START_HREF} color={ctaColor} page="verified-badge-invoices" position="hero" variant={ctaVariant}>
+            {buttonCopy}
           </CtaLink>
           <p className="text-xs text-slate-400">Free to start, no card required — takes about a minute to set up.</p>
         </div>
@@ -205,8 +216,8 @@ export default async function VerifiedBadgeInvoicesPage() {
           Free to start — 3 seals a month included, no card required. Need more? Pro plan or higher gets unlimited
           sealing, no per-seal charge.
         </p>
-        <CtaLink href={START_HREF} className="mt-5" color={ctaColor} page="verified-badge-invoices" position="footer">
-          Get Your Verified Badge Now →
+        <CtaLink href={START_HREF} className="mt-5" color={ctaColor} page="verified-badge-invoices" position="footer" variant={ctaVariant}>
+          {buttonCopy}
         </CtaLink>
       </section>
 
