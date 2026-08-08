@@ -138,13 +138,20 @@ async function main() {
               <div
                 style={{
                   position: "absolute",
-                  top: -50,
-                  right: -10,
+                  // Enlarged 2026-08-09 (direct ask): 40->58 outer / 32->46
+                  // inner / 20->28 icon (~1.45x). Top/right offsets scaled
+                  // up to match so the badge still floats entirely above the
+                  // QR's pixel bounds with roughly the same ~10px clearance
+                  // as before -- see the placement comment above for why
+                  // that clearance is load-bearing (any overlap breaks
+                  // cv2's QR detector on this payload).
+                  top: -68,
+                  right: -14,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  width: 40,
-                  height: 40,
+                  width: 58,
+                  height: 58,
                   borderRadius: 999,
                   backgroundColor: "#ffffff",
                   boxShadow: "0 4px 10px -2px rgba(15, 23, 42, 0.35)",
@@ -155,14 +162,14 @@ async function main() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    width: 32,
-                    height: 32,
+                    width: 46,
+                    height: 46,
                     borderRadius: 999,
                     backgroundColor: "#16a34a",
                   }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element -- Satori's renderer, not the DOM. */}
-                  <img src={checkIconDataUri} width={20} height={20} alt="" />
+                  <img src={checkIconDataUri} width={28} height={28} alt="" />
                 </div>
               </div>
             </div>
