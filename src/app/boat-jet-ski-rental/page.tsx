@@ -188,6 +188,25 @@ export default async function BoatJetSkiRentalPage() {
               View template →
             </span>
           </Link>
+
+          {/* Same card treatment as the template link above, added
+              2026-08-08 (direct ask: "add a link to the guide ... as has
+              been done with templates") -- a second, equally-weighted
+              in-page link rather than leaving the guide reachable only
+              from the footer. */}
+          <Link
+            href="/boat-jet-ski-rental/guide"
+            className="mt-4 block rounded-xl border border-slate-200 p-5 text-left transition-colors hover:border-slate-400"
+          >
+            <h3 className="text-base font-semibold text-slate-900">New to SignedBy? Read the setup & signing guide</h3>
+            <p className="mt-1.5 text-sm text-slate-600">
+              Step by step: upload the rental form you already use, and exactly what happens between you and a
+              renter from send to signed.
+            </p>
+            <span className="mt-3 inline-block text-sm font-medium text-slate-900 underline underline-offset-2">
+              Read the guide →
+            </span>
+          </Link>
         </section>
       )}
 
