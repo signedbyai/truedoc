@@ -73,19 +73,40 @@ const FAQ = [
   },
 ];
 
-// Pill + CTA button copy for the verified-badge-invoice-cta test (2026-08-09,
-// direct ask, see src/flags.ts and marketing/verified-badge-invoice-cta-test.md).
-// A is the pre-test copy, kept verbatim as the control.
-const CTA_COPY: Record<VerifiedBadgeInvoiceCtaVariant, { pill: string; button: string }> = {
-  A: { pill: "Secure Your Invoice for Free – Verified & Tamper-Evident", button: "Get Your Verified Badge Now →" },
-  B: { pill: "Secure Your Invoice Now", button: "Get Your Verified Badge →" },
-  C: { pill: "Make a Verified Invoice for Free", button: "Get Your Verified Badge →" },
+// Pill + CTA button + bottom-section heading copy for the
+// verified-badge-invoice-cta test (2026-08-09, direct ask, see src/flags.ts
+// and marketing/verified-badge-invoice-cta-test.md). A is the pre-test copy,
+// kept verbatim as the control. `heading` drives the "Generate Your Proof"
+// h2 above the bottom CTA — added 2026-08-09 so that section reads as one
+// consistent pitch with the top pill instead of staying static across
+// variants. C's button was changed from "Get Your Verified Badge" to
+// "Verify Your Invoice for Free" the same day — the "Make a..." pill already
+// risks implying SignedBy generates invoices; keeping "Get Your Verified
+// Badge" as the button would've repeated that ambiguity right at the click,
+// so the button deliberately uses "Verify" instead of "Make/Get" to pull
+// C's framing back toward what the product actually does.
+const CTA_COPY: Record<VerifiedBadgeInvoiceCtaVariant, { pill: string; button: string; heading: string }> = {
+  A: {
+    pill: "Secure Your Invoice for Free – Verified & Tamper-Evident",
+    button: "Get Your Verified Badge Now →",
+    heading: "Secure Your Invoice for Free",
+  },
+  B: {
+    pill: "Secure Your Invoice Now",
+    button: "Get Your Verified Badge →",
+    heading: "Secure Your Invoice Now",
+  },
+  C: {
+    pill: "Make a Verified Invoice for Free",
+    button: "Verify Your Invoice for Free →",
+    heading: "Make a Verified Invoice for Free",
+  },
 };
 
 export default async function VerifiedBadgeInvoicesPage() {
   const ctaColor = await ctaColorFlag();
   const ctaVariant = await verifiedBadgeInvoiceCtaFlag();
-  const { pill: pillCopy, button: buttonCopy } = CTA_COPY[ctaVariant];
+  const { pill: pillCopy, button: buttonCopy, heading: headingCopy } = CTA_COPY[ctaVariant];
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -211,7 +232,7 @@ export default async function VerifiedBadgeInvoicesPage() {
       </section>
 
       <section className="mx-auto w-full max-w-3xl px-6 py-10 text-center">
-        <h2 className="text-2xl font-semibold text-slate-900">Generate Your Proof</h2>
+        <h2 className="text-2xl font-semibold text-slate-900">{headingCopy}</h2>
         <p className="mt-2 text-sm text-slate-600">
           Free to start — 3 seals a month included, no card required. Need more? Pro plan or higher gets unlimited
           sealing, no per-seal charge.

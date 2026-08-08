@@ -11,17 +11,27 @@ Deterministically assigned per visitor via `src/flags.ts`'s
 `verified-badge-invoice-cta` flag (`VERIFIED_BADGE_INVOICE_CTA_VARIANTS` in
 that file):
 
-| Variant | Pill copy | Button copy |
-|---|---|---|
-| A (current / control) | Secure Your Invoice for Free – Verified & Tamper-Evident | Get Your Verified Badge Now → |
-| B | Secure Your Invoice Now | Get Your Verified Badge → |
-| C | Make a Verified Invoice for Free | Get Your Verified Badge → |
+| Variant | Pill copy (hero) | Bottom-section heading | Button copy (hero + footer) |
+|---|---|---|---|
+| A (current / control) | Secure Your Invoice for Free – Verified & Tamper-Evident | Secure Your Invoice for Free | Get Your Verified Badge Now → |
+| B | Secure Your Invoice Now | Secure Your Invoice Now | Get Your Verified Badge → |
+| C | Make a Verified Invoice for Free | Make a Verified Invoice for Free | Verify Your Invoice for Free → |
 
 B drops the "Free" and security-claim ("Tamper-Evident") language entirely
 for a shorter, more direct pill. C reframes around the action ("make a
-verified invoice") instead of a security claim. Both the pill (green badge
-above the CTA) and the CTA button text change together per variant — they're
-tested as one paired unit, not independently.
+verified invoice") instead of a security claim. The pill, the bottom
+"Generate Your Proof" section heading (added 2026-08-09 so that section
+reads consistently with the top pill instead of staying static across
+variants), and the CTA button text all change together per variant — tested
+as one paired unit, not independently.
+
+**C's button intentionally doesn't match its own pill/heading wording.**
+"Make a Verified Invoice for Free" risks implying SignedBy generates
+invoices (it doesn't — it seals/verifies a PDF you already have), flagged
+as a real accuracy risk during review. Rather than drop variant C, the
+button was changed to "Verify Your Invoice for Free" so the actual click
+moment states what the product does, even though the pill/heading above it
+keeps the more provocative "Make a..." framing being tested.
 
 ## How it's wired
 
