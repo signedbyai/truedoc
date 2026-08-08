@@ -45,9 +45,22 @@ const SIGNUP_HREF =
 // the page's own hero. Every step sets its own imageHeight since content
 // height varies a lot step to step (a short "Add" button card vs. a
 // full-height document canvas); imageWidth is 1170 across the board except
-// hero-signer-mobile.png's native 1236. Displayed constrained to max-w-xs
-// and centered (not stretched full-width) so the guide reads as a row of
-// phone screenshots rather than landscape panels.
+// hero-signer-mobile.png's native 1236.
+//
+// Rebuilt AGAIN same day: these were displayed capped at max-w-xs (320px),
+// a ~27% scale-down from the 1170px canvas that made the mockups' body text
+// illegible (16-19px source text landing around 4-5px on screen) regardless
+// of device. Fixed two ways together (direct ask): the generator script now
+// authors every step with noticeably larger type/buttons/padding, AND these
+// display near the step card's full width instead of a fixed cap -- see the
+// shared `w-full` (no max-w override) below.
+//
+// Rebuilt a THIRD time same day: even at full width with big type, these
+// still read as generic flat cards, not phone screens -- no status bar, no
+// home indicator (see generate-guide-screenshots-boat-jet-ski-rental.tsx's
+// own comment for the full story, including a uniform-tall-canvas attempt
+// that was reverted for leaving too much blank scroll). imageHeight values
+// below were updated to match that script's current per-step heights.
 type GuideStep = {
   title: string;
   image: string;
@@ -63,28 +76,28 @@ const SETUP_STEPS: GuideStep[] = [
     title: "Upload your existing form",
     image: "/guide-boat-upload-form.png",
     imageWidth: 1170,
-    imageHeight: 1000,
+    imageHeight: 1300,
     body: "New Document → Sign tab. Upload the PDF (or a clean photo/scan saved as a PDF) — SignedBy places fields on top of the page by position, not by editing the underlying content, so a scanned image works exactly like a typed PDF here.",
   },
   {
     title: "SignedBy detects your signing parties",
     image: "/guide-boat-detected-signers.png",
     imageWidth: 1170,
-    imageHeight: 900,
+    imageHeight: 1200,
     body: "SignedBy tries to identify the distinct signing parties (e.g. \"Owner\" and \"Renter\") from the text itself. If it recognizes them, you'll see a \"we detected N signers\" prompt — confirm it and drop in an email per party instead of building recipients from scratch.",
   },
   {
     title: "Review the suggested fields",
     image: "/guide-boat-review-fields.png",
     imageWidth: 1170,
-    imageHeight: 1150,
+    imageHeight: 1450,
     body: "Signature, initials, date, text, and checkbox fields are all available. Adjust anything that's off — nothing is placed until you approve it.",
   },
   {
     title: "Decide what's fixed vs. per-rental",
     image: "/guide-boat-fixed-vs-rental.png",
     imageWidth: 1170,
-    imageHeight: 760,
+    imageHeight: 1050,
     body: "Your business name, base price, deposit, and late fee are usually the same every time — type those in directly. Renter-specific details are better left as fields the renter fills in themselves, or that you type in fresh each time.",
   },
 ];
@@ -94,21 +107,21 @@ const FLOW_STEPS: GuideStep[] = [
     title: "Start the document",
     image: "/guide-boat-start-document.png",
     imageWidth: 1170,
-    imageHeight: 460,
+    imageHeight: 650,
     body: "Dashboard → Templates → Use template (or New Document → Sign, if you haven't saved one yet). Fill in whatever's specific to this rental — which vessel, the date, the price if it varies.",
   },
   {
     title: "Add the renter as a recipient",
     image: "/guide-boat-add-recipient.png",
     imageWidth: 1170,
-    imageHeight: 420,
+    imageHeight: 670,
     body: "One email address is all that's required — it's also what ties the signed document and audit trail to a real person afterward.",
   },
   {
     title: "Send",
     image: "/guide-boat-send-actions.png",
     imageWidth: 1170,
-    imageHeight: 560,
+    imageHeight: 910,
     body: "This is the point where the document leaves \"draft.\" SignedBy emails the renter automatically, and three more ways to get the link onto their phone show up right in the signer's row: Copy link, Share to sign (opens their phone's native share sheet), and QR to sign (a scannable code for the same link). You don't have to wait for the email — any of the three gets them to the signing page immediately.",
   },
   {
@@ -117,27 +130,33 @@ const FLOW_STEPS: GuideStep[] = [
     imageAlt: "A signer signing the same document on their phone: a handwritten signature drawn in the signature pad, with a yellow slide-to-sign bar ready to submit",
     imageWidth: 1236,
     imageHeight: 2370,
+    // Much taller aspect ratio than the other nine (a real full-screen phone
+    // capture, not an authored mockup) -- at the shared full-card-width
+    // display it'd render ~1250px tall, towering over review-fields (the
+    // tallest authored mockup, ~805px at that width). Capped narrower so
+    // its displayed height lands in the same ballpark as the others.
+    imageClassName: "mx-auto w-full max-w-sm",
     body: "They open the link on their own phone. If you've turned on per-recipient email verification (free, optional, every plan), they confirm a one-time code first. Then they read the agreement, fill in anything assigned to them, and sign with a draw-your-signature pad and a slide-to-sign confirmation — no app or account needed on their end.",
   },
   {
     title: "You find out immediately",
     image: "/guide-boat-notified.png",
     imageWidth: 1170,
-    imageHeight: 700,
+    imageHeight: 1250,
     body: "The moment they sign, you're notified and the document's status updates in your dashboard. The Copy/Share/QR/Send reminder actions for that signer disappear — nothing left to hand them once they're done.",
   },
   {
     title: "If they haven't signed yet",
     image: "/guide-boat-reminder.png",
     imageWidth: 1170,
-    imageHeight: 420,
+    imageHeight: 670,
     body: "A Send reminder button sits right next to their name — one click re-emails them without you having to track it manually.",
   },
   {
     title: "The record stays put",
     image: "/guide-boat-audit-trail.png",
     imageWidth: 1170,
-    imageHeight: 600,
+    imageHeight: 950,
     body: "The signed document, timestamps, and a full audit trail live in your dashboard for as long as you need them — exactly what you'd want on hand if a damage or late-return dispute ever comes up.",
   },
 ];
@@ -212,8 +231,8 @@ export default async function BoatJetSkiRentalGuidePage() {
                 src={step.image}
                 alt={step.imageAlt ?? step.title}
                 width={step.imageWidth ?? 1170}
-                height={step.imageHeight ?? 1000}
-                className={`mx-auto mt-3 w-full rounded-lg border border-slate-200 ${step.imageClassName ?? "max-w-xs"}`}
+                height={step.imageHeight ?? 900}
+                className={`mx-auto mt-3 w-full rounded-lg border border-slate-200 ${step.imageClassName ?? ""}`}
               />
               <p className="mt-3 text-sm text-slate-600">{step.body}</p>
             </div>
@@ -277,8 +296,8 @@ export default async function BoatJetSkiRentalGuidePage() {
                 src={step.image}
                 alt={step.imageAlt ?? step.title}
                 width={step.imageWidth ?? 1170}
-                height={step.imageHeight ?? 1000}
-                className={`mx-auto mt-3 w-full rounded-lg border border-slate-200 ${step.imageClassName ?? "max-w-xs"}`}
+                height={step.imageHeight ?? 900}
+                className={`mx-auto mt-3 w-full rounded-lg border border-slate-200 ${step.imageClassName ?? ""}`}
               />
               <p className="mt-3 text-sm text-slate-600">{step.body}</p>
             </div>
