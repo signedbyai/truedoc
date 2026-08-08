@@ -1,4 +1,6 @@
 import copy
+import re
+import zipfile
 from pptx import Presentation
 from pptx.util import Emu, Pt
 from pptx.dml.color import RGBColor
@@ -38,6 +40,35 @@ NS_P = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
 NS_A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 
 
+_next_slide_n = [None]  # set by main() from max_slide_number_in_file(SRC); a
+                         # 1-item list so nested functions can mutate it
+                         # without a `global` statement.
+
+
+def max_slide_number_in_file(path):
+    """Ground-truth scan of the SOURCE file's raw presentation.xml.rels XML
+    for the highest existing /ppt/slides/slideN.xml target number.
+
+    UPDATED 2026-08-08 (again): this function used to ask python-pptx's
+    own object model instead -- first package.iter_parts(), then
+    prs.part.rels -- and BOTH turned out to be unreliable: empirically,
+    simply iterating `for s in prs.slides: for shp in s.shapes: ...` (the
+    completely unrelated eyebrow-text lookup this script's own main()
+    does) was enough to make prs.part.rels report the relationship set
+    with 3 partnames duplicated on an otherwise byte-identical reload of
+    the same file -- a python-pptx-internal lazy-loading/caching quirk.
+    Reading the raw XML straight from the zip, once, before python-pptx's
+    object model ever touches the relationship graph, sidesteps that
+    category of bug entirely."""
+    with zipfile.ZipFile(path) as z:
+        try:
+            data = z.read("ppt/_rels/presentation.xml.rels").decode("utf-8")
+        except KeyError:
+            return 0
+    nums = [int(n) for n in re.findall(r'slide(\d+)\.xml"', data)]
+    return max(nums) if nums else 0
+
+
 def duplicate_bg_and_ids(prs, source_slide, keep_ids):
     """New slide on the same layout; copies the slide-level background and
     only the shapes whose shape_id is in keep_ids (used to lift just the
@@ -46,7 +77,7 @@ def duplicate_bg_and_ids(prs, source_slide, keep_ids):
     want them)."""
     layout = source_slide.slide_layout
     new_slide = prs.slides.add_slide(layout)
-    dedupe_new_slide_partname(prs, new_slide)
+    dedupe_new_slide_partname(new_slide)
     for shp in list(new_slide.shapes):
         shp._element.getparent().remove(shp._element)
 
@@ -272,51 +303,56 @@ def move_slides_after(prs, slides_to_move, after_index):
 
 
 def remove_slide(prs, slide_id):
-    """Removes just the <p:sldId> entry (so the slide no longer displays)
-    without touching presentation.xml.rels. Deliberately does NOT call
-    part.drop_rel(): python-pptx's own add_slide() picks new slide
-    partnames via a naive len(sldIdLst)+1 scheme (see
-    _next_slide_partname in pptx/parts/presentation.py) rather than
-    scanning for actually-free partnames -- dropping the relationship
-    here frees up e.g. slide6.xml, but the very next add_slide() call
-    would instead (wrongly) reuse whatever slide14/15/16.xml partname
-    len()+1 lands on, colliding with a *different*, still-displayed
-    slide's part and silently corrupting the saved .pptx (duplicate zip
-    entries; observed firsthand while building this). Leaving the old
-    parts/relationships in place as harmless orphaned bloat sidesteps the
-    bug entirely; dedupe_new_slide_partname() below is the real safety
-    net regardless."""
+    """Removes the <p:sldId> entry AND drops the underlying relationship
+    in presentation.xml.rels, so the old slide's part is fully
+    unreachable, not just undisplayed.
+
+    HISTORY (2026-08-08, several rounds): the first version of this
+    function deliberately skipped drop_rel(), reasoning that add_slide()'s
+    naive len(sldIdLst)+1 partname scheme would otherwise collide with a
+    still-displayed slide's part. That partname collision is now handled
+    properly (dedupe_new_slide_partname() below assigns from a counter
+    seeded via a raw XML scan, not by asking python-pptx what's "free").
+    With that fixed, it turned out *leaving the old relationship in
+    place* was its own, worse bug: a deck with any orphaned-but-still-
+    related slide relationship reliably corrupted on the very next
+    load-access-save cycle -- simply doing `list(prs.slides)[0]` (touching
+    ANY slide, not even the orphaned ones) was enough to make python-pptx
+    duplicate the orphaned slides' zip entries on save. Root cause not
+    fully diagnosed (something in how the OPC loader resolves relationships
+    once a target has no path to it via sldIdLst), but the fix is simple:
+    don't leave any orphaned relationships lying around in the first
+    place -- drop_rel() to fully sever the old slide, both display and
+    relationship."""
     xml_slides = prs.slides._sldIdLst
     for sldId in list(xml_slides):
         if int(sldId.get("id")) == slide_id:
+            rId = sldId.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id")
             xml_slides.remove(sldId)
+            prs.part.drop_rel(rId)
             return
 
 
-def dedupe_new_slide_partname(prs, new_slide):
+def dedupe_new_slide_partname(new_slide):
     """Belt-and-suspenders around the len(sldIdLst)+1 partname bug
     described above: if add_slide() just handed back a partname that
     collides with an existing (different) part, rename it to a genuinely
-    free /ppt/slides/slideN.xml before anything gets written out."""
+    free /ppt/slides/slideN.xml before anything gets written out.
+
+    UPDATED 2026-08-08 (twice): first compared against
+    prs.part.package.iter_parts(), then against prs.part.rels -- both
+    turned out to be unreliable (see max_slide_number_in_file's
+    docstring above for specifics). Now just pulls the next number off a
+    plain counter seeded once from a raw XML scan, no python-pptx
+    object-graph involved."""
     from pptx.opc.packuri import PackURI
 
-    existing = {
-        p.partname
-        for p in prs.part.package.iter_parts()
-        if p.partname.startswith("/ppt/slides/slide") and p is not new_slide.part
-    }
-    if new_slide.part.partname not in existing:
-        return
-    n = 1
-    while True:
-        candidate = PackURI(f"/ppt/slides/slide{n}.xml")
-        if candidate not in existing:
-            new_slide.part.partname = candidate
-            return
-        n += 1
+    _next_slide_n[0] += 1
+    new_slide.part.partname = PackURI(f"/ppt/slides/slide{_next_slide_n[0]}.xml")
 
 
 def main():
+    _next_slide_n[0] = max_slide_number_in_file(SRC)
     prs = Presentation(SRC)
     slides_by_eyebrow = {}
     for s in prs.slides:

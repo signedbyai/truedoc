@@ -29,11 +29,27 @@ const icons = [
 // be visually identical at deck scale.
 const badgeIcons = ["Signature", "ShieldCheck", "Receipt", "Sparkles"];
 
+// Colored variants for the Capabilities slide's Sent/Sealed popover
+// mockups (send-seal-transition.tsx's real icon+color pairing: Send in
+// blue-700 on blue-50, ShieldCheck in emerald-700 on emerald-50) --
+// separate output names since plain "ShieldCheck"/navy is already taken
+// by the SEAL tab badge above.
+const coloredIcons = [
+  { icon: "Send", outName: "Send-blue", color: "#1d4ed8" },
+  { icon: "ShieldCheck", outName: "ShieldCheck-emerald", color: "#047857" },
+  // Check (not the Unicode "✓" glyph) for the Verification slide's mockup
+  // result panel -- Satori's bundled default font has no checkmark glyph,
+  // and the sandbox this runs in has no network access to fetch Satori's
+  // usual Google Fonts fallback for it, so the character rendered as a
+  // tofu box. An actual icon sidesteps font coverage entirely.
+  { icon: "Check", outName: "Check-emerald", color: "#065f46" },
+];
+
 const outDir = path.join(process.cwd(), "public", "deck-icons");
 
-async function renderIcon(name, color) {
-  const Icon = Lucide[name];
-  if (!Icon) { console.error("MISSING", name); return; }
+async function renderIcon(iconName, color, outName = iconName) {
+  const Icon = Lucide[iconName];
+  if (!Icon) { console.error("MISSING", iconName); return; }
   // No absoluteStrokeWidth here (on purpose, fixed 2026-08-08): that prop
   // locks the stroke to a literal "2" regardless of render size, which at
   // size:512 produced a hairline that read as almost-invisible pale-yellow
@@ -50,17 +66,18 @@ async function renderIcon(name, color) {
   const svgFull = svg.includes("xmlns=")
     ? svg
     : svg.replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ');
-  fs.writeFileSync(path.join(outDir, `${name}.svg`), svgFull);
+  fs.writeFileSync(path.join(outDir, `${outName}.svg`), svgFull);
   await sharp(Buffer.from(svgFull), { density: 300 })
     .resize(512, 512)
     .png()
-    .toFile(path.join(outDir, `${name}.png`));
-  console.log("done", name);
+    .toFile(path.join(outDir, `${outName}.png`));
+  console.log("done", outName);
 }
 
 async function run() {
   fs.mkdirSync(outDir, { recursive: true });
   for (const name of icons) await renderIcon(name, NAVY);
   for (const name of badgeIcons) await renderIcon(name, NAVY);
+  for (const { icon, outName, color } of coloredIcons) await renderIcon(icon, color, outName);
 }
 run();
