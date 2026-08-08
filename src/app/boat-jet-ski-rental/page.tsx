@@ -20,17 +20,17 @@ const TITLE = "Boat & Jet Ski Rental Agreements — Signed Before They Leave the
 const DESCRIPTION =
   "Get boat and jet ski rental agreements signed in minutes — condition at handover, ID capture, damage liability, and a late-return fee all built in. Free template included, from $7/mo.";
 
-// This route has no colocated opengraph-image.tsx of its own, same as
-// board-resolutions and /vs/* — has to explicitly point back at the root
-// layout's shared one, or it silently gets no preview image at all.
-const SHARED_IMAGE = ["/opengraph-image"];
-
+// Used to fall back to the root layout's generic /opengraph-image (no
+// colocated one of its own, same as board-resolutions and /vs/*). Added
+// this page's own opengraph-image.tsx 2026-08-08 -- Next picks up a
+// colocated route automatically, so `images` is omitted below same as
+// every other page with its own (see verified-badge-real-estate/page.tsx).
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: "/boat-jet-ski-rental" },
-  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/boat-jet-ski-rental", images: SHARED_IMAGE },
-  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: SHARED_IMAGE },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/boat-jet-ski-rental" },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
 // Pulled by slug rather than duplicated here, so this page and /templates
