@@ -17,6 +17,12 @@ const icons = [
   "QrCode", "Clock", "ListChecks",       // (superseded) Sign slide callouts
   "Stamp", "ScanLine", "ShieldAlert",    // (superseded) Seal slide callouts
   "WandSparkles", "FileText", "PenLine", // Draft slide callouts
+  // "Designed for business" slide (2026-08-08, direct ask): branding /
+  // payment collection / gated access icon-bullets + the forward-looking
+  // ad-placement callout. Gated access itself reuses the PLATFORM slide's
+  // existing ShieldCheck icon on purpose (same feature, same mark) rather
+  // than adding a 4th new one here.
+  "Palette", "CreditCard", "Megaphone",
 ];
 
 // Exact same 4 icons + same navy-on-yellow-square styling as the real
