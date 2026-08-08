@@ -116,7 +116,7 @@ export default async function VerifiedBadgeInvoicesPage() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
             </span>
-            Secure Your Invoice for Free – Verified &amp; Tamper-Proof
+            Secure Your Invoice for Free – Verified &amp; Tamper Detection
             <span
               className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-emerald-200 bg-emerald-50"
               aria-hidden="true"
