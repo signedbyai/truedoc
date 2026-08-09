@@ -181,6 +181,47 @@ function MiniInvoiceCard({ sealed }: { sealed?: boolean }) {
   );
 }
 
+// E-only hero before/after card (2026-08-09, direct ask: make E's main
+// hero image the before/after comparison — like the existing 3-step
+// section's own MiniInvoiceCard pair below, attached as a reference
+// screenshot — instead of the standalone invoice mockup). A separate,
+// larger sibling of MiniInvoiceCard rather than reusing it with a size
+// prop: the 3-step section's small cards are staying exactly as they are
+// (untouched by this change), and this hero version needs a visibly
+// bigger badge on the "after" card ("more prominent" per the request) —
+// giving it its own component keeps that sizing independent instead of
+// threading a size variant through the shared one.
+function HeroInvoiceCard({ sealed }: { sealed?: boolean }) {
+  return (
+    <div className="relative w-40 shrink-0 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm sm:w-48">
+      <p className="text-sm font-semibold text-slate-900">Invoice</p>
+      <p className="text-[11px] text-slate-400">INV-0148</p>
+      <div className="mt-3 space-y-1.5">
+        <div className="h-1.5 w-full rounded bg-slate-100" />
+        <div className="h-1.5 w-3/4 rounded bg-slate-100" />
+      </div>
+      <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2">
+        <span className="text-xs font-semibold text-slate-700">Total</span>
+        <span className="text-xs font-semibold text-slate-700">€3,050</span>
+      </div>
+      {sealed && (
+        // ~40% of the card's own width, vs. the 3-step section's ~32% —
+        // deliberately bigger ratio, not just a scaled-up copy, per "the
+        // badge more prominent on the after image."
+        <div className="absolute -right-6 -top-6 h-16 w-16 drop-shadow-md sm:h-20 sm:w-20">
+          <Image
+            src="/verified-seal-badge.png"
+            alt="A wax-seal style verified and sealed badge with a scannable QR code"
+            width={320}
+            height={320}
+            className="h-full w-full"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default async function VerifiedBadgeInvoicesPage({
   searchParams,
 }: {
@@ -277,37 +318,50 @@ export default async function VerifiedBadgeInvoicesPage({
               className="h-auto w-64 sm:w-72"
             />
           </div>
+        ) : ctaVariant === "E" ? (
+          /* E visual redesign, second pass (2026-08-09, direct ask): the
+             main hero is now the same before/after comparison as the
+             3-step section further down (Michael attached a screenshot of
+             that exact section as the reference) instead of a single
+             standalone invoice mockup — real markup (HeroInvoiceCard, see
+             its own comment above) rather than a generated PNG, so no new
+             image asset was needed here. The badge on the "after" card is
+             deliberately bigger/more prominent than the 3-step section's
+             own small badge (see HeroInvoiceCard's comment for the exact
+             ratio) — that was the other half of the ask.
+
+             hero-verified-badge-invoice-redesign.png (E's previous hero
+             image, tick centered inside the card) is now unused by this
+             page but left in place/ungenerated-from rather than deleted,
+             same reasoning as this project's other paused-test assets —
+             cheap to bring back if this before/after direction doesn't
+             win out. */
+          <div className="flex items-center justify-center gap-4 py-6 sm:gap-8">
+            <HeroInvoiceCard />
+            <ArrowRight className="h-6 w-6 shrink-0 text-slate-300 sm:h-8 sm:w-8" aria-hidden="true" />
+            <HeroInvoiceCard sealed />
+          </div>
         ) : (
           /* The in-context invoice mockup — this is the page it was
              actually built for. See hero-verified-badge-invoice.png's own
              generation comment (generate-hero-mockup.tsx) for the
              QR-target gotcha already fixed once here.
 
-             Three source images as of 2026-08-09 (direct ask, D and E each
-             got their own pass): A/B/C use the shared
-             hero-verified-badge-invoice.png (large green tick centered
-             above the QR). E uses hero-verified-badge-invoice-redesign.png
-             (tick moved inside the card, centered at the top, above the
-             "Invoice" row) plus the wax-seal medallion overlaid at the
-             bottom-right corner below. D uses its own
+             A/B/C use the shared hero-verified-badge-invoice.png (large
+             green tick centered above the QR). D uses its own
              hero-verified-badge-invoice-d.png with NO tick anywhere in the
              base image — the wax-seal medallion is baked directly into
              that file instead, stamped over the top-right corner of the
              company name so it covers "Design" (see
              generate-hero-verified-badge-invoice-d.tsx; this needed
              pixel-accurate placement against that image's own text layout,
-             not achievable from a CSS overlay against a flat PNG). All
-             three share the same 640x820 canvas. */
+             not achievable from a CSS overlay against a flat PNG). Both
+             share the same 640x820 canvas. (E no longer renders through
+             this branch — see the ctaVariant === "E" case above.) */
           <div className="relative w-full max-w-sm">
             <div className="overflow-hidden rounded-xl border border-slate-200/60 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
               <Image
-                src={
-                  ctaVariant === "D"
-                    ? "/hero-verified-badge-invoice-d.png"
-                    : ctaVariant === "E"
-                      ? "/hero-verified-badge-invoice-redesign.png"
-                      : "/hero-verified-badge-invoice.png"
-                }
+                src={ctaVariant === "D" ? "/hero-verified-badge-invoice-d.png" : "/hero-verified-badge-invoice.png"}
                 alt="A Verified Badge stamped in the corner of a freelance invoice — the SignedBy mark, a scannable QR code, and a verification link"
                 width={640}
                 height={820}
@@ -316,21 +370,6 @@ export default async function VerifiedBadgeInvoicesPage({
                 className="h-auto w-full"
               />
             </div>
-            {/* E-only wax-seal overlay (2026-08-09, direct ask) — D bakes
-                its own seal into the PNG above instead (see the comment
-                just above), and F replaces this whole section, so neither
-                needs this CSS overlay. */}
-            {ctaVariant === "E" && (
-              <div className="absolute -bottom-7 -right-5 h-28 w-28 drop-shadow-md sm:h-32 sm:w-32">
-                <Image
-                  src="/verified-seal-badge.png"
-                  alt="A wax-seal style verified and sealed badge with a scannable QR code"
-                  width={320}
-                  height={320}
-                  className="h-full w-full"
-                />
-              </div>
-            )}
           </div>
         )}
       </section>
