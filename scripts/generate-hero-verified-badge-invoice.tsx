@@ -16,26 +16,13 @@ import { ImageResponse } from "next/og";
 // is a fine destination, no need for a fake per-document link).
 //
 // Added 2026-08-08 (direct ask, same session): a large green checkmark
-// badge, "to give the impression that it's verified" -- a purely visual
-// trust cue on this illustrative hero mockup, same green/white "verified"
-// badge convention used all over the web (App Store ratings, marketplace
-// seller badges, etc.). Not meant to represent any real in-product UI
-// element -- the real badge's own verified state is the QR + "Verified &
-// sealed" text already in this mockup; this is additive polish on the
-// marketing hero only. Enlarged twice same day (40/32/20 -> 58/46/28 ->
-// 84/66/42 outer/inner/icon), originally sat floating above the QR's
-// top-right corner.
-//
-// Moved 2026-08-09 (direct ask) from beside the QR (bottom of this tall
-// 820px mockup) to the top header row, centered between "Invoice" and the
-// client name -- on mobile this card renders at ~90vw (see
-// verified-badge-invoices/page.tsx's <Image sizes>) below a fair amount of
-// hero copy/pill/CTA above it, so the QR-area badge was landing below the
-// fold on first load; the header is the first thing visible once this
-// section scrolls into view at all. No QR-overlap constraint to worry
-// about anymore at this new spot (see git history on this file for the
-// two failed QR-overlapping placements that motivated floating it clear
-// in the first place -- moot now that it isn't next to the QR).
+// badge overlapping the QR's top-right corner, "to give the impression
+// that it's verified" -- a purely visual trust cue on this illustrative
+// hero mockup, same green/white "verified" badge convention used all over
+// the web (App Store ratings, marketplace seller badges, etc.). Not meant
+// to represent any real in-product UI element -- the real badge's own
+// verified state is the QR + "Verified & sealed" text already in this
+// mockup; this is additive polish on the marketing hero only.
 
 const WIDTH = 640;
 const HEIGHT = 820;
@@ -88,46 +75,12 @@ async function main() {
             padding: 40,
           }}
         >
-          <div style={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
-            <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+          <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", fontSize: 30, fontWeight: 700, color: NAVY }}>Invoice</div>
               <div style={{ marginTop: 6, display: "flex", fontSize: 14, color: MUTED }}>INV-0148</div>
             </div>
-            {/* Centered green "verified" tick -- see file header comment
-                for why this moved here from beside the QR (2026-08-09,
-                mobile above-the-fold visibility). flex:1 on both text
-                columns keeps this true-centered regardless of how long
-                either side's text is, rather than justify-content:
-                space-between, which would only center it by coincidence. */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 72,
-                height: 72,
-                borderRadius: 999,
-                backgroundColor: "#ffffff",
-                boxShadow: "0 4px 10px -2px rgba(15, 23, 42, 0.35)",
-                flexShrink: 0,
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 56,
-                  height: 56,
-                  borderRadius: 999,
-                  backgroundColor: "#16a34a",
-                }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element -- Satori's renderer, not the DOM. */}
-                <img src={checkIconDataUri} width={34} height={34} alt="" />
-              </div>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flex: 1 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
               <div style={{ display: "flex", fontSize: 16, fontWeight: 600, color: NAVY }}>A. Marlowe Design</div>
               <div style={{ marginTop: 4, display: "flex", fontSize: 13, color: MUTED }}>Freelance Brand Design</div>
             </div>
@@ -165,9 +118,61 @@ async function main() {
           <div style={{ display: "flex", flex: 1 }} />
 
           <div style={{ display: "flex", flexDirection: "row", justifyContent: "flex-end", alignItems: "flex-end", gap: 12 }}>
-            <div style={{ display: "flex", width: 96, height: 96 }}>
+            <div style={{ position: "relative", display: "flex", width: 96, height: 96 }}>
               {/* eslint-disable-next-line @next/next/no-img-element -- Satori's renderer, not the DOM. */}
               <img src={qrDataUrl} width={96} height={96} alt="" />
+              {/* Large green "verified" tick near the QR's top-right corner
+                  -- direct ask, purely a trust-cue visual on this
+                  illustrative mockup (see file header comment). Positioned
+                  entirely ABOVE the QR's own pixel bounds (top <= -badge
+                  height), not overlapping it at all: tried two overlapping
+                  placements first (top-right, then bottom-right) and both
+                  broke cv2's QR detector -- a QR's position-detection
+                  finder patterns sit at top-left/top-right/bottom-left,
+                  and even the one "safe" corner (bottom-right) turned out
+                  to still clip this payload's alignment pattern, which for
+                  a URL this long (QR version high enough to need one)
+                  lands right near that corner. Floating fully clear of the
+                  QR is the only placement that's both "near the QR" and
+                  guaranteed not to touch a single QR module. */}
+              <div
+                style={{
+                  position: "absolute",
+                  // Enlarged twice, both 2026-08-09 (direct ask): 40->58->84
+                  // outer / 32->46->66 inner / 20->28->42 icon. Top/right
+                  // offsets scaled up to match each time so the badge still
+                  // floats entirely above the QR's pixel bounds with
+                  // roughly the same ~10px clearance as the original -- see
+                  // the placement comment above for why that clearance is
+                  // load-bearing (any overlap breaks cv2's QR detector on
+                  // this payload).
+                  top: -94,
+                  right: -20,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 84,
+                  height: 84,
+                  borderRadius: 999,
+                  backgroundColor: "#ffffff",
+                  boxShadow: "0 4px 10px -2px rgba(15, 23, 42, 0.35)",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 66,
+                    height: 66,
+                    borderRadius: 999,
+                    backgroundColor: "#16a34a",
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Satori's renderer, not the DOM. */}
+                  <img src={checkIconDataUri} width={42} height={42} alt="" />
+                </div>
+              </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
