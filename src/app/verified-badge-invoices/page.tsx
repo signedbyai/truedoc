@@ -268,22 +268,23 @@ export default async function VerifiedBadgeInvoicesPage({
             shared hero-verified-badge-invoice.png (large green tick
             centered above the QR). D/E/F use a separate
             hero-verified-badge-invoice-redesign.png (same invoice mockup,
-            but that tick moves to be centered at the TOP of the invoice
-            instead, since D/E/F already add a second verified badge lower
-            down via the wax-seal medallion overlay just below) — see
+            but that tick moves inside the card to sit centered at the TOP
+            of the invoice instead, above the "Invoice" header row, since
+            D/E/F already add a second verified badge lower down via the
+            wax-seal medallion overlay just below) — see
             generate-hero-verified-badge-invoice-redesign.tsx for why this
             needed its own file rather than a CSS-only reposition (the tick
             is baked into the PNG's pixels, not a separate DOM element).
-            The redesign image is taller (640x880 vs 640x820) to leave room
-            for the tick to float clear above the card without going
-            off-canvas; width/height below are swapped accordingly. */}
+            Same 640x820 canvas as the shared image — the tick sits inside
+            the card's own bounds, not floated above it, so no extra
+            canvas headroom is needed. */}
         <div className="relative w-full max-w-sm">
           <div className="overflow-hidden rounded-xl border border-slate-200/60 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
             <Image
               src={isRedesign ? "/hero-verified-badge-invoice-redesign.png" : "/hero-verified-badge-invoice.png"}
               alt="A Verified Badge stamped in the corner of a freelance invoice — the SignedBy mark, a scannable QR code, and a verification link"
               width={640}
-              height={isRedesign ? 880 : 820}
+              height={820}
               priority
               sizes="(max-width: 640px) 90vw, 384px"
               className="h-auto w-full"

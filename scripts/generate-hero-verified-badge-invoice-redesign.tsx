@@ -15,14 +15,18 @@ import { ImageResponse } from "next/og";
 // the shared image -- keep both files in sync if the base invoice mockup
 // ever changes.
 //
-// Canvas is taller than the shared image (880 vs 820) solely to make room
-// for the tick to float clear above the card's top edge with the same
-// ~10px clearance convention the QR placement uses -- see the placement
-// comment below. The card itself is the same 560x740 size as the shared
-// image; only the outer top margin grew to fit the floated badge.
+// First pass (same day) floated the tick above the card's top edge,
+// mirroring the QR placement's "float fully clear, never overlap"
+// convention -- needed a taller 880px canvas to leave headroom for that.
+// Corrected same day (direct ask: "should still be inside the invoice
+// image but at the top center"): the tick now sits INSIDE the card, as a
+// normal flow element above the "Invoice" header row, centered
+// horizontally -- not absolutely positioned, not floating outside the
+// card's bounds. Canvas is back to the shared image's 640x820, since
+// there's no longer any floating badge that needs extra headroom.
 
 const WIDTH = 640;
-const HEIGHT = 880;
+const HEIGHT = 820;
 const NAVY = "#0f172a";
 const SLATE = "#475569";
 const MUTED = "#94a3b8";
@@ -53,15 +57,11 @@ async function main() {
           display: "flex",
           flexDirection: "column",
           backgroundColor: "#f8fafc",
-          paddingTop: 100,
-          paddingRight: 40,
-          paddingBottom: 40,
-          paddingLeft: 40,
+          padding: 40,
         }}
       >
         <div
           style={{
-            position: "relative",
             display: "flex",
             flexDirection: "column",
             flex: 1,
@@ -72,43 +72,39 @@ async function main() {
             padding: 40,
           }}
         >
-          {/* Large green "verified" tick, centered above the invoice card
-              (direct ask, D/E/F only -- see file header comment). Floats
-              entirely above the card's own top edge, same ~10px clearance
-              convention as the shared image's above-the-QR placement:
-              badge height 84, top:-94 leaves 10px of visible gap above the
-              card. left:238 centers the 84-wide badge within the 560-wide
-              card ((560-84)/2). The outer canvas's extra top padding (100
-              vs the shared image's 40) is what gives this room to float
-              without going off-canvas. */}
-          <div
-            style={{
-              position: "absolute",
-              top: -94,
-              left: 238,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 84,
-              height: 84,
-              borderRadius: 999,
-              backgroundColor: "#ffffff",
-              boxShadow: "0 4px 10px -2px rgba(15, 23, 42, 0.35)",
-            }}
-          >
+          {/* Large green "verified" tick, centered at the top of the
+              invoice card (direct ask, D/E/F only -- see file header
+              comment). Sits inside the card as a normal flow element
+              (not absolutely positioned, not floating outside the card's
+              bounds) -- a plain flex row with justifyContent:center holds
+              it above the "Invoice" header row. */}
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                width: 66,
-                height: 66,
+                width: 84,
+                height: 84,
                 borderRadius: 999,
-                backgroundColor: "#16a34a",
+                backgroundColor: "#ffffff",
+                boxShadow: "0 4px 10px -2px rgba(15, 23, 42, 0.35)",
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- Satori's renderer, not the DOM. */}
-              <img src={checkIconDataUri} width={42} height={42} alt="" />
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 66,
+                  height: 66,
+                  borderRadius: 999,
+                  backgroundColor: "#16a34a",
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- Satori's renderer, not the DOM. */}
+                <img src={checkIconDataUri} width={42} height={42} alt="" />
+              </div>
             </div>
           </div>
 
