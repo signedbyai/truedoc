@@ -341,27 +341,41 @@ export default async function VerifiedBadgeInvoicesPage({
             <ArrowRight className="h-6 w-6 shrink-0 text-slate-300 sm:h-8 sm:w-8" aria-hidden="true" />
             <HeroInvoiceCard sealed />
           </div>
+        ) : ctaVariant === "D" ? (
+          /* D's own image, no wrapping card chrome (2026-08-09, direct
+             ask, reference screenshot attached): "much larger and appear
+             to be floating outside the edge of the document." The usual
+             rounded-border/overflow-hidden wrapper (still used for A/B/C
+             below) would re-box the whole canvas including the seal's
+             overhang, defeating that "floating outside" look — so this
+             branch renders the Image bare. hero-verified-badge-invoice-d.png
+             is its own bigger 740x920 canvas (vs. the shared 640x820) with
+             a white background and extra top/right padding purpose-built
+             for the seal to hang past the card's corner without being
+             clipped — see generate-hero-verified-badge-invoice-d.tsx. */
+          <div className="w-full max-w-sm">
+            <Image
+              src="/hero-verified-badge-invoice-d.png"
+              alt="A Verified Badge stamped in the corner of a freelance invoice — the SignedBy mark, a scannable QR code, and a verification link"
+              width={740}
+              height={920}
+              priority
+              sizes="(max-width: 640px) 90vw, 384px"
+              className="h-auto w-full"
+            />
+          </div>
         ) : (
           /* The in-context invoice mockup — this is the page it was
              actually built for. See hero-verified-badge-invoice.png's own
              generation comment (generate-hero-mockup.tsx) for the
-             QR-target gotcha already fixed once here.
-
-             A/B/C use the shared hero-verified-badge-invoice.png (large
-             green tick centered above the QR). D uses its own
-             hero-verified-badge-invoice-d.png with NO tick anywhere in the
-             base image — the wax-seal medallion is baked directly into
-             that file instead, stamped over the top-right corner of the
-             company name so it covers "Design" (see
-             generate-hero-verified-badge-invoice-d.tsx; this needed
-             pixel-accurate placement against that image's own text layout,
-             not achievable from a CSS overlay against a flat PNG). Both
-             share the same 640x820 canvas. (E no longer renders through
-             this branch — see the ctaVariant === "E" case above.) */
+             QR-target gotcha already fixed once here. A/B/C use the shared
+             hero-verified-badge-invoice.png (large green tick centered
+             above the QR), 640x820. (D and E no longer render through this
+             branch — see the ctaVariant cases above.) */
           <div className="relative w-full max-w-sm">
             <div className="overflow-hidden rounded-xl border border-slate-200/60 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
               <Image
-                src={ctaVariant === "D" ? "/hero-verified-badge-invoice-d.png" : "/hero-verified-badge-invoice.png"}
+                src="/hero-verified-badge-invoice.png"
                 alt="A Verified Badge stamped in the corner of a freelance invoice — the SignedBy mark, a scannable QR code, and a verification link"
                 width={640}
                 height={820}

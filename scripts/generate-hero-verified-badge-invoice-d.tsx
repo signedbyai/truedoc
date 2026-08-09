@@ -20,9 +20,26 @@ import { ImageResponse } from "next/og";
 // text layout -- easiest to get right (and verify by eye) inside the same
 // script that lays out that text, rather than guessing coordinates against
 // a separately-rendered flat image from the DOM side.
+//
+// Enlarged 2026-08-09 (direct ask, reference screenshot attached): "much
+// larger" and "appear to be floating outside the edge of the document" --
+// first pass (88px, tucked mostly inside the card) read as a small corner
+// icon, not a stamped seal. Now 240px, centered squarely on the card's own
+// top-right corner point so roughly half the medallion hangs in the blank
+// margin outside the card. That corner sits at a fixed (600, cardTop) in
+// canvas coordinates regardless of outer padding (40px left padding + 560
+// card width), so the seal is now positioned relative to the CARD itself
+// (needs its own position:relative) rather than the header text column --
+// simpler anchor, and correct now that the seal is bigger than the column.
+// The canvas gained extra top/right padding (140 vs the shared image's 40)
+// purely to give the oversized, overhanging seal room before it'd get
+// clipped by the PNG's own edge -- card width/height are unchanged (still
+// 560x740) so its content layout matches every other variant.
 
-const WIDTH = 640;
-const HEIGHT = 820;
+const WIDTH = 740;
+const HEIGHT = 920;
+const OUTER_PAD_TOP = 140;
+const OUTER_PAD_RIGHT = 140;
 const NAVY = "#0f172a";
 const SLATE = "#475569";
 const MUTED = "#94a3b8";
@@ -50,12 +67,22 @@ async function main() {
           height: HEIGHT,
           display: "flex",
           flexDirection: "column",
-          backgroundColor: "#f8fafc",
-          padding: 40,
+          // White, not the shared image's #f8fafc -- this canvas has a lot
+          // of extra blank margin now (for the seal to float in), and
+          // page.tsx renders this one WITHOUT its usual rounded-border
+          // wrapper (see that file's comment) so the margin needs to melt
+          // into the page's own bg-white instead of showing as a visible
+          // tinted rectangle.
+          backgroundColor: "#ffffff",
+          paddingTop: OUTER_PAD_TOP,
+          paddingRight: OUTER_PAD_RIGHT,
+          paddingBottom: 40,
+          paddingLeft: 40,
         }}
       >
         <div
           style={{
+            position: "relative",
             display: "flex",
             flexDirection: "column",
             flex: 1,
@@ -71,31 +98,29 @@ async function main() {
               <div style={{ display: "flex", fontSize: 30, fontWeight: 700, color: NAVY }}>Invoice</div>
               <div style={{ marginTop: 6, display: "flex", fontSize: 14, color: MUTED }}>INV-0148</div>
             </div>
-            {/* position:relative wrapper so the seal below can anchor to
-                this column's own top-right corner regardless of exactly
-                how wide the rendered text is -- see file header comment. */}
-            <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
               <div style={{ display: "flex", fontSize: 16, fontWeight: 600, color: NAVY }}>A. Marlowe Design</div>
               <div style={{ marginTop: 4, display: "flex", fontSize: 13, color: MUTED }}>Freelance Brand Design</div>
-              {/* Wax-seal medallion, stamped over the top-right corner of
-                  the company name so it covers "Design" -- direct ask,
-                  2026-08-09. Sized/positioned by render-and-check (satori
-                  text metrics aren't queryable ahead of time): 132px was
-                  too big (swallowed "Marlowe" too), 92px at right:-10 still
-                  clipped the tail of "Marlowe". 88px/right:-4 leaves "A.
-                  Marlowe" fully clear while still fully covering "Design"
-                  (and the tagline line below it, which the medallion's
-                  lower arc reaches -- an accepted side effect, not
-                  specifically called out either way). */}
-              <img
-                src={sealDataUri}
-                width={88}
-                height={88}
-                alt=""
-                style={{ position: "absolute", top: -4, right: -4 }}
-              />
             </div>
           </div>
+
+          {/* Wax-seal medallion, stamped over the card's own top-right
+              corner so it hangs off the edge of the document -- direct
+              ask, 2026-08-09 (see file header comment). 240px, centered on
+              the corner point (top:-120/right:-120, half its own diameter
+              each direction) so roughly half floats outside the card into
+              the canvas's blank margin, the other half overlaps the
+              company name -- covers "Design" and reaches into "Marlowe"
+              and the tagline line below it too now that it's this much
+              bigger, an accepted side effect of "much larger" per the
+              request. */}
+          <img
+            src={sealDataUri}
+            width={240}
+            height={240}
+            alt=""
+            style={{ position: "absolute", top: -120, right: -120 }}
+          />
 
           <div style={{ marginTop: 28, display: "flex", height: 1, backgroundColor: BORDER }} />
 
