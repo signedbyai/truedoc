@@ -23,6 +23,16 @@ import { ImageResponse } from "next/og";
 // to represent any real in-product UI element -- the real badge's own
 // verified state is the QR + "Verified & sealed" text already in this
 // mockup; this is additive polish on the marketing hero only.
+//
+// Recentered 2026-08-09 (direct ask, applies to the A/B/C invoice-CTA-test
+// variants only -- see generate-hero-verified-badge-invoice-redesign.tsx
+// for the separate D/E/F image, which moves this badge off the QR
+// entirely since those variants already show a second verified badge
+// lower on the page): was floating clear above-and-right of the QR
+// (top:-94/right:-20), now centered horizontally above it (top unchanged,
+// left:6 centers the 84-wide badge within the 96-wide QR box). Still
+// entirely clear of the QR's own pixel bounds -- see the placement
+// comment just below for why that clearance is load-bearing.
 
 const WIDTH = 640;
 const HEIGHT = 820;
@@ -121,8 +131,8 @@ async function main() {
             <div style={{ position: "relative", display: "flex", width: 96, height: 96 }}>
               {/* eslint-disable-next-line @next/next/no-img-element -- Satori's renderer, not the DOM. */}
               <img src={qrDataUrl} width={96} height={96} alt="" />
-              {/* Large green "verified" tick near the QR's top-right corner
-                  -- direct ask, purely a trust-cue visual on this
+              {/* Large green "verified" tick, centered above the QR --
+                  direct ask, purely a trust-cue visual on this
                   illustrative mockup (see file header comment). Positioned
                   entirely ABOVE the QR's own pixel bounds (top <= -badge
                   height), not overlapping it at all: tried two overlapping
@@ -139,15 +149,18 @@ async function main() {
                 style={{
                   position: "absolute",
                   // Enlarged twice, both 2026-08-09 (direct ask): 40->58->84
-                  // outer / 32->46->66 inner / 20->28->42 icon. Top/right
-                  // offsets scaled up to match each time so the badge still
-                  // floats entirely above the QR's pixel bounds with
-                  // roughly the same ~10px clearance as the original -- see
-                  // the placement comment above for why that clearance is
+                  // outer / 32->46->66 inner / 20->28->42 icon. Top offset
+                  // scaled up to match each time so the badge still floats
+                  // entirely above the QR's pixel bounds with roughly the
+                  // same ~10px clearance as the original -- see the
+                  // placement comment above for why that clearance is
                   // load-bearing (any overlap breaks cv2's QR detector on
-                  // this payload).
+                  // this payload). Recentered same day (direct ask, A/B/C
+                  // only): left:6 centers the 84-wide badge within the
+                  // 96-wide QR box ((96-84)/2), replacing the old
+                  // right:-20 offset that floated it right of the QR.
                   top: -94,
-                  right: -20,
+                  left: 6,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",

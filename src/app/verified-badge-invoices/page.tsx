@@ -262,14 +262,28 @@ export default async function VerifiedBadgeInvoicesPage({
         {/* The in-context invoice mockup — this is the page it was actually
             built for. See hero-verified-badge-invoice.png's own generation
             comment (generate-hero-mockup.tsx) for the QR-target gotcha
-            already fixed once here. */}
+            already fixed once here.
+
+            Two source images as of 2026-08-09 (direct ask): A/B/C use the
+            shared hero-verified-badge-invoice.png (large green tick
+            centered above the QR). D/E/F use a separate
+            hero-verified-badge-invoice-redesign.png (same invoice mockup,
+            but that tick moves to be centered at the TOP of the invoice
+            instead, since D/E/F already add a second verified badge lower
+            down via the wax-seal medallion overlay just below) — see
+            generate-hero-verified-badge-invoice-redesign.tsx for why this
+            needed its own file rather than a CSS-only reposition (the tick
+            is baked into the PNG's pixels, not a separate DOM element).
+            The redesign image is taller (640x880 vs 640x820) to leave room
+            for the tick to float clear above the card without going
+            off-canvas; width/height below are swapped accordingly. */}
         <div className="relative w-full max-w-sm">
           <div className="overflow-hidden rounded-xl border border-slate-200/60 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
             <Image
-              src="/hero-verified-badge-invoice.png"
+              src={isRedesign ? "/hero-verified-badge-invoice-redesign.png" : "/hero-verified-badge-invoice.png"}
               alt="A Verified Badge stamped in the corner of a freelance invoice — the SignedBy mark, a scannable QR code, and a verification link"
               width={640}
-              height={820}
+              height={isRedesign ? 880 : 820}
               priority
               sizes="(max-width: 640px) 90vw, 384px"
               className="h-auto w-full"
@@ -277,10 +291,13 @@ export default async function VerifiedBadgeInvoicesPage({
           </div>
           {/* D/E/F visual redesign (2026-08-09, direct ask): the wax-seal
               medallion overlapping the card's corner, matching the
-              reference mockups' "seal stamped on the invoice" look — layered
-              on top of the existing hero PNG rather than baked into a new
-              one, so the shared hero-verified-badge-invoice.png (also used
-              by the pitch deck) doesn't need touching. */}
+              reference mockups' "seal stamped on the invoice" look — this
+              part is layered on top of the base hero PNG via absolute
+              positioning rather than baked into it, so it works against
+              either base image above without needing its own variant. (The
+              top-of-card green tick, unlike this medallion, IS baked into
+              the pixels — hence the separate redesign PNG above rather than
+              a second CSS overlay for that piece.) */}
           {isRedesign && (
             <div className="absolute -bottom-7 -right-5 h-28 w-28 drop-shadow-md sm:h-32 sm:w-32">
               <Image
