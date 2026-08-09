@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { FlagValues } from "flags/react";
 import Image from "next/image";
+import { ArrowRight } from "lucide-react";
 import { CtaLink } from "@/components/cta-link";
 import { ctaColorFlag } from "@/flags";
 
@@ -134,6 +135,46 @@ export default async function VerifiedBadgeInvoicesGuidePage() {
           Two parts: verifying your identity once, and what actually happens every time you seal and send an
           invoice after that.
         </p>
+
+        {/* 3-step preview / table of contents (2026-08-09, direct ask) --
+            jumps to Part 1 (verify) or Part 2 (seal + send both live there,
+            since "send" isn't its own section — it's steps 3-4 of Part 2's
+            same step list, not a separate part). Deliberately just a nav
+            aid, not a duplicate explanation of the flow — the real detail
+            stays in the numbered steps below, avoiding the redundancy a
+            fuller workflow-diagram hero would have had here. */}
+        <div className="flex items-center justify-center gap-2 text-xs font-medium text-slate-500 sm:gap-3 sm:text-sm">
+          <Link
+            href="#part-1"
+            className="flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 transition-colors hover:border-slate-400 hover:text-slate-900"
+          >
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[10px] font-semibold text-white">
+              1
+            </span>
+            Verify
+          </Link>
+          <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-300" aria-hidden="true" />
+          <Link
+            href="#part-2"
+            className="flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 transition-colors hover:border-slate-400 hover:text-slate-900"
+          >
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[10px] font-semibold text-white">
+              2
+            </span>
+            Seal
+          </Link>
+          <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-300" aria-hidden="true" />
+          <Link
+            href="#part-2"
+            className="flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 transition-colors hover:border-slate-400 hover:text-slate-900"
+          >
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[10px] font-semibold text-white">
+              3
+            </span>
+            Send
+          </Link>
+        </div>
+
         {/* Reuses the real, live hero from /verified-badge-invoices itself
             (now with the green verified tick, 2026-08-08) rather than
             authoring a separate guide-only hero — this already IS the
@@ -152,7 +193,7 @@ export default async function VerifiedBadgeInvoicesGuidePage() {
       </section>
 
       {/* Part 1 */}
-      <section className="mx-auto w-full max-w-3xl px-6 pb-4">
+      <section id="part-1" className="mx-auto w-full max-w-3xl px-6 pb-4 scroll-mt-6">
         <h2 className="text-2xl font-semibold text-slate-900">Part 1 — Verifying your identity (one time only)</h2>
         <p className="mt-2 text-sm text-slate-600">
           Your very first Verified Badge seal includes a one-time identity check. Everything after that is just two
@@ -191,7 +232,7 @@ export default async function VerifiedBadgeInvoicesGuidePage() {
       </section>
 
       {/* Part 2 */}
-      <section className="mx-auto w-full max-w-3xl px-6 py-10">
+      <section id="part-2" className="mx-auto w-full max-w-3xl px-6 py-10 scroll-mt-6">
         <h2 className="text-2xl font-semibold text-slate-900">Part 2 — Sealing and sending an invoice, every time</h2>
         <p className="mt-2 text-sm text-slate-600">This is what actually happens once you're verified and it's time to send a real invoice.</p>
 
