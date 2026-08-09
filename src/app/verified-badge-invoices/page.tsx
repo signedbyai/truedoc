@@ -85,6 +85,17 @@ const FAQ = [
 // Badge" as the button would've repeated that ambiguity right at the click,
 // so the button deliberately uses "Verify" instead of "Make/Get" to pull
 // C's framing back toward what the product actually does.
+//
+// D/E/F added 2026-08-09, direct ask — copy pulled from attached hero-section
+// concept mockups (reference images only, not pages that exist in this app).
+// Kept to this same pill/heading/button structure and the existing green
+// pill's visual styling deliberately, rather than also adopting the
+// mockups' different visual treatment (wax-seal badge art, 3-step section,
+// etc.) — that's a materially bigger redesign than this lightweight copy
+// test is set up to run cleanly, and mixing visual + copy changes per
+// variant would make a winner's cause unreadable (which one drove it?).
+// Flagged, not silently built — if the visual redesign is wanted too, worth
+// scoping as its own follow-up rather than folding into this flag.
 const CTA_COPY: Record<VerifiedBadgeInvoiceCtaVariant, { pill: string; button: string; heading: string }> = {
   A: {
     pill: "Secure Your Invoice for Free – Verified & Tamper-Evident",
@@ -100,6 +111,21 @@ const CTA_COPY: Record<VerifiedBadgeInvoiceCtaVariant, { pill: string; button: s
     pill: "Make a Verified Invoice for Free",
     button: "Verify Your Invoice for Free →",
     heading: "Make a Verified Invoice for Free",
+  },
+  D: {
+    pill: "Protect Your Invoices and Get Paid",
+    button: "Secure Your First Invoice Now →",
+    heading: "Protect Your Invoices and Get Paid",
+  },
+  E: {
+    pill: "Seal in Seconds. Protect Always.",
+    button: "Start Sealing →",
+    heading: "Seal in Seconds. Protect Always.",
+  },
+  F: {
+    pill: "Client Trust, Instantly Verified",
+    button: "Seal Your Invoices Now →",
+    heading: "Client Trust, Instantly Verified",
   },
 };
 

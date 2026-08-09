@@ -115,23 +115,41 @@ export const consoleHeroIconFlag = flag<ConsoleHeroIconColor>({
   options: CONSOLE_HERO_ICON_COLORS.map((value) => ({ value })),
 });
 
-// Verified Badge invoice page — pill + CTA copy test, started 2026-08-09.
-// See marketing/verified-badge-invoice-cta-test.md for the full write-up.
-// 3-way concurrent split, same methodology as the concluded cta-color test
-// above: cookieless, hash-bucketed via the shared identify() visitorKey.
+// Verified Badge invoice page — pill + CTA copy test, started 2026-08-09,
+// widened from 3 to 6 variants same day. See
+// marketing/verified-badge-invoice-cta-test.md for the full write-up.
+// Concurrent split, same methodology as the concluded cta-color test above:
+// cookieless, hash-bucketed via the shared identify() visitorKey.
 //
 // - A (current) — pill "Secure Your Invoice for Free – Verified &
 //   Tamper-Evident", button "Get Your Verified Badge Now".
 // - B — pill "Secure Your Invoice Now", button "Get Your Verified Badge".
 //   Shorter, drops the "Free"/"Tamper-Evident" claims entirely.
-// - C — pill "Make a Verified Invoice for Free", button "Get Your Verified
-//   Badge". Reframes around the action ("make") instead of a security claim.
+// - C — pill "Make a Verified Invoice for Free", button "Verify Your
+//   Invoice for Free". Reframes around the action ("make") instead of a
+//   security claim.
+// - D/E/F added 2026-08-09, direct ask, copy pulled from attached hero-section
+//   concept mockups (not built by this app — reference images only):
+//   D — pill "Protect Your Invoices and Get Paid", button "Secure Your
+//   First Invoice Now". Outcome framing ("get paid"), not just security.
+//   E — pill "Seal in Seconds. Protect Always.", button "Start Sealing".
+//   Speed/process framing.
+//   F — pill "Client Trust, Instantly Verified", button "Seal Your
+//   Invoices Now". Framed around the client's experience, not the sender's.
 //
-// Intended to run 1-2 weeks (direct ask) then be read the same way as the
+// Widening 3->6 was a direct ask, flagged before building: at this page's
+// traffic volume a 3-way split was already a slow read (see the doc for
+// the cta-color test's own 3-way history), a 6-way split needs
+// meaningfully more traffic/time before any variant separates from noise.
+// Also still unresolved as of this addition: Vercel Web Analytics is not
+// enabled on this project (confirmed via a live API check), so none of
+// this — any variant, old or new — is actually queryable yet. See the doc.
+//
+// Intended to run 1-2 weeks (original ask) then be read the same way as the
 // cta-color test: Vercel Analytics, `flags/verified-badge-invoice-cta`
 // breakdown cross-referenced with `cta_click` events (CtaLink already
 // passes `variant` as a plain event property too, belt-and-suspenders).
-export const VERIFIED_BADGE_INVOICE_CTA_VARIANTS = ["A", "B", "C"] as const;
+export const VERIFIED_BADGE_INVOICE_CTA_VARIANTS = ["A", "B", "C", "D", "E", "F"] as const;
 export type VerifiedBadgeInvoiceCtaVariant = (typeof VERIFIED_BADGE_INVOICE_CTA_VARIANTS)[number];
 
 export const verifiedBadgeInvoiceCtaFlag = flag<VerifiedBadgeInvoiceCtaVariant>({
@@ -144,7 +162,7 @@ export const verifiedBadgeInvoiceCtaFlag = flag<VerifiedBadgeInvoiceCtaVariant>(
   },
   defaultValue: "A",
   description:
-    "Verified Badge invoice page pill + CTA copy test: A (current, security-claim framing) vs B (shorter, no claims) vs C (action framing). Started 2026-08-09, intended to run 1-2 weeks.",
+    "Verified Badge invoice page pill + CTA copy test: A (current, security-claim) vs B (shorter, no claims) vs C (action framing) vs D (outcome/get-paid framing) vs E (speed framing) vs F (client-experience framing). Started 2026-08-09 as a 3-way, widened to 6-way same day.",
   options: VERIFIED_BADGE_INVOICE_CTA_VARIANTS.map((value) => ({ value })),
 });
 
