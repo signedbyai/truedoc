@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, ArrowRight } from "lucide-react";
 import { FlagValues } from "flags/react";
 import { CtaLink } from "@/components/cta-link";
 import { ctaColorFlag, verifiedBadgeInvoiceCtaFlag, type VerifiedBadgeInvoiceCtaVariant } from "@/flags";
@@ -129,10 +129,58 @@ const CTA_COPY: Record<VerifiedBadgeInvoiceCtaVariant, { pill: string; button: s
   },
 };
 
+// Full visual redesign for D/E/F (2026-08-09, direct ask — follow-up to the
+// copy-only D/E/F above: "I'd like D, E and F to have also the full visual
+// redesign"). A/B/C keep the original page untouched; D/E/F get their own
+// headline (this map), a wax-seal medallion (public/verified-seal-badge.png,
+// see scripts/generate-verified-seal-badge.mjs) in place of/alongside the
+// small green tick, a visual 3-step section, and a seal-centered closing
+// section — all following the attached hero-section concept mockups.
+//
+// Headlines below are pulled from those same mockups' three named concepts
+// (Trust Mark / Workflow / Client View), mapped to the D/E/F copy angle
+// each already carries. The existing honest subtext paragraph underneath is
+// UNCHANGED for all six variants on purpose — it's the one sentence in this
+// page carrying the "doesn't stop fraud, proves provenance" disclaimer this
+// project treats as non-negotiable, so it wasn't swapped out just because
+// the reference mockups showed shorter alternative subtext.
+const REDESIGN_HEADLINES: Record<"D" | "E" | "F", string> = {
+  D: "Your Clients Deserve Proof. Seal Invoices. Protect Your Payments.",
+  E: "Seal in Seconds. Protect Always.",
+  F: "Make It Clear to Your Clients. Proof for Them. Peace for You.",
+};
+const REDESIGN_VARIANTS: readonly VerifiedBadgeInvoiceCtaVariant[] = ["D", "E", "F"];
+
+// Small stylized invoice card used in the D/E/F "3-step" section below —
+// deliberately built as real markup (not a generated PNG like the main
+// hero) so the text stays crisp at any size and this stays cheap to tweak.
+function MiniInvoiceCard({ sealed }: { sealed?: boolean }) {
+  return (
+    <div className="relative w-28 shrink-0 rounded-lg border border-slate-200 bg-white p-2.5 text-left shadow-sm sm:w-32">
+      <p className="text-[10px] font-semibold text-slate-900">Invoice</p>
+      <p className="text-[8px] text-slate-400">INV-0148</p>
+      <div className="mt-2 space-y-1">
+        <div className="h-1 w-full rounded bg-slate-100" />
+        <div className="h-1 w-3/4 rounded bg-slate-100" />
+      </div>
+      <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-1">
+        <span className="text-[8px] font-semibold text-slate-700">Total</span>
+        <span className="text-[8px] font-semibold text-slate-700">€3,050</span>
+      </div>
+      {sealed && (
+        <div className="absolute -right-3 -top-3 h-9 w-9">
+          <Image src="/verified-seal-badge.png" alt="" width={320} height={320} className="h-full w-full" aria-hidden="true" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default async function VerifiedBadgeInvoicesPage() {
   const ctaColor = await ctaColorFlag();
   const ctaVariant = await verifiedBadgeInvoiceCtaFlag();
   const { pill: pillCopy, button: buttonCopy, heading: headingCopy } = CTA_COPY[ctaVariant];
+  const isRedesign = REDESIGN_VARIANTS.includes(ctaVariant);
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -160,7 +208,7 @@ export default async function VerifiedBadgeInvoicesPage() {
       <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-5 px-6 py-10 text-center">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Verified Badge</p>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          AI can fake an invoice in seconds. Prove yours is genuinely you.{" "}
+          {isRedesign ? REDESIGN_HEADLINES[ctaVariant as "D" | "E" | "F"] : "AI can fake an invoice in seconds. Prove yours is genuinely you."}{" "}
           <ShieldCheck className="inline-block h-6 w-6 -translate-y-0.5 text-slate-900 sm:h-7 sm:w-7" aria-hidden="true" />
         </h1>
         <p className="max-w-xl text-base text-slate-600">
@@ -192,42 +240,91 @@ export default async function VerifiedBadgeInvoicesPage() {
             built for. See hero-verified-badge-invoice.png's own generation
             comment (generate-hero-mockup.tsx) for the QR-target gotcha
             already fixed once here. */}
-        <div className="w-full max-w-sm overflow-hidden rounded-xl border border-slate-200/60 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
-          <Image
-            src="/hero-verified-badge-invoice.png"
-            alt="A Verified Badge stamped in the corner of a freelance invoice — the SignedBy mark, a scannable QR code, and a verification link"
-            width={640}
-            height={820}
-            priority
-            sizes="(max-width: 640px) 90vw, 384px"
-            className="h-auto w-full"
-          />
+        <div className="relative w-full max-w-sm">
+          <div className="overflow-hidden rounded-xl border border-slate-200/60 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
+            <Image
+              src="/hero-verified-badge-invoice.png"
+              alt="A Verified Badge stamped in the corner of a freelance invoice — the SignedBy mark, a scannable QR code, and a verification link"
+              width={640}
+              height={820}
+              priority
+              sizes="(max-width: 640px) 90vw, 384px"
+              className="h-auto w-full"
+            />
+          </div>
+          {/* D/E/F visual redesign (2026-08-09, direct ask): the wax-seal
+              medallion overlapping the card's corner, matching the
+              reference mockups' "seal stamped on the invoice" look — layered
+              on top of the existing hero PNG rather than baked into a new
+              one, so the shared hero-verified-badge-invoice.png (also used
+              by the pitch deck) doesn't need touching. */}
+          {isRedesign && (
+            <div className="absolute -bottom-7 -right-5 h-28 w-28 drop-shadow-md sm:h-32 sm:w-32">
+              <Image
+                src="/verified-seal-badge.png"
+                alt="A wax-seal style verified and sealed badge with a scannable QR code"
+                width={320}
+                height={320}
+                className="h-full w-full"
+              />
+            </div>
+          )}
         </div>
       </section>
 
       <section className="mx-auto w-full max-w-3xl px-6 pb-4">
-        <h2 className="text-lg font-semibold text-slate-900">How it works</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          {[
-            {
-              step: "1. Verify once",
-              body: "A one-time government-ID check (about a minute, hosted by Stripe). Reused across every future seal — no re-scanning your ID each time.",
-            },
-            {
-              step: "2. Seal the invoice",
-              body: "Just upload your finished invoice PDF from your dashboard — SignedBy hashes it, timestamps it, and generates your badge.",
-            },
-            {
-              step: "3. Embed the badge",
-              body: "Drop the badge on your invoice before you send it. A client scans it and lands on a public ledger page — no account needed.",
-            },
-          ].map((s) => (
-            <div key={s.step} className="rounded-xl border border-slate-200 p-4">
-              <p className="text-sm font-semibold text-slate-900">{s.step}</p>
-              <p className="mt-1.5 text-sm text-slate-600">{s.body}</p>
+        {isRedesign ? (
+          <>
+            {/* Visual 3-step section for D/E/F, following the reference
+                mockups' "Protect Your Invoices and Get Paid" layout —
+                before/after mini invoice cards instead of a plain text
+                list. Step labels are the mockups' own simpler wording,
+                deliberately different from A/B/C's more detailed 3-item
+                list below (that one stays as-is for the classic layout). */}
+            <h2 className="text-center text-lg font-semibold text-slate-900">Protect Your Invoices and Get Paid</h2>
+            <div className="mt-6 grid grid-cols-3 gap-2 text-center text-[11px] font-semibold text-slate-500 sm:text-sm">
+              <div>Step 1: Create Invoice</div>
+              <div>Step 2: Seal it (with Badge)</div>
+              <div>Step 3: Send Securely</div>
             </div>
-          ))}
-        </div>
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <MiniInvoiceCard />
+              <ArrowRight className="h-5 w-5 shrink-0 text-slate-300" aria-hidden="true" />
+              <MiniInvoiceCard sealed />
+            </div>
+            <p className="mt-4 text-center text-sm font-medium text-slate-500">Verified. Trusted. Paid.</p>
+            <div className="mt-4 flex justify-center">
+              <CtaLink href={START_HREF} color={ctaColor} page="verified-badge-invoices" position="steps" variant={ctaVariant}>
+                {buttonCopy}
+              </CtaLink>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 className="text-lg font-semibold text-slate-900">How it works</h2>
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              {[
+                {
+                  step: "1. Verify once",
+                  body: "A one-time government-ID check (about a minute, hosted by Stripe). Reused across every future seal — no re-scanning your ID each time.",
+                },
+                {
+                  step: "2. Seal the invoice",
+                  body: "Just upload your finished invoice PDF from your dashboard — SignedBy hashes it, timestamps it, and generates your badge.",
+                },
+                {
+                  step: "3. Embed the badge",
+                  body: "Drop the badge on your invoice before you send it. A client scans it and lands on a public ledger page — no account needed.",
+                },
+              ].map((s) => (
+                <div key={s.step} className="rounded-xl border border-slate-200 p-4">
+                  <p className="text-sm font-semibold text-slate-900">{s.step}</p>
+                  <p className="mt-1.5 text-sm text-slate-600">{s.body}</p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Same card treatment as /boat-jet-ski-rental's own link to its
             guide (2026-08-08, direct ask: build a guide for this page "similar
@@ -258,6 +355,22 @@ export default async function VerifiedBadgeInvoicesPage() {
       </section>
 
       <section className="mx-auto w-full max-w-3xl px-6 py-10 text-center">
+        {/* D/E/F closing section, following the reference mockups' "Client
+            Trust, Instantly Verified" treatment — big centered medallion
+            above the same headingCopy/buttonCopy every variant already
+            uses, so this is a visual-only change layered onto the existing
+            variant-driven copy, not a new copy path. */}
+        {isRedesign && (
+          <div className="mx-auto mb-6 h-32 w-32 sm:h-36 sm:w-36">
+            <Image
+              src="/verified-seal-badge.png"
+              alt="A wax-seal style verified and sealed badge with a scannable QR code"
+              width={320}
+              height={320}
+              className="h-full w-full"
+            />
+          </div>
+        )}
         <h2 className="text-2xl font-semibold text-slate-900">{headingCopy}</h2>
         <p className="mt-2 text-sm text-slate-600">
           Free to start — 3 seals a month included, no card required. Need more? Pro plan or higher gets unlimited
