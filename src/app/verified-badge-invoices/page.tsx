@@ -319,27 +319,38 @@ export default async function VerifiedBadgeInvoicesPage({
             />
           </div>
         ) : ctaVariant === "E" ? (
-          /* E visual redesign, second pass (2026-08-09, direct ask): the
-             main hero is now the same before/after comparison as the
-             3-step section further down (Michael attached a screenshot of
-             that exact section as the reference) instead of a single
-             standalone invoice mockup — real markup (HeroInvoiceCard, see
-             its own comment above) rather than a generated PNG, so no new
-             image asset was needed here. The badge on the "after" card is
-             deliberately bigger/more prominent than the 3-step section's
-             own small badge (see HeroInvoiceCard's comment for the exact
-             ratio) — that was the other half of the ask.
+          /* E visual redesign, third pass (2026-08-09, direct ask): "we
+             don't need two workflow images, just the one larger one" — the
+             3-step section further down (still used by D, see that
+             section's own comment) used to duplicate this same before/after
+             comparison at a smaller size, plus its own "Protect Your
+             Invoices and Get Paid" headline, step labels, caption, and a
+             second CTA button. For E, that whole section is now gone (see
+             below); its headline moves up to sit directly above this
+             larger before/after pair instead ("move the headline text from
+             the smaller one and move it above the larger one"), and its
+             CTA button is dropped entirely ("we dont need the middle
+             button") rather than re-added here — the hero already has its
+             own CTA right above this section.
 
-             hero-verified-badge-invoice-redesign.png (E's previous hero
-             image, tick centered inside the card) is now unused by this
-             page but left in place/ungenerated-from rather than deleted,
-             same reasoning as this project's other paused-test assets —
-             cheap to bring back if this before/after direction doesn't
-             win out. */
-          <div className="flex items-center justify-center gap-4 py-6 sm:gap-8">
-            <HeroInvoiceCard />
-            <ArrowRight className="h-6 w-6 shrink-0 text-slate-300 sm:h-8 sm:w-8" aria-hidden="true" />
-            <HeroInvoiceCard sealed />
+             Second pass (still applies): real markup (HeroInvoiceCard, see
+             its own comment above) rather than a generated PNG. The badge
+             on the "after" card is deliberately bigger/more prominent than
+             D's own badge treatment — see HeroInvoiceCard's comment for
+             the exact ratio.
+
+             hero-verified-badge-invoice-redesign.png (E's original hero
+             image, tick centered inside the card) is unused by this page
+             but left in place/ungenerated-from rather than deleted, same
+             reasoning as this project's other paused-test assets — cheap
+             to bring back if this before/after direction doesn't win out. */
+          <div className="flex flex-col items-center gap-6 py-6">
+            <h2 className="text-center text-lg font-semibold text-slate-900">Protect Your Invoices and Get Paid</h2>
+            <div className="flex items-center justify-center gap-4 sm:gap-8">
+              <HeroInvoiceCard />
+              <ArrowRight className="h-6 w-6 shrink-0 text-slate-300 sm:h-8 sm:w-8" aria-hidden="true" />
+              <HeroInvoiceCard sealed />
+            </div>
           </div>
         ) : ctaVariant === "D" ? (
           /* D's own image, no wrapping card chrome (2026-08-09, direct
@@ -389,14 +400,18 @@ export default async function VerifiedBadgeInvoicesPage({
       </section>
 
       <section className="mx-auto w-full max-w-3xl px-6 pb-4">
-        {isRedesign ? (
+        {ctaVariant === "D" ? (
           <>
-            {/* Visual 3-step section for D/E/F, following the reference
-                mockups' "Protect Your Invoices and Get Paid" layout —
-                before/after mini invoice cards instead of a plain text
-                list. Step labels are the mockups' own simpler wording,
-                deliberately different from A/B/C's more detailed 3-item
-                list below (that one stays as-is for the classic layout). */}
+            {/* Visual 3-step section, D only as of 2026-08-09 (direct ask:
+                E and F don't need this — see the ctaVariant === "E" hero
+                comment above for where E's version of this content went,
+                and the null branch below for F). Originally built for
+                D/E/F together, following the reference mockups' "Protect
+                Your Invoices and Get Paid" layout — before/after mini
+                invoice cards instead of a plain text list. Step labels are
+                the mockups' own simpler wording, deliberately different
+                from A/B/C's more detailed 3-item list below (that one
+                stays as-is for the classic layout). */}
             <h2 className="text-center text-lg font-semibold text-slate-900">Protect Your Invoices and Get Paid</h2>
             <div className="mt-6 grid grid-cols-3 gap-2 text-center text-[11px] font-semibold text-slate-500 sm:text-sm">
               <div>Step 1: Create Invoice</div>
@@ -415,6 +430,14 @@ export default async function VerifiedBadgeInvoicesPage({
               </CtaLink>
             </div>
           </>
+        ) : ctaVariant === "E" || ctaVariant === "F" ? (
+          // Nothing here for E (its headline moved into the hero section
+          // above, everything else — step labels, the smaller card pair,
+          // caption, and this section's CTA button — dropped per "we don't
+          // need two workflow images... we dont need the middle button")
+          // or F ("the workflow CTA image and button in the middle is not
+          // needed"). Falls straight through to the guide-link card below.
+          null
         ) : (
           <>
             <h2 className="text-lg font-semibold text-slate-900">How it works</h2>
