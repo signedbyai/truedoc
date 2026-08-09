@@ -4,7 +4,12 @@ import Link from "next/link";
 import { ShieldCheck, ArrowRight } from "lucide-react";
 import { FlagValues } from "flags/react";
 import { CtaLink } from "@/components/cta-link";
-import { ctaColorFlag, verifiedBadgeInvoiceCtaFlag, type VerifiedBadgeInvoiceCtaVariant } from "@/flags";
+import {
+  ctaColorFlag,
+  verifiedBadgeInvoiceCtaFlag,
+  VERIFIED_BADGE_INVOICE_CTA_VARIANTS,
+  type VerifiedBadgeInvoiceCtaVariant,
+} from "@/flags";
 
 // Companion page to /verified-badge (2026-08-06, direct ask, after the
 // invoice hero image and the invoice-fraud ad angle both got built against
@@ -176,9 +181,27 @@ function MiniInvoiceCard({ sealed }: { sealed?: boolean }) {
   );
 }
 
-export default async function VerifiedBadgeInvoicesPage() {
+export default async function VerifiedBadgeInvoicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ variant?: string }>;
+}) {
   const ctaColor = await ctaColorFlag();
-  const ctaVariant = await verifiedBadgeInvoiceCtaFlag();
+  // Manual variant preview (2026-08-09, direct ask): ?variant=A..F forces
+  // that copy/redesign combo for this one request only — no cookie, no
+  // effect on the real hash-bucketed assignment other visitors get. Lets
+  // Michael eyeball any of the 6 variants directly via URL instead of
+  // needing the Vercel Toolbar's flags-override cookie (not wired up in
+  // this project, see src/flags.ts). Falls through to the real flag when
+  // the param is missing or isn't one of the 6 known letters, and skips
+  // calling verifiedBadgeInvoiceCtaFlag() entirely when overridden so a
+  // preview visit doesn't also trigger the flag's own hash-bucket lookup.
+  const { variant: rawVariant } = await searchParams;
+  const overrideVariant =
+    rawVariant && (VERIFIED_BADGE_INVOICE_CTA_VARIANTS as readonly string[]).includes(rawVariant)
+      ? (rawVariant as VerifiedBadgeInvoiceCtaVariant)
+      : undefined;
+  const ctaVariant = overrideVariant ?? (await verifiedBadgeInvoiceCtaFlag());
   const { pill: pillCopy, button: buttonCopy, heading: headingCopy } = CTA_COPY[ctaVariant];
   const isRedesign = REDESIGN_VARIANTS.includes(ctaVariant);
   const faqJsonLd = {
