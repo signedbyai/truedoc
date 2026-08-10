@@ -957,10 +957,26 @@ export function SigningView({
             // already loaded in this browser from the continuous-scroll
             // viewer used during signing itself, so there's no extra
             // library weight either.
+            // triggerClassName FIXED 2026-08-10 (direct report + screenshot):
+            // the original className was copy-pasted from the old plain-text
+            // button ("inline-block", no flex) — fine with no icon, but
+            // EmbeddedPdfPreview's open state renders an EyeOff icon next to
+            // "Hide preview," and Tailwind's preflight sets svg { display:
+            // block }, so without an explicit flex row the icon dropped to
+            // its own line above the text instead of sitting beside it.
+            // Switched to inline-flex + gap (matching buttonVariants' own
+            // base classes, which every other EmbeddedPdfPreview call site
+            // already gets for free via `cn(buttonVariants(...), ...)`) and,
+            // per the same report, to the light/outline treatment ("bg-white
+            // ... text-slate-900" + border) instead of the solid dark
+            // bg-slate-900 it inherited from the old button — matches the
+            // outline-style secondary buttons used for this everywhere else
+            // in the app, rather than duplicating the Share button's own
+            // solid dark styling right above it.
             <EmbeddedPdfPreview
               href={`/api/sign/${token}/signed-file`}
               filename={`${documentTitle.replace(/[^\w.\- ]/g, "")}-signed.pdf`}
-              triggerClassName="mt-4 inline-block rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              triggerClassName="mt-4 inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-900 hover:bg-slate-50"
             >
               Download signed PDF
             </EmbeddedPdfPreview>
