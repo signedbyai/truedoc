@@ -479,22 +479,44 @@ export function NewDocumentClient({
       // just logs so it's visible without silently losing the seal itself.
       if (badgeRect) {
         try {
-          await fetch(`/api/documents/${uploadResult.id}/badge-placement`, {
+          // BUG FIX 2026-08-10: this used to send badgeRect as-is
+          // ({page, x, y, width}), but the route's schema expects
+          // {badge_page, badge_x, badge_y, badge_width} — every save was
+          // silently failing validation (400), and since this fetch never
+          // checked res.ok, nothing surfaced the failure. Net effect: the
+          // document/org's badge position never actually got written, so
+          // every seal fell through to the hardcoded bottom-right fallback
+          // regardless of what was dragged in the placer — exactly the
+          // "keeps burning to bottom right" report this fixes.
+          const res = await fetch(`/api/documents/${uploadResult.id}/badge-placement`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(badgeRect),
+            body: JSON.stringify({
+              badge_page: badgeRect.page,
+              badge_x: badgeRect.x,
+              badge_y: badgeRect.y,
+              badge_width: badgeRect.width,
+            }),
           });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            console.error("Couldn't save badge placement — sealing with the org default instead", data);
+          }
         } catch (err) {
           console.error("Couldn't save badge placement — sealing with the org default instead", err);
         }
       }
       if (hasPaymentCollection && badgePaymentLinkUrl.trim()) {
         try {
-          await fetch(`/api/documents/${uploadResult.id}/payment`, {
+          const res = await fetch(`/api/documents/${uploadResult.id}/payment`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ payment_link_url: badgePaymentLinkUrl.trim(), payment_label: badgePaymentLabel.trim() }),
           });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            console.error("Couldn't save the payment link — sealing without it instead", data);
+          }
         } catch (err) {
           console.error("Couldn't save the payment link — sealing without it instead", err);
         }
