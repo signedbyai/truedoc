@@ -6,6 +6,8 @@ import { track } from "@vercel/analytics";
 import { ArrowUp, Check, ChevronDown, Copy, ExternalLink, FileText, FileUp, Paperclip, ShieldCheck, Square, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConsoleShareLinkButton, ConsoleQrLinkButton } from "@/components/console-link-actions";
+import { EmbeddedPdfPreview } from "@/components/embedded-pdf-preview";
+import { ImagePreviewToggle } from "@/components/embedded-image-preview";
 import { parseNdjsonLine, splitNdjsonLines } from "@/lib/ndjson";
 import { formatCreditPackPrice, type Currency } from "@/lib/currency";
 import type { ConsoleHeroIconColor } from "@/flags";
@@ -1508,50 +1510,49 @@ export function ConsoleChat({
                         last turn could be missing from History too. Opening
                         in a new tab keeps the console tab alive and never
                         interrupts that autosave at all. */}
-                    {/* target="_blank" kept here deliberately (see comment
-                        above — closing/navigating this tab would interrupt
-                        an in-flight autosave), unlike the other download
-                        links fixed 2026-08-10 for the mobile-share-URL bug
-                        (sealed-document-outputs.tsx). Adding `download`
-                        alongside it still fixes that bug: modern browsers
-                        honor `download` as "save this file" regardless of
-                        target, so there's no in-page PDF preview left for
-                        iOS's share sheet to grab a URL from, and the console
-                        tab never navigates away either. */}
+                    {/* target="_blank" REMOVED here 2026-08-10 (app-wide
+                        download/share audit, direct follow-up) — superseded,
+                        not just stylistically replaced. These three now go
+                        through EmbeddedPdfPreview/ImagePreviewToggle
+                        (sealed-document-outputs.tsx's preview-first
+                        pattern), which fetches the file with JS and either
+                        hands it to navigator.share() or triggers a blob-URL
+                        download -- neither path is a page navigation, so the
+                        autosave-interruption problem the comment above this
+                        one describes (the actual reason target="_blank" was
+                        added in the first place) can no longer happen at
+                        all, on any browser, not just ones honoring
+                        `download`. Strictly better than the target="_blank"
+                        workaround it replaces, not a tradeoff. */}
                     {m.sealed.hasSignedFile && (
-                      <a
+                      <EmbeddedPdfPreview
                         href={`/api/documents/${m.sealed.documentId}/signed-file`}
-                        target="_blank"
-                        rel="noreferrer"
-                        download="sealed.pdf"
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
+                        filename="sealed.pdf"
+                        triggerClassName="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
                       >
                         <FileText className="h-3.5 w-3.5" aria-hidden="true" />
                         Sealed PDF
-                      </a>
+                      </EmbeddedPdfPreview>
                     )}
                     {m.sealed.hasCertificateFile && (
-                      <a
+                      <EmbeddedPdfPreview
                         href={`/api/documents/${m.sealed.documentId}/certificate`}
-                        target="_blank"
-                        rel="noreferrer"
-                        download="certificate.pdf"
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
+                        filename="certificate.pdf"
+                        triggerClassName="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
                       >
                         <FileText className="h-3.5 w-3.5" aria-hidden="true" />
                         Certificate
-                      </a>
+                      </EmbeddedPdfPreview>
                     )}
-                    <a
+                    <ImagePreviewToggle
                       href={`/api/documents/${m.sealed.documentId}/badge`}
-                      target="_blank"
-                      rel="noreferrer"
-                      download="badge.png"
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
+                      filename="badge.png"
+                      alt="Verified Badge"
+                      triggerClassName="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
                     >
                       <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
                       Badge image
-                    </a>
+                    </ImagePreviewToggle>
                   </div>
                 )}
                 {m.capReached && (

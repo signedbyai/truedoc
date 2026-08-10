@@ -9,6 +9,7 @@ import { AuditTrail, type AuditEvent } from "@/components/audit-trail";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
 import { SealedDocumentOutputs } from "@/components/sealed-document-outputs";
 import { DownloadShareButton } from "@/components/download-share-button";
+import { EmbeddedPdfPreview } from "@/components/embedded-pdf-preview";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { planHasFeature, getFreePlanUsage } from "@/lib/plan";
@@ -352,26 +353,29 @@ export default async function DocumentEditorPage({
                 />
               ) : (
                 <div className="flex flex-wrap items-center gap-2">
+                  {/* EmbeddedPdfPreview, not a plain DownloadShareButton
+                      (2026-08-10 follow-up to sealed-document-outputs.tsx's
+                      own preview-first pattern) — this non-Verified-Badge
+                      branch is actually the higher-traffic path (most signed
+                      documents are ordinary multi-party agreements, not
+                      self-sealed), so it gets the same "preview first,
+                      Download/Share inside the panel" treatment. */}
                   {doc.signed_file_path ? (
-                    <DownloadShareButton
-                      href={`/api/documents/${id}/signed-file`}
-                      filename="signed.pdf"
-                      className={buttonVariants({ size: "sm" })}
-                    >
+                    <EmbeddedPdfPreview href={`/api/documents/${id}/signed-file`} filename="signed.pdf">
                       Download signed PDF
-                    </DownloadShareButton>
+                    </EmbeddedPdfPreview>
                   ) : (
                     <span className={cn(buttonVariants({ size: "sm" }), "pointer-events-none opacity-60")}>
                       Signed PDF pending…
                     </span>
                   )}
-                  <DownloadShareButton
+                  <EmbeddedPdfPreview
                     href={`/api/documents/${id}/original-file`}
                     filename="original.pdf"
-                    className={buttonVariants({ variant: "outline", size: "sm" })}
+                    triggerClassName={buttonVariants({ variant: "outline", size: "sm" })}
                   >
                     Download original (unsigned)
-                  </DownloadShareButton>
+                  </EmbeddedPdfPreview>
                   <DuplicateDocumentButton documentId={id} />
                 </div>
               )}

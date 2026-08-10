@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, ExternalLink, FileText, ShieldCheck } from "lucide-react";
 import { ConsoleShareLinkButton, ConsoleQrLinkButton } from "@/components/console-link-actions";
-import { DownloadShareButton } from "@/components/download-share-button";
+import { EmbeddedPdfPreview } from "@/components/embedded-pdf-preview";
+import { ImagePreviewToggle } from "@/components/embedded-image-preview";
 
 const FILE_BUTTON_CLASS =
   "inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs font-medium text-neutral-300 hover:bg-white/5";
@@ -126,33 +127,37 @@ export function ConsoleVerifiedBadgeList() {
                   </a>
                 </>
               )}
-              {/* DownloadShareButton, not a plain <a download> (round 3 fix,
-                  2026-08-10) — see sealed-document-outputs.tsx's file-header
-                  comment: the download-attribute fix (cfb2147) made the save
-                  itself reliable, but it's silent, so this fetches the file
-                  and hands it to navigator.share() for a real OS open/save
-                  sheet, falling back to the same blob-download otherwise. */}
+              {/* EmbeddedPdfPreview/ImagePreviewToggle, not a plain
+                  DownloadShareButton (2026-08-10 follow-up to sealed-
+                  document-outputs.tsx's own preview-first pattern) — same
+                  "one button, preview first, Download/Share inside the
+                  panel" shape as the dashboard document page, so a Console
+                  user managing several sealed docs from this list gets the
+                  same look-before-you-send flow. Preview panels stay light
+                  regardless of Console's dark theme (see
+                  embedded-image-preview.tsx's own comment on this — matches
+                  ConsoleQrLinkButton's popover doing the same thing). */}
               {doc.hasSignedFile && (
-                <DownloadShareButton href={`/api/documents/${doc.id}/signed-file`} filename="sealed.pdf" className={FILE_BUTTON_CLASS}>
+                <EmbeddedPdfPreview href={`/api/documents/${doc.id}/signed-file`} filename="sealed.pdf" triggerClassName={FILE_BUTTON_CLASS}>
                   <FileText className="h-3 w-3" aria-hidden="true" />
                   Sealed PDF
-                </DownloadShareButton>
+                </EmbeddedPdfPreview>
               )}
               {doc.hasCertificateFile && (
-                <DownloadShareButton href={`/api/documents/${doc.id}/certificate`} filename="certificate.pdf" className={FILE_BUTTON_CLASS}>
+                <EmbeddedPdfPreview href={`/api/documents/${doc.id}/certificate`} filename="certificate.pdf" triggerClassName={FILE_BUTTON_CLASS}>
                   <FileText className="h-3 w-3" aria-hidden="true" />
                   Certificate
-                </DownloadShareButton>
+                </EmbeddedPdfPreview>
               )}
-              <DownloadShareButton
+              <ImagePreviewToggle
                 href={`/api/documents/${doc.id}/badge`}
                 filename="badge.png"
-                mimeType="image/png"
-                className={FILE_BUTTON_CLASS}
+                alt="Verified Badge"
+                triggerClassName={FILE_BUTTON_CLASS}
               >
                 <ShieldCheck className="h-3 w-3" aria-hidden="true" />
                 Badge
-              </DownloadShareButton>
+              </ImagePreviewToggle>
             </div>
           </div>
         );

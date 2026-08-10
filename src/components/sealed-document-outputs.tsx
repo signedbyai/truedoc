@@ -56,71 +56,16 @@
 // pattern researched earlier this session more closely -- view first, act
 // from within that view -- while staying lazy (nothing loads until tapped).
 import { useEffect, useState } from "react";
-import { ExternalLink, FileText, ShieldCheck, ChevronDown, Stamp, Eye, EyeOff } from "lucide-react";
+import { ExternalLink, FileText, ShieldCheck, ChevronDown, Stamp } from "lucide-react";
 import { CopyLinkButton } from "@/components/copy-link-button";
 import { ShareLinkButton } from "@/components/share-link-button";
 import { QrLinkButton } from "@/components/qr-link-button";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
 import { DownloadShareButton } from "@/components/download-share-button";
 import { EmbeddedPdfPreview } from "@/components/embedded-pdf-preview";
+import { ImagePreviewToggle } from "@/components/embedded-image-preview";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-// Simpler PNG sibling of EmbeddedPdfPreview -- an <img> tag can just be
-// shown or hidden, no pdfjs/canvas rendering needed for a single already-
-// browser-native image format. Kept private to this file since the badge
-// PNG is the only image output in this row. Same single-button shape as
-// EmbeddedPdfPreview (see that file's header comment for why the hint has
-// to wrap the internal trigger rather than the caller wrapping the whole
-// component): closed state shows `children` (icon + label), open state
-// swaps to "Hide preview", and Download/Share lives inside the panel.
-function ImagePreviewToggle({
-  href,
-  filename,
-  alt,
-  triggerClassName,
-  children,
-}: {
-  href: string;
-  filename: string;
-  alt: string;
-  triggerClassName?: string;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className={cn(open && "w-full")}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={triggerClassName ?? cn(buttonVariants({ size: "sm" }), "gap-1.5")}
-      >
-        {open ? (
-          <>
-            <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
-            Hide preview
-          </>
-        ) : (
-          children
-        )}
-      </button>
-      {open && (
-        <div className="mt-3 flex flex-col items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-          {/* eslint-disable-next-line @next/next/no-img-element -- authenticated route, not a static/remote asset */}
-          <img src={href} alt={alt} className="h-auto max-h-[50vh] w-auto max-w-full rounded border border-slate-200 bg-white" />
-          <DownloadShareButton
-            href={href}
-            filename={filename}
-            mimeType="image/png"
-            className={cn(buttonVariants({ size: "sm" }), "gap-1.5")}
-          >
-            Download / Share
-          </DownloadShareButton>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // Priority order for the one-time popovers — first unseen one in this list
 // wins for a given page view (IN_DOCUMENT_BADGE_AND_API_SEAL_SCOPE.md
