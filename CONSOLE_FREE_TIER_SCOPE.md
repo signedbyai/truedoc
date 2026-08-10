@@ -1,5 +1,21 @@
 # Scope: Console free "teaser" tier — API/MCP access for Free-plan orgs
 
+**Amended 2026-08-10 (direct instruction):** the console.signedby.ai *web
+app's* entry points ("/" and "/app") now redirect Free-plan orgs (and
+unauthenticated visitors) to signedby.ai instead — see src/middleware.ts's
+`resolveConsoleGatePlan`/`CONSOLE_GATE_PLANS`. Reasoning: two visually
+different interfaces (dashboard vs. console's chat UI) were a support/
+confusion cost for people who hadn't paid for anything yet; Starter/Team/
+Business have at least shown enough commitment to count as "experienced."
+This narrows, but does NOT undo, item #1 below — Free's `consoleAccess`
+feature-plan entry, checkFreePlanSealCap, and the API sandbox are all
+still exactly as shipped 2026-08-02. A Free org's REST API key still works
+(that API is at signedby.ai/api/v1, never routed through this host), and
+console's own tools still treat Free as having `consoleAccess` — there's
+just no way to reach the console.signedby.ai UI itself as a Free org
+anymore. If this host-gate is ever removed, the rest of this doc's
+"shipped" state is still accurate and needs no further changes.
+
 Status: PARTIALLY BUILT. Shipped 2026-08-02 (commit `366e86a`): item #1
 (Free-tier console access, narrowed in practice to Verified Badge sealing —
 see below) and the "Upgrade to Pro" half of #1a's cap-reached bubble.
