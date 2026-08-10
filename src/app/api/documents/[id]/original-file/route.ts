@@ -24,10 +24,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
 
   try {
-    const { body, contentType } = await getFromR2(doc.file_path);
+    const { body } = await getFromR2(doc.file_path);
     return new NextResponse(body, {
       headers: {
-        "Content-Type": contentType,
+        // application/octet-stream, not the real PDF content type — see
+        // badge-on/route.ts's comment for why (Safari overrides download/
+        // attachment disposition for anything it recognizes as a PDF).
+        "Content-Type": "application/octet-stream",
         "Content-Disposition": `attachment; filename="${doc.title.replace(/[^\w.\- ]/g, "")}.pdf"`,
         "Cache-Control": "private, max-age=60",
       },

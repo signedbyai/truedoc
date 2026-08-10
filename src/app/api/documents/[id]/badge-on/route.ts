@@ -25,10 +25,22 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
 
   try {
-    const { body, contentType } = await getFromR2(doc.badge_stamped_file_path);
+    const { body } = await getFromR2(doc.badge_stamped_file_path);
     return new NextResponse(body, {
       headers: {
-        "Content-Type": contentType,
+        // application/octet-stream, not the real PDF content type — FIXED
+        // 2026-08-10 (second report, same screenshot bug persisting after
+        // the download-attribute fix). Safari's known behavior: it
+        // overrides `download`/Content-Disposition:attachment and renders
+        // its own inline PDF viewer whenever it recognizes the response as
+        // application/pdf, no matter what the link says — there's no
+        // reliable client-side-only way around that. Serving as a generic
+        // binary type instead removes Safari's reason to intercept it, so
+        // it falls through to an actual save/download rather than an
+        // in-page preview (which is what was exposing the raw API URL to
+        // the share sheet). The .pdf filename in Content-Disposition still
+        // makes the saved file open correctly afterward.
+        "Content-Type": "application/octet-stream",
         "Content-Disposition": `attachment; filename="${doc.title.replace(/[^\w.\- ]/g, "")}-badge-on.pdf"`,
         "Cache-Control": "private, max-age=60",
       },
