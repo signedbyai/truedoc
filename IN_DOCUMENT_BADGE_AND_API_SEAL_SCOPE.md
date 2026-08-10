@@ -921,3 +921,26 @@ asked for yet. Sandbox `next build --webpack` clean, `vitest run` green
 passed. **Not deployed** — committed locally only (no push credentials in
 the sandbox); migration 0052 needs applying in Supabase, then push +
 deploy, before any of this is live.
+
+**2026-08-10, bug found in first real test (commit `557122e`):** Michael
+reported the badge always burning to bottom-right regardless of what was
+placed, and the new Settings "Advanced" JSON block never appearing. Root
+cause: `handleSealUpload`'s PUT to `/api/documents/[id]/badge-placement`
+sent the placer's `{page,x,y,width}` object as-is, but that route's schema
+expects `{badge_page,badge_x,badge_y,badge_width}` — every save failed
+validation, and the fetch never checked `res.ok`, so nothing surfaced it.
+`documents.badge_*`/`organizations.last_badge_*` stayed null no matter
+what the user dragged, so sealing always fell through to the hardcoded
+fallback — and the Advanced JSON block (gated on `last_badge_*` being
+non-null) could never appear either, as a direct downstream consequence,
+not a second bug. Fixed by sending the correctly-keyed body and adding a
+`res.ok` check (plus the same missing check on the payment-link save,
+same bug class, not yet reported). Also surfaced a real, separate
+discoverability gap while investigating: Console's own Settings tab
+(`verified-badge-settings.tsx`, `console-workspace.tsx`'s `settingsBody`)
+has no "Badge placement" toggle at all — this was scoped dashboard-only
+from the start ("Console/MCP sealing has no UI to place a badge in at
+all"), so it only ever lived at `/dashboard/settings`, not
+`console.signedby.ai`'s Settings pill. Not fixed yet — flagged to Michael,
+awaiting a decision on whether to mirror it into Console the same way
+Identity got a second surface.
