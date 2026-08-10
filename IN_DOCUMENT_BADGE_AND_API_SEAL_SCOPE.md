@@ -902,5 +902,22 @@ verification badge vs. the Business payment QR (color/icon/border/stacking,
 plus the badge always carrying both a tick and the word "Verified"); and
 promoted V2.4 (in-document payment QR) from an optional future extension to
 a required companion of V1.5 whenever payment link is actually in use — see
-open decision #9. Still 100% unbuilt; all of this is design/scope refinement
-on the existing plan, not a build.
+open decision #9.
+
+**2026-08-10, third round — built (commit `d874f37`).** Direct instruction:
+"let's go ahead and build it... make sure it's great on mobile, 70 percent
+of users are using it on mobile... don't forget the settings." V1.1
+(desktop drag/resize + mobile corner-tap/slider Badge Placer), V1.3b
+(output-page redesign, one prominent button + expand), V1.4 (corner-stamp
+pipeline, migration 0052), V1.5 (payment link input + verify-page QR), and
+V2.4 (in-document payment QR, per its just-confirmed must-have status) all
+built together as one connected feature rather than staged — the pieces are
+too interdependent to ship in isolation (the output redesign has nothing to
+show without the stamp pipeline; the payment QR needs the stamp pipeline's
+placement resolution to anchor to). V2 API work (V2.1-V2.3) NOT built —
+out of scope for this pass, still platform/integrator-facing work nobody
+asked for yet. Sandbox `next build --webpack` clean, `vitest run` green
+(28 tests, 9 new for badge-resize.ts's geometry), server-boot smoke tests
+passed. **Not deployed** — committed locally only (no push credentials in
+the sandbox); migration 0052 needs applying in Supabase, then push +
+deploy, before any of this is live.
