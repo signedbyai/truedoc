@@ -42,16 +42,55 @@
 // a real File -- that's what gets the native "Open in..."/"Save to Files"
 // share sheet, with a same-behavior blob-download fallback wherever file
 // sharing isn't supported. See that component's own header comment.
+//
+// ADDED 2026-08-10 (same-day direct follow-up: "when I press Badge-on
+// sealed PDF I don't get a preview, I get sent to the share sheet -- is
+// that normal?"): yes, but there was no OTHER option for someone who wants
+// to look before sharing. Every PDF output here now also gets an
+// EmbeddedPdfPreview trigger alongside its DownloadShareButton -- an
+// in-page pdfjs viewer, lazy (nothing loads until tapped), with its own
+// Download/Share control attached. The PNG "Badge image" output gets the
+// much simpler ImagePreviewToggle below instead (no pdfjs needed for an
+// image). Neither replaces the existing one-tap share button -- "just
+// send this to my client" is still one tap, "let me look first" is now
+// also possible.
 import { useEffect, useState } from "react";
-import { ExternalLink, FileText, ShieldCheck, ChevronDown, Stamp } from "lucide-react";
+import { ExternalLink, FileText, ShieldCheck, ChevronDown, Stamp, Eye, EyeOff } from "lucide-react";
 import { CopyLinkButton } from "@/components/copy-link-button";
 import { ShareLinkButton } from "@/components/share-link-button";
 import { QrLinkButton } from "@/components/qr-link-button";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
 import { DownloadShareButton } from "@/components/download-share-button";
+import { EmbeddedPdfPreview } from "@/components/embedded-pdf-preview";
 import { OutputHint } from "@/components/output-hint";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+// Simpler PNG sibling of EmbeddedPdfPreview -- an <img> tag can just be
+// shown or hidden, no pdfjs/canvas rendering needed for a single already-
+// browser-native image format. Kept private to this file since the badge
+// PNG is the only image output in this row.
+function ImagePreviewToggle({ href, alt }: { href: string; alt: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={cn(open && "w-full")}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
+      >
+        {open ? <EyeOff className="h-3.5 w-3.5" aria-hidden="true" /> : <Eye className="h-3.5 w-3.5" aria-hidden="true" />}
+        {open ? "Hide preview" : "Preview"}
+      </button>
+      {open && (
+        <div className="mt-3 flex justify-center rounded-lg border border-slate-200 bg-slate-50 p-4">
+          {/* eslint-disable-next-line @next/next/no-img-element -- authenticated route, not a static/remote asset */}
+          <img src={href} alt={alt} className="h-auto max-h-[50vh] w-auto max-w-full rounded border border-slate-200 bg-white" />
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Priority order for the one-time popovers — first unseen one in this list
 // wins for a given page view (IN_DOCUMENT_BADGE_AND_API_SEAL_SCOPE.md
@@ -112,40 +151,46 @@ export function SealedDocumentOutputs({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         {hasBadgeOn ? (
-          <OutputHint
-            storageKey="sb_output_hint_badge_placement_nudge_seen"
-            active={activeHint === "badge_placement_nudge"}
-            hint="You can also choose exactly where the badge lands — turn on &quot;Ask me every time&quot; under Settings &gt; Verified Badge &gt; Badge placement."
-          >
-            <DownloadShareButton
-              href={`/api/documents/${documentId}/badge-on`}
-              filename="badge-on-sealed.pdf"
-              className={cn(buttonVariants({ size: "sm" }), "gap-1.5")}
+          <>
+            <OutputHint
+              storageKey="sb_output_hint_badge_placement_nudge_seen"
+              active={activeHint === "badge_placement_nudge"}
+              hint="You can also choose exactly where the badge lands — turn on &quot;Ask me every time&quot; under Settings &gt; Verified Badge &gt; Badge placement."
             >
-              <Stamp className="h-3.5 w-3.5" aria-hidden="true" />
-              Badge-on sealed PDF
-            </DownloadShareButton>
-          </OutputHint>
+              <DownloadShareButton
+                href={`/api/documents/${documentId}/badge-on`}
+                filename="badge-on-sealed.pdf"
+                className={cn(buttonVariants({ size: "sm" }), "gap-1.5")}
+              >
+                <Stamp className="h-3.5 w-3.5" aria-hidden="true" />
+                Badge-on sealed PDF
+              </DownloadShareButton>
+            </OutputHint>
+            <EmbeddedPdfPreview href={`/api/documents/${documentId}/badge-on`} filename="badge-on-sealed.pdf" />
+          </>
         ) : (
-          <OutputHint
-            storageKey="sb_output_hint_badge_seen"
-            active={activeHint === "badge_placement_nudge" || activeHint === "badge"}
-            hint={
-              activeHint === "badge_placement_nudge"
-                ? 'You can also choose exactly where the badge lands — turn on "Ask me every time" under Settings > Verified Badge > Badge placement.'
-                : "Best for invoices — a clean mark you can drop straight into it, nothing else to manage."
-            }
-          >
-            <DownloadShareButton
-              href={`/api/documents/${documentId}/badge`}
-              filename="badge.png"
-              mimeType="image/png"
-              className={cn(buttonVariants({ size: "sm" }), "gap-1.5")}
+          <>
+            <OutputHint
+              storageKey="sb_output_hint_badge_seen"
+              active={activeHint === "badge_placement_nudge" || activeHint === "badge"}
+              hint={
+                activeHint === "badge_placement_nudge"
+                  ? 'You can also choose exactly where the badge lands — turn on "Ask me every time" under Settings > Verified Badge > Badge placement.'
+                  : "Best for invoices — a clean mark you can drop straight into it, nothing else to manage."
+              }
             >
-              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-              Badge image
-            </DownloadShareButton>
-          </OutputHint>
+              <DownloadShareButton
+                href={`/api/documents/${documentId}/badge`}
+                filename="badge.png"
+                mimeType="image/png"
+                className={cn(buttonVariants({ size: "sm" }), "gap-1.5")}
+              >
+                <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                Badge image
+              </DownloadShareButton>
+            </OutputHint>
+            <ImagePreviewToggle href={`/api/documents/${documentId}/badge`} alt="Verified Badge" />
+          </>
         )}
 
         <button
@@ -161,14 +206,17 @@ export function SealedDocumentOutputs({
       {expanded && (
         <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
           {hasSignedFile && (
-            <DownloadShareButton
-              href={`/api/documents/${documentId}/signed-file`}
-              filename="post-doc-sealed.pdf"
-              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
-            >
-              <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-              Post-doc sealed PDF
-            </DownloadShareButton>
+            <>
+              <DownloadShareButton
+                href={`/api/documents/${documentId}/signed-file`}
+                filename="post-doc-sealed.pdf"
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
+              >
+                <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                Post-doc sealed PDF
+              </DownloadShareButton>
+              <EmbeddedPdfPreview href={`/api/documents/${documentId}/signed-file`} filename="post-doc-sealed.pdf" />
+            </>
           )}
           {hasCertificateFile && (
             <OutputHint
@@ -186,16 +234,22 @@ export function SealedDocumentOutputs({
               </DownloadShareButton>
             </OutputHint>
           )}
+          {hasCertificateFile && (
+            <EmbeddedPdfPreview href={`/api/documents/${documentId}/certificate`} filename="certificate.pdf" />
+          )}
           {hasBadgeOn && (
-            <DownloadShareButton
-              href={`/api/documents/${documentId}/badge`}
-              filename="badge.png"
-              mimeType="image/png"
-              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
-            >
-              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-              Badge image
-            </DownloadShareButton>
+            <>
+              <DownloadShareButton
+                href={`/api/documents/${documentId}/badge`}
+                filename="badge.png"
+                mimeType="image/png"
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
+              >
+                <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                Badge image
+              </DownloadShareButton>
+              <ImagePreviewToggle href={`/api/documents/${documentId}/badge`} alt="Verified Badge" />
+            </>
           )}
           {verifyUrl && (
             <>
