@@ -6,18 +6,27 @@
 // (DownloadShareButton), but a user who just wants to LOOK at what
 // they're about to send had no way to do that without going through the
 // share sheet's own Quick Look step first -- direct question: "is that
-// normal?" Researched how DocuSign/Adobe Sign/PandaDoc handle this
-// (same session): they show the document inline first, with
-// Download/Share as controls attached to that view, rather than
-// share-sheet-first. This adds that as an option alongside the existing
-// one-tap share -- it doesn't replace it, since "just send this to my
-// client over WhatsApp" (the share-sheet-first flow) is still the faster
-// path for the common case.
+// normal?" Researched how DocuSign/Adobe Sign/PandaDoc handle this (same
+// session): they show the document inline first, with Download/Share as
+// controls attached to that view, rather than share-sheet-first.
 //
-// Lazy: pdfjs-dist and the actual PDF bytes are only fetched once the user
-// taps "Preview" -- nothing extra loads for the (probably still more
-// common, especially on the 70%-mobile-traffic userbase) case of someone
-// who never opens this panel at all.
+// SIMPLIFIED same day, direct follow-up ("I don't think I need the
+// separate preview button... let's just generate the preview as the 1st
+// step to reduce the button count"): originally this sat next to a
+// separate DownloadShareButton (two buttons per output). Collapsed into
+// one -- the single trigger below IS the preview trigger; Download/Share
+// now lives only inside the opened panel, not as a second top-level
+// button. `children` is the trigger's closed-state label/icon (e.g. the
+// Stamp icon + "Badge-on sealed PDF" text that used to belong to the
+// separate download button); the OutputHint one-time popovers wrap only
+// this component's own internal trigger button now, not a second element,
+// via the optional `hint` prop -- see the comment above the `hint` field
+// below for why that has to happen INSIDE this component rather than the
+// caller wrapping it externally.
+//
+// Lazy: pdfjs-dist and the actual PDF bytes are only fetched once the
+// trigger is tapped -- nothing extra loads for anyone who doesn't open a
+// given output at all.
 //
 // Same progressive-render/polyfill/worker pattern as signing-view.tsx's
 // own continuous-scroll viewer (pages append to state as they finish
@@ -27,9 +36,10 @@
 // own magic bytes, not the response's Content-Type header, so this works
 // unmodified against the application/octet-stream-serving routes (67d4ddb) --
 // no conflict with that fix.
-import { useEffect, useRef, useState } from "react";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { EyeOff, Loader2 } from "lucide-react";
 import { DownloadShareButton } from "@/components/download-share-button";
+import { OutputHint } from "@/components/output-hint";
 import { installMapUpsertPolyfill } from "@/lib/pdfjs-map-polyfill";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -40,12 +50,25 @@ export function EmbeddedPdfPreview({
   href,
   filename,
   triggerClassName,
-  triggerLabel = "Preview",
+  children,
+  hint,
 }: {
   href: string;
   filename: string;
   triggerClassName?: string;
-  triggerLabel?: string;
+  /** Trigger's closed-state content -- icon + label, e.g. the same
+   *  <Stamp/>+"Badge-on sealed PDF" the old separate download button used
+   *  to show. Swapped for an EyeOff+"Hide preview" pair while open. */
+  children: ReactNode;
+  /** One-time "best for X" popover (output-hint.tsx), now wrapped around
+   *  this component's OWN trigger button internally rather than by the
+   *  caller wrapping the whole component -- this component's outer div
+   *  becomes `w-full` once opened (see the className comment below), and
+   *  OutputHint's own wrapper is an inline-flex span; nesting a
+   *  conditionally-w-full block inside that span made the open panel's
+   *  width resolution ambiguous. Keeping OutputHint's span around just the
+   *  fixed-size button (never around the panel) sidesteps that entirely. */
+  hint?: { storageKey: string; text: string; active?: boolean };
 }) {
   const [open, setOpen] = useState(false);
   const [pages, setPages] = useState<RenderedPage[]>([]);
@@ -99,20 +122,36 @@ export function EmbeddedPdfPreview({
     };
   }, [open, href]);
 
+  const trigger = (
+    <button
+      type="button"
+      onClick={() => setOpen((v) => !v)}
+      className={triggerClassName ?? cn(buttonVariants({ size: "sm" }), "gap-1.5")}
+    >
+      {open ? (
+        <>
+          <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
+          Hide preview
+        </>
+      ) : (
+        children
+      )}
+    </button>
+  );
+
   return (
     // w-full only once opened -- this sits inside a flex-wrap button row
-    // alongside the trigger's siblings; staying content-width while closed
-    // keeps it inline with the rest of the row, and only forces a line
-    // wrap for the (much wider) panel once there's actually a panel to show.
+    // alongside its siblings; staying content-width while closed keeps it
+    // inline with the rest of the row, and only forces a line wrap for the
+    // (much wider) panel once there's actually a panel to show.
     <div className={cn(open && "w-full")}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={triggerClassName ?? cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
-      >
-        {open ? <EyeOff className="h-3.5 w-3.5" aria-hidden="true" /> : <Eye className="h-3.5 w-3.5" aria-hidden="true" />}
-        {open ? "Hide preview" : triggerLabel}
-      </button>
+      {hint ? (
+        <OutputHint storageKey={hint.storageKey} hint={hint.text} active={hint.active ?? true}>
+          {trigger}
+        </OutputHint>
+      ) : (
+        trigger
+      )}
 
       {open && (
         <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
