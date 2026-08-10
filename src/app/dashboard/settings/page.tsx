@@ -11,6 +11,7 @@ import { FrequentSignersSettings } from "@/components/frequent-signers-settings"
 import { WebhookSettings } from "@/components/webhook-settings";
 import { IdentitySettings } from "@/components/identity-settings";
 import { BadgePlacementSettings } from "@/components/badge-placement-settings";
+import { CopyLinkButton } from "@/components/copy-link-button";
 import { Collapsible } from "@/components/collapsible";
 import { resolveIdentityStatus } from "@/lib/identity";
 
@@ -26,7 +27,7 @@ export default async function SettingsPage() {
   const { data: org } = await supabase
     .from("organizations")
     .select(
-      "name, plan, logo_url, brand_color, api_key_prefix, auto_suggest_on_upload, identity_verified_at, identity_verified_name, badge_placement_mode"
+      "name, plan, logo_url, brand_color, api_key_prefix, auto_suggest_on_upload, identity_verified_at, identity_verified_name, badge_placement_mode, last_badge_page, last_badge_x, last_badge_y, last_badge_width"
     )
     .eq("id", orgId)
     .single();
@@ -39,6 +40,24 @@ export default async function SettingsPage() {
   // mode read here anymore (removed same day) — the dashboard's own seal
   // route hardcodes "both" now, so there's no preference left to fetch.
   const identityStatus = resolveIdentityStatus(org);
+
+  // Advanced "badge position for API users" block (2026-08-10, direct ask)
+  // — a read-only preview of organizations.last_badge_* in exactly the
+  // shape V2.1's own explicit-coordinates option is already scoped to
+  // accept (IN_DOCUMENT_BADGE_AND_API_SEAL_SCOPE.md), so it's a direct
+  // copy-paste into that endpoint whenever it ships, not something an
+  // integrator has to translate. Null until an org has saved a Badge
+  // Placer position at least once (via "Ask me every time" or the
+  // Business payment-link screen) — nothing to show before then.
+  const hasBadgePosition =
+    org.last_badge_page != null && org.last_badge_x != null && org.last_badge_y != null && org.last_badge_width != null;
+  const badgePositionJson = hasBadgePosition
+    ? JSON.stringify(
+        { page: org.last_badge_page, x: org.last_badge_x, y: org.last_badge_y, width: org.last_badge_width },
+        null,
+        2
+      )
+    : null;
 
   const hasCustomBranding = planHasFeature(org.plan, "customBranding");
   const hasApiAccess = planHasFeature(org.plan, "apiAccess");
@@ -120,8 +139,27 @@ export default async function SettingsPage() {
               itself — and if so, whether you get to choose exactly where.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <BadgePlacementSettings initialMode={org.badge_placement_mode === "ask" ? "ask" : "skip"} />
+            {hasBadgePosition && (
+              <div className="border-t border-slate-100 pt-4">
+                <Collapsible label="Advanced: badge position for API users">
+                  <p className="text-xs text-slate-500">
+                    Your most recently saved badge position, in the shape the future sealing API will accept as an
+                    explicit placement input. Not usable yet — the API endpoint itself hasn&apos;t shipped — but
+                    worth having on hand for when it does.
+                  </p>
+                  <div className="mt-2 rounded-md bg-slate-50 p-3">
+                    <pre className="overflow-x-auto whitespace-pre-wrap break-all text-xs text-slate-600">
+                      {badgePositionJson}
+                    </pre>
+                  </div>
+                  <div className="mt-2">
+                    <CopyLinkButton value={badgePositionJson ?? ""} label="Copy JSON" />
+                  </div>
+                </Collapsible>
+              </div>
+            )}
           </CardContent>
         </Card>
 
