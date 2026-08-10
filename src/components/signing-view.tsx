@@ -14,6 +14,7 @@ import { SummaryMarkdown } from "@/lib/summary-markdown";
 import { SignerLoading, type LoadStage } from "@/components/signer-loading";
 import { withTimeout } from "@/lib/with-timeout";
 import { installMapUpsertPolyfill } from "@/lib/pdfjs-map-polyfill";
+import { EmbeddedPdfPreview } from "@/components/embedded-pdf-preview";
 
 // A load stuck longer than this is treated the same as an outright failure
 // (see DOCUMENT_ARCHITECTURE.md and the 2026-07-25 audit's slow-connection
@@ -174,7 +175,6 @@ export function SigningView({
   // hash isn't generated until the completing submission. See
   // showSignedScreen below for where this gets set.
   const [documentHash, setDocumentHash] = useState<string | null>(null);
-  const [preparingSignedPdf, setPreparingSignedPdf] = useState(false);
   const [declined, setDeclined] = useState(false);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
@@ -815,50 +815,6 @@ export function SigningView({
     a.click();
   }
 
-  // Previously a plain <a href download> link -- on mobile that just drops
-  // the PDF into the browser's downloads/Files app, and sharing it from
-  // there (e.g. via Messages or email) means leaving this page, finding it,
-  // then re-attaching it elsewhere. Same fix as handleShareSpeedStat above:
-  // fetch the actual file and hand it to the OS share sheet where
-  // supported, so "send this signed copy to someone" is one tap. Falls back
-  // to a normal browser download (still via a real file, not a re-fetch) if
-  // share isn't supported or the fetch fails outright.
-  async function handleShareOrDownloadSignedPdf() {
-    const url = `/api/sign/${token}/signed-file`;
-    const filename = `${documentTitle.replace(/[^\w.\- ]/g, "")}-signed.pdf`;
-    setPreparingSignedPdf(true);
-    try {
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error("Could not fetch signed PDF");
-      const blob = await resp.blob();
-      const file = new File([blob], filename, { type: "application/pdf" });
-
-      if (navigator.canShare?.({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file] });
-          return;
-        } catch (err) {
-          // AbortError means the signer cancelled the share sheet -- respect
-          // that, don't surprise them with a download too.
-          if (err instanceof Error && err.name === "AbortError") return;
-        }
-      }
-
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(blobUrl);
-    } catch {
-      // Couldn't fetch or share at all -- fall back to the original
-      // behavior (a direct navigation to the download endpoint).
-      window.location.href = url;
-    } finally {
-      setPreparingSignedPdf(false);
-    }
-  }
-
   async function handleDecline() {
     setDeclining(true);
     setError("");
@@ -986,14 +942,28 @@ export function SigningView({
             </div>
           )}
           {documentCompleted && (
-            <button
-              type="button"
-              onClick={handleShareOrDownloadSignedPdf}
-              disabled={preparingSignedPdf}
-              className="mt-4 inline-block rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+            // EmbeddedPdfPreview, not the old plain fetch+share button
+            // (2026-08-10, direct follow-up: "thoughts on supporting the
+            // preview for [the signer's download button]?" — this is the
+            // only file this signer's browser hasn't rendered yet even
+            // though they just reviewed the whole document seconds ago: the
+            // Certificate of Completion page baked into the final PDF, and
+            // (if they weren't the last to sign) any other signer's fields.
+            // Doesn't cost the "signed in 49 seconds" speed claim -- that's
+            // about time-to-sign, and this sits entirely after the Signed
+            // screen already loaded, not before submit (see
+            // feedback-no-friction-in-signing-flow.md's own "review-like
+            // content belongs on the Signed screen if anywhere"). pdfjs is
+            // already loaded in this browser from the continuous-scroll
+            // viewer used during signing itself, so there's no extra
+            // library weight either.
+            <EmbeddedPdfPreview
+              href={`/api/sign/${token}/signed-file`}
+              filename={`${documentTitle.replace(/[^\w.\- ]/g, "")}-signed.pdf`}
+              triggerClassName="mt-4 inline-block rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
             >
-              {preparingSignedPdf ? "Preparing…" : "Download signed PDF"}
-            </button>
+              Download signed PDF
+            </EmbeddedPdfPreview>
           )}
           {/* Certificate/verify QR (CERTIFICATE_VISIBILITY_PROMOTION_SCOPE.md,
               2026-08-04) — every signed document already gets a Certificate
