@@ -1508,11 +1508,22 @@ export function ConsoleChat({
                         last turn could be missing from History too. Opening
                         in a new tab keeps the console tab alive and never
                         interrupts that autosave at all. */}
+                    {/* target="_blank" kept here deliberately (see comment
+                        above — closing/navigating this tab would interrupt
+                        an in-flight autosave), unlike the other download
+                        links fixed 2026-08-10 for the mobile-share-URL bug
+                        (sealed-document-outputs.tsx). Adding `download`
+                        alongside it still fixes that bug: modern browsers
+                        honor `download` as "save this file" regardless of
+                        target, so there's no in-page PDF preview left for
+                        iOS's share sheet to grab a URL from, and the console
+                        tab never navigates away either. */}
                     {m.sealed.hasSignedFile && (
                       <a
                         href={`/api/documents/${m.sealed.documentId}/signed-file`}
                         target="_blank"
                         rel="noreferrer"
+                        download="sealed.pdf"
                         className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
                       >
                         <FileText className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1524,6 +1535,7 @@ export function ConsoleChat({
                         href={`/api/documents/${m.sealed.documentId}/certificate`}
                         target="_blank"
                         rel="noreferrer"
+                        download="certificate.pdf"
                         className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
                       >
                         <FileText className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1534,6 +1546,7 @@ export function ConsoleChat({
                       href={`/api/documents/${m.sealed.documentId}/badge`}
                       target="_blank"
                       rel="noreferrer"
+                      download="badge.png"
                       className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-white/5"
                     >
                       <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />

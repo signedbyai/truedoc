@@ -350,11 +350,16 @@ export default async function DocumentEditorPage({
                 />
               ) : (
                 <div className="flex flex-wrap items-center gap-2">
-                  <a href={`/api/documents/${id}/signed-file`} className={buttonVariants({ size: "sm" })}>
+                  <a
+                    href={`/api/documents/${id}/signed-file`}
+                    download={doc.signed_file_path ? "signed.pdf" : undefined}
+                    className={buttonVariants({ size: "sm" })}
+                  >
                     {doc.signed_file_path ? "Download signed PDF" : "Signed PDF pending…"}
                   </a>
                   <a
                     href={`/api/documents/${id}/original-file`}
+                    download="original.pdf"
                     className={buttonVariants({ variant: "outline", size: "sm" })}
                   >
                     Download original (unsigned)

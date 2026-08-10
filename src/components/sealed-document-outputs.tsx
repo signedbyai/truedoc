@@ -14,6 +14,24 @@
 // variant), Certificate (separate, untouched-original variant, unchanged
 // name), Badge image (once Badge-on exists and takes over as primary),
 // and the verify-link share options — behind a "Show all options" toggle.
+//
+// FIXED 2026-08-10 (direct report + screenshot: sharing the Badge-on PDF
+// on mobile showed a raw /api/documents/... URL instead of the actual
+// file). Root cause: every one of these file-download links used
+// target="_blank" with no `download` attribute — on mobile Safari in
+// particular, that combination often renders the PDF in an in-page Quick
+// Look preview rather than committing to an actual download, and tapping
+// iOS's own Share icon FROM that preview shares the page's URL, not the
+// file. Fixed by dropping target="_blank"/rel="noreferrer" (unnecessary
+// for a same-origin file response) and adding a real `download` attribute
+// to every one of these — that's the standard signal that makes the
+// browser treat the response as a file to save, not a page to render, so
+// there's no in-page preview left to share the URL of in the first place.
+// The value doesn't need to exactly match the server's own
+// Content-Disposition filename (browsers prefer the header's filename
+// when both are present) — it only needs to be non-empty. NOT applied to
+// "Open verify page" below, which is a genuine page navigation, not a
+// file download, and should keep opening in a new tab.
 import { useEffect, useState } from "react";
 import { ExternalLink, FileText, ShieldCheck, ChevronDown, Stamp } from "lucide-react";
 import { CopyLinkButton } from "@/components/copy-link-button";
@@ -90,8 +108,7 @@ export function SealedDocumentOutputs({
           >
             <a
               href={`/api/documents/${documentId}/badge-on`}
-              target="_blank"
-              rel="noreferrer"
+              download="badge-on-sealed.pdf"
               className={cn(buttonVariants({ size: "sm" }), "gap-1.5")}
             >
               <Stamp className="h-3.5 w-3.5" aria-hidden="true" />
@@ -110,8 +127,7 @@ export function SealedDocumentOutputs({
           >
             <a
               href={`/api/documents/${documentId}/badge`}
-              target="_blank"
-              rel="noreferrer"
+              download="badge.png"
               className={cn(buttonVariants({ size: "sm" }), "gap-1.5")}
             >
               <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
@@ -135,8 +151,7 @@ export function SealedDocumentOutputs({
           {hasSignedFile && (
             <a
               href={`/api/documents/${documentId}/signed-file`}
-              target="_blank"
-              rel="noreferrer"
+              download="post-doc-sealed.pdf"
               className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
             >
               <FileText className="h-3.5 w-3.5" aria-hidden="true" />
@@ -151,8 +166,7 @@ export function SealedDocumentOutputs({
             >
               <a
                 href={`/api/documents/${documentId}/certificate`}
-                target="_blank"
-                rel="noreferrer"
+                download="certificate.pdf"
                 className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
               >
                 <FileText className="h-3.5 w-3.5" aria-hidden="true" />
@@ -163,8 +177,7 @@ export function SealedDocumentOutputs({
           {hasBadgeOn && (
             <a
               href={`/api/documents/${documentId}/badge`}
-              target="_blank"
-              rel="noreferrer"
+              download="badge.png"
               className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
             >
               <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
@@ -187,7 +200,11 @@ export function SealedDocumentOutputs({
               <QrLinkButton link={verifyUrl} caption="Their camera opens this document's verification page." />
             </>
           )}
-          <a href={`/api/documents/${documentId}/original-file`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+          <a
+            href={`/api/documents/${documentId}/original-file`}
+            download="original.pdf"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
             Download original (unsigned)
           </a>
           <DuplicateDocumentButton documentId={documentId} />

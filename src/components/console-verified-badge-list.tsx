@@ -122,11 +122,13 @@ export function ConsoleVerifiedBadgeList() {
                   </a>
                 </>
               )}
+              {/* download attribute, no target="_blank" (fixed 2026-08-10 —
+                  see sealed-document-outputs.tsx's file-header comment for
+                  the full mobile-share-URL bug this pattern avoids). */}
               {doc.hasSignedFile && (
                 <a
                   href={`/api/documents/${doc.id}/signed-file`}
-                  target="_blank"
-                  rel="noreferrer"
+                  download="sealed.pdf"
                   className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs font-medium text-neutral-300 hover:bg-white/5"
                 >
                   <FileText className="h-3 w-3" aria-hidden="true" />
@@ -136,8 +138,7 @@ export function ConsoleVerifiedBadgeList() {
               {doc.hasCertificateFile && (
                 <a
                   href={`/api/documents/${doc.id}/certificate`}
-                  target="_blank"
-                  rel="noreferrer"
+                  download="certificate.pdf"
                   className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs font-medium text-neutral-300 hover:bg-white/5"
                 >
                   <FileText className="h-3 w-3" aria-hidden="true" />
@@ -146,8 +147,7 @@ export function ConsoleVerifiedBadgeList() {
               )}
               <a
                 href={`/api/documents/${doc.id}/badge`}
-                target="_blank"
-                rel="noreferrer"
+                download="badge.png"
                 className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs font-medium text-neutral-300 hover:bg-white/5"
               >
                 <ShieldCheck className="h-3 w-3" aria-hidden="true" />
