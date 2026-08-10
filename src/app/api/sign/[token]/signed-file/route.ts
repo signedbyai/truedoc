@@ -24,10 +24,23 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   }
 
   try {
-    const { body, contentType } = await getFromR2(doc.signed_file_path);
+    const { body } = await getFromR2(doc.signed_file_path);
     return new NextResponse(body, {
       headers: {
-        "Content-Type": contentType,
+        // application/octet-stream, not the real PDF content type -- same
+        // fix as the dashboard-side signed-file/certificate/original-file/
+        // badge-on routes (67d4ddb) and for the same reason: Safari
+        // overrides download/attachment disposition for anything it
+        // recognizes as application/pdf. signing-view.tsx's own
+        // handleShareOrDownloadSignedPdf already fetches this as a blob and
+        // hands it to navigator.share() client-side (which was never
+        // subject to this bug -- fetch() doesn't trigger Safari's viewer
+        // override, only a top-level navigation does), but that function's
+        // own last-resort fallback (`window.location.href = url`, used only
+        // if the fetch itself throws) DOES navigate here directly -- this
+        // keeps that rare fallback path safe too, for consistency with
+        // every other file-download route in the app.
+        "Content-Type": "application/octet-stream",
         "Content-Disposition": `attachment; filename="${doc.title.replace(/[^\w.\- ]/g, "")}-signed.pdf"`,
         "Cache-Control": "private, max-age=60",
       },
