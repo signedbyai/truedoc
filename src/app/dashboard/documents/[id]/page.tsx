@@ -8,7 +8,9 @@ import { SignerRow } from "@/components/signer-row";
 import { AuditTrail, type AuditEvent } from "@/components/audit-trail";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
 import { SealedDocumentOutputs } from "@/components/sealed-document-outputs";
+import { DownloadShareButton } from "@/components/download-share-button";
 import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { planHasFeature, getFreePlanUsage } from "@/lib/plan";
 import { formatEngagement } from "@/lib/page-view-tracking";
 import { latestTimestamp } from "@/lib/last-viewed";
@@ -350,20 +352,26 @@ export default async function DocumentEditorPage({
                 />
               ) : (
                 <div className="flex flex-wrap items-center gap-2">
-                  <a
-                    href={`/api/documents/${id}/signed-file`}
-                    download={doc.signed_file_path ? "signed.pdf" : undefined}
-                    className={buttonVariants({ size: "sm" })}
-                  >
-                    {doc.signed_file_path ? "Download signed PDF" : "Signed PDF pending…"}
-                  </a>
-                  <a
+                  {doc.signed_file_path ? (
+                    <DownloadShareButton
+                      href={`/api/documents/${id}/signed-file`}
+                      filename="signed.pdf"
+                      className={buttonVariants({ size: "sm" })}
+                    >
+                      Download signed PDF
+                    </DownloadShareButton>
+                  ) : (
+                    <span className={cn(buttonVariants({ size: "sm" }), "pointer-events-none opacity-60")}>
+                      Signed PDF pending…
+                    </span>
+                  )}
+                  <DownloadShareButton
                     href={`/api/documents/${id}/original-file`}
-                    download="original.pdf"
+                    filename="original.pdf"
                     className={buttonVariants({ variant: "outline", size: "sm" })}
                   >
                     Download original (unsigned)
-                  </a>
+                  </DownloadShareButton>
                   <DuplicateDocumentButton documentId={id} />
                 </div>
               )}
@@ -434,12 +442,13 @@ export default async function DocumentEditorPage({
               <span className="font-mono">#{doc.id.slice(0, 8)}</span>
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <a
+              <DownloadShareButton
                 href={`/api/documents/${id}/original-file`}
+                filename="original.pdf"
                 className={buttonVariants({ variant: "outline", size: "sm" })}
               >
                 Download original (unsigned)
-              </a>
+              </DownloadShareButton>
               <DuplicateDocumentButton documentId={id} />
             </div>
           </div>

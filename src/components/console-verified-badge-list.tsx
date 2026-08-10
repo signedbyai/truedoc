@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, ExternalLink, FileText, ShieldCheck } from "lucide-react";
 import { ConsoleShareLinkButton, ConsoleQrLinkButton } from "@/components/console-link-actions";
+import { DownloadShareButton } from "@/components/download-share-button";
+
+const FILE_BUTTON_CLASS =
+  "inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs font-medium text-neutral-300 hover:bg-white/5";
 
 type SealedDocument = {
   id: string;
@@ -122,37 +126,33 @@ export function ConsoleVerifiedBadgeList() {
                   </a>
                 </>
               )}
-              {/* download attribute, no target="_blank" (fixed 2026-08-10 —
-                  see sealed-document-outputs.tsx's file-header comment for
-                  the full mobile-share-URL bug this pattern avoids). */}
+              {/* DownloadShareButton, not a plain <a download> (round 3 fix,
+                  2026-08-10) — see sealed-document-outputs.tsx's file-header
+                  comment: the download-attribute fix (cfb2147) made the save
+                  itself reliable, but it's silent, so this fetches the file
+                  and hands it to navigator.share() for a real OS open/save
+                  sheet, falling back to the same blob-download otherwise. */}
               {doc.hasSignedFile && (
-                <a
-                  href={`/api/documents/${doc.id}/signed-file`}
-                  download="sealed.pdf"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs font-medium text-neutral-300 hover:bg-white/5"
-                >
+                <DownloadShareButton href={`/api/documents/${doc.id}/signed-file`} filename="sealed.pdf" className={FILE_BUTTON_CLASS}>
                   <FileText className="h-3 w-3" aria-hidden="true" />
                   Sealed PDF
-                </a>
+                </DownloadShareButton>
               )}
               {doc.hasCertificateFile && (
-                <a
-                  href={`/api/documents/${doc.id}/certificate`}
-                  download="certificate.pdf"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs font-medium text-neutral-300 hover:bg-white/5"
-                >
+                <DownloadShareButton href={`/api/documents/${doc.id}/certificate`} filename="certificate.pdf" className={FILE_BUTTON_CLASS}>
                   <FileText className="h-3 w-3" aria-hidden="true" />
                   Certificate
-                </a>
+                </DownloadShareButton>
               )}
-              <a
+              <DownloadShareButton
                 href={`/api/documents/${doc.id}/badge`}
-                download="badge.png"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-xs font-medium text-neutral-300 hover:bg-white/5"
+                filename="badge.png"
+                mimeType="image/png"
+                className={FILE_BUTTON_CLASS}
               >
                 <ShieldCheck className="h-3 w-3" aria-hidden="true" />
                 Badge
-              </a>
+              </DownloadShareButton>
             </div>
           </div>
         );
