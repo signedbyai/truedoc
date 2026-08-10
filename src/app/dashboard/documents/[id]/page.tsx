@@ -149,7 +149,17 @@ export default async function DocumentEditorPage({
     // VERIFIED_BADGE_DASHBOARD_SCOPE.md): a sealed document's verify link is
     // meant to be copied and handed to a client, so it needs the full host,
     // not a relative path.
-    const verifyUrl = completedHash ? `https://signedby.ai/verify?hash=${completedHash}` : null;
+    //
+    // &from=dashboard&doc=<id> (2026-08-10, direct bug report: "when you go
+    // there from the seal a document output, the back button takes you out
+    // all the way to the pre-login home page") — same fix class as
+    // verified-badge-actions.ts's own &from=console: without this, /verify's
+    // "← SignedBy" link always points at the plain marketing homepage, which
+    // is right for a signer or a random QR scan but not for the sender who
+    // just came from their own document. See verify/page.tsx's own comment
+    // for the full reasoning.
+    const verifyBackParams = `&from=dashboard&doc=${id}`;
+    const verifyUrl = completedHash ? `https://signedby.ai/verify?hash=${completedHash}${verifyBackParams}` : null;
 
     // A sealed document's history is noisier than it needs to be: the
     // self-sign primitive (VERIFIED_BADGE_SCOPE.md's decision 6) fires the
@@ -243,7 +253,10 @@ export default async function DocumentEditorPage({
                 one-click proof link, not just a pointer to go search for it. */}
             <p className="mt-1 text-xs text-slate-400">
               <span className="font-mono">#{doc.id.slice(0, 8)}</span> &middot; anyone can verify this document at{" "}
-              <Link href={completedHash ? `/verify?hash=${completedHash}` : "/verify"} className="underline hover:text-slate-600">
+              <Link
+                href={completedHash ? `/verify?hash=${completedHash}${verifyBackParams}` : `/verify?${verifyBackParams.slice(1)}`}
+                className="underline hover:text-slate-600"
+              >
                 signedby.ai/verify
               </Link>
             </p>
@@ -284,7 +297,10 @@ export default async function DocumentEditorPage({
                   A tamper-evident Certificate of Completion was added to the signed PDF, with a SHA-512 hash anyone can
                   check against the original.
                 </p>
-                <Link href={`/verify?hash=${completedHash}`} className="mt-2 inline-block text-sm underline hover:text-slate-900">
+                <Link
+                  href={`/verify?hash=${completedHash}${verifyBackParams}`}
+                  className="mt-2 inline-block text-sm underline hover:text-slate-900"
+                >
                   Verify this document
                 </Link>
               </div>

@@ -59,10 +59,30 @@ function VerifyPageInner() {
   // dropped someone at the marketing homepage instead of back to their
   // console session. Tagged onto the verifyUrl by verified-badge-actions.ts
   // and console-verified-badge-list.tsx, both genuinely console-only
-  // sources — every other caller of this page (the dashboard document
-  // page, the signer's completed screen, a QR scan) keeps the plain "/"
-  // link, which is the right destination for those.
-  const fromConsole = searchParams.get("from") === "console";
+  // sources.
+  //
+  // ?from=dashboard&doc=<id> (2026-08-10, same bug class, direct report:
+  // "when you go there from the seal a document output, the back button
+  // takes you out all the way to the pre-login home page") — the dashboard
+  // document page's own verify links (the header link, the certificate-
+  // preview card, and every Copy/Share/QR/Open-page option in
+  // SealedDocumentOutputs, which all share one verifyUrl string) were still
+  // using the same plain "/" link this page falls back to by default. A
+  // logged-in sender clicking "← SignedBy" from there landed on the logged-
+  // out marketing homepage instead of back on their own document — same
+  // root cause as the console case, just never tagged for this source.
+  // Goes to the SPECIFIC document (not just a bare "/dashboard") since the
+  // id is already available at both call sites building this link.
+  //
+  // The signer's own completed screen (signing-view.tsx) and any QR-code/
+  // badge scan stay on the plain "/" link deliberately — neither has a
+  // dashboard session to return to, so the marketing homepage genuinely is
+  // the right destination for those, same reasoning as before.
+  const from = searchParams.get("from");
+  const backDocId = searchParams.get("doc");
+  const backHref =
+    from === "console" ? consoleAppUrl() : from === "dashboard" && backDocId ? `/dashboard/documents/${backDocId}` : "/";
+  const backLabel = from === "console" ? "← Back to console" : from === "dashboard" && backDocId ? "← Back to document" : "← SignedBy";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<Result>(null);
@@ -104,8 +124,8 @@ function VerifyPageInner() {
   return (
     <main className="flex min-h-screen flex-col items-center bg-slate-50 px-6 py-16">
       <div className="w-full max-w-md">
-        <Link href={fromConsole ? consoleAppUrl() : "/"} className="text-sm font-medium text-slate-500 hover:text-slate-700">
-          {fromConsole ? "← Back to console" : "← SignedBy"}
+        <Link href={backHref} className="text-sm font-medium text-slate-500 hover:text-slate-700">
+          {backLabel}
         </Link>
 
         <h1 className="mt-4 text-2xl font-semibold text-slate-900">Verify a document</h1>
