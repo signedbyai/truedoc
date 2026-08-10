@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ExternalLink, FileText, ShieldCheck } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getRequestCurrency } from "@/lib/currency.server";
@@ -8,12 +7,8 @@ import { VoidDocumentButton } from "@/components/void-document-button";
 import { SignerRow } from "@/components/signer-row";
 import { AuditTrail, type AuditEvent } from "@/components/audit-trail";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
-import { CopyLinkButton } from "@/components/copy-link-button";
-import { ShareLinkButton } from "@/components/share-link-button";
-import { QrLinkButton } from "@/components/qr-link-button";
-import { OutputHint } from "@/components/output-hint";
+import { SealedDocumentOutputs } from "@/components/sealed-document-outputs";
 import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { planHasFeature, getFreePlanUsage } from "@/lib/plan";
 import { formatEngagement } from "@/lib/page-view-tracking";
 import { latestTimestamp } from "@/lib/last-viewed";
@@ -66,7 +61,7 @@ export default async function DocumentEditorPage({
   const { data: doc } = await supabase
     .from("documents")
     .select(
-      "id, org_id, title, page_count, status, signed_file_path, is_verified_badge, certificate_file_path, certificate_mode, payment_link_url, payment_label, docgate_url, docgate_label, open_notifications, recipient_notice, invite_subject, invite_message, expires_at, organizations(plan, auto_suggest_on_upload)"
+      "id, org_id, title, page_count, status, signed_file_path, is_verified_badge, certificate_file_path, certificate_mode, badge_stamped_file_path, payment_link_url, payment_label, docgate_url, docgate_label, open_notifications, recipient_notice, invite_subject, invite_message, expires_at, organizations(plan, auto_suggest_on_upload)"
     )
     .eq("id", id)
     .single();
@@ -129,6 +124,23 @@ export default async function DocumentEditorPage({
     // 2026-08-04) — same "completed" event other routes (badge, console
     // verified-badge list) already read document_hash off of.
     const completedHash = (auditEvents || []).find((e) => e.event_type === "completed")?.document_hash ?? null;
+
+    // Server-computed "is this the org's very first seal" flag
+    // (IN_DOCUMENT_BADGE_AND_API_SEAL_SCOPE.md V1.3) — gates the
+    // badge-placement discovery hint, same sealCount === 1 check
+    // verified-badge-actions.ts already does for the referral seal-credit
+    // reward, reused here rather than a plain localStorage check since the
+    // moment being marked is about the org's history, not just this
+    // browser's popover history.
+    let isFirstSeal = false;
+    if (doc.is_verified_badge) {
+      const { count: sealCount } = await supabase
+        .from("documents")
+        .select("id", { count: "exact", head: true })
+        .eq("org_id", doc.org_id)
+        .eq("is_verified_badge", true);
+      isFirstSeal = sealCount === 1;
+    }
     // Absolute, shareable form of the same link — matches console-verified-
     // badge-list.tsx's own verifyUrl (2026-08-05 follow-up to
     // VERIFIED_BADGE_DASHBOARD_SCOPE.md): a sealed document's verify link is
@@ -319,105 +331,25 @@ export default async function DocumentEditorPage({
               })}
             </ul>
 
-            <div className="mt-6 flex flex-wrap items-center gap-2">
+            <div className="mt-6">
               {doc.is_verified_badge ? (
-                // Console-parity output row (2026-08-05 follow-up to
-                // VERIFIED_BADGE_DASHBOARD_SCOPE.md) — same five outputs,
-                // same order, same icons as console-chat.tsx's own
-                // `m.sealed` block (~line 1479) and console-verified-badge-
-                // list.tsx, just light-themed for the dashboard instead of
-                // Console's dark chat surface. This is the dashboard's only
-                // "Badge image" link — it didn't exist here before.
-                <>
-                  {verifyUrl && (
-                    <>
-                      <CopyLinkButton value={verifyUrl} label="Copy verify link" />
-                      <a
-                        href={verifyUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                        Open verify page
-                      </a>
-                      {/* Same "get this link onto a phone" pair added to
-                          signer-row.tsx (2026-08-07) -- a freelancer who just
-                          sealed a Verified Badge document is exactly as
-                          likely to want to text/WhatsApp/AirDrop this link
-                          to a client, or show them a QR to scan in person,
-                          as a signer is to receive a signing link that way. */}
-                      <ShareLinkButton
-                        link={verifyUrl}
-                        shareText={`Here's the verification link for "${doc.title}":`}
-                        label="Share verify link"
-                      />
-                      <QrLinkButton
-                        link={verifyUrl}
-                        caption="Their camera opens this document's verification page."
-                      />
-                    </>
-                  )}
-                  {/* certificate_mode "separate" never produces a
-                      signed_file_path — the original stays byte-for-byte
-                      untouched by design (VERIFIED_BADGE_SCOPE.md's
-                      "byte-for-byte untouched") — so this button is simply
-                      omitted rather than shown as permanently pending. */}
-                  {doc.signed_file_path && doc.certificate_mode !== "separate" && (
-                    <a
-                      href={`/api/documents/${id}/signed-file`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
-                    >
-                      <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-                      Sealed PDF
-                    </a>
-                  )}
-                  {doc.certificate_file_path && (
-                    // One-time "best for X" education (2026-08-06,
-                    // IN_DOCUMENT_BADGE_AND_API_SEAL_SCOPE.md section 4c) --
-                    // no document-type detection, same static-hint call as
-                    // the placement decision above.
-                    <OutputHint
-                      storageKey="sb_output_hint_certificate_seen"
-                      hint="Best for datarooms — keeps your original file completely untouched, with proof filed separately."
-                    >
-                      <a
-                        href={`/api/documents/${id}/certificate`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
-                      >
-                        <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-                        Certificate
-                      </a>
-                    </OutputHint>
-                  )}
-                  <OutputHint
-                    storageKey="sb_output_hint_badge_seen"
-                    hint="Best for invoices — a clean mark you can drop straight into it, nothing else to manage."
-                  >
-                    <a
-                      href={`/api/documents/${id}/badge`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
-                    >
-                      <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                      Badge image
-                    </a>
-                  </OutputHint>
-                  <a
-                    href={`/api/documents/${id}/original-file`}
-                    className={buttonVariants({ variant: "outline", size: "sm" })}
-                  >
-                    Download original (unsigned)
-                  </a>
-                  <DuplicateDocumentButton documentId={id} />
-                </>
+                // V1.3b/V1.4 redesign, 2026-08-10 — one prominent output
+                // (Badge-on sealed PDF once it exists, else the standalone
+                // Badge image PNG) instead of five unlabeled buttons at
+                // once, with the rest behind "Show all options." Pulled
+                // into its own client component since it now needs real
+                // interactive state (expand toggle, hint sequencing) — see
+                // sealed-document-outputs.tsx.
+                <SealedDocumentOutputs
+                  documentId={id}
+                  verifyUrl={verifyUrl}
+                  hasSignedFile={Boolean(doc.signed_file_path && doc.certificate_mode !== "separate")}
+                  hasCertificateFile={Boolean(doc.certificate_file_path)}
+                  hasBadgeOn={Boolean(doc.badge_stamped_file_path)}
+                  isFirstSeal={isFirstSeal}
+                />
               ) : (
-                <>
+                <div className="flex flex-wrap items-center gap-2">
                   <a href={`/api/documents/${id}/signed-file`} className={buttonVariants({ size: "sm" })}>
                     {doc.signed_file_path ? "Download signed PDF" : "Signed PDF pending…"}
                   </a>
@@ -428,7 +360,7 @@ export default async function DocumentEditorPage({
                     Download original (unsigned)
                   </a>
                   <DuplicateDocumentButton documentId={id} />
-                </>
+                </div>
               )}
             </div>
           </div>

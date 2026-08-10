@@ -50,7 +50,7 @@ export async function GET(request: Request) {
 
   const { data: doc } = await admin
     .from("documents")
-    .select("title, is_verified_badge, org_id, organizations(name)")
+    .select("title, is_verified_badge, org_id, payment_link_url, payment_label, organizations(name)")
     .eq("id", event.document_id)
     .single();
 
@@ -111,5 +111,15 @@ export async function GET(request: Request) {
     // rather than treating both as equivalent.
     timestampTsa: event.timestamp_tsa,
     timestampGenTime: event.timestamp_gen_time,
+    // IN_DOCUMENT_BADGE_AND_API_SEAL_SCOPE.md V1.5 — a Business org's own
+    // external payment link, shown ONLY when actually set on this
+    // document (payment_link_url is itself already gated to Business at
+    // write time, PUT /api/documents/[id]/payment). Deliberately its own
+    // top-level fields, never merged into the verification claim above —
+    // the page renders this as a visually distinct, separately-labeled
+    // section, per the hard separation constraint that whole feature
+    // exists for.
+    paymentLinkUrl: doc?.payment_link_url ?? null,
+    paymentLabel: doc?.payment_label ?? null,
   });
 }

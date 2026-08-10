@@ -116,6 +116,42 @@ resolved) — bottom-right of page 1 only as the fallback for an org that's
 never saved one yet. The user always drags away from wherever it opens,
 never from a blank slate.
 
+**Mobile gets its own interaction, not a scaled-down desktop one — decided
+2026-08-10 (direct instruction: "make sure it's great on mobile, 70 percent
+of users are using it on mobile").** The drag/resize box above is confirmed
+as the desktop interaction only. `field-editor.tsx` does use Pointer Events
+(touch-capable, not mouse-only — confirmed by reading the code), but
+touch-*capable* isn't the same bar as good on a 6-inch screen: precisely
+dragging and resizing a small box over a full PDF page, against a minimum
+size floor tied to QR scannability (see below), is genuinely harder
+one-handed than with a mouse — not something to ship unexamined just
+because the underlying pointer plumbing happens to work.
+
+**Mobile design: tap a corner preset, then a size slider.** Four fixed
+corners — bottom-right / bottom-left / top-right / top-left — the same
+vocabulary V2.1 already independently settled on for the API's named
+presets (worth reusing that exact preset-resolution logic rather than
+inventing a second one just for this UI). Tapping a corner snaps the badge
+there at its current size; a slider then scales it up/down. This isn't just
+easier to build than freeform drag — it sidesteps a real problem the
+desktop resize handle has and mobile doesn't: a slider only ever changes
+one dimension proportionally, so the aspect-ratio-stretch risk flagged
+below for `resizeField` (which moves each corner independently) can't
+happen on the mobile path at all. Still needs the same minimum-size floor
+and "may be too small to scan" soft warning as desktop (see below) — the
+slider's lower bound, not a separate concern.
+
+Same underlying storage either way — `page`/`x`/`y`/`width` per document,
+`organizations.last_badge_*` for the remembered-position default — so
+desktop and mobile stay two front-ends over one placement model, not two
+features. A position saved from a corner-tap on a phone reopens as an
+already-selected corner (not a freeform box) if that same org's next seal
+happens on desktop, and vice versa — whichever interaction last wrote the
+columns, the other one just reads x/y/width back and maps it onto its own
+UI as best it can (a freeform desktop box arriving from a phone's corner
+tap just starts already snapped to that corner, still draggable from
+there).
+
 **Minimum-size protection — flagged 2026-08-06 (direct question, correct
 concern).** Checked `lib/field-resize.ts` directly: it already enforces a
 floor (`MIN_FIELD_W = 0.02`, `MIN_FIELD_H = 0.015`), but that constant is
@@ -587,6 +623,43 @@ unrelated to their actual task.
 *(The in-document/physical version of this QR, printed next to the corner
 stamp itself, is V2.4 — not required to ship V1.)*
 
+**Amended 2026-08-10 (direct instruction): the verify-page-only cut above is
+an interim step, not the resting state.** "If the user actually uses payment
+link, then on-document PDF is a must have." Once an org has a live
+`payment_link_url` on a sealed document, a client who only ever opens the
+PDF — never taps through to `/verify` — should still see a way to pay, not
+just a way to confirm authenticity. That makes V2.4 (in-document physical
+QR) a required companion to V1.5 whenever payment link is actually in use,
+not an optional "worth revisiting" extension to build only if someone asks.
+Sequencing is unchanged — V2.4 still can't ship before V1.4's corner-stamp
+placement exists, since there's nowhere on the document to anchor a second
+QR until then — but it's no longer safe to treat the verify-page cut as
+"done" for a Business org that's turned payment link on. See V2.4's own note
+below and open decision #9.
+
+**Visual differentiation design, 2026-08-10:** mocked up bottom-right corner
+placement for both cases. Verification badge: green accent, a solid border,
+a circle-check icon, "Verified" / "Scan to check". Payment QR: blue accent,
+a dashed border (not solid, so it doesn't read as "the same kind of thing"
+even at a glance), a wallet icon instead of a check, "Pay invoice" / "Scan
+to pay" — stacked vertically with a visible gap above the badge, not side by
+side, so the two never look like a matched pair. The verification badge
+also always carries the word "Verified" in addition to the tick, per direct
+ask, so it still reads correctly in black-and-white or low-quality
+printouts where the color/icon distinction alone might not survive.
+
+**Output naming, 2026-08-10 (direct ask):** the planned corner-stamp output
+button, previously "Custom placement" (2026-08-06 naming pass above), is
+renamed **"Badge-on sealed PDF"** — paired with the existing appended-page
+Certificate output, itself renamed **"Post-doc sealed PDF"** for the same
+list, so both read as two flavors of the same "sealed PDF" concept rather
+than three unrelated-sounding outputs. Confirmed the output list itself
+doesn't change shape based on the "ask me every time" toggle — Badge-on
+sealed PDF, Post-doc sealed PDF, Badge image, and Verify link all appear
+either way; the toggle only adds or removes the "Place badge" step *before*
+sealing, which changes where the Badge-on stamp lands, not what outputs
+exist afterward.
+
 ---
 
 # V2 — Platform, API & advanced
@@ -706,12 +779,23 @@ instead of the shared IP bucket.
 
 Once V1.4's corner-stamp placement exists, a second physical QR could sit
 next to the badge stamp on the invoice itself, same separation rule (V1.5)
-applying in print as it does on `/verify`. Worth revisiting after V1.4
-ships, not before — not required for V1.
+applying in print as it does on `/verify`. Sequencing unchanged — still
+can't ship before V1.4 exists, so still not required for the *initial* V1
+build.
+
+**No longer optional once payment link is live, 2026-08-10 (direct
+instruction):** "if the user actually uses payment link, then on-document
+PDF is a must have." A client reading the PDF itself, without ever opening
+`/verify`, is a completely normal path — if payment link is on for that
+document, the PDF is missing its own payment option without this. Treat
+V2.4 as a required follow-on to V1.5 for any Business org using payment
+link, not a nice-to-have to revisit only if someone asks. Visual design
+(color/icon/border/stacking to keep it unmistakably separate from the
+verification badge) already mocked up — see V1.5's amendment above.
 
 ---
 
-## Open decisions — all answered 2026-08-06
+## Open decisions — all answered 2026-08-06, plus two more 2026-08-10
 
 **V1:**
 1. In-document badge: manual vs. automatic placement? **Manual (V1.1).**
@@ -734,6 +818,19 @@ ships, not before — not required for V1.
    clearly separate optional field below the badge box. Doesn't change the
    V1.5 hard separation constraint on the *output* side, only where the
    sender types it in.
+8. Badge Placer's mobile interaction — same freeform drag/resize as
+   desktop, or something else? **Something else, confirmed 2026-08-10**
+   (70% of users are on mobile): corner-tap + a size slider, not a
+   scaled-down version of the desktop box. Same underlying
+   `page`/`x`/`y`/`width` storage either way — see V1.1's mobile
+   subsection for the full reasoning, including why this also sidesteps
+   the aspect-ratio-stretch risk flagged for `resizeField` below.
+9. Is V2.4 (in-document payment QR) really optional once V1.5 (verify-page
+   payment QR) ships? **No, confirmed 2026-08-10** — required whenever an
+   org's payment link is actually turned on for a document, since a client
+   who only opens the PDF and never visits `/verify` would otherwise see no
+   payment option at all. Sequencing still holds (needs V1.4 first); this
+   only changes whether V2.4 is "later, if asked" vs. "later, planned."
 
 **V2:**
 3. API seal placement input? **Both** — explicit coordinates and named
@@ -789,3 +886,21 @@ resolved 2026-08-07 by shipping always-on-at-default plus adjustment
 telemetry rather than picking blind). V2.2's B1/B2/B3 pricing shapes
 specifically stay dark/unbuilt until a real large customer surfaces, even
 after everything else here ships.
+
+**2026-08-10:** added a mobile-specific interaction for the Badge Placer
+(corner-tap + size slider, not the desktop drag/resize box), per direct
+instruction citing 70% mobile traffic — see V1.1's mobile subsection and
+open decision #8. Still not built; this is a design addition to the same
+unbuilt plan, not new scope beyond V1.1.
+
+**2026-08-10, second round:** renamed the corner-stamp output "Custom
+placement" → "Badge-on sealed PDF", paired with Certificate renamed
+"Post-doc sealed PDF"; confirmed the output list is identical regardless of
+the "ask me every time" toggle (only the pre-seal placement step differs);
+mocked up bottom-right placement and visual differentiation for the
+verification badge vs. the Business payment QR (color/icon/border/stacking,
+plus the badge always carrying both a tick and the word "Verified"); and
+promoted V2.4 (in-document payment QR) from an optional future extension to
+a required companion of V1.5 whenever payment link is actually in use — see
+open decision #9. Still 100% unbuilt; all of this is design/scope refinement
+on the existing plan, not a build.

@@ -3,7 +3,8 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getFromR2, uploadToR2 } from "@/lib/r2";
 import { appUrl } from "@/lib/email";
-import { generateCertificateBadge } from "@/lib/badge-asset";
+import { generateCertificateBadge, generatePaymentBadge } from "@/lib/badge-asset";
+import { BADGE_ASPECT } from "@/lib/badge-resize";
 import { timestampWithFallback, type TimestampTsa } from "@/lib/timestamp-authority";
 
 // If the uploaded PDF already had its own interactive form fields (an
@@ -401,5 +402,106 @@ export async function addCertificatePage(pdfDoc: PDFDocument, opts: CertificateP
 export async function buildStandaloneCertificatePdf(opts: CertificatePageOpts): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
   await addCertificatePage(pdfDoc, opts);
+  return pdfDoc.save();
+}
+
+export type BadgeStampOpts = {
+  /** 1-indexed, matching document_fields' own page convention. */
+  page: number;
+  /** Normalized 0-1, top-left corner, fractions of page width/height —
+   *  same convention as document_fields.x/y (see stampFields above). */
+  x: number;
+  y: number;
+  /** Normalized 0-1, fraction of page WIDTH. Height is always derived from
+   *  BADGE_ASPECT at draw time (badge-resize.ts) — never independently
+   *  stretched. */
+  width: number;
+  verifyUrl: string;
+  /** Business tier only, and only when the org actually set one on this
+   *  seal (IN_DOCUMENT_BADGE_AND_API_SEAL_SCOPE.md V2.4, "no longer
+   *  optional once payment link is live"). When present, a second, visibly
+   *  distinct QR (generatePaymentBadge — blue, dashed border, wallet-style
+   *  "$" mark, "Pay invoice"/"Scan to pay") is stamped stacked above the
+   *  verification badge with a real gap between them — never fused into
+   *  one graphic, per V1.5's hard separation constraint. */
+  paymentUrl?: string;
+};
+
+// Vertical gap (PDF points) between the payment badge and the verification
+// badge when both are stamped — keeps them reading as two separate things
+// stacked, not one combined control, even before anyone reads the labels.
+const BADGE_STACK_GAP = 10;
+// Padding around each badge's own opaque backing rectangle, so the white
+// card visibly extends past the badge image itself rather than exactly
+// tracing its edges (V1.1: "a light opaque background rectangle behind it
+// so even landing over existing content stays legible rather than muddying
+// into it").
+const BADGE_BACKING_PAD = 6;
+
+/** Draws SignedBy's compact verification badge (and, for Business orgs with
+ *  a payment link set, a second visually-distinct payment QR stacked above
+ *  it) onto an EXISTING page of the given pdfDoc, at the resolved
+ *  page/x/y/width. This is the "Badge-on sealed PDF" output
+ *  (IN_DOCUMENT_BADGE_AND_API_SEAL_SCOPE.md V1.4) — a corner-stamped copy
+ *  of the ORIGINAL document, produced unconditionally on every Verified
+ *  Badge seal regardless of certificate_mode, entirely separate from the
+ *  appended-certificate-page pipeline above. Mutates pdfDoc in place;
+ *  caller is responsible for pdfDoc.load()-ing the ORIGINAL bytes (not the
+ *  already-certificate-stamped ones) before calling this, and for
+ *  save()/upload() after.
+ */
+export async function stampBadgeOnPage(pdfDoc: PDFDocument, opts: BadgeStampOpts): Promise<void> {
+  const pages = pdfDoc.getPages();
+  const page = pages[opts.page - 1];
+  if (!page) throw new Error(`Badge stamp: page ${opts.page} doesn't exist on this document`);
+
+  const { width: pw, height: ph } = page.getSize();
+  const drawWidth = opts.width * pw;
+  const drawHeight = drawWidth * BADGE_ASPECT;
+  const boxX = opts.x * pw;
+  const boxTopY = ph - opts.y * ph;
+  const verifyBottomY = boxTopY - drawHeight;
+
+  const [badgePng, paymentPng] = await Promise.all([
+    generateCertificateBadge(opts.verifyUrl),
+    opts.paymentUrl ? generatePaymentBadge(opts.paymentUrl) : Promise.resolve(null),
+  ]);
+
+  const badgeImage = await pdfDoc.embedPng(badgePng);
+  page.drawRectangle({
+    x: boxX - BADGE_BACKING_PAD,
+    y: verifyBottomY - BADGE_BACKING_PAD,
+    width: drawWidth + BADGE_BACKING_PAD * 2,
+    height: drawHeight + BADGE_BACKING_PAD * 2,
+    color: rgb(1, 1, 1),
+    opacity: 0.92,
+  });
+  page.drawImage(badgeImage, { x: boxX, y: verifyBottomY, width: drawWidth, height: drawHeight });
+
+  if (paymentPng) {
+    const paymentBottomY = boxTopY + BADGE_STACK_GAP;
+    const paymentImage = await pdfDoc.embedPng(paymentPng);
+    page.drawRectangle({
+      x: boxX - BADGE_BACKING_PAD,
+      y: paymentBottomY - BADGE_BACKING_PAD,
+      width: drawWidth + BADGE_BACKING_PAD * 2,
+      height: drawHeight + BADGE_BACKING_PAD * 2,
+      color: rgb(1, 1, 1),
+      opacity: 0.92,
+    });
+    page.drawImage(paymentImage, { x: boxX, y: paymentBottomY, width: drawWidth, height: drawHeight });
+  }
+}
+
+/** Loads the ORIGINAL file bytes fresh (never the certificate-stamped
+ *  copy — the corner stamp is a separate artifact off the untouched
+ *  original, same "byte-for-byte" starting point "separate" certificate
+ *  mode uses) and draws the badge stamp on top, per stampBadgeOnPage
+ *  above. Returns the finished bytes; caller (sealDocumentAction) handles
+ *  R2 upload and documents.badge_stamped_file_path, same split as
+ *  buildStandaloneCertificatePdf above. */
+export async function buildBadgeStampedPdf(originalBytes: Uint8Array, opts: BadgeStampOpts): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.load(originalBytes);
+  await stampBadgeOnPage(pdfDoc, opts);
   return pdfDoc.save();
 }

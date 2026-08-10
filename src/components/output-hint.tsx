@@ -16,10 +16,30 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
 
-export function OutputHint({ storageKey, hint, children }: { storageKey: string; hint: string; children: ReactNode }) {
+export function OutputHint({
+  storageKey,
+  hint,
+  children,
+  active = true,
+}: {
+  storageKey: string;
+  hint: string;
+  children: ReactNode;
+  /** Sequencing knob (2026-08-10, IN_DOCUMENT_BADGE_AND_API_SEAL_SCOPE.md
+   *  V1.3) — default true so the two pre-existing call sites are unaffected
+   *  unless a parent explicitly opts in. When false, the auto-open effect
+   *  skips even if this hint's own storageKey is still unseen — used so
+   *  only ONE hint ever pops open per page view instead of several
+   *  independent ones colliding (real risk on a narrow phone screen where
+   *  two 224px popovers stacked under wrapped buttons can run off-viewport
+   *  or overlap). Whichever hint isn't shown this visit stays unseen and
+   *  gets its turn on a later visit once the current one is dismissed. */
+  active?: boolean;
+}) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    if (!active) return;
     let seen = true;
     try {
       seen = window.localStorage.getItem(storageKey) === "1";
@@ -30,7 +50,7 @@ export function OutputHint({ storageKey, hint, children }: { storageKey: string;
     // Deferred a tick -- same react-hooks/set-state-in-effect workaround the
     // other one-time hints in this app use.
     Promise.resolve().then(() => setOpen(true));
-  }, [storageKey]);
+  }, [storageKey, active]);
 
   function dismiss() {
     setOpen(false);

@@ -110,6 +110,69 @@ export async function generateCertificateBadge(verifyUrl: string): Promise<Buffe
   return imageResponseToBuffer(res);
 }
 
+/** Compact payment QR badge (IN_DOCUMENT_BADGE_AND_API_SEAL_SCOPE.md V1.5/
+ *  V2.4) — same 300x130 footprint as generateCertificateBadge so the two
+ *  stack cleanly in the stamping pipeline, but deliberately NOT visually
+ *  matched to it: blue instead of the verification mark's neutral/green,
+ *  a dashed border instead of solid, a "$" roundel instead of the check
+ *  mark, "Pay invoice"/"Scan to pay" instead of "Scan to verify". Hard
+ *  constraint from V1.5: this must never look like the same kind of thing
+ *  as the verification badge — that's the exact bait pattern real invoice
+ *  scams use. Text-based icon (a plain "$" in a circle) rather than a new
+ *  SVG asset, same rendering approach (Satori/next-og) the rest of this
+ *  file already uses for everything except the mark itself. */
+export async function generatePaymentBadge(payUrl: string): Promise<Buffer> {
+  const qrDataUrl = await QRCode.toDataURL(payUrl, { width: 200, margin: 0, color: { dark: "#1d4ed8", light: "#00000000" } });
+
+  const width = 300;
+  const height = 130;
+
+  const res = new ImageResponse(
+    (
+      <div
+        style={{
+          width,
+          height,
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "flex-start",
+          paddingTop: 15,
+          backgroundColor: "#ffffff",
+          border: "2px dashed #93c5fd",
+          borderRadius: 10,
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={qrDataUrl} width={90} height={90} alt="" style={{ marginLeft: 10 }} />
+        <div style={{ display: "flex", flexDirection: "column", marginLeft: 12 }}>
+          <div
+            style={{
+              display: "flex",
+              width: 24,
+              height: 24,
+              borderRadius: 12,
+              backgroundColor: "#1d4ed8",
+              color: "#ffffff",
+              fontSize: 14,
+              fontWeight: 700,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            $
+          </div>
+          <div style={{ display: "flex", marginTop: 8, fontSize: 12, fontWeight: 700, color: "#1d4ed8" }}>Pay invoice</div>
+          <div style={{ display: "flex", marginTop: 4, fontSize: 9, color: "#1d4ed8" }}>Scan to pay</div>
+          <div style={{ display: "flex", marginTop: 2, fontSize: 8, color: "#60a5fa" }}>Not required to verify this document</div>
+        </div>
+      </div>
+    ),
+    { width, height }
+  );
+
+  return imageResponseToBuffer(res);
+}
+
 /** The full standalone "Badge" asset — a shareable seal meant to be reused
  *  across many contexts (invoice footer, portfolio site, email signature),
  *  not tied to one PDF page layout. Incorporates the QR (linking to the

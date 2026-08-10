@@ -17,6 +17,8 @@ import type { DraftDocumentType } from "@/lib/ai-draft-types";
 import { formatCreditPackPrice, type Currency } from "@/lib/currency";
 import { getStripeClient } from "@/lib/stripe-client";
 import { useSendSealTransition } from "@/components/send-seal-transition";
+import { BadgePlacer } from "@/components/badge-placer";
+import type { BadgeRect } from "@/lib/badge-resize";
 
 // Shared by every tab state (upload, Verified Badge, Magic Quote, AI
 // Drafter, and AI Drafter's locked upsell) so they stay the same size as
@@ -70,6 +72,9 @@ export function NewDocumentClient({
   currency = "USD",
   sendCapReached = false,
   sealCapReached = false,
+  orgBadgePlacementMode = "skip",
+  hasPaymentCollection = false,
+  initialBadgeRect,
 }: {
   hasAiDraft: boolean;
   defaultQuoteCurrency: QuoteCurrencySymbol;
@@ -117,6 +122,23 @@ export function NewDocumentClient({
    *  Badge tab's own "Continue" click. Defaults to false — Pro+ callers
    *  never pass true here, since sealing is unlimited on every paid plan. */
   sealCapReached?: boolean;
+  /** organizations.badge_placement_mode (IN_DOCUMENT_BADGE_AND_API_SEAL_
+   *  SCOPE.md V1.1) — "ask" shows the "Badge placement" row on this tab;
+   *  "skip" (default) hides it entirely and sealing behaves exactly as it
+   *  did before this feature existed. Also shown (regardless of this
+   *  setting) for Business orgs, since the Badge Placer screen is the only
+   *  place to set a per-document payment link — see the row's own gating
+   *  condition below. */
+  orgBadgePlacementMode?: "ask" | "skip";
+  /** planHasFeature(org.plan, "paymentCollection") — gates the optional
+   *  "Payment link" field inside the Badge Placer, per V1.5/V2.4. */
+  hasPaymentCollection?: boolean;
+  /** Server-resolved starting position for a brand-new document's placer —
+   *  the org's last_badge_* if any document has ever been placed, else the
+   *  hardcoded bottom-right/page-1 fallback (badge-resize.ts's
+   *  fallbackBadgeRect). Always defined so the placer never opens onto a
+   *  genuinely blank slate. */
+  initialBadgeRect: BadgeRect;
 }) {
   const router = useRouter();
   const { trigger: triggerSendSealTransition } = useSendSealTransition();
@@ -169,6 +191,22 @@ export function NewDocumentClient({
   // already-uploaded draft document id, so "Verify identity" can retry the
   // seal on that same document afterward instead of re-uploading the file.
   const [badgeNeedsIdentityDocId, setBadgeNeedsIdentityDocId] = useState<string | null>(null);
+
+  // Badge Placer state (IN_DOCUMENT_BADGE_AND_API_SEAL_SCOPE.md V1.1,
+  // built 2026-08-10). badgeRect is null until the user actually saves a
+  // position in the placer this session — sealUploadedDocument only writes
+  // it to the new document row if non-null, so a document nobody opened
+  // the placer for falls straight through to the org's last_badge_*/
+  // fallback at seal time, exactly as if this feature didn't touch it.
+  const [badgePlacerOpen, setBadgePlacerOpen] = useState(false);
+  const [badgeRect, setBadgeRect] = useState<BadgeRect | null>(null);
+  const [badgePaymentLinkUrl, setBadgePaymentLinkUrl] = useState("");
+  const [badgePaymentLabel, setBadgePaymentLabel] = useState("");
+  // Whether to show the "Badge placement" row at all — the org's own
+  // "ask me every time" preference, OR (regardless of that preference)
+  // whenever the org is Business tier, since the Badge Placer screen is
+  // currently the only place to set a per-document payment link at all.
+  const showBadgeRow = orgBadgePlacementMode === "ask" || hasPaymentCollection;
 
   function dismissMenuIntro() {
     setMenuIntroOpen(false);
@@ -430,6 +468,38 @@ export function NewDocumentClient({
         setBadgeShowUpgrade(uploadResult.upgrade);
         return;
       }
+
+      // Write the Badge Placer's saved position and/or payment link onto
+      // the now-created document row BEFORE sealing — sealDocumentAction
+      // reads documents.badge_page/x/y/width and payment_link_url as
+      // already-set values (see verified-badge-actions.ts), it doesn't
+      // accept them as call params. Both are best-effort: a failure here
+      // shouldn't block the actual seal (the badge stamp already falls
+      // back to the org's remembered position / no payment QR either way),
+      // just logs so it's visible without silently losing the seal itself.
+      if (badgeRect) {
+        try {
+          await fetch(`/api/documents/${uploadResult.id}/badge-placement`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(badgeRect),
+          });
+        } catch (err) {
+          console.error("Couldn't save badge placement — sealing with the org default instead", err);
+        }
+      }
+      if (hasPaymentCollection && badgePaymentLinkUrl.trim()) {
+        try {
+          await fetch(`/api/documents/${uploadResult.id}/payment`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ payment_link_url: badgePaymentLinkUrl.trim(), payment_label: badgePaymentLabel.trim() }),
+          });
+        } catch (err) {
+          console.error("Couldn't save the payment link — sealing without it instead", err);
+        }
+      }
+
       await sealUploadedDocument(uploadResult.id);
     } catch {
       setBadgeStatus("error");
@@ -808,11 +878,53 @@ export function NewDocumentClient({
                 </div>
               )}
 
+              {/* "Badge placement" row (IN_DOCUMENT_BADGE_AND_API_SEAL_
+                  SCOPE.md V1.4) — slots in after the title input, before
+                  the Seal button. Hidden entirely (org.badge_placement_mode
+                  "skip", the default, and not Business tier) means sealing
+                  is byte-for-byte what it was before this feature existed —
+                  zero difference for every org that doesn't actively care. */}
+              {badgeFile && showBadgeRow && !badgePlacerOpen && (
+                <button
+                  type="button"
+                  onClick={() => setBadgePlacerOpen(true)}
+                  className="flex w-full items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-left hover:bg-slate-50"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-dashed border-slate-300 text-slate-400">
+                    <ShieldCheck className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+                  </span>
+                  <span className="flex-1">
+                    <span className="block text-sm font-medium text-slate-900">Badge placement</span>
+                    <span className="block text-xs text-slate-500">
+                      {badgeRect ? "Position saved — tap to adjust" : "Choose exactly where the badge lands"}
+                    </span>
+                  </span>
+                  {badgeRect && <span className="text-xs font-medium text-emerald-600">✓</span>}
+                </button>
+              )}
+
+              {badgeFile && badgePlacerOpen && (
+                <BadgePlacer
+                  file={badgeFile}
+                  initialRect={badgeRect ?? initialBadgeRect}
+                  showPaymentLink={hasPaymentCollection}
+                  paymentLinkUrl={badgePaymentLinkUrl}
+                  paymentLabel={badgePaymentLabel}
+                  onPaymentLinkChange={setBadgePaymentLinkUrl}
+                  onPaymentLabelChange={setBadgePaymentLabel}
+                  onSave={(rect) => {
+                    setBadgeRect(rect);
+                    setBadgePlacerOpen(false);
+                  }}
+                  onCancel={() => setBadgePlacerOpen(false)}
+                />
+              )}
+
               {/* Identity verification gate takes precedence over the plain
                   error line and the upgrade card below — it's neither a
                   real failure nor a cap hit, just a one-time prerequisite
                   (see handleVerifyIdentity's doc comment). */}
-              {badgeStatus === "error" && badgeNeedsIdentityDocId && (
+              {!badgePlacerOpen && badgeStatus === "error" && badgeNeedsIdentityDocId && (
                 <div className="flex items-start gap-2.5 rounded-lg border border-blue-200 bg-blue-50 p-3">
                   <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" strokeWidth={1.75} />
                   <div className="flex-1 space-y-2">
@@ -829,7 +941,7 @@ export function NewDocumentClient({
                 </div>
               )}
 
-              {badgeStatus === "error" && !badgeNeedsIdentityDocId && !badgeShowUpgrade && (
+              {!badgePlacerOpen && badgeStatus === "error" && !badgeNeedsIdentityDocId && !badgeShowUpgrade && (
                 <p className="text-sm text-red-600">{badgeErrorMessage}</p>
               )}
 
@@ -839,7 +951,7 @@ export function NewDocumentClient({
                   seals, not unlimited sends (2026-08-05,
                   VERIFIED_BADGE_DASHBOARD_SCOPE.md decision 2: sealing is
                   fully unlimited on every paid plan, no $0.20/doc overage). */}
-              {badgeStatus === "error" && !badgeNeedsIdentityDocId && badgeShowUpgrade && (
+              {!badgePlacerOpen && badgeStatus === "error" && !badgeNeedsIdentityDocId && badgeShowUpgrade && (
                 <div className="flex items-start gap-2.5 rounded-lg border border-blue-200 bg-blue-50 p-3">
                   <Rocket className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" strokeWidth={1.75} />
                   <div className="flex-1 space-y-2">
@@ -887,6 +999,7 @@ export function NewDocumentClient({
                   handleSealUpload) — only the label stopped naming the
                   mechanical upload step and always states the actual call
                   to action instead. */}
+              {!badgePlacerOpen && (
               <Button
                 className="w-full gap-1.5"
                 variant="cta"
@@ -898,6 +1011,7 @@ export function NewDocumentClient({
                 )}
                 {badgeStatus === "uploading" ? "Uploading…" : badgeStatus === "verifying" ? "Verifying…" : "Seal this file"}
               </Button>
+              )}
             </CardContent>
           </Card>
         ) : mode === "draft" && hasAiDraft ? (

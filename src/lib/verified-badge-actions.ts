@@ -6,7 +6,8 @@ import { appUrl } from "@/lib/email";
 import { checkFreePlanSealCap } from "@/lib/plan";
 import { getOrgIdentityStatus } from "@/lib/identity";
 import { grantSealCreditReferralReward } from "@/lib/referral";
-import { generateSignedPdf, buildStandaloneCertificatePdf, flattenOriginalForm } from "@/lib/generate-signed-pdf";
+import { generateSignedPdf, buildStandaloneCertificatePdf, buildBadgeStampedPdf, flattenOriginalForm } from "@/lib/generate-signed-pdf";
+import { fallbackBadgeRect, type BadgeRect } from "@/lib/badge-resize";
 import { timestampWithFallback, type TimestampTsa } from "@/lib/timestamp-authority";
 import type { ConsoleActionError } from "@/lib/console-actions";
 import { auditProvenance } from "@/lib/console-actions";
@@ -60,7 +61,9 @@ async function loadSealableDocument(orgId: string, documentId: string) {
 
   const { data: doc } = await admin
     .from("documents")
-    .select("id, org_id, title, file_path, owner_id, is_verified_badge, status")
+    .select(
+      "id, org_id, title, file_path, owner_id, is_verified_badge, status, badge_page, badge_x, badge_y, badge_width, payment_link_url"
+    )
     .eq("id", documentId)
     .single();
   if (!doc || doc.org_id !== orgId) return notSealable;
@@ -132,7 +135,11 @@ export async function sealDocumentAction(params: {
     return { ok: false, error: "That file isn't available to seal — upload a PDF first.", status: 404 };
   }
 
-  const { data: org } = await admin.from("organizations").select("name, owner_id").eq("id", orgId).single();
+  const { data: org } = await admin
+    .from("organizations")
+    .select("name, owner_id, last_badge_page, last_badge_x, last_badge_y, last_badge_width")
+    .eq("id", orgId)
+    .single();
   if (!org) return { ok: false, error: "Organization not found.", status: 404 };
 
   const { data: ownerData } = await admin.auth.admin.getUserById(org.owner_id);
@@ -260,6 +267,47 @@ export async function sealDocumentAction(params: {
   } catch (err) {
     console.error(`Verified Badge: sealing pipeline failed for document ${doc.id}`, err);
     return { ok: false, error: "Couldn't generate the sealed file. Try again.", status: 500 };
+  }
+
+  // "Badge-on sealed PDF" — always-on 4th output, not a mode swap
+  // (IN_DOCUMENT_BADGE_AND_API_SEAL_SCOPE.md V1.3a/V1.4). Runs regardless
+  // of certificateMode, off the ORIGINAL bytes (never the already-stamped
+  // signed/certificate copies above). Placement resolution order: this
+  // document's own saved badge_x/y/width/page (set via the Badge Placer,
+  // PUT /api/documents/[id]/badge-placement, before this seal call) → the
+  // org's last_badge_* (any document this org has ever placed) → the
+  // hardcoded bottom-right/page-1 fallback for an org's genuinely first
+  // seal. Wrapped in its own try/catch, separate from the block above —
+  // same resilience precedent as generateCertificateBadge's own embed on
+  // the certificate page: a badge-stamp failure shouldn't block the actual
+  // seal from completing, it's an additional convenience output, not the
+  // core legal artifact.
+  const hasOwnPlacement = doc.badge_page != null && doc.badge_x != null && doc.badge_y != null && doc.badge_width != null;
+  const hasOrgLastPlacement =
+    org.last_badge_page != null && org.last_badge_x != null && org.last_badge_y != null && org.last_badge_width != null;
+  const badgeRect: BadgeRect = hasOwnPlacement
+    ? { page: doc.badge_page!, x: doc.badge_x!, y: doc.badge_y!, width: doc.badge_width! }
+    : hasOrgLastPlacement
+      ? { page: org.last_badge_page!, x: org.last_badge_x!, y: org.last_badge_y!, width: org.last_badge_width! }
+      : fallbackBadgeRect();
+
+  try {
+    const { body: originalBytes } = await getFromR2(doc.file_path);
+    const stampedBytes = await buildBadgeStampedPdf(originalBytes, {
+      ...badgeRect,
+      verifyUrl: `${appUrl()}/verify?hash=${hash}`,
+      // V2.4, promoted from optional to required 2026-08-10: a client
+      // reading the PDF directly (never visiting /verify) needs the same
+      // payment option a Business org set for this document — same
+      // payment_link_url the Seal tab's optional field and the send
+      // flow's field-editor both already write, no separate storage.
+      paymentUrl: doc.payment_link_url ?? undefined,
+    });
+    const badgeKey = `${orgId}/${doc.id}/badge-on-${doc.id}.pdf`;
+    await uploadToR2(badgeKey, Buffer.from(stampedBytes), "application/pdf");
+    await admin.from("documents").update({ badge_stamped_file_path: badgeKey }).eq("id", doc.id);
+  } catch (err) {
+    console.error(`Verified Badge: badge-on stamp failed for document ${doc.id} — seal itself still succeeded`, err);
   }
 
   await admin

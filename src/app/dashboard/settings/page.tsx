@@ -10,6 +10,7 @@ import { AutoSuggestSettings } from "@/components/auto-suggest-settings";
 import { FrequentSignersSettings } from "@/components/frequent-signers-settings";
 import { WebhookSettings } from "@/components/webhook-settings";
 import { IdentitySettings } from "@/components/identity-settings";
+import { BadgePlacementSettings } from "@/components/badge-placement-settings";
 import { Collapsible } from "@/components/collapsible";
 import { resolveIdentityStatus } from "@/lib/identity";
 
@@ -25,7 +26,7 @@ export default async function SettingsPage() {
   const { data: org } = await supabase
     .from("organizations")
     .select(
-      "name, plan, logo_url, brand_color, api_key_prefix, auto_suggest_on_upload, identity_verified_at, identity_verified_name"
+      "name, plan, logo_url, brand_color, api_key_prefix, auto_suggest_on_upload, identity_verified_at, identity_verified_name, badge_placement_mode"
     )
     .eq("id", orgId)
     .single();
@@ -102,6 +103,25 @@ export default async function SettingsPage() {
               identityVerifiedAt={identityStatus.verified ? identityStatus.verifiedAt : null}
               identityStale={identityStatus.verified ? identityStatus.stale : false}
             />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Verified Badge</CardTitle>
+            <CardDescription>
+              {/* New card, 2026-08-10 (IN_DOCUMENT_BADGE_AND_API_SEAL_
+                  SCOPE.md V1.1) — sibling to Identity, not folded into it
+                  (that card stays scoped to identity verification only).
+                  Dashboard-only: Console/MCP sealing has no UI to place a
+                  badge in, so this setting only affects seals started from
+                  this dashboard's Seal a file tab. */}
+              Whether sealing a document from this dashboard stamps the badge straight into a corner of the file
+              itself — and if so, whether you get to choose exactly where.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <BadgePlacementSettings initialMode={org.badge_placement_mode === "ask" ? "ask" : "skip"} />
           </CardContent>
         </Card>
 

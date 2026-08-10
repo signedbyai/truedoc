@@ -5,6 +5,7 @@ import { getRequestCurrency } from "@/lib/currency.server";
 import { quoteCurrencyForAppCurrency } from "@/lib/quote-types";
 import { DOCUMENT_TYPES, type DraftDocumentType } from "@/lib/ai-draft-types";
 import { NewDocumentClient } from "@/components/new-document-client";
+import { fallbackBadgeRect, type BadgeRect } from "@/lib/badge-resize";
 
 export default async function NewDocumentPage({
   searchParams,
@@ -29,8 +30,21 @@ export default async function NewDocumentPage({
     redirect(`/login?next=${encodeURIComponent(next)}`);
   }
 
-  const { data: org } = await ctx.supabase.from("organizations").select("plan").eq("id", ctx.orgId).single();
+  const { data: org } = await ctx.supabase
+    .from("organizations")
+    .select("plan, badge_placement_mode, last_badge_page, last_badge_x, last_badge_y, last_badge_width")
+    .eq("id", ctx.orgId)
+    .single();
   const hasAiDraft = planHasFeature(org?.plan, "aiDraft");
+  // Badge Placer (IN_DOCUMENT_BADGE_AND_API_SEAL_SCOPE.md V1.1) — resolved
+  // server-side once here rather than re-derived client-side, same
+  // starting-position logic sealDocumentAction itself falls back to.
+  const hasPaymentCollection = planHasFeature(org?.plan, "paymentCollection");
+  const orgBadgePlacementMode = org?.badge_placement_mode === "ask" ? "ask" : "skip";
+  const initialBadgeRect: BadgeRect =
+    org?.last_badge_page != null && org?.last_badge_x != null && org?.last_badge_y != null && org?.last_badge_width != null
+      ? { page: org.last_badge_page, x: org.last_badge_x, y: org.last_badge_y, width: org.last_badge_width }
+      : fallbackBadgeRect();
 
   // Read-only "would the next send actually be blocked?" check (2026-08-05,
   // direct ask) — real enforcement lives in checkFreePlanSendCap at the
@@ -76,6 +90,9 @@ export default async function NewDocumentPage({
       currency={requestCurrency}
       sendCapReached={sendCapReached}
       sealCapReached={sealCapReached}
+      orgBadgePlacementMode={orgBadgePlacementMode}
+      hasPaymentCollection={hasPaymentCollection}
+      initialBadgeRect={initialBadgeRect}
     />
   );
 }
