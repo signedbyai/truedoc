@@ -26,8 +26,27 @@ import { generateVerifiedBadgeImage } from "../src/lib/badge-asset";
 // specifically so this doesn't regress a third time -- rerunning it is
 // now the documented way to regenerate this asset after any future
 // generateVerifiedBadgeImage() layout change.
+//
+// 2026-08-11 (direct ask): the console.signedby.ai destination above was
+// itself already stale -- VERIFIED_BADGE_DASHBOARD_SCOPE.md (2026-08-05)
+// moved sealing off Console-only and onto the main dashboard, and
+// src/app/verified-badge/page.tsx's own on-page CTA (START_HREF) was
+// updated to match, but this QR generator was never re-pointed, so the
+// button and the QR code on the same hero image silently disagreed on
+// where a visitor should land. Now matches START_HREF exactly (not just
+// a bare /login) so scanning the code and clicking the button are the
+// same flow, and reuses the same utm_* params so QR scans land in the
+// existing first-touch attribution pipeline instead of going untracked.
+// shortLabel() still renders this as the clean "signedby.ai/login" text
+// under the QR (it strips query params for display), so the visible
+// label doesn't get noisy even though the encoded URL is longer.
+const VERIFIED_BADGE_LOGIN_URL =
+  "https://signedby.ai/login?intent=signup&next=" +
+  encodeURIComponent("/dashboard/documents/new?mode=badge") +
+  "&utm_source=verified_badge&utm_medium=qr&utm_campaign=verified_badge_page";
+
 async function run() {
-  const png = await generateVerifiedBadgeImage("https://console.signedby.ai", true);
+  const png = await generateVerifiedBadgeImage(VERIFIED_BADGE_LOGIN_URL, true);
   const outPath = path.join(process.cwd(), "public", "hero-verified-badge.png");
   await fs.writeFile(outPath, png);
   console.log("wrote", outPath, png.length, "bytes");
