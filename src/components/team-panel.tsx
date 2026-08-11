@@ -229,7 +229,12 @@ export function TeamPanel({
       ) : (
         <form onSubmit={invite} className="space-y-3 border-t border-slate-100 pt-4">
           <p className="text-sm font-medium text-slate-900">Invite someone</p>
-          <div className="flex gap-2">
+          {/* Stacks on mobile (flex-col) instead of forcing Email + Role
+              onto one row — at narrow widths that squeezed the select down
+              to an unreadably tight column, which read as cramped/broken
+              rather than intentional. Side-by-side again from `sm:` up,
+              where there's room for both. */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:gap-2">
             <div className="flex-1 space-y-1.5">
               <Label htmlFor="invite-email">Email</Label>
               <Input
@@ -241,13 +246,13 @@ export function TeamPanel({
                 placeholder="teammate@company.com"
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 sm:w-36">
               <Label htmlFor="invite-role">Role</Label>
               <select
                 id="invite-role"
                 value={role}
                 onChange={(e) => setRole(e.target.value as "admin" | "member")}
-                className="h-9 rounded-md border border-slate-300 px-2 text-sm text-slate-800"
+                className="h-9 w-full rounded-md border border-slate-300 px-2 text-sm text-slate-800"
               >
                 <option value="member">Member</option>
                 <option value="admin">Admin</option>
