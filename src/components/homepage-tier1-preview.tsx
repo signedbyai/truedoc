@@ -28,15 +28,32 @@ import { TRUSTED_BY, PRICING } from "@/lib/homepage-content";
 // the marketing page to the exact vocabulary a new user sees on day one
 // instead of an ad-hoc set of benefits.
 //
-// Two honesty caveats, both real and worth knowing before promoting this:
-// (1) Seal's card uses verified-seal-badge.png — the actual sealed-artifact
-// output, not a UI screenshot, since there's no captured screenshot of the
-// Seal tab itself. It's real (what the product actually produces), just a
-// different kind of "real" than the other three. (2) Draft's card uses
-// hero-ai-draft-mockup.png, which its own commit message (b43d2dc) labels a
-// "stylized... mockup" built for a pitch deck — /ai-drafter's marketing
-// page has no product screenshot at all to draw from instead. Both are
-// flagged here rather than silently passed off as captured UI.
+// 2026-08-12, second direct-ask pass after Michael reviewed the rebuilt
+// version live on dev: "the hero images need some work." All four images
+// swapped again:
+// - Sign: hero-sign-mobile-composite.png (scripts/generate-hero-sign-mobile-
+//   composite.tsx) — the desktop field editor with the real mobile "Slide to
+//   sign & submit" screenshot (hero-signer-mobile.png) framed as a phone and
+//   overlaid large on the right, same layered-artifact composition as Seal's
+//   card below. Chosen over the simpler "just swap in the mobile shot alone"
+//   option, direct ask.
+// - Seal: hero-verified-badge-invoice-d.png — was verified-seal-badge.png
+//   (the bare medallion on its own). Now the medallion stamped over an
+//   actual invoice's top-right corner (already existed, built 2026-08-09 for
+//   the invoice-badge guide), so the card visibly sells "great for
+//   invoices" instead of showing the badge in isolation.
+// - Quote: unchanged (hero-magic-quote.png) — direct ask, "Quote i think
+//   it's fine."
+// - Draft: hero-new-document-draft.png (scripts/generate-hero-new-document-
+//   draft.tsx) — was hero-ai-draft-mockup.png, a stylized two-panel pitch-
+//   deck mockup that didn't match the real single-column sequential flow
+//   (see that script's own comment). Rebuilt as a faithful recreation of the
+//   real /dashboard/documents/new page with the Draft tab active — every
+//   string reused verbatim from new-document-client.tsx/ai-draft-form.tsx/
+//   ai-draft-types.ts (tab row, heading, form fields, real disclaimer/
+//   checkbox copy) — not a captured screenshot (no authenticated dashboard
+//   session was reachable from this sandbox to shoot one), but no invented
+//   copy or layout either, per Michael's own "keep it simple" framing.
 //
 // Copy for the hero (headline/subhead/value props/pricing/trusted-by) is
 // deliberately identical to homepage-current.tsx's proven version — this
@@ -55,20 +72,20 @@ const REASONS: {
   {
     title: "Sign",
     description: "Place signature, initials, date, and text fields on any PDF, then send for signature in seconds.",
-    image: "/hero-field-editor.png",
-    alt: "The SignedBy field editor: a consulting agreement with signature fields placed for two recipients",
-    width: 1562,
-    height: 1070,
+    image: "/hero-sign-mobile-composite.png",
+    alt: "The SignedBy field editor with the mobile signing screen overlaid, showing the Slide to sign & submit control",
+    width: 1460,
+    height: 1080,
     Icon: Signature,
   },
   {
     title: "Seal",
     description:
       "Self-sign and lock a document with an identity-verified, RFC 3161 trusted-timestamped seal — no recipient required.",
-    image: "/verified-seal-badge.png",
-    alt: "The SignedBy Verified & Sealed seal: a circular badge with a QR code and a green checkmark",
-    width: 1333,
-    height: 1333,
+    image: "/hero-verified-badge-invoice-d.png",
+    alt: "An invoice with the SignedBy Verified & Sealed medallion stamped over its top-right corner",
+    width: 740,
+    height: 920,
     Icon: ShieldCheck,
   },
   {
@@ -83,10 +100,10 @@ const REASONS: {
   {
     title: "Draft",
     description: "Describe what you need and AI drafts a ready-to-send agreement — review, edit, and send in the same flow.",
-    image: "/hero-ai-draft-mockup.png",
-    alt: "The AI Drafter flow: a plain-language description on the left generating a Freelance/Services Agreement draft on the right",
-    width: 1562,
-    height: 1070,
+    image: "/hero-new-document-draft.png",
+    alt: "The New document screen's Draft tab: document type and language pickers, a plain-language description, and a Generate draft button",
+    width: 860,
+    height: 900,
     Icon: Sparkles,
   },
 ];
