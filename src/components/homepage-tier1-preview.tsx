@@ -1,9 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Signature, ShieldCheck, Receipt, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CtaLink } from "@/components/cta-link";
 import { formatPrice, type Currency } from "@/lib/currency";
-import { FEATURES, TRUSTED_BY, PRICING } from "@/lib/homepage-content";
+import { TRUSTED_BY, PRICING } from "@/lib/homepage-content";
 
 // Tier 1 from ARACOR_INSPIRED_PRIORITIES.md — a homepage variant to review
 // on dev before any decision to promote it, NOT wired into the live
@@ -13,13 +14,29 @@ import { FEATURES, TRUSTED_BY, PRICING } from "@/lib/homepage-content";
 // methodology, which is premature before Michael has even looked at this.
 //
 // Two Tier 1 ideas, same capture work per the doc: a looping "hero video"
-// (built here as a pure-CSS crossfade of 3 real screenshots already in
+// (built here as a pure-CSS crossfade of real screenshots already in
 // public/ — see globals.css's .animate-hero-crossfade — rather than an
 // actual screen recording, since no capture pipeline exists in the
 // sandbox), and a screenshot-paired "why SignedBy" section (Aracor's
-// 6-reasons pattern, done here as 4 reasons since that's what real,
-// honest product screenshots currently support well — see the reasons
-// array below for which shots and why).
+// 6-reasons pattern).
+//
+// 2026-08-12, direct ask: reasons rebuilt to match the product's own
+// Sign/Seal/Quote/Draft framing exactly — same order, same lucide icons
+// (Signature/ShieldCheck/Receipt/Sparkles), same single-word labels as the
+// 4-tab picker on /dashboard/documents/new (new-document-client.tsx,
+// VERIFIED_BADGE_DASHBOARD_SCOPE.md's "direct instruction" order). Ties
+// the marketing page to the exact vocabulary a new user sees on day one
+// instead of an ad-hoc set of benefits.
+//
+// Two honesty caveats, both real and worth knowing before promoting this:
+// (1) Seal's card uses verified-seal-badge.png — the actual sealed-artifact
+// output, not a UI screenshot, since there's no captured screenshot of the
+// Seal tab itself. It's real (what the product actually produces), just a
+// different kind of "real" than the other three. (2) Draft's card uses
+// hero-ai-draft-mockup.png, which its own commit message (b43d2dc) labels a
+// "stylized... mockup" built for a pitch deck — /ai-drafter's marketing
+// page has no product screenshot at all to draw from instead. Both are
+// flagged here rather than silently passed off as captured UI.
 //
 // Copy for the hero (headline/subhead/value props/pricing/trusted-by) is
 // deliberately identical to homepage-current.tsx's proven version — this
@@ -33,47 +50,52 @@ const REASONS: {
   alt: string;
   width: number;
   height: number;
+  Icon: typeof Signature;
 }[] = [
   {
-    title: FEATURES[0].title,
-    description: FEATURES[0].description,
+    title: "Sign",
+    description: "Place signature, initials, date, and text fields on any PDF, then send for signature in seconds.",
     image: "/hero-field-editor.png",
     alt: "The SignedBy field editor: a consulting agreement with signature fields placed for two recipients",
     width: 1562,
     height: 1070,
+    Icon: Signature,
   },
   {
-    title: "Signs from any phone",
-    description: "No app, no printing — recipients sign with a tap, right in their phone's browser.",
-    image: "/hero-signer-mobile.png",
-    alt: "A signer signing a document on their phone, with a yellow slide-to-sign bar ready to submit",
-    width: 1236,
-    height: 2370,
-  },
-  {
-    title: "Every signature is provably real",
+    title: "Seal",
     description:
-      "Every seal gets an RFC 3161 trusted timestamp from a neutral third party — anyone can verify it independently, no account needed.",
-    image: "/hero-verify-result.png",
-    alt: "The SignedBy /verify page showing a document confirmed as sealed and identity-verified, with a Sectigo RFC 3161 trusted timestamp",
-    width: 900,
-    height: 840,
+      "Self-sign and lock a document with an identity-verified, RFC 3161 trusted-timestamped seal — no recipient required.",
+    image: "/verified-seal-badge.png",
+    alt: "The SignedBy Verified & Sealed seal: a circular badge with a QR code and a green checkmark",
+    width: 1333,
+    height: 1333,
+    Icon: ShieldCheck,
   },
   {
-    title: "AI drafts the paperwork",
-    description: "Describe the job in plain language and Magic Quote turns it into a signable, itemized quote — free on every plan.",
+    title: "Quote",
+    description: "Describe the job in plain language and Magic Quote turns it into a signable, itemized quote.",
     image: "/hero-magic-quote.png",
     alt: "The Magic Quote tool generating an itemized price quote from a plain-language job description",
     width: 592,
     height: 972,
+    Icon: Receipt,
+  },
+  {
+    title: "Draft",
+    description: "Describe what you need and AI drafts a ready-to-send agreement — review, edit, and send in the same flow.",
+    image: "/hero-ai-draft-mockup.png",
+    alt: "The AI Drafter flow: a plain-language description on the left generating a Freelance/Services Agreement draft on the right",
+    width: 1562,
+    height: 1070,
+    Icon: Sparkles,
   },
 ];
 
-// Three of the four reasons above double as the hero crossfade — the fourth
-// (Magic Quote) is a different product surface entirely (drafting, not
-// signing), so it stays in the reasons grid only rather than diluting the
-// "watch a document get signed" story the loop is telling.
-const HERO_LOOP = [REASONS[0], REASONS[1], REASONS[2]];
+// The hero crossfade cycles through the same 4 shots, same order, as the
+// reasons grid below — one visual vocabulary for the whole page instead of
+// a separate curated set for the hero.
+const HERO_LOOP = REASONS;
+const HERO_LOOP_SECONDS = 12;
 
 export function HomepageTier1Preview({ currency }: { currency: Currency }) {
   return (
@@ -125,23 +147,29 @@ export function HomepageTier1Preview({ currency }: { currency: Currency }) {
         <p className="mt-3 text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
       </section>
 
-      {/* The "hero video" — a looping crossfade of 3 real screenshots in one
+      {/* The "hero video" — a looping crossfade of real screenshots in one
           fixed-size card rather than an actual recorded clip (see the file
           comment above and globals.css's .animate-hero-crossfade). A neutral
-          bg-slate-50 card with object-contain lets the field-editor
-          (landscape), signer-mobile (tall portrait), and verify-result
-          (its own baked-in browser chrome) share one frame without any of
-          them looking cropped or stretched, despite three different aspect
-          ratios. prefers-reduced-motion isn't special-cased: the crossfade
-          is a slow opacity fade, not motion/parallax, so it doesn't trigger
-          the concerns that setting exists for. */}
+          bg-slate-50 card with object-contain lets the 4 pillars' very
+          different shapes (field editor landscape, the square seal, the
+          tall Quote panel, the two-panel Draft mockup) share one frame
+          without any of them looking cropped or stretched. Duration and
+          per-image delay both derive from HERO_LOOP_SECONDS /
+          HERO_LOOP.length so adding/removing a pillar doesn't require
+          re-tuning the timing by hand. prefers-reduced-motion isn't
+          special-cased: the crossfade is a slow opacity fade, not motion/
+          parallax, so it doesn't trigger the concerns that setting exists
+          for. */}
       <section className="mx-auto w-full max-w-3xl px-6 pb-12">
         <div className="relative mx-auto h-[420px] w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200/60 bg-slate-50 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
           {HERO_LOOP.map((shot, i) => (
             <div
               key={shot.image}
               className="animate-hero-crossfade absolute inset-0 flex items-center justify-center p-6"
-              style={{ animationDelay: `${i * -3}s` }}
+              style={{
+                animationDuration: `${HERO_LOOP_SECONDS}s`,
+                animationDelay: `${(i * -HERO_LOOP_SECONDS) / HERO_LOOP.length}s`,
+              }}
             >
               <Image
                 src={shot.image}
@@ -154,14 +182,15 @@ export function HomepageTier1Preview({ currency }: { currency: Currency }) {
             </div>
           ))}
         </div>
-        <p className="mt-3 text-center text-xs text-slate-400">Real product screens — placing fields, signing, verifying.</p>
+        <p className="mt-3 text-center text-xs text-slate-400">Real product output — Sign, Seal, Quote, Draft.</p>
       </section>
 
       {/* Screenshot-paired "why SignedBy" — Aracor's 6-reasons pattern,
-          done as 4 here since that's what real screenshots currently
-          support without stretching to a mockup. Alternating image side on
-          desktop (odd rows flip) so the section doesn't read as a flat
-          repeating list; stacks image-above-text on mobile either way. */}
+          done here as exactly the product's own 4 pillars (Sign/Seal/Quote/
+          Draft, same order and icons as the dashboard's own tab picker —
+          see the file comment above). Alternating image side on desktop
+          (odd rows flip) so the section doesn't read as a flat repeating
+          list; stacks image-above-text on mobile either way. */}
       <section className="mx-auto w-full max-w-4xl px-6 py-12">
         <h2 className="mb-10 text-center text-2xl font-semibold text-slate-900">Why SignedBy</h2>
         <div className="flex flex-col gap-16">
@@ -178,7 +207,12 @@ export function HomepageTier1Preview({ currency }: { currency: Currency }) {
                 />
               </div>
               <div className="max-w-sm text-center sm:text-left">
-                <h3 className="text-lg font-semibold text-slate-900">{r.title}</h3>
+                <h3 className="flex items-center justify-center gap-2 text-lg font-semibold text-slate-900 sm:justify-start">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-yellow-300 text-slate-900">
+                    <r.Icon className="h-4 w-4" strokeWidth={1.75} />
+                  </span>
+                  {r.title}
+                </h3>
                 <p className="mt-2 text-slate-600">{r.description}</p>
               </div>
             </div>
