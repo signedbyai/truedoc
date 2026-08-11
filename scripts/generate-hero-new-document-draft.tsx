@@ -11,21 +11,29 @@ import { ImageResponse } from "next/og";
 // generate-then-review flow (ai-draft-form.tsx), not a side-by-side
 // input/output layout.
 //
-// This is a faithful recreation of the real /dashboard/documents/new page
-// with the Draft tab active (new-document-client.tsx + ai-draft-form.tsx's
-// "describe" step), not a captured screenshot -- no authenticated session
-// was available to capture a real one from this sandbox, but every string
-// and layout element below is real, reused verbatim from those two
-// components rather than invented: "New document" h1, the 4-tab
-// Sign/Seal/Quote/Draft picker (same order/icons as the live tab row), the
-// centered yellow icon badge + "Generate your document draft" + its exact
-// subtitle, the Document type / Document language selects, the "Describe
-// what you need" field (filled with the real Freelance placeholder text),
-// the real AI_DRAFT_DISCLAIMER and AI_DRAFT_CHECKBOX_LABEL copy
-// (ai-draft-types.ts), and the "Generate draft" button.
+// Every string and layout element below is real, reused verbatim from
+// new-document-client.tsx / ai-draft-form.tsx / ai-draft-types.ts rather
+// than invented -- not a captured screenshot (no authenticated session was
+// reachable from this sandbox), but no invented copy or layout either.
+//
+// 2026-08-12, second pass, direct follow-up: "trim crop out the top form
+// headers and menu and redundant badge. Maybe there is something from the
+// next screen to mash it up with." Two changes from the first version:
+// (1) dropped the "New document" h1, the 4-tab picker, and the yellow
+// spark icon badge above the heading -- all real, but redundant once this
+// card sits inside the homepage's own "Sign/Seal/Quote/Draft" reasons row,
+// which already has its own icon+label for this exact card. (2) mashed up
+// with ai-draft-form.tsx's OWN "review" step (the screen this form
+// advances to after "Generate draft") -- Document title + a trimmed
+// preview of the generated draft body + "Create document ->", using the
+// review step's real (non-cta, plain dark) button styling since nothing
+// here asked to change it, unlike Quote's button recolor. This gives the
+// image an actual before/after instead of stopping at the input form,
+// answering the "something from the next screen" question with real
+// content instead of a fallback crop.
 
 const WIDTH = 860;
-const HEIGHT = 900;
+const HEIGHT = 1075;
 const NAVY = "#0f172a";
 const SLATE = "#475569";
 const MUTED = "#94a3b8";
@@ -41,6 +49,17 @@ const DISCLAIMER =
 
 const CHECKBOX_LABEL =
   "I understand this is an AI-generated starting draft, not legal advice, and I'm responsible for reviewing it before sending.";
+
+// Plausible generated output for the "3-month logo design project..."
+// description above -- same demo-content spirit as the field editor's
+// "Demo_Consulting_Agreement" and the invoice card's "A. Marlowe Design",
+// not a claim that the AI produces this exact text deterministically.
+const DRAFT_TITLE = "Logo Design Services Agreement";
+const DRAFT_SECTIONS: [string, string][] = [
+  ["1. Scope of work", "Design and delivery of a final logo, running for 3 months from the effective date."],
+  ["2. Payment terms", "Total fee of $2,000, invoiced on completion, due net-30."],
+  ["3. Ownership", "Client owns all final delivered files upon full payment."],
+];
 
 // No emoji/pictographic glyphs anywhere in this file (2026-08-12, learned the
 // hard way) -- next/og's font detector tries to fetch a matching fallback
@@ -76,30 +95,6 @@ function Spark({ size, color }: { size: number; color: string }) {
           transform: "rotate(45deg)",
         }}
       />
-    </div>
-  );
-}
-
-function TabButton({ label, active }: { label: string; active: boolean }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        borderRadius: 8,
-        border: `1px solid ${active ? NAVY : BORDER}`,
-        backgroundColor: active ? NAVY : "#ffffff",
-        color: active ? "#ffffff" : SLATE,
-        fontSize: 15,
-        fontWeight: 600,
-        padding: "10px 0",
-      }}
-    >
-      {active && <Spark size={14} color="#ffffff" />}
-      {label}
     </div>
   );
 }
@@ -144,52 +139,26 @@ function main() {
       <div
         style={{
           width: WIDTH,
-          height: HEIGHT,
           display: "flex",
           flexDirection: "column",
           backgroundColor: "#ffffff",
-          padding: "44px 44px",
+          padding: 44,
         }}
       >
-        <div style={{ display: "flex", fontSize: 27, fontWeight: 700, color: NAVY }}>New document</div>
-
-        {/* 4-tab picker, same order/icons as new-document-client.tsx's real
-            grid: Sign, Seal, Quote, Draft (active). */}
-        <div style={{ marginTop: 22, display: "flex", flexDirection: "row", gap: 8 }}>
-          <TabButton label="Sign" active={false} />
-          <TabButton label="Seal" active={false} />
-          <TabButton label="Quote" active={false} />
-          <TabButton label="Draft" active={true} />
-        </div>
-
-        {/* Card, matching the real Draft tab's CardHeader: centered yellow
-            icon badge + title + description. */}
+        {/* Card -- no outer h1/tab-row/badge (cropped, 2026-08-12). Starts
+            straight at the heading. */}
         <div
           style={{
-            marginTop: 20,
             display: "flex",
             flexDirection: "column",
             border: `1px solid ${BORDER}`,
             borderRadius: 14,
             boxShadow: "0 12px 30px -14px rgba(15, 23, 42, 0.18)",
-            padding: "32px 32px 40px",
+            padding: "32px 32px 36px",
           }}
         >
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div
-              style={{
-                display: "flex",
-                width: 56,
-                height: 56,
-                borderRadius: 18,
-                backgroundColor: YELLOW,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Spark size={24} color={NAVY} />
-            </div>
-            <div style={{ marginTop: 10, display: "flex", fontSize: 20, fontWeight: 700, color: NAVY }}>
+            <div style={{ display: "flex", fontSize: 20, fontWeight: 700, color: NAVY }}>
               Generate your document draft
             </div>
             <div
@@ -207,7 +176,7 @@ function main() {
             </div>
           </div>
 
-          <div style={{ marginTop: 26, display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 16 }}>
             <SelectField label="Document type" value="Freelance / Services Agreement" />
             <SelectField label="Document language" value="English" />
 
@@ -276,6 +245,88 @@ function main() {
             >
               <Spark size={16} color={NAVY} />
               Generate draft
+            </div>
+          </div>
+
+          {/* Mashup with ai-draft-form.tsx's own "review" step -- the real
+              next screen this form advances to. Trimmed: the real step
+              shows an 18-row editable textarea for the full draft body;
+              this shows the first 3 sections only, same illustrative-not-
+              exhaustive treatment the rest of this card already uses. */}
+          <div style={{ marginTop: 28, display: "flex", flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", flex: 1, height: 1, backgroundColor: BORDER }} />
+            <div style={{ display: "flex", fontSize: 12, fontWeight: 600, color: MUTED, letterSpacing: 0.4 }}>
+              GENERATES A READY-TO-EDIT DRAFT
+            </div>
+            <div style={{ display: "flex", flex: 1, height: 1, backgroundColor: BORDER }} />
+          </div>
+
+          <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ display: "flex", fontSize: 14, fontWeight: 600, color: SLATE }}>Document title</div>
+              <div
+                style={{
+                  display: "flex",
+                  height: 44,
+                  alignItems: "center",
+                  border: `1px solid #cbd5e1`,
+                  borderRadius: 8,
+                  padding: "0 14px",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: NAVY,
+                  backgroundColor: "#ffffff",
+                }}
+              >
+                {DRAFT_TITLE}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ display: "flex", fontSize: 14, fontWeight: 600, color: SLATE }}>
+                Draft text — review and edit before creating the document
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                  border: `1px solid ${BORDER}`,
+                  borderRadius: 8,
+                  padding: 16,
+                  backgroundColor: "#fafafa",
+                }}
+              >
+                {DRAFT_SECTIONS.map(([title, body]) => (
+                  <div key={title} style={{ display: "flex", flexDirection: "column" }}>
+                    <div style={{ display: "flex", fontSize: 13, fontWeight: 700, color: NAVY }}>{title}</div>
+                    <div style={{ marginTop: 2, display: "flex", fontSize: 12.5, color: SLATE, lineHeight: 1.5 }}>
+                      {body}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Real (non-cta) dark Button styling -- ai-draft-form.tsx's
+                review step deliberately does NOT use the yellow cta variant
+                for this button, unlike "Generate draft" above it. Kept as
+                real, not changed to yellow like Quote's button was -- no
+                instruction to deviate from the live product here. */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: NAVY,
+                color: "#ffffff",
+                fontSize: 16,
+                fontWeight: 700,
+                borderRadius: 10,
+                padding: "14px 0",
+              }}
+            >
+              Create document →
             </div>
           </div>
         </div>

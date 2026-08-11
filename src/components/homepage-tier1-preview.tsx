@@ -55,6 +55,43 @@ import { TRUSTED_BY, PRICING } from "@/lib/homepage-content";
 //   session was reachable from this sandbox to shoot one), but no invented
 //   copy or layout either, per Michael's own "keep it simple" framing.
 //
+// 2026-08-12, third pass, direct follow-up after Michael looked at the
+// second pass live on dev:
+// - Sign: same hero-sign-mobile-composite.png file, rebuilt. The first
+//   version's "desktop field editor" half was a simplified/fabricated
+//   recreation, not the real screenshot — flagged as "the wrong image."
+//   Now composites the phone directly over the REAL hero-field-editor.png,
+//   positioned so the overlap covers the Send/Suggest-fields buttons and
+//   blank canvas margin, not the two real signature blocks near the bottom.
+// - Seal: same hero-verified-badge-invoice-d.png file, trimmed — its own
+//   canvas had a `flex: 1` gap between "Total due" and the QR row that
+//   stretched to fill the whole fixed-height card regardless of content;
+//   now a fixed, content-sized gap (920px tall canvas → 650px). Shared with
+//   the real /verified-badge-invoices page and its own hardcoded
+//   width/height, updated there too.
+// - Quote: hero-magic-quote.png edited in place (scripts/edit-hero-magic-
+//   quote.py — a real captured screenshot, not a next/og render, so this is
+//   raster editing, not a source-of-truth re-run). Cropped out the "Tax
+//   rate %"/"Notes" fields, and recolored "Create document" from the plain
+//   shadcn-default dark button to this app's real brand cta style
+//   (bg-yellow-300/text-slate-900) — a deliberate marketing-asset deviation
+//   from what the live button looks like today, direct ask. Shared with the
+//   three real /magic-quote pages (base + us-subcontractors + au-tradies),
+//   all of which had their own hardcoded width/height updated to match so
+//   the now-shorter image doesn't stretch there.
+// - Draft: hero-new-document-draft.png rebuilt again — dropped the "New
+//   document" h1, the 4-tab picker, and the yellow spark icon badge (all
+//   redundant once this sits inside the homepage's own Sign/Seal/Quote/
+//   Draft reasons row, which already carries an icon+label for this card).
+//   Mashed up with ai-draft-form.tsx's own "review" step — the real next
+//   screen this form advances to — rather than stopping at the input form:
+//   Document title + a 3-section preview of the generated draft body (real
+//   step shows an editable 18-row textarea; this trims to an illustrative
+//   preview, same demo-content spirit as the rest of this file) + "Create
+//   document →" using that step's real plain-dark button styling
+//   (deliberately NOT recolored like Quote's — no instruction to deviate
+//   from the live product here).
+//
 // Copy for the hero (headline/subhead/value props/pricing/trusted-by) is
 // deliberately identical to homepage-current.tsx's proven version — this
 // is asset/visual work, not a copy test, so nothing about the words
@@ -74,8 +111,8 @@ const REASONS: {
     description: "Place signature, initials, date, and text fields on any PDF, then send for signature in seconds.",
     image: "/hero-sign-mobile-composite.png",
     alt: "The SignedBy field editor with the mobile signing screen overlaid, showing the Slide to sign & submit control",
-    width: 1460,
-    height: 1080,
+    width: 1642,
+    height: 1070,
     Icon: Signature,
   },
   {
@@ -85,7 +122,7 @@ const REASONS: {
     image: "/hero-verified-badge-invoice-d.png",
     alt: "An invoice with the SignedBy Verified & Sealed medallion stamped over its top-right corner",
     width: 740,
-    height: 920,
+    height: 650,
     Icon: ShieldCheck,
   },
   {
@@ -94,16 +131,16 @@ const REASONS: {
     image: "/hero-magic-quote.png",
     alt: "The Magic Quote tool generating an itemized price quote from a plain-language job description",
     width: 592,
-    height: 972,
+    height: 758,
     Icon: Receipt,
   },
   {
     title: "Draft",
     description: "Describe what you need and AI drafts a ready-to-send agreement — review, edit, and send in the same flow.",
     image: "/hero-new-document-draft.png",
-    alt: "The New document screen's Draft tab: document type and language pickers, a plain-language description, and a Generate draft button",
+    alt: "The Draft tab: document type and language pickers, a plain-language description, a Generate draft button, and the generated draft title and text ready to review",
     width: 860,
-    height: 900,
+    height: 1075,
     Icon: Sparkles,
   },
 ];

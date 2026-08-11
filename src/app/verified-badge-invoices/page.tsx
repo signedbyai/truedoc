@@ -360,7 +360,7 @@ export default async function VerifiedBadgeInvoicesPage({
              below) would re-box the whole canvas including the seal's
              overhang, defeating that "floating outside" look — so this
              branch renders the Image bare. hero-verified-badge-invoice-d.png
-             is its own bigger 740x920 canvas (vs. the shared 640x820) with
+             is its own bigger 740x650 canvas (vs. the shared 640x820) with
              a white background and extra top/right padding purpose-built
              for the seal to hang past the card's corner without being
              clipped — see generate-hero-verified-badge-invoice-d.tsx. */
@@ -369,7 +369,7 @@ export default async function VerifiedBadgeInvoicesPage({
               src="/hero-verified-badge-invoice-d.png"
               alt="A Verified Badge stamped in the corner of a freelance invoice — the SignedBy mark, a scannable QR code, and a verification link"
               width={740}
-              height={920}
+              height={650}
               priority
               sizes="(max-width: 640px) 90vw, 384px"
               className="h-auto w-full"

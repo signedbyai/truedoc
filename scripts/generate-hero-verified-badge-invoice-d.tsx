@@ -37,7 +37,7 @@ import { ImageResponse } from "next/og";
 // 560x740) so its content layout matches every other variant.
 
 const WIDTH = 740;
-const HEIGHT = 920;
+const HEIGHT = 650;
 const OUTER_PAD_TOP = 140;
 const OUTER_PAD_RIGHT = 140;
 const NAVY = "#0f172a";
@@ -85,7 +85,6 @@ async function main() {
             position: "relative",
             display: "flex",
             flexDirection: "column",
-            flex: 1,
             backgroundColor: "#ffffff",
             borderRadius: 20,
             border: `1px solid ${BORDER}`,
@@ -151,7 +150,14 @@ async function main() {
             </div>
           </div>
 
-          <div style={{ display: "flex", flex: 1 }} />
+          {/* 2026-08-12, direct ask: trim the dead gap between Total due
+              and the QR row -- was `flex: 1` on a card that itself also had
+              `flex: 1` (filling the whole padded canvas), so the QR row got
+              pushed all the way to the canvas's own bottom edge regardless
+              of how little content was above it. Card no longer stretches
+              (flex:1 removed above too) and this is now a fixed gap sized
+              to the content, not the canvas. */}
+          <div style={{ marginTop: 32 }} />
 
           {/* No tick badge here -- the seal stamped up top already reads as
               this image's verified indicator (direct ask). Plain QR. */}
