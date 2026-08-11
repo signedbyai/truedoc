@@ -65,6 +65,32 @@ body {
   animation-play-state: paused;
 }
 
+/* /home-preview's "hero video" — a looping crossfade of 3 real product
+   screenshots stacked in one container (see homepage-tier1-preview.tsx),
+   not an actual video file. Same idea as Aracor's looping hero animation
+   (ARACOR_INSPIRED_PRIORITIES.md Tier 1) but built from stills already in
+   public/ rather than a screen recording, so it's pure CSS and stays real
+   product UI rather than a stylized mockup. One shared keyframe, each
+   image offset by a negative animation-delay so they take turns — image 2
+   at -3s and image 3 at -6s into the same 9s loop (see the component for
+   the delay values). Kept as a class (not Tailwind arbitrary values) since
+   it's shared across all three images and easier to tune in one place. */
+@keyframes hero-crossfade {
+  0%, 4% {
+    opacity: 0;
+  }
+  8%, 26% {
+    opacity: 1;
+  }
+  30%, 100% {
+    opacity: 0;
+  }
+}
+
+.animate-hero-crossfade {
+  animation: hero-crossfade 9s ease-in-out infinite;
+}
+
 /* Sender-side "start here" cue on the Signature tool button (see
    field-editor.tsx). An on-brand yellow highlighter sweep across the
    button label — same yellow-highlight motif as the favicon (black S on
