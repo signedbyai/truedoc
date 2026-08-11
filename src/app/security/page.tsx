@@ -122,6 +122,12 @@ export default function SecurityPage() {
             That means a counterparty, an accountant, or a court doesn&apos;t have to take your word for it — or ours.
             Anyone holding the file can check it themselves, without a SignedBy account and without contacting us.
           </p>
+          <p className="mt-3 text-slate-600">
+            That fingerprint is also given an independent timestamp: every seal is submitted to a real Time Stamping
+            Authority — Sectigo&apos;s public RFC 3161 service, with FreeTSA as an automatic fallback — which signs
+            the hash together with the time. That&apos;s a neutral third party&apos;s proof of exactly when the
+            document existed, not just an entry in SignedBy&apos;s own database.
+          </p>
           <Link href="/verify" className={`${buttonVariants({ size: "sm" })} mt-5`}>
             Verify a document →
           </Link>

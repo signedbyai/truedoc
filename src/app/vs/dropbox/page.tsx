@@ -176,6 +176,12 @@ export default async function VsDropboxPage() {
           <Link href="/vs/adobe" className="hover:text-slate-600">
             SignedBy vs Adobe
           </Link>
+          <Link href="/vs/eurosign" className="hover:text-slate-600">
+            SignedBy vs Eurosign
+          </Link>
+          <Link href="/vs/swisssign" className="hover:text-slate-600">
+            SignedBy vs SwissSign
+          </Link>
           <Link href="/templates" className="hover:text-slate-600">
             Free templates
           </Link>

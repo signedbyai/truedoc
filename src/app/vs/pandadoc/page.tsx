@@ -157,6 +157,12 @@ export default async function VsPandaDocPage() {
           <Link href="/vs/dropbox" className="hover:text-slate-600">
             SignedBy vs Dropbox Sign
           </Link>
+          <Link href="/vs/eurosign" className="hover:text-slate-600">
+            SignedBy vs Eurosign
+          </Link>
+          <Link href="/vs/swisssign" className="hover:text-slate-600">
+            SignedBy vs SwissSign
+          </Link>
           <Link href="/templates" className="hover:text-slate-600">
             Free templates
           </Link>
