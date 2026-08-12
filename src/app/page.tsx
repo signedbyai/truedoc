@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FlagValues } from "flags/react";
 import { ReferralCapture } from "@/components/referral-capture";
-import { HomepageCurrent } from "@/components/homepage-current";
-import { HomepageTwoColumn } from "@/components/homepage-two-column";
-import { ctaColorFlag, homepageVariantFlag } from "@/flags";
+import { HomepageTier1Preview } from "@/components/homepage-tier1-preview";
 import { getRequestCurrency } from "@/lib/currency.server";
 
 // Self-canonical so the homepage is the one indexed URL for the brand — title
@@ -13,29 +10,36 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
+// 2026-08-12, direct ask: "deploy preview-B as the new home page." Promotes
+// what had been the unlinked /home-preview-b route (Tier 1 redesign, +
+// developer/API section) to the real homepage — same component
+// (HomepageTier1Preview) with the same showDeveloperSection=true variant B
+// used, just without that route's own "Internal preview" banner.
+//
+// Dropped along with the old homepage-current.tsx / homepage-two-column.tsx
+// A/B setup: ctaColorFlag (already concluded/locked to "purple" since
+// 2026-07-24 — HomepageTier1Preview's CtaLink already hardcodes "purple", so
+// calling the flag would just re-derive a value nothing here reads) and
+// homepageVariantFlag (already paused/hardcoded to "current" since
+// 2026-07-27 — there's no more "current vs v20" choice to make; this page IS
+// the new "current"). Neither flag is deleted from src/flags.ts — same "kept
+// for a future test" convention that file already documents — just no
+// longer called from this specific page.
+//
+// The pre-promotion homepage is preserved as homepage-versions/ v26
+// (homepage-current.tsx + homepage-two-column.tsx + this router file, as
+// they were immediately before this change) — see that folder's INDEX.md to
+// restore it.
 export default async function LandingPage() {
   // EUR for Eurozone visitors, USD for the rest (from geo/cookie) — same
   // resolution the /pricing page and checkout use, so the figures stay in
   // sync across the whole funnel. See src/lib/currency.ts.
   const currency = await getRequestCurrency();
-  const ctaColor = await ctaColorFlag();
-  // Homepage layout test, started 2026-07-25 — see src/flags.ts and
-  // marketing/homepage-layout-test.md. "current" is the live centred hero;
-  // "v20" is the two-column layout that had been kept on dev as a preview.
-  // Everything each variant needs (header, hero, product shot, value row,
-  // trusted-by, features, pricing) lives in its own component; only the
-  // footer below is identical between them and stays shared here.
-  const homepageVariant = await homepageVariantFlag();
 
   return (
     <main className="flex min-h-screen flex-col bg-white">
-      <FlagValues values={{ "cta-color": ctaColor, "homepage-variant": homepageVariant }} />
       <ReferralCapture />
-      {homepageVariant === "v20" ? (
-        <HomepageTwoColumn currency={currency} ctaColor={ctaColor} />
-      ) : (
-        <HomepageCurrent currency={currency} ctaColor={ctaColor} />
-      )}
+      <HomepageTier1Preview currency={currency} showDeveloperSection />
 
       <footer className="mt-auto border-t border-slate-100 px-6 py-8 text-center text-xs text-slate-400">
         <p>© {new Date().getFullYear()} SignedBy. signedby.ai</p>
