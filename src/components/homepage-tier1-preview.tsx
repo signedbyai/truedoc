@@ -120,6 +120,28 @@ import { TRUSTED_BY, PRICING } from "@/lib/homepage-content";
 //   planned — both real captures share the same 567px source width, so
 //   nominal text sizes now match on the page without any manual scaling.
 //
+// 2026-08-12, fifth pass, direct follow-up: "remove the badges from the
+// images in Magic Quote and Draft since in the page there is already a
+// badge. Add in the yellow button at the bottom of the Magic Quote,
+// remove the legal disclaimer and consent area from the Draft image."
+// - Quote and Draft: both real screenshots had a centered yellow icon
+//   badge at the top (Aug-5 redesign treatment) that duplicates the
+//   badge already shown in the reasons-grid row below — cropped out of
+//   both (scripts/edit-hero-magic-quote.py, scripts/edit-hero-new-
+//   document-draft.py), new dimensions 568x483 and 567x513.
+// - Quote: appended a synthesized yellow "Create document →" button at
+//   the bottom — this is the real review-step button from
+//   magic-quote-form.tsx (real copy, real position), just recolored
+//   yellow/navy to match this app's marketing-asset brand cta style
+//   instead of the plain dark Button it renders as live. It's the actual
+//   form's own button rendered in the graphic, not an added marketing
+//   CTA element.
+// - Draft: cut the amber legal-disclaimer banner + "I understand..."
+//   consent checkbox block, so the Describe-what-you-need field flows
+//   straight into the real "Generate draft" button.
+// The Sign/Seal/Draft-heading/animation-order work from earlier passes is
+// unchanged; see above for that history.
+//
 // Copy for the hero (headline/subhead/value props/pricing/trusted-by) is
 // deliberately identical to homepage-current.tsx's proven version — this
 // is asset/visual work, not a copy test, so nothing about the words
@@ -159,7 +181,7 @@ const REASONS: {
     image: "/hero-magic-quote.png",
     alt: "The Magic Quote itemized editor: quote title, currency, bill-to, and line items with computed totals",
     width: 568,
-    height: 434,
+    height: 483,
     Icon: Receipt,
   },
   {
@@ -168,7 +190,7 @@ const REASONS: {
     image: "/hero-new-document-draft.png",
     alt: "The Draft tab: document type and language pickers, a plain-language description, and a Generate draft button",
     width: 567,
-    height: 689,
+    height: 513,
     Icon: Sparkles,
   },
 ];
