@@ -89,6 +89,13 @@ export async function GET(request: Request) {
   const auth = await authenticateApiRequest(request);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
+  // Added 2026-08-12 — this GET had no rate limit at all (only the POST
+  // below did), despite the file-header comment's own framing of this as
+  // something "a Make/CRM scenario" polls repeatedly. Generous ceiling for
+  // a read, matching /templates and /documents/[id]'s own new limits.
+  const rateOk = await checkRateLimit(`api-v1-documents-list:${auth.orgId}`, 120, 3600);
+  if (!rateOk) return NextResponse.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });
+
   const url = new URL(request.url);
   const statusParam = url.searchParams.get("status");
   const status =

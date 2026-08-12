@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { authenticateApiRequest } from "@/lib/api-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const auth = await authenticateApiRequest(request);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  // Added 2026-08-12 — no rate limit at all previously. Generous, since
+  // the whole point of this route (per CRM_MCP_READINESS_PHASE1_SCOPE.md)
+  // is letting an integration poll status.
+  const rateOk = await checkRateLimit(`api-v1-document-detail:${auth.orgId}`, 300, 3600);
+  if (!rateOk) return NextResponse.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });
 
   const admin = createAdminClient();
   const { data: doc } = await admin

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { authenticateApiRequest } from "@/lib/api-auth";
 import { getFromR2 } from "@/lib/r2";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // GET /api/v1/documents/[id]/signed-file — download the completed PDF via
 // API-key auth. CRM_MCP_READINESS_PHASE1_SCOPE.md Part A#3: the only
@@ -13,6 +14,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const auth = await authenticateApiRequest(request);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  // Added 2026-08-12 — this had NO rate limit at all before, the single
+  // most concrete item in the "6 of 8 api/v1 routes unprotected" finding:
+  // it streams a real signed PDF out of R2 on every call, real bandwidth/
+  // cost exposure from a leaked key or runaway integration, not just an
+  // abuse-shaped risk.
+  const rateOk = await checkRateLimit(`api-v1-signed-file:${auth.orgId}`, 120, 3600);
+  if (!rateOk) return NextResponse.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });
 
   const admin = createAdminClient();
   const { data: doc, error } = await admin

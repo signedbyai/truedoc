@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { authenticateApiRequest } from "@/lib/api-auth";
 import { getFromR2 } from "@/lib/r2";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // GET /api/v1/documents/[id]/certificate — API-key-gated download of the
 // standalone certificate PDF (Verified Badge's separate/both certificateMode).
@@ -10,6 +11,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const auth = await authenticateApiRequest(request);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  // Added 2026-08-12 — no rate limit at all previously. This streams a
+  // real file out of R2, same bandwidth-exposure reasoning as
+  // /signed-file — see that route's matching comment.
+  const rateOk = await checkRateLimit(`api-v1-certificate:${auth.orgId}`, 120, 3600);
+  if (!rateOk) return NextResponse.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });
 
   const admin = createAdminClient();
   const { data: doc, error } = await admin
