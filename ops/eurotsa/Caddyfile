@@ -1,6 +1,16 @@
 eurotsa.eu {
 	encode gzip
 
+	# Security audit 2026-08-12: Caddy doesn't set these by default, and a
+	# bare curl -sI only came back with "server: Caddy" — no HSTS, no
+	# clickjacking/MIME-sniffing protection. Applies to every response from
+	# this site block (static site + the /tsr proxy responses alike).
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+	}
+
 	# Mirrors FreeTSA's own /tsr URL so a curl/openssl command written
 	# against freetsa.org/tsr works unchanged against eurotsa.eu/tsr —
 	# timestamp-authority's real native path is /api/v1/timestamp
