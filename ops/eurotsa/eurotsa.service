@@ -10,7 +10,7 @@ ExecStart=/usr/local/bin/timestamp-server serve \
   --port 3000 \
   --timestamp-signer=kms \
   --certificate-chain-path=/etc/eurotsa/chain.crt.pem \
-  --kms-key-resource=gcpkms://projects/REPLACE_PROJECT/locations/europe-west3/keyRings/eurotsa/cryptoKeys/eurotsa-leaf/versions/1
+  --kms-key-resource=gcpkms://projects/eurotsa-tsa/locations/europe-west3/keyRings/eurotsa/cryptoKeys/eurotsa-leaf/versions/1
 Restart=on-failure
 RestartSec=5
 # 127.0.0.1 only — Caddy is the only thing that should ever reach this
