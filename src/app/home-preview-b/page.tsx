@@ -3,34 +3,28 @@ import Link from "next/link";
 import { HomepageTier1Preview } from "@/components/homepage-tier1-preview";
 import { getRequestCurrency } from "@/lib/currency.server";
 
-// Tier 1 homepage variant from ARACOR_INSPIRED_PRIORITIES.md — direct ask
-// 2026-08-11: "Can we do Tier 1 but as a homepage variant we can look at
-// on dev initially." A private, unlinked route rather than a change to
-// the live homepage or a third value on homepageVariantFlag (src/flags.ts)
-// — nothing here is measured or traffic-split, it's just a page to look
-// at before deciding whether to promote any of it. noindex so it never
-// gets crawled/indexed as a duplicate homepage in the meantime.
-//
-// Renamed from /home-preview to /home-preview-a (2026-08-12, direct ask)
-// once a second variant (/home-preview-b, the Documenso-inspired
-// developer section) needed its own route to compare side by side.
+// Variant B of the Tier 1 homepage preview (2026-08-12, direct ask) — same
+// page as /home-preview-a, plus a Documenso-inspired developer/API section
+// (see DeveloperApiSection in homepage-tier1-preview.tsx for the real
+// content and what was/wasn't copied from documenso.com). Private,
+// unlinked, noindexed — same status as /home-preview-a, just a second
+// route so the two can be compared side by side rather than overwriting A.
 export const metadata: Metadata = {
-  title: "Homepage preview (Tier 1 — A) — SignedBy",
+  title: "Homepage preview (Tier 1 — B, + developers) — SignedBy",
   robots: { index: false, follow: false },
 };
 
-export default async function HomePreviewAPage() {
+export default async function HomePreviewBPage() {
   const currency = await getRequestCurrency();
 
   return (
     <main className="flex min-h-screen flex-col bg-white">
       <div className="bg-slate-900 px-6 py-2 text-center text-xs text-slate-300">
-        Internal preview — Tier 1, variant A (hero crossfade + screenshot-paired reasons), not linked from the live
-        site. See also <a href="/home-preview-b" className="underline hover:text-white">variant B</a> (adds a
-        developer/API section).
+        Internal preview — Tier 1, variant B (adds a developer/API section, Documenso-inspired), not linked from the
+        live site. See also <a href="/home-preview-a" className="underline hover:text-white">variant A</a>.
       </div>
 
-      <HomepageTier1Preview currency={currency} />
+      <HomepageTier1Preview currency={currency} showDeveloperSection />
 
       <footer className="mt-auto border-t border-slate-100 px-6 py-8 text-center text-xs text-slate-400">
         <p>© {new Date().getFullYear()} SignedBy. signedby.ai</p>

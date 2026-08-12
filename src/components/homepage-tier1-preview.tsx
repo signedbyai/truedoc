@@ -201,7 +201,128 @@ const REASONS: {
 const HERO_LOOP = REASONS;
 const HERO_LOOP_SECONDS = 12;
 
-export function HomepageTier1Preview({ currency }: { currency: Currency }) {
+// Developer/API section — /home-preview-b only (2026-08-12, direct ask:
+// "take some inspiration from documenso.com especially the api animation").
+// A live Chrome pass over documenso.com found their "API animation" is
+// actually a static, full-bleed, syntax-highlighted JSON response panel —
+// no motion at all (see HOMEPAGE_HERO_VIDEO_AND_SECOND_HALF_SCOPE.md's
+// addendum). Two deliberate departures from copying that panel outright:
+// (1) the JSON below is REAL — the exact GET /api/v1/documents/{id}
+// response already published on /developers (same id used there,
+// 7fdd90eb-...), not an invented shape, matching the same real-facts rule
+// the /vs/* pages follow; (2) it's actually animated (a slow vertical
+// scroll loop, globals.css's .animate-json-scroll), since that's what was
+// asked for, not what Documenso's own page does.
+type JsonTok = { t: string; c?: string };
+const jline = (...toks: JsonTok[]) => toks;
+const KEY = "text-sky-300";
+const STR = "text-emerald-300";
+const LIT = "text-amber-300";
+const PUNCT = "text-slate-500";
+
+const JSON_LINES: JsonTok[][] = [
+  jline({ t: "{", c: PUNCT }),
+  jline({ t: '  "id"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"7fdd90eb-9152-4031-a767-c0632126dc53"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '  "title"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"Freelance Agreement"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '  "status"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"completed"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '  "created_at"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"2026-07-28T10:04:00Z"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '  "updated_at"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"2026-07-29T09:11:00Z"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '  "expires_at"', c: KEY }, { t: ": ", c: PUNCT }, { t: "null", c: LIT }, { t: ",", c: PUNCT }),
+  jline({ t: '  "signers"', c: KEY }, { t: ": [", c: PUNCT }),
+  jline({ t: "    {", c: PUNCT }),
+  jline({ t: '      "email"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"jane@acme.com"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '      "name"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"Jane"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '      "status"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"signed"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '      "signed_at"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"2026-07-29T09:11:00Z"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '      "auth_required"', c: KEY }, { t: ": ", c: PUNCT }, { t: "false", c: LIT }, { t: ",", c: PUNCT }),
+  jline({ t: '      "auth_verified"', c: KEY }, { t: ": ", c: PUNCT }, { t: "false", c: LIT }),
+  jline({ t: "    }", c: PUNCT }),
+  jline({ t: "  ]", c: PUNCT }),
+  jline({ t: "}", c: PUNCT }),
+];
+
+function JsonPanelContent() {
+  return (
+    <>
+      {JSON_LINES.map((line, i) => (
+        <div key={i} className="whitespace-pre">
+          {line.map((tok, j) => (
+            <span key={j} className={tok.c}>
+              {tok.t}
+            </span>
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
+
+function DeveloperApiSection() {
+  return (
+    <section className="mx-auto w-full max-w-5xl px-6 py-12">
+      <div className="grid gap-10 sm:grid-cols-2 sm:items-center">
+        <div className="text-center sm:text-left">
+          <div className="mb-3 flex items-center justify-center gap-2.5 sm:justify-start">
+            {/* Black badge mark in place of the yellow icon-squares the
+                Sign/Seal/Quote/Draft reasons use above — direct ask, "use a
+                black version of the logo badge for that dev section in
+                place of the other badges." Real brand asset
+                (signedby-badge-black-slash-optionC), not a recolored
+                lucide icon like the others. */}
+            <Image
+              src="/brand/signedby-badge-black-small.png"
+              alt=""
+              width={28}
+              height={28}
+              className="h-7 w-7 rounded-lg"
+            />
+            <h2 className="text-2xl font-semibold text-slate-900">Built for developers</h2>
+          </div>
+          <p className="max-w-sm text-slate-600 sm:max-w-none">
+            A REST API and outbound webhooks — create and send documents from your CRM, poll status, or get
+            notified the moment something&apos;s signed. Starts metered on Pro, fully unlimited on Business.
+          </p>
+          <Link
+            href="/developers"
+            className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-900 hover:text-slate-700"
+          >
+            Check the API docs <span aria-hidden>→</span>
+          </Link>
+        </div>
+
+        <div className="relative h-64 overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.25)]">
+          <div className="flex items-center gap-1.5 border-b border-slate-800 bg-slate-900/95 px-4 py-2.5 text-xs text-slate-400">
+            <span className="h-2 w-2 rounded-full bg-slate-700" />
+            <span className="h-2 w-2 rounded-full bg-slate-700" />
+            <span className="h-2 w-2 rounded-full bg-slate-700" />
+            <span className="ml-2 font-mono">GET /api/v1/documents/{"{id}"}</span>
+          </div>
+          <div className="h-[calc(100%-2.75rem)] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_12%,black_88%,transparent)]">
+            <div className="animate-json-scroll px-4 py-4 font-mono text-xs leading-relaxed">
+              <JsonPanelContent />
+              {/* Duplicate block for a seamless loop — same technique as
+                  the trusted-by marquee's translateX(-50%) above, on the Y
+                  axis instead. */}
+              <div className="mt-4" aria-hidden="true">
+                <JsonPanelContent />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function HomepageTier1Preview({
+  currency,
+  showDeveloperSection = false,
+}: {
+  currency: Currency;
+  // /home-preview-b only (2026-08-12) — see DeveloperApiSection's own
+  // comment above. Defaults false so /home-preview-a is unaffected.
+  showDeveloperSection?: boolean;
+}) {
   return (
     <>
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
@@ -335,6 +456,8 @@ export function HomepageTier1Preview({ currency }: { currency: Currency }) {
           ))}
         </div>
       </section>
+
+      {showDeveloperSection && <DeveloperApiSection />}
 
       <section className="mx-auto w-full max-w-3xl px-6 pb-16">
         <p className="mb-4 text-center text-xs font-medium uppercase tracking-wide text-slate-400">Trusted by</p>
