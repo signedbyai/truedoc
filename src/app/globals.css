@@ -118,8 +118,26 @@ body {
   }
 }
 
+/* animation-fill-mode: backwards -- 2026-08-12 direct report, "the
+   loading at the start is not great, some of the last ones land on top
+   as it loads." Root cause: each slide's animation-delay (staggered up
+   to ~10.6s for the last slide) is a gap BEFORE that element's animation
+   starts. With no fill-mode, an element outside its animation's active
+   period (including during its own delay) renders at its plain,
+   non-keyframe styles -- and since none of these slide divs have an
+   explicit base opacity, that default is opacity:1 (fully visible). So
+   from page load until each slide's own delay elapsed, every slide sat
+   fully opaque, stacked on top of each other (all `absolute inset-0`,
+   same stacking context, no z-index -- later DOM order paints on top),
+   which is exactly "the last ones land on top" during that gap: the
+   slide with the longest delay was the most recent to be added to the
+   DOM and so painted over everything else for the longest stretch.
+   `backwards` makes the browser apply the FIRST keyframe's styles (0%,
+   4%: opacity 0) during that pre-start delay instead of the element's
+   own default, so every slide starts invisible and only becomes visible
+   when its own animation actually begins. */
 .animate-hero-crossfade {
-  animation: hero-crossfade 9s ease-in-out infinite;
+  animation: hero-crossfade 9s ease-in-out infinite backwards;
 }
 
 /* First image in the loop (Sign) only — direct ask 2026-08-12: "make the

@@ -227,7 +227,7 @@ const HERO_TOTAL_LOOP_SECONDS = HERO_LOOP_SECONDS + HERO_FIRST_HOLD_EXTRA_SECOND
 // new graphic style or another generated PNG.
 function IntroBadgeRow() {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
+    <div className="flex flex-wrap items-center justify-center gap-9 sm:gap-14">
       {REASONS.map((r) => (
         <div key={r.title} className="flex flex-col items-center gap-2.5">
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-yellow-300 text-slate-900 sm:h-16 sm:w-16">
@@ -242,16 +242,16 @@ function IntroBadgeRow() {
 
 // Small yellow icon badge pinned to a hero slide's own OUTER wrapper --
 // direct ask 2026-08-12: "keep the badge for the relevant animation in
-// the top right." Rendered as a sibling of the slide's image content in
-// the crossfade map below, not nested inside SignHeroContent's zooming
-// box -- nesting it in there would have scaled and dragged the badge
-// along with the image toward the zoom's own transform-origin. As a
-// sibling of the (non-zooming, only-opacity-animated) outer slide div, it
-// stays fixed in the corner regardless of what the content underneath is
-// doing.
+// the top right" (moved to top LEFT same day, direct follow-up). Rendered
+// as a sibling of the slide's image content in the crossfade map below,
+// not nested inside SignHeroContent's zooming box -- nesting it in there
+// would have scaled and dragged the badge along with the image toward
+// the zoom's own transform-origin. As a sibling of the (non-zooming,
+// only-opacity-animated) outer slide div, it stays fixed in the corner
+// regardless of what the content underneath is doing.
 function FeatureCornerBadge({ Icon }: { Icon: typeof Signature }) {
   return (
-    <span className="pointer-events-none absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-300 text-slate-900 shadow-sm sm:right-4 sm:top-4">
+    <span className="pointer-events-none absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-300 text-slate-900 shadow-sm sm:left-4 sm:top-4">
       <Icon className="h-4 w-4" strokeWidth={1.75} />
     </span>
   );
@@ -588,10 +588,9 @@ export function HomepageTier1Preview({
                 ) : (
                   <ReasonHeroContent reason={item.reason} />
                 )}
-                {/* Corner badge, direct ask: "keep the badge for the
-                    relevant animation in the top right" -- skipped on the
-                    intro slide itself, which already shows all four
-                    badges. */}
+                {/* Corner badge (top left, moved from top right same day) --
+                    skipped on the intro slide itself, which already shows
+                    all four badges. */}
                 {item.reason && <FeatureCornerBadge Icon={item.reason.Icon} />}
               </div>
             );
