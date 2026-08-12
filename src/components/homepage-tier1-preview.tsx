@@ -360,13 +360,28 @@ const HERO_TOTAL_LOOP_SECONDS = 32;
 // reused here at a larger size, so this establishing slide shares one
 // visual vocabulary with the rest of the page rather than introducing a
 // new graphic style or another generated PNG.
+// 2026-08-12, twelfth pass, direct report (mobile screenshot attached):
+// on a real phone (~375-390px viewport) the row of 4 badges wrapped --
+// Sign/Seal/Quote on one line, Draft alone on a second. Root cause: the
+// available width inside this card is viewport minus 96px (48px from the
+// section's own px-6, another 48px from the crossfade slide's own p-6),
+// so at 375px that's only 279px to fit 4 badges in -- at the old 56px
+// badge size + 36px gap (gap-9), 4 of them need 224+108=332px, well over
+// budget. Asked to either stop the wrap or tighten the spacing,
+// "whichever is better" -- tightening wins here: forcing flex-nowrap
+// without also shrinking things would just clip the badges off-screen
+// instead of wrapping them, which is worse. Mobile badge size dropped
+// 56px->48px (h-14->h-12) and gap dropped 36px->16px (gap-9->gap-4): 4
+// badges now need 192+48=240px, comfortably under budget even on a
+// 360px-wide phone (264px available). sm: sizes (larger screens, where
+// this never wrapped) are untouched.
 function IntroBadgeRow() {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-9 sm:gap-14">
+    <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-14">
       {REASONS.map((r) => (
         <div key={r.title} className="flex flex-col items-center gap-2.5">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-yellow-300 text-slate-900 sm:h-16 sm:w-16">
-            <r.Icon className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={1.5} />
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-yellow-300 text-slate-900 sm:h-16 sm:w-16">
+            <r.Icon className="h-6 w-6 sm:h-8 sm:w-8" strokeWidth={1.5} />
           </span>
           <span className="text-sm font-semibold text-slate-900 sm:text-base">{r.title}</span>
         </div>
