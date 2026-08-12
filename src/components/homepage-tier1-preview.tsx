@@ -215,9 +215,26 @@ const HERO_TOTAL_LOOP_SECONDS = HERO_LOOP_SECONDS + HERO_FIRST_HOLD_EXTRA_SECOND
 // ... put the black badge logo on the black swipe button." Wraps the
 // existing hero-sign-mobile-composite.png (unchanged, still the real
 // desktop-editor + mobile-signer composite) in a sized box (aspect-ratio +
-// max-height/max-width, so it shrink-to-fits the crossfade card exactly
+// h-full/max-w-full, so it shrink-to-fits the crossfade card exactly
 // like the plain <Image> siblings do, but as a *positioned* box the
 // overlay below can line up against) and adds two things on top:
+//
+// Fixed 2026-08-12 (direct report: "the animation ... is not working" --
+// nothing was rendering at all, not just failing to animate). Root
+// cause: this box originally used `max-h-full max-w-full` with no actual
+// width/height, only caps. Its only children are `position: absolute`
+// (the fill Image + the button overlay), which don't contribute to a
+// parent's auto content size -- so with no definite width, no definite
+// height, and no content-based size to fall back to, aspect-ratio had
+// nothing to compute from and the whole box collapsed to 0x0 (confirmed
+// live via getBoundingClientRect -- 0x0 on prod, Image never even
+// requested since it was never in a visible/sized box). `h-full`
+// (definite, resolves against the flex parent's real pixel height)
+// gives aspect-ratio a real seed to derive width from; `max-w-full`
+// still clamps it, and per the CSS sizing spec that clamp correctly
+// recomputes height back down through the same ratio rather than just
+// cropping -- so this still shrinks to fit both dimensions, it just
+// needed a definite dimension to start from instead of two caps.
 // (1) .animate-sign-hero-zoom slowly scales the whole composite toward
 // the phone's swipe button (transform-origin below), landing by the time
 // hero-crossfade-first's own visible plateau settles at 35% -- both
@@ -237,7 +254,7 @@ const SIGN_BUTTON_THUMB_WIDTH = "19.1%";
 function SignHeroContent({ alt }: { alt: string }) {
   return (
     <div
-      className="animate-sign-hero-zoom relative max-h-full max-w-full"
+      className="animate-sign-hero-zoom relative h-full w-auto max-w-full"
       style={{
         aspectRatio: "1642 / 1070",
         transformOrigin: "83% 90%",
@@ -292,7 +309,9 @@ const SEAL_INNER_SECONDS = 7;
 
 function SealHeroContent() {
   return (
-    <div className="relative max-h-full max-w-full" style={{ aspectRatio: "740 / 650" }}>
+    // h-full (not max-h-full) -- see SignHeroContent's comment above for
+    // why: same 0x0-collapse bug, same fix, all four of these boxes.
+    <div className="relative h-full w-auto max-w-full" style={{ aspectRatio: "740 / 650" }}>
       {SEAL_INNER_IMAGES.map((img, j) => (
         <div
           key={img.src}
@@ -326,7 +345,8 @@ const QUOTE_INNER_SECONDS = 7;
 
 function QuoteHeroContent() {
   return (
-    <div className="relative max-h-full max-w-full" style={{ aspectRatio: "568 / 241" }}>
+    // h-full, not max-h-full -- see SignHeroContent's comment above.
+    <div className="relative h-full w-auto max-w-full" style={{ aspectRatio: "568 / 241" }}>
       <div
         className="animate-hero-crossfade absolute inset-0 flex items-center justify-center"
         style={{ animationDuration: `${QUOTE_INNER_SECONDS}s`, animationDelay: "0s" }}
@@ -378,7 +398,8 @@ const DRAFT_INNER_IMAGES: { src: string; alt: string }[] = [
 
 function DraftHeroContent() {
   return (
-    <div className="relative max-h-full max-w-full" style={{ aspectRatio: "567 / 513" }}>
+    // h-full, not max-h-full -- see SignHeroContent's comment above.
+    <div className="relative h-full w-auto max-w-full" style={{ aspectRatio: "567 / 513" }}>
       {DRAFT_INNER_IMAGES.map((img, j) => (
         <div
           key={img.src}
