@@ -234,7 +234,22 @@ const REASONS: {
     width: 568,
     height: 483,
     Icon: Receipt,
-    zoomOrigin: "50% 89.3%",
+    // 2026-08-12, direct ask: "rather than fix at the bottom and zoom out
+    // the top, fix at the top and zoom out of the bottom, so the title
+    // expands next to the badge." Was 50% 89.3% (anchored on the
+    // "Generate quote" button near the bottom) -- anchoring there kept
+    // the button fixed/framed while the zoom pushed the TOP of the image
+    // (the "Generate your Magic Quote" heading, which sits right next to
+    // this card's own corner badge) up and out of frame as the animation
+    // progressed. Flipped to the heading's own real position instead:
+    // measured directly (a per-row dark-pixel scan of the current
+    // hero-magic-quote.png, same method
+    // fix-hero-new-document-draft-header.py used) at ink rows 31-49,
+    // x[158,395] -- center (276.5, 40) on this 568x483 image = 48.7%,
+    // 8.3%. Anchoring here keeps the heading fixed/framed next to the
+    // badge as the zoom progresses; the button and line items below it
+    // are what get pushed out toward the bottom instead.
+    zoomOrigin: "48.7% 8.3%",
   },
   {
     title: "Draft",
@@ -244,7 +259,16 @@ const REASONS: {
     width: 567,
     height: 513,
     Icon: Sparkles,
-    zoomOrigin: "49.3% 91.3%",
+    // 2026-08-12, same ask/reasoning as Quote's own comment above -- was
+    // 49.3% 91.3% (anchored on the "Generate draft" button near the
+    // bottom), flipped to the "Generate your Draft" heading's own real
+    // position instead. Measured directly (same per-row scan, rows
+    // 31-49, x[187,373] -- center (280, 40) on this 567x513 image =
+    // 49.4%, 7.8%; matches the exact center
+    // fix-hero-new-document-draft-header.py already used to place this
+    // same heading's text, so this anchor sits precisely on the real
+    // rendered heading, not an approximation).
+    zoomOrigin: "49.4% 7.8%",
   },
 ];
 
