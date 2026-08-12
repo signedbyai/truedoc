@@ -195,67 +195,109 @@ const REASONS: {
   },
 ];
 
-// The hero crossfade cycles through the same 4 shots, same order, as the
-// reasons grid below — one visual vocabulary for the whole page instead of
-// a separate curated set for the hero.
-const HERO_LOOP = REASONS;
+// The hero crossfade, 2026-08-12 reorder (direct ask): a new first slide
+// -- a row of all four Sign/Seal/Quote/Draft badges with their labels,
+// establishing the four pillars up front -- followed by the four real
+// screenshots in that same order, then loops. HeroLoopItem is a
+// discriminated union (no "reason" key = the intro slide) so the render
+// below can branch on `"reason" in item` instead of juggling magic
+// indices.
+type HeroLoopItem = { key: string } & ({ reason?: undefined } | { reason: (typeof REASONS)[number] });
+
+const HERO_LOOP: HeroLoopItem[] = [{ key: "intro" }, ...REASONS.map((r) => ({ key: r.image, reason: r }))];
 const HERO_LOOP_SECONDS = 12;
-// Direct ask 2026-08-12: hold on Sign (index 0) for one extra second
-// before the crossfade starts cycling. The total loop grows by that same
-// second so Seal/Quote/Draft's original 3-seconds-apart stagger — computed
-// below from the unchanged HERO_LOOP_SECONDS — just shifts later by one
-// second each, preserving their spacing/overlap instead of compressing it.
-// See globals.css's .animate-hero-crossfade-first for the other half of
-// this (Sign's own keyframe, opaque from 0% instead of fading in).
+// Direct ask 2026-08-12: hold on the first slide for one extra second
+// before the crossfade starts cycling -- originally Sign (when it was
+// index 0), now the new intro badge row that took its place as index 0.
+// The total loop grows by that same second so the four screenshots'
+// original 3-seconds-apart stagger — computed below from the unchanged
+// HERO_LOOP_SECONDS and now-5-item HERO_LOOP.length — just shifts later
+// by one second each, preserving their spacing/overlap instead of
+// compressing it. See globals.css's .animate-hero-crossfade-first for
+// the other half of this (opaque from 0% instead of fading in).
 const HERO_FIRST_HOLD_EXTRA_SECONDS = 1;
 const HERO_TOTAL_LOOP_SECONDS = HERO_LOOP_SECONDS + HERO_FIRST_HOLD_EXTRA_SECONDS;
 
+// New first slide, 2026-08-12 direct ask: "an image of the 4 badges in a
+// row Sign, Seal, Quote, Draft with the word under each badge." Not a
+// generated image -- the exact same yellow-badge + lucide-icon markup the
+// reasons row below already uses (see the r.Icon span further down),
+// reused here at a larger size, so this establishing slide shares one
+// visual vocabulary with the rest of the page rather than introducing a
+// new graphic style or another generated PNG.
+function IntroBadgeRow() {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
+      {REASONS.map((r) => (
+        <div key={r.title} className="flex flex-col items-center gap-2.5">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-yellow-300 text-slate-900 sm:h-16 sm:w-16">
+            <r.Icon className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={1.5} />
+          </span>
+          <span className="text-sm font-semibold text-slate-900 sm:text-base">{r.title}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Small yellow icon badge pinned to a hero slide's own OUTER wrapper --
+// direct ask 2026-08-12: "keep the badge for the relevant animation in
+// the top right." Rendered as a sibling of the slide's image content in
+// the crossfade map below, not nested inside SignHeroContent's zooming
+// box -- nesting it in there would have scaled and dragged the badge
+// along with the image toward the zoom's own transform-origin. As a
+// sibling of the (non-zooming, only-opacity-animated) outer slide div, it
+// stays fixed in the corner regardless of what the content underneath is
+// doing.
+function FeatureCornerBadge({ Icon }: { Icon: typeof Signature }) {
+  return (
+    <span className="pointer-events-none absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-300 text-slate-900 shadow-sm sm:right-4 sm:top-4">
+      <Icon className="h-4 w-4" strokeWidth={1.75} />
+    </span>
+  );
+}
+
 // Sign hero image content, 2026-08-12 direct ask: "animate to a zoom of
-// the signer experience and show the swipe to sign sliding left to right
-// ... put the black badge logo on the black swipe button." Wraps the
-// existing hero-sign-mobile-composite.png (unchanged, still the real
-// desktop-editor + mobile-signer composite) in a sized box (aspect-ratio +
-// h-full/max-w-full, so it shrink-to-fits the crossfade card exactly
-// like the plain <Image> siblings do, but as a *positioned* box the
-// overlay below can line up against) and adds two things on top:
+// the signer experience." Wraps the existing hero-sign-mobile-
+// composite.png (the real desktop-editor + mobile-signer composite) in a
+// sized box (aspect-ratio + h-full/max-w-full, so it shrink-to-fits the
+// crossfade card exactly like the plain <Image> siblings do).
 //
 // Fixed 2026-08-12 (direct report: "the animation ... is not working" --
 // nothing was rendering at all, not just failing to animate). Root
 // cause: this box originally used `max-h-full max-w-full` with no actual
-// width/height, only caps. Its only children are `position: absolute`
-// (the fill Image + the button overlay), which don't contribute to a
-// parent's auto content size -- so with no definite width, no definite
-// height, and no content-based size to fall back to, aspect-ratio had
-// nothing to compute from and the whole box collapsed to 0x0 (confirmed
-// live via getBoundingClientRect -- 0x0 on prod, Image never even
-// requested since it was never in a visible/sized box). `h-full`
-// (definite, resolves against the flex parent's real pixel height)
-// gives aspect-ratio a real seed to derive width from; `max-w-full`
-// still clamps it, and per the CSS sizing spec that clamp correctly
-// recomputes height back down through the same ratio rather than just
-// cropping -- so this still shrinks to fit both dimensions, it just
-// needed a definite dimension to start from instead of two caps.
-// (1) .animate-sign-hero-zoom slowly scales the whole composite toward
-// the phone's swipe button (transform-origin below), landing by the time
-// hero-crossfade-first's own visible plateau settles at 35% -- both
-// animations get the same HERO_TOTAL_LOOP_SECONDS duration so they stay
-// in lockstep.
+// width/height, only caps. Its only child was `position: absolute` (the
+// fill Image), which doesn't contribute to a parent's auto content size
+// -- so with no definite width, no definite height, and no content-based
+// size to fall back to, aspect-ratio had nothing to compute from and the
+// whole box collapsed to 0x0. `h-full` (definite, resolves against the
+// flex parent's real pixel height) gives aspect-ratio a real seed to
+// derive width from; `max-w-full` still clamps it, and per the CSS
+// sizing spec that clamp correctly recomputes height back down through
+// the same ratio rather than just cropping.
 //
 // 2026-08-12: dropped the sliding swipe-thumb overlay that used to sit
 // here (direct report: "not probably aligned and the starting button is
-// still visible underneath" -- the black-badge thumb only covered part
-// of the real track, leaving the actual yellow/navy button peeking out
-// from behind it, which read as broken rather than as one control).
-// Left as a plain zoom on the real screenshot for now; the swipe hint is
-// a later revisit, not abandoned -- see signer-share-qr and homepage
-// preview notes for the general "come back to this" pattern. The real
-// SIGN_BUTTON_TRACK/THUMB_WIDTH measurements (scanned from
-// hero-sign-mobile-composite.png's actual pixels, not eyeballed) are
-// still valid and worth reusing whenever this comes back: track
-// x[1122,1620] y[929,995] of the 1642x1070 composite, knob x[1122,1217]
-// same y (95px wide, i.e. 19.1% of track width).
-
-function SignHeroContent({ alt }: { alt: string }) {
+// still visible underneath"). Left as a plain zoom on the real
+// screenshot for now -- a later revisit, not abandoned. The real
+// button-track measurements (scanned from hero-sign-mobile-composite.png's
+// actual pixels): track x[1122,1620] y[929,995] of the 1642x1070
+// composite, knob x[1122,1217] same y (95px wide, 19.1% of track width).
+//
+// 2026-08-12 reorder: Sign moved from index 0 to index 1 in HERO_LOOP
+// (the new intro badge row took index 0), so it now uses the regular
+// .animate-hero-crossfade class/window (opaque 8%-26% of its own local
+// cycle) instead of .animate-hero-crossfade-first (opaque 0%-35%).
+// delaySeconds (passed down from the crossfade map below, the same value
+// given to this slide's own outer div) keeps the zoom's local 0% in sync
+// with the outer div's fade timing -- without it the zoom would run on
+// its own unsynced clock starting at page load, out of phase with when
+// the image is actually visible. globals.css's .animate-sign-hero-zoom
+// keyframe was retimed to match: scale(1) through 4% (fade-in start),
+// reaching scale(1.28) by 26% (end of the opaque hold, matching
+// hero-crossfade's own 26% opaque-to-fade-out boundary) so the zoom
+// finishes right as the image is fully visible rather than mid-fade.
+function SignHeroContent({ alt, delaySeconds }: { alt: string; delaySeconds: number }) {
   return (
     <div
       className="animate-sign-hero-zoom relative h-full w-auto max-w-full"
@@ -263,6 +305,7 @@ function SignHeroContent({ alt }: { alt: string }) {
         aspectRatio: "1642 / 1070",
         transformOrigin: "83% 90%",
         animationDuration: `${HERO_TOTAL_LOOP_SECONDS}s`,
+        animationDelay: `${delaySeconds}s`,
       }}
     >
       <Image
@@ -276,136 +319,34 @@ function SignHeroContent({ alt }: { alt: string }) {
   );
 }
 
-// Seal hero image content, same section, direct ask: "add the
-// verification page hero shot as an animation in the seal hero image."
-// A small two-image crossfade INSIDE the Seal slot -- the existing sealed
-// invoice (hero-verified-badge-invoice-d.png, unchanged) alternating with
-// the real /verify page result (hero-verify-result.png, already in
-// public/, not a new capture). Reuses the exact same
-// .animate-hero-crossfade keyframe the outer 4-image loop uses, just on
-// a short independent SEAL_INNER_SECONDS cycle with the two images 180°
-// out of phase -- deliberately not synced to the outer loop's timing
-// (same "let it run, it's cheap" choice as the swipe thumb above and
-// .animate-json-scroll elsewhere), so whatever phase it's in when Seal's
-// slot fades into view still reads as two real, complete images
-// crossfading, not a contrived one-shot reveal.
-const SEAL_INNER_IMAGES: { src: string; alt: string }[] = [
-  {
-    src: "/hero-verified-badge-invoice-d.png",
-    alt: "An invoice with the SignedBy Verified & Sealed medallion stamped over its top-right corner",
-  },
-  {
-    src: "/hero-verify-result.png",
-    alt: "The public /verify page confirming a sealed document is genuine, showing its trusted timestamp and identity-verified organization",
-  },
-];
-const SEAL_INNER_SECONDS = 7;
-
-function SealHeroContent() {
-  return (
-    // h-full (not max-h-full) -- see SignHeroContent's comment above for
-    // why: same 0x0-collapse bug, same fix, all four of these boxes.
-    <div className="relative h-full w-auto max-w-full" style={{ aspectRatio: "740 / 650" }}>
-      {SEAL_INNER_IMAGES.map((img, j) => (
-        <div
-          key={img.src}
-          className="animate-hero-crossfade absolute inset-0 flex items-center justify-center"
-          style={{
-            animationDuration: `${SEAL_INNER_SECONDS}s`,
-            animationDelay: `${(j * SEAL_INNER_SECONDS) / SEAL_INNER_IMAGES.length}s`,
-          }}
-        >
-          <Image src={img.src} alt={img.alt} fill sizes="(min-width: 640px) 24rem, 80vw" className="rounded-lg object-contain shadow-lg" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// Quote hero image content, direct ask 2026-08-12: "add an animation on
-// Magic Quote to the quote output (just the top half so you can see it
-// as quote)." Crossfades between two real states of Magic Quote:
-// (1) the DESCRIBE step (hero-magic-quote-describe.png, new -- no real
-// screenshot of this step existed anywhere in public/, so this was built
-// the same way generate-hero-new-document-draft.tsx's superseded version
-// was: real copy pulled verbatim from src/lib/quote-labels.ts and
-// magic-quote-form.tsx's own JSX, not invented), and (2) the existing
-// review/output screen (hero-magic-quote.png, unchanged) cropped to just
-// its top half via object-cover + object-top -- shows the heading/title/
-// currency fields (enough to read as "a quote") rather than shrinking
-// the whole tall image down to fit, which would make the line items and
-// button illegibly small at this card size.
-const QUOTE_INNER_SECONDS = 7;
-
-function QuoteHeroContent() {
+// Seal/Quote/Draft hero slide content, 2026-08-12 direct follow-up: "then
+// move to the Seal image with the wax seal, (remove verify a document
+// hero shot), then the magic quote (remove the transition to the quote
+// itself), then the draft document (remove the transition to the
+// document types as its too hard to read)." All three of these had
+// grown an inner two-state crossfade earlier the same day (Seal <->
+// /verify result, quote-describe <-> quote-review, draft-collapsed <->
+// draft-type-list open); all three are reverted here to a single plain
+// image -- exactly the same file/dimensions/alt each reason card in the
+// "Why SignedBy" row below already uses (REASONS' own image/width/
+// height/alt), so the hero slide and the reasons-row card for the same
+// pillar are now visually identical, just larger. One shared component
+// instead of three near-duplicate ones now that none of them carry any
+// inner animation. The generated describe/type-list/verify-result PNGs
+// (hero-magic-quote-describe.png, hero-draft-type-list.png,
+// hero-verify-result.png) are left in public/ unused rather than
+// deleted, in case any of these transitions comes back later.
+function ReasonHeroContent({ reason }: { reason: (typeof REASONS)[number] }) {
   return (
     // h-full, not max-h-full -- see SignHeroContent's comment above.
-    <div className="relative h-full w-auto max-w-full" style={{ aspectRatio: "568 / 241" }}>
-      <div
-        className="animate-hero-crossfade absolute inset-0 flex items-center justify-center"
-        style={{ animationDuration: `${QUOTE_INNER_SECONDS}s`, animationDelay: "0s" }}
-      >
-        <Image
-          src="/hero-magic-quote-describe.png"
-          alt="Magic Quote's describe step: a plain-language job description and a Generate quote button"
-          fill
-          sizes="(min-width: 640px) 24rem, 80vw"
-          className="rounded-lg object-contain shadow-lg"
-        />
-      </div>
-      <div
-        className="animate-hero-crossfade absolute inset-0"
-        style={{ animationDuration: `${QUOTE_INNER_SECONDS}s`, animationDelay: `${QUOTE_INNER_SECONDS / 2}s` }}
-      >
-        <Image
-          src="/hero-magic-quote.png"
-          alt="The top of the Magic Quote itemized editor: quote title, currency, and bill-to fields"
-          fill
-          sizes="(min-width: 640px) 24rem, 80vw"
-          className="rounded-lg object-cover object-top shadow-lg"
-        />
-      </div>
-    </div>
-  );
-}
-
-// Draft hero image content, direct ask 2026-08-12: "the Draft if you can
-// animate to the list of templates to pick from." Crossfades between the
-// existing describe screen (hero-new-document-draft.png, unchanged --
-// Document type field shown collapsed, "Freelance / Services Agreement"
-// selected) and a new second state showing that same field OPEN
-// (hero-draft-type-list.png, new -- same no-live-capture constraint as
-// the Quote describe image above, so this reuses six real entries
-// verbatim from src/lib/ai-draft-types.ts's DOCUMENT_TYPES rather than
-// inventing a document-type list).
-const DRAFT_INNER_SECONDS = 7;
-const DRAFT_INNER_IMAGES: { src: string; alt: string }[] = [
-  {
-    src: "/hero-new-document-draft.png",
-    alt: "The Draft tab: document type and language pickers, a plain-language description, and a Generate draft button",
-  },
-  {
-    src: "/hero-draft-type-list.png",
-    alt: "The Document type field open, listing real document types to pick from, including Freelance/Services Agreement, NDA, Waiver, Board Resolution, Shareholder Consent, and General Agreement",
-  },
-];
-
-function DraftHeroContent() {
-  return (
-    // h-full, not max-h-full -- see SignHeroContent's comment above.
-    <div className="relative h-full w-auto max-w-full" style={{ aspectRatio: "567 / 513" }}>
-      {DRAFT_INNER_IMAGES.map((img, j) => (
-        <div
-          key={img.src}
-          className="animate-hero-crossfade absolute inset-0 flex items-center justify-center"
-          style={{
-            animationDuration: `${DRAFT_INNER_SECONDS}s`,
-            animationDelay: `${(j * DRAFT_INNER_SECONDS) / DRAFT_INNER_IMAGES.length}s`,
-          }}
-        >
-          <Image src={img.src} alt={img.alt} fill sizes="(min-width: 640px) 24rem, 80vw" className="rounded-lg object-contain shadow-lg" />
-        </div>
-      ))}
+    <div className="relative h-full w-auto max-w-full" style={{ aspectRatio: `${reason.width} / ${reason.height}` }}>
+      <Image
+        src={reason.image}
+        alt={reason.alt}
+        fill
+        sizes="(min-width: 640px) 24rem, 80vw"
+        className="rounded-lg object-contain shadow-lg"
+      />
     </div>
   );
 }
@@ -593,64 +534,68 @@ export function HomepageTier1Preview({
         <p className="mt-3 text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
       </section>
 
-      {/* The "hero video" — a looping crossfade of real screenshots in one
-          fixed-size card rather than an actual recorded clip (see the file
-          comment above and globals.css's .animate-hero-crossfade). A neutral
-          bg-slate-50 card with object-contain lets the 4 pillars' very
-          different shapes (field editor landscape, the square seal, the
-          tall Quote panel, the two-panel Draft mockup) share one frame
-          without any of them looking cropped or stretched. Duration and
-          per-image delay both derive from HERO_LOOP_SECONDS /
-          HERO_LOOP.length so adding/removing a pillar doesn't require
-          re-tuning the timing by hand. prefers-reduced-motion isn't
-          special-cased: the crossfade is a slow opacity fade, not motion/
-          parallax, so it doesn't trigger the concerns that setting exists
-          for. */}
+      {/* The "hero video" — a looping crossfade of real screenshots (plus
+          one intro badge-row slide) in one fixed-size card rather than an
+          actual recorded clip (see the file comment above and
+          globals.css's .animate-hero-crossfade). A neutral bg-slate-50
+          card with object-contain lets the different shapes (badge row,
+          field editor landscape, the square seal, the tall Quote panel,
+          the Draft mockup) share one frame without any of them looking
+          cropped or stretched. Duration and per-slide delay both derive
+          from HERO_LOOP_SECONDS / HERO_LOOP.length so adding/removing a
+          slide doesn't require re-tuning the timing by hand.
+          prefers-reduced-motion isn't special-cased: the crossfade is a
+          slow opacity fade, not motion/parallax, so it doesn't trigger
+          the concerns that setting exists for. */}
       <section className="mx-auto w-full max-w-3xl px-6 pb-12">
         <div className="relative mx-auto h-[420px] w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200/60 bg-slate-50 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
-          {HERO_LOOP.map((shot, i) => (
-            <div
-              key={shot.image}
-              className={`${i === 0 ? "animate-hero-crossfade-first" : "animate-hero-crossfade"} absolute inset-0 flex items-center justify-center p-6`}
-              style={{
-                // Shared total duration for every image (see
-                // HERO_TOTAL_LOOP_SECONDS above) so the loop stays in sync
-                // even though index 0 uses a different keyframe shape.
-                animationDuration: `${HERO_TOTAL_LOOP_SECONDS}s`,
-                // Positive delay (2026-08-12 fix, direct report: "out of
-                // sequence"). The crossfade keyframe's visible window sits
-                // near the START of its own local cycle (see globals.css's
-                // hero-crossfade: opaque at 8%-26%). A NEGATIVE delay makes
-                // an element act as though its animation already ran for
-                // that long before t=0 -- i.e. it fast-forwards INTO the
-                // cycle -- so a larger negative offset (higher i) reaches
-                // its visible window SOONER in wall-clock time, not later.
-                // That inverted the order to roughly 1,0,3,2 instead of the
-                // intended 0,1,2,3. A positive delay pushes the start
-                // later instead, which is what staggering images in
-                // ascending order actually requires.
-                //
-                // index 0 (Sign) always starts at 0s -- direct ask
-                // 2026-08-12, "start on the signing hero." The other three
-                // keep their original stagger (computed from the unchanged
-                // HERO_LOOP_SECONDS, not the new total) but shift later by
-                // HERO_FIRST_HOLD_EXTRA_SECONDS to make room for Sign's
-                // longer hold.
-                animationDelay:
-                  i === 0 ? "0s" : `${(i * HERO_LOOP_SECONDS) / HERO_LOOP.length + HERO_FIRST_HOLD_EXTRA_SECONDS}s`,
-              }}
-            >
-              {i === 0 ? (
-                <SignHeroContent alt={shot.alt} />
-              ) : i === 1 ? (
-                <SealHeroContent />
-              ) : i === 2 ? (
-                <QuoteHeroContent />
-              ) : (
-                <DraftHeroContent />
-              )}
-            </div>
-          ))}
+          {HERO_LOOP.map((item, i) => {
+            // Positive delay (2026-08-12 fix, direct report: "out of
+            // sequence"). The crossfade keyframe's visible window sits
+            // near the START of its own local cycle (see globals.css's
+            // hero-crossfade: opaque at 8%-26%). A NEGATIVE delay makes an
+            // element act as though its animation already ran for that
+            // long before t=0 -- i.e. it fast-forwards INTO the cycle --
+            // so a larger negative offset (higher i) reaches its visible
+            // window SOONER in wall-clock time, not later. A positive
+            // delay pushes the start later instead, which is what
+            // staggering slides in ascending order actually requires.
+            //
+            // index 0 (now the intro badge row -- see 2026-08-12 reorder
+            // comment on HERO_LOOP above) always starts at 0s. The four
+            // screenshots keep their original stagger (computed from the
+            // unchanged HERO_LOOP_SECONDS, not the new total) but shift
+            // later by HERO_FIRST_HOLD_EXTRA_SECONDS to make room for the
+            // intro slide's longer hold.
+            const delaySeconds = i === 0 ? 0 : (i * HERO_LOOP_SECONDS) / HERO_LOOP.length + HERO_FIRST_HOLD_EXTRA_SECONDS;
+            return (
+              <div
+                key={item.key}
+                className={`${i === 0 ? "animate-hero-crossfade-first" : "animate-hero-crossfade"} absolute inset-0 flex items-center justify-center p-6`}
+                style={{
+                  // Shared total duration for every slide (see
+                  // HERO_TOTAL_LOOP_SECONDS above) so the loop stays in
+                  // sync even though index 0 uses a different keyframe
+                  // shape.
+                  animationDuration: `${HERO_TOTAL_LOOP_SECONDS}s`,
+                  animationDelay: `${delaySeconds}s`,
+                }}
+              >
+                {!item.reason ? (
+                  <IntroBadgeRow />
+                ) : item.reason.title === "Sign" ? (
+                  <SignHeroContent alt={item.reason.alt} delaySeconds={delaySeconds} />
+                ) : (
+                  <ReasonHeroContent reason={item.reason} />
+                )}
+                {/* Corner badge, direct ask: "keep the badge for the
+                    relevant animation in the top right" -- skipped on the
+                    intro slide itself, which already shows all four
+                    badges. */}
+                {item.reason && <FeatureCornerBadge Icon={item.reason.Icon} />}
+              </div>
+            );
+          })}
         </div>
         <p className="mt-3 text-center text-xs text-slate-400">Real product output — Sign, Seal, Quote, Draft.</p>
       </section>

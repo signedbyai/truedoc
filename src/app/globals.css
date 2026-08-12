@@ -151,18 +151,28 @@ body {
 
 /* Sign hero image only (2026-08-12, direct ask: "animate to a zoom of the
    signer experience"). Slowly scales hero-sign-mobile-composite.png in,
-   landing on the phone's swipe-to-sign button by the time Sign's own
-   visible plateau settles (35% — matches hero-crossfade-first above, so
-   the zoom and the fade stay in sync since the component gives both the
-   same animation-duration/delay). transform-origin is set inline per the
-   button's real measured position in that composite (~83% 90% — found by
-   scanning the image for its actual yellow/navy pixels, not eyeballed),
-   not the component's default center origin. */
+   landing on the phone's swipe-to-sign button. transform-origin is set
+   inline per the button's real measured position in that composite
+   (~83% 90% — found by scanning the image for its actual yellow/navy
+   pixels, not eyeballed), not the component's default center origin.
+
+   2026-08-12 reorder: Sign moved from index 0 to index 1 in the hero
+   loop (a new intro badge-row slide took index 0), so it now uses the
+   regular .animate-hero-crossfade class instead of
+   .animate-hero-crossfade-first — opaque 8%-26% of its own local cycle,
+   not 0%-35%. Retimed to match: scale(1) holds through 4% (matching
+   hero-crossfade's own fade-in start) and reaches scale(1.28) by 26%
+   (matching hero-crossfade's opaque-to-fade-out boundary), so the zoom
+   finishes right as the image is fully visible instead of mid-fade. The
+   component passes this element the SAME animationDelay as its outer
+   crossfade wrapper (delaySeconds prop) so the two stay in lockstep —
+   without that, the zoom would run on its own unsynced clock starting at
+   page load. */
 @keyframes sign-hero-zoom {
   0%, 4% {
     transform: scale(1);
   }
-  35%, 100% {
+  26%, 100% {
     transform: scale(1.28);
   }
 }
