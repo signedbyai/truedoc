@@ -5,50 +5,55 @@ import Image from "next/image";
 import { CtaLink } from "@/components/cta-link";
 import { ctaColorFlag } from "@/flags";
 
-const TITLE = "SignedBy vs DocuSign — pricing and feature comparison";
+const TITLE = "SignedBy vs Documenso — pricing and feature comparison";
 const DESCRIPTION =
-  "How SignedBy compares to DocuSign eSignature on price, envelope limits, and AI-assisted features. Flat $7/mo unlimited plan vs DocuSign's per-envelope, per-user pricing.";
+  "How SignedBy compares to Documenso on price, AI-assisted drafting, and open source/self-hosting. Flat $7/mo unlimited plan vs Documenso's $25+/mo hosted tiers or self-hosted Community/Business editions.";
 
 // A page that sets its own metadata.openGraph/twitter -- even without an
 // images field -- stops Next.js from auto-inheriting the root layout's
 // opengraph-image.tsx (unlike a page with no metadata override at all,
 // e.g. the homepage, which gets it for free). So every page overriding
 // title/description here has to explicitly point back at it, or it gets
-// no preview image at all (confirmed via curl -- this page and /quiz were
-// both silently missing an og:image/twitter:image tag before this).
+// no preview image at all -- see src/app/vs/signnow/page.tsx for the
+// original discovery of this gotcha.
 const SHARED_IMAGE = ["/opengraph-image"];
 
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
-  alternates: { canonical: "/vs/docusign" },
-  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/vs/docusign", images: SHARED_IMAGE },
+  alternates: { canonical: "/vs/documenso" },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/vs/documenso", images: SHARED_IMAGE },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: SHARED_IMAGE },
 };
 
-// utm_* added 2026-08-01 (see [[signup-attribution]]) — previously untagged.
-const SIGNUP_HREF = "/login?intent=signup&utm_source=vs_docusign&utm_medium=cta&utm_campaign=vs_docusign_page";
+const SIGNUP_HREF = "/login?intent=signup&utm_source=vs_documenso&utm_medium=cta&utm_campaign=vs_documenso_page";
 
 type Row = { label: string; signedby: string; competitor: string };
 
+// Figures pulled directly from documenso.com/pricing and documenso.com,
+// 2026-08-12 -- see PRICING_ROWS/FEATURE_ROWS footnote. SignedBy's own
+// figures from src/lib/currency.ts (USD table) and src/components/
+// pricing-cards.tsx, same date.
 const PRICING_ROWS: Row[] = [
-  { label: "Cheapest paid plan", signedby: "$7/mo flat", competitor: "Personal: $10-15/mo, 1 user" },
-  { label: "Document/envelope limits on that plan", signedby: "Unlimited documents", competitor: "5 envelopes per month" },
-  { label: "Next tier up, 3 users", signedby: "$14/mo total (Team)", competitor: "~$75-195/mo total (Standard/Business Pro, priced per user)" },
-  { label: "Metered add-on fees", signedby: "None — flat pricing", competitor: "Extra charges for SMS delivery, ID verification, and notifications" },
+  { label: "Free tier", signedby: "3 documents/mo + 3 Verified Badge seals/mo, no card required", competitor: "5 documents/mo, up to 10 recipients/doc, no card required" },
+  { label: "Cheapest unlimited paid plan", signedby: "$7/mo flat (Pro) — unlimited documents, 1 user", competitor: "$25/mo (Individual), $300/yr billed yearly — unlimited documents, 1 user" },
+  { label: "Multi-user tier", signedby: "$14/mo total, up to 3 users (Team)", competitor: "$40/mo, 5 users included then $8/user, $480/yr billed yearly (Teams)" },
+  { label: "API access", signedby: "Included from $7/mo (Pro); full REST API + webhooks on Business ($29/mo)", competitor: "Personal-use API on Individual ($25/mo); automation API on Teams ($40/mo); unlimited API only on Platform ($250/mo)" },
+  { label: "Highest published self-serve tier", signedby: "$29/mo (Business) — up to 5 users, unlimited API + webhooks, custom branding", competitor: "$250/mo (Platform) — unlimited users, unlimited API, whitelabel embed" },
+  { label: "Self-hosting", signedby: "Not offered — hosted SaaS only", competitor: "Community Edition (AGPL, free, self-hosted) or licensed Business Edition — run on your own infrastructure" },
 ];
 
 const FEATURE_ROWS: Row[] = [
-  { label: "AI-drafted documents from a plain-language description", signedby: "Included (Pro+)", competitor: "Not in standard eSignature plans (separate higher-tier IAM platform)" },
-  { label: "AI-assisted field placement on upload", signedby: "Included, all plans", competitor: "Not offered in standard eSignature plans" },
-  { label: "AI-drafted quotes from a plain-language description", signedby: "Included, all plans — becomes a signable document instantly", competitor: "Not offered — no quoting/estimating tool in standard eSignature plans" },
-  { label: "Per-page signer engagement tracking (dwell time per page)", signedby: "Included (Pro+)", competitor: "Not included in standard eSignature plans" },
-  { label: "Mobile signing UX", signedby: "Field-by-field guided mode", competitor: "Standard pinch-and-zoom PDF view" },
-  { label: "Public document-hash verification page", signedby: "Included, no login needed", competitor: "Not offered" },
-  { label: "Company / primary AI processing location", signedby: "Netherlands (EU); Mistral AI (France) by default", competitor: "United States" },
-  { label: "Audit trail, ESIGN/UETA compliance", signedby: "Included", competitor: "Included" },
-  { label: "Payment collection", signedby: "Business ($29/mo)", competitor: "Business Pro ($40-65/user/mo)" },
-  { label: "API access + outbound webhooks", signedby: "Included in Business ($29/mo) — multi-signer create, list/void, signed-file download, webhooks", competitor: "Not included in any standard eSignature plan — requires a separate, envelope-volume-priced Developer plan" },
+  { label: "Open source / self-hostable", signedby: "Not offered — closed-source hosted SaaS", competitor: "Yes — AGPL-licensed Community Edition on GitHub (documenso/documenso), plus a licensed self-hosted Business Edition" },
+  { label: "AI-drafted documents from a plain-language description", signedby: "Included (Pro+)", competitor: "Not offered" },
+  { label: "AI-assisted field placement on upload", signedby: "Included, all plans", competitor: "Not offered — fields (signature, text, date) placed manually" },
+  { label: "AI-drafted quotes from a plain-language description", signedby: "Included, all plans — becomes a signable document instantly", competitor: "Not offered" },
+  { label: "Embedded signing widget for your own app", signedby: "Not offered as a packaged white-label widget", competitor: "Included from Teams ($40/mo); white-label embed on Platform ($250/mo)" },
+  { label: "Public document-hash verification page", signedby: "Included, no login needed", competitor: "Not offered as a public page" },
+  { label: "Per-page signer engagement tracking (dwell time)", signedby: "Included (Pro+)", competitor: "Not offered" },
+  { label: "Compliance standards named", signedby: "ESIGN Act, UETA, eIDAS audit trail, included on every plan", competitor: "ESIGN Act, UETA, eIDAS, 21 CFR Part 11, SOC 2 and HIPAA referenced on their compliance page" },
+  { label: "Company / hosted-plan data region", signedby: "Netherlands (EU) company; Mistral AI (France) by default for AI features", competitor: "Documenso, Inc. (per their site footer) — hosted-plan data region isn't published; self-hosting lets you pick your own" },
+  { label: "Templates and bulk send", signedby: "Templates on Pro+, bulk send on Team+", competitor: "Templates with reusable Direct Link sharing included; bulk-send not listed as a standard feature" },
 ];
 
 function CompareTable({ title, rows }: { title: string; rows: Row[] }) {
@@ -57,14 +62,12 @@ function CompareTable({ title, rows }: { title: string; rows: Row[] }) {
       <div className="hidden grid-cols-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 sm:grid">
         <span>{title}</span>
         <span className="text-slate-900">SignedBy</span>
-        <span>DocuSign</span>
+        <span>Documenso</span>
       </div>
       {rows.map((r) => (
-        // Stacked cards below sm: the 3-column grid gives each cell only
-        // ~1/3 of a mobile screen's width, which forces long unbreakable
-        // strings (e.g. "3 documents/month") to overflow the cell and get
-        // clipped by this table's overflow-hidden border. Full-width rows
-        // sidestep that instead of trying to hyphenate/break-word around it.
+        // Stacked cards below sm -- see src/app/vs/eurosign/page.tsx's
+        // matching comment for why (long unbreakable strings overflow a
+        // 1/3-width mobile cell inside this table's overflow-hidden border).
         <div key={r.label} className="grid grid-cols-1 gap-1.5 border-t border-slate-100 px-4 py-3 text-sm sm:grid-cols-3 sm:items-start sm:gap-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-slate-400 sm:text-sm sm:font-normal sm:normal-case sm:tracking-normal sm:text-slate-600">
             {r.label}
@@ -74,7 +77,7 @@ function CompareTable({ title, rows }: { title: string; rows: Row[] }) {
             {r.signedby}
           </span>
           <span className="text-slate-500">
-            <span className="text-slate-400 sm:hidden">DocuSign — </span>
+            <span className="text-slate-400 sm:hidden">Documenso — </span>
             {r.competitor}
           </span>
         </div>
@@ -83,7 +86,7 @@ function CompareTable({ title, rows }: { title: string; rows: Row[] }) {
   );
 }
 
-export default async function VsDocuSignPage() {
+export default async function VsDocumensoPage() {
   const ctaColor = await ctaColorFlag();
 
   return (
@@ -99,12 +102,13 @@ export default async function VsDocuSignPage() {
       </header>
 
       <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-6 py-16 text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">SignedBy vs DocuSign</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">SignedBy vs Documenso</h1>
         <p className="max-w-xl text-lg text-slate-600">
-          DocuSign is built for enterprise procurement — envelope caps, per-user pricing, and add-on fees. SignedBy is
-          a flat $7/mo, built for solo professionals and small teams who don&apos;t need any of that.
+          Documenso is open source and self-hostable, with a $25+/mo hosted tier and a developer-first API. SignedBy
+          is a flat $7/mo hosted plan with AI-assisted drafting, quoting, and field placement Documenso doesn&apos;t
+          offer — different priorities, compared honestly below.
         </p>
-        <CtaLink href={SIGNUP_HREF} color={ctaColor} page="vs-docusign" position="hero">
+        <CtaLink href={SIGNUP_HREF} color={ctaColor} page="vs-documenso" position="hero">
           Start for free →
         </CtaLink>
         <p className="text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
@@ -119,16 +123,18 @@ export default async function VsDocuSignPage() {
         <h2 className="text-lg font-semibold text-slate-900">Features</h2>
         <CompareTable title="Feature" rows={FEATURE_ROWS} />
         <p className="mt-4 text-xs text-slate-400">
-          Pricing and feature details as of July 2026, based on DocuSign&apos;s publicly listed eSignature plans —
-          always confirm current rates directly with DocuSign, since providers change plans without notice. DocuSign
-          is a registered trademark of Docusign, Inc.; SignedBy is not affiliated with or endorsed by DocuSign.
+          Pricing and feature details as of August 2026, based on Documenso&apos;s publicly listed plans and
+          documenso.com — always confirm current rates directly with Documenso, since providers change plans without
+          notice. If you need to run your own infrastructure or want full source-code access, Documenso&apos;s
+          self-hosted Community Edition is worth a look; SignedBy doesn&apos;t offer a self-hosted option. Documenso
+          is a trademark of Documenso, Inc.; SignedBy is not affiliated with or endorsed by Documenso.
         </p>
       </section>
 
       <section className="mx-auto w-full max-w-3xl px-6 pb-20 text-center">
         <h2 className="text-2xl font-semibold text-slate-900">Try SignedBy free</h2>
         <p className="mt-2 text-sm text-slate-600">3 documents a month, no credit card, upgrade only if you need more.</p>
-        <CtaLink href={SIGNUP_HREF} className="mt-5" color={ctaColor} page="vs-docusign" position="footer">
+        <CtaLink href={SIGNUP_HREF} className="mt-5" color={ctaColor} page="vs-documenso" position="footer">
           Start for free →
         </CtaLink>
       </section>
@@ -139,6 +145,9 @@ export default async function VsDocuSignPage() {
         <p className="mt-2 space-x-4">
           <Link href="/vs/signnow" className="hover:text-slate-600">
             SignedBy vs SignNow
+          </Link>
+          <Link href="/vs/docusign" className="hover:text-slate-600">
+            SignedBy vs DocuSign
           </Link>
           <Link href="/vs/pandadoc" className="hover:text-slate-600">
             SignedBy vs PandaDoc
@@ -160,9 +169,6 @@ export default async function VsDocuSignPage() {
           </Link>
           <Link href="/vs/swisssign" className="hover:text-slate-600">
             SignedBy vs SwissSign
-          </Link>
-          <Link href="/vs/documenso" className="hover:text-slate-600">
-            SignedBy vs Documenso
           </Link>
           <Link href="/templates" className="hover:text-slate-600">
             Free templates

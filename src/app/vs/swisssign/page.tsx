@@ -164,6 +164,9 @@ export default async function VsSwissSignPage() {
           <Link href="/vs/eurosign" className="hover:text-slate-600">
             SignedBy vs Eurosign
           </Link>
+          <Link href="/vs/documenso" className="hover:text-slate-600">
+            SignedBy vs Documenso
+          </Link>
           <Link href="/templates" className="hover:text-slate-600">
             Free templates
           </Link>
