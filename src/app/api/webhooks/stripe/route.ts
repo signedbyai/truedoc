@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe, planFromPriceId } from "@/lib/stripe";
 import { referralCouponId } from "@/lib/referral";
-import { sendPlanUpgradeEmail } from "@/lib/email";
+import { sendPlanUpgradeEmail, sendCreditPackTopUpEmail } from "@/lib/email";
 import { resetConsolePeriod } from "@/lib/console-usage";
 import { planHasFeature } from "@/lib/plan";
 import { seedExampleTemplateIfNeeded } from "@/lib/example-template";
@@ -268,10 +268,19 @@ async function grantCreditPack(admin: ReturnType<typeof createAdminClient>, sess
   }
 
   const { data: org } = await admin.from("organizations").select("doc_credits").eq("id", orgId).single();
-  await admin
-    .from("organizations")
-    .update({ doc_credits: (org?.doc_credits ?? 0) + credits })
-    .eq("id", orgId);
+  const newBalance = (org?.doc_credits ?? 0) + credits;
+  await admin.from("organizations").update({ doc_credits: newBalance }).eq("id", orgId);
+
+  // Best-effort, same as sendPlanUpgradeEmail's send above — a failed email
+  // shouldn't fail the webhook, since the credits are already granted.
+  try {
+    const customerEmail = session.customer_details?.email;
+    if (customerEmail) {
+      await sendCreditPackTopUpEmail({ to: customerEmail, credits, newBalance });
+    }
+  } catch (err) {
+    console.error("Failed to send credit pack top-up email", err);
+  }
 }
 
 async function resolveOrgId(admin: ReturnType<typeof createAdminClient>, subscription: Stripe.Subscription) {

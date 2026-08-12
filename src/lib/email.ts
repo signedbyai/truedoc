@@ -580,6 +580,31 @@ export async function sendConsoleCapWarningEmail(opts: {
   });
 }
 
+// Credit-pack top-up confirmation (CONSOLE_FREE_TIER_SCOPE.md item #8) —
+// sent from grantCreditPack in the Stripe webhook, right after doc_credits
+// is updated. Deliberately its own short email, NOT sendPlanUpgradeEmail's
+// welcome treatment: this is an existing customer topping up, not someone
+// new, so the "welcome aboard" framing and animated mark would be the wrong
+// tone here. Before this, a top-up produced no SignedBy-branded email at
+// all — only Stripe's own receipt. Links to /dashboard/billing rather than
+// the console specifically, since a pack can be bought from either surface
+// (console-chat.tsx or new-document-client.tsx) and billing/credits.checkout
+// route.ts doesn't currently persist which one into webhook metadata.
+export async function sendCreditPackTopUpEmail(opts: { to: string; credits: number; newBalance: number }) {
+  await getClient().emails.send({
+    from: FROM,
+    to: opts.to,
+    subject: `${opts.credits} document credits added to your account`,
+    html: `
+      <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <p><strong>${opts.credits} document credits</strong> were just added to your account.</p>
+        <p style="color:#64748b;font-size:14px;">You now have <strong>${opts.newBalance}</strong> credits available. They don't expire.</p>
+        ${ctaButton(`${appUrl()}/dashboard/billing`, "View billing")}
+      </div>
+    `,
+  });
+}
+
 // Internal "someone sent feedback" email to the team, from the in-app feedback
 // widget (the nav message-bubble icon). replyTo is the user's address so the
 // team can just hit reply. FEEDBACK_TO_EMAIL overrides the default recipient.
