@@ -1047,7 +1047,7 @@ export function NewDocumentClient({
               <span className="mb-1 flex h-14 w-14 items-center justify-center rounded-2xl bg-yellow-300">
                 <Sparkles className="h-6 w-6 text-slate-900" strokeWidth={1.75} aria-hidden="true" />
               </span>
-              <CardTitle>Generate your document draft</CardTitle>
+              <CardTitle>Generate your Draft</CardTitle>
               <CardDescription>
                 Describe what you need in plain language and get a starting draft to review and edit.
               </CardDescription>
