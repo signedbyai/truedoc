@@ -1,0 +1,61 @@
+<svg viewBox="0 0 700 320" xmlns="http://www.w3.org/2000/svg">
+  <!-- EuroTSA trust badges, 2026-08-12. Copy deliberately grounded in what's
+       actually true of the running system, not aspirational compliance claims:
+       - "No Content Logging": true per ops/eurotsa/Caddyfile + RUNBOOK.md
+         architecture (hashes/content never logged; only a client IP held
+         transiently, up to 1hr, for the /tsr rate limiter).
+       - "EU-Hosted": true, real locations (Hetzner fsn1 = Falkenstein,
+         GCP europe-west3 = Frankfurt) — no GDPR-certification claim, since
+         no such certification badge exists to legitimately display. -->
+
+  <!-- Badge 1: No Content Logging -->
+  <g>
+    <circle cx="175" cy="160" r="140" fill="#ffffff" stroke="#1e3a5f" stroke-width="10"/>
+
+    <!-- document-with-lines icon -->
+    <rect x="150" y="50" width="50" height="46" rx="4" fill="#eaf2fb" stroke="#1e3a5f" stroke-width="2"/>
+    <line x1="158" y1="64" x2="192" y2="64" stroke="#7fa8d9" stroke-width="4" stroke-linecap="round"/>
+    <line x1="158" y1="74" x2="192" y2="74" stroke="#7fa8d9" stroke-width="4" stroke-linecap="round"/>
+    <line x1="158" y1="84" x2="182" y2="84" stroke="#7fa8d9" stroke-width="4" stroke-linecap="round"/>
+
+    <!-- prohibition overlay -->
+    <circle cx="175" cy="73" r="26" fill="none" stroke="#c0392b" stroke-width="5"/>
+    <line x1="157" y1="55" x2="193" y2="91" stroke="#c0392b" stroke-width="5" stroke-linecap="round"/>
+
+    <text x="175" y="188" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="50" fill="#c0392b">No</text>
+    <text x="175" y="216" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="19" letter-spacing="0.5" fill="#1e3a5f">Content Logging</text>
+
+    <!-- small padlock -->
+    <path d="M 167,240 v-8 a8,8 0 0 1 16,0 v8" fill="none" stroke="#c0392b" stroke-width="4" stroke-linecap="round"/>
+    <rect x="163" y="240" width="24" height="18" rx="3" fill="#c0392b"/>
+  </g>
+
+  <!-- Badge 2: EU-Hosted -->
+  <g>
+    <circle cx="525" cy="160" r="140" fill="#1a3a6b" stroke="#2a4d80" stroke-width="10"/>
+
+    <!-- ring of 12 EU stars -->
+    <text x="525" y="55" text-anchor="middle" font-size="22" fill="#f4c430">★</text>
+    <text x="581" y="70" text-anchor="middle" font-size="22" fill="#f4c430">★</text>
+    <text x="622" y="111" text-anchor="middle" font-size="22" fill="#f4c430">★</text>
+    <text x="637" y="167" text-anchor="middle" font-size="22" fill="#f4c430">★</text>
+    <text x="622" y="223" text-anchor="middle" font-size="22" fill="#f4c430">★</text>
+    <text x="581" y="264" text-anchor="middle" font-size="22" fill="#f4c430">★</text>
+    <text x="525" y="279" text-anchor="middle" font-size="22" fill="#f4c430">★</text>
+    <text x="469" y="264" text-anchor="middle" font-size="22" fill="#f4c430">★</text>
+    <text x="428" y="223" text-anchor="middle" font-size="22" fill="#f4c430">★</text>
+    <text x="413" y="167" text-anchor="middle" font-size="22" fill="#f4c430">★</text>
+    <text x="428" y="111" text-anchor="middle" font-size="22" fill="#f4c430">★</text>
+    <text x="469" y="70" text-anchor="middle" font-size="22" fill="#f4c430">★</text>
+
+    <!-- map pin (slightly smaller/higher to make room for the 3-line
+         headline below — mirrors "EU-hosted infrastructure" /
+         "Data processed in Frankfurt/Falkenstein, EU" wording directly) -->
+    <path d="M 525,88 c -14,0 -23,10 -23,23 c 0,17 23,37 23,37 c 0,0 23,-20 23,-37 c 0,-13 -9,-23 -23,-23 Z" fill="#ffffff"/>
+    <circle cx="525" cy="110" r="8" fill="#1a3a6b"/>
+
+    <text x="525" y="178" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="30" letter-spacing="0.5" fill="#f4c430">EU-Hosted</text>
+    <text x="525" y="203" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="20" letter-spacing="1" fill="#ffffff">Infrastructure</text>
+    <text x="525" y="225" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="500" font-size="12" letter-spacing="0.4" fill="#c9d6ea">Frankfurt &#183; Falkenstein, EU</text>
+  </g>
+</svg>
