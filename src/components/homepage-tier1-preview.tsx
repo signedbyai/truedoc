@@ -361,6 +361,15 @@ export function HomepageTier1Preview({ currency }: { currency: Currency }) {
           >
             GDPR-compliant · EEA data residency
           </Link>
+          {/* Third pill added 2026-08-12 to match the live homepage — this
+              preview had fallen one pill behind (see
+              HOMEPAGE_HERO_VIDEO_AND_SECOND_HALF_SCOPE.md). */}
+          <Link
+            href="/security"
+            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+          >
+            AI never trains on your documents
+          </Link>
         </div>
       </section>
 
