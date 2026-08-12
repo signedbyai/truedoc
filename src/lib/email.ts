@@ -511,18 +511,44 @@ function trustpilotAfsBcc(): string | undefined {
 // address (trustpilotAfsBcc above) so this same email doubles as the
 // review-invite trigger set up in Settings > Automatic Feedback Service —
 // skips the BCC entirely (still sends the email) if that env var isn't set.
-export async function sendPlanUpgradeEmail(opts: { to: string; planLabel: string }) {
+//
+// Full welcome treatment (WELCOME_EMAIL_SCOPE.md, built 2026-08-12):
+// modeled on Lemonade's post-purchase "here's your policy" email, but with
+// an animated SignedBy wordmark (public/welcome-email-mark.gif, generated
+// by scripts/generate-welcome-email-mark.tsx) standing in for their team
+// photo — there's no team photo asset to animate. `name` is optional and
+// falls back to a plain "Hi," the same way every other greeting in this
+// file does; it's not always available at the call site (Stripe's
+// customer_details.name can be empty).
+export async function sendPlanUpgradeEmail(opts: { to: string; planLabel: string; name?: string | null }) {
   const bcc = trustpilotAfsBcc();
+  const greeting = opts.name ? `Hi ${opts.name},` : "Hi,";
 
   await getClient().emails.send({
     from: FROM,
     to: opts.to,
     ...(bcc ? { bcc: [bcc] } : {}),
-    subject: `You're on the ${opts.planLabel} plan`,
+    subject: `You're in — welcome to SignedBy ${opts.planLabel}`,
     html: `
       <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
-        <p>Thanks for upgrading to <strong>${opts.planLabel}</strong> — your account is live on the new plan right away.</p>
+        <img
+          src="${appUrl()}/welcome-email-mark.gif"
+          width="320"
+          height="110"
+          alt="SignedBy — welcome aboard"
+          style="display:block; margin: 0 auto 28px; max-width:100%; height:auto;"
+        />
+        <p>${greeting}</p>
+        <p>You're on the <strong>${opts.planLabel}</strong> plan — thanks for trusting SignedBy with your documents.</p>
+        <p style="color:#0f172a;font-weight:600;margin:24px 0 8px;">Here's where to start:</p>
+        <ol style="color:#334155;font-size:14px;line-height:1.7;padding-left:20px;margin:0 0 24px;">
+          <li>Send your first document — upload a PDF, drop in fields, send.</li>
+          <li>Invite your team, if you're not flying solo.</li>
+          <li>Turn on the Verified Badge for a public, no-account way to prove your signature is real.</li>
+        </ol>
         ${ctaButton(`${appUrl()}/dashboard`, "Go to your dashboard")}
+        <p style="color:#64748b;font-size:13px;">If anything looks off, use the feedback button inside your dashboard — it comes straight to us.</p>
+        <p style="color:#94a3b8;font-size:12px;margin-top:24px;">— SignedBy</p>
       </div>
     `,
   });

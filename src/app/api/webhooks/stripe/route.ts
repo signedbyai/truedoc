@@ -78,6 +78,11 @@ export async function POST(request: Request) {
             await sendPlanUpgradeEmail({
               to: customerEmail,
               planLabel: plan.charAt(0).toUpperCase() + plan.slice(1),
+              // Optional — Stripe Checkout only collects a name if the
+              // payment method or billing-details step asked for one, so
+              // this is frequently null. sendPlanUpgradeEmail falls back to
+              // a plain "Hi," when it is.
+              name: session.customer_details?.name ?? null,
             });
           }
         } catch (err) {
