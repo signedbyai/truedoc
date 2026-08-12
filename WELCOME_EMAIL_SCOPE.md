@@ -20,6 +20,18 @@ Two of the three open questions below were resolved with the recommended
 option from each; the third (exact getting-started steps) shipped with the
 scope doc's draft as-is — flag if you want them reordered or swapped.
 
+**Follow-up, same day:** confirmed this welcome email fires on new
+*subscription* checkouts only — credit-pack top-ups (`session.mode ===
+"payment"`) are routed to a separate `grantCreditPack` branch that returns
+before ever reaching `sendPlanUpgradeEmail`, so top-ups previously got no
+SignedBy-branded email at all, only Stripe's receipt. Built a second, short
+email (`sendCreditPackTopUpEmail` in `src/lib/email.ts`) for that path
+instead of reusing the welcome template — an existing customer topping up
+isn't "new," so the welcome framing and animated mark would be the wrong
+tone. Links to `/dashboard/billing` rather than the console specifically,
+since a pack can be bought from either surface and the checkout route
+doesn't currently persist which one into webhook metadata.
+
 ## What this replaces
 
 SignedBy already sends an email at the exact moment Lemonade's fires — right
