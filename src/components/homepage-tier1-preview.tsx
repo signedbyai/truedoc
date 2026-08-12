@@ -200,6 +200,15 @@ const REASONS: {
 // a separate curated set for the hero.
 const HERO_LOOP = REASONS;
 const HERO_LOOP_SECONDS = 12;
+// Direct ask 2026-08-12: hold on Sign (index 0) for one extra second
+// before the crossfade starts cycling. The total loop grows by that same
+// second so Seal/Quote/Draft's original 3-seconds-apart stagger — computed
+// below from the unchanged HERO_LOOP_SECONDS — just shifts later by one
+// second each, preserving their spacing/overlap instead of compressing it.
+// See globals.css's .animate-hero-crossfade-first for the other half of
+// this (Sign's own keyframe, opaque from 0% instead of fading in).
+const HERO_FIRST_HOLD_EXTRA_SECONDS = 1;
+const HERO_TOTAL_LOOP_SECONDS = HERO_LOOP_SECONDS + HERO_FIRST_HOLD_EXTRA_SECONDS;
 
 // Developer/API section — /home-preview-b only (2026-08-12, direct ask:
 // "take some inspiration from documenso.com especially the api animation").
@@ -390,9 +399,12 @@ export function HomepageTier1Preview({
           {HERO_LOOP.map((shot, i) => (
             <div
               key={shot.image}
-              className="animate-hero-crossfade absolute inset-0 flex items-center justify-center p-6"
+              className={`${i === 0 ? "animate-hero-crossfade-first" : "animate-hero-crossfade"} absolute inset-0 flex items-center justify-center p-6`}
               style={{
-                animationDuration: `${HERO_LOOP_SECONDS}s`,
+                // Shared total duration for every image (see
+                // HERO_TOTAL_LOOP_SECONDS above) so the loop stays in sync
+                // even though index 0 uses a different keyframe shape.
+                animationDuration: `${HERO_TOTAL_LOOP_SECONDS}s`,
                 // Positive delay (2026-08-12 fix, direct report: "out of
                 // sequence"). The crossfade keyframe's visible window sits
                 // near the START of its own local cycle (see globals.css's
@@ -405,7 +417,15 @@ export function HomepageTier1Preview({
                 // intended 0,1,2,3. A positive delay pushes the start
                 // later instead, which is what staggering images in
                 // ascending order actually requires.
-                animationDelay: `${(i * HERO_LOOP_SECONDS) / HERO_LOOP.length}s`,
+                //
+                // index 0 (Sign) always starts at 0s -- direct ask
+                // 2026-08-12, "start on the signing hero." The other three
+                // keep their original stagger (computed from the unchanged
+                // HERO_LOOP_SECONDS, not the new total) but shift later by
+                // HERO_FIRST_HOLD_EXTRA_SECONDS to make room for Sign's
+                // longer hold.
+                animationDelay:
+                  i === 0 ? "0s" : `${(i * HERO_LOOP_SECONDS) / HERO_LOOP.length + HERO_FIRST_HOLD_EXTRA_SECONDS}s`,
               }}
             >
               <Image

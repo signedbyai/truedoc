@@ -122,6 +122,33 @@ body {
   animation: hero-crossfade 9s ease-in-out infinite;
 }
 
+/* First image in the loop (Sign) only — direct ask 2026-08-12: "make the
+   animation start on the signing hero and pause on that one for just one
+   second longer before the animation starts." Two differences from the
+   shared hero-crossfade keyframe above: (1) opacity is 1 already at 0%
+   instead of fading in from 0% to 8% — Sign should just be there the
+   instant the page loads, not fade into view; (2) the visible plateau
+   runs to 35% instead of 26% before fading out, which — combined with
+   the component adding a matching HERO_FIRST_HOLD_EXTRA_SECONDS to the
+   shared total loop duration — works out to holding on Sign for one
+   full second longer than the other three images get. The other three
+   keep using .animate-hero-crossfade unchanged; the component shifts
+   their animation-delay later by that same extra second so the relative
+   3-second-apart spacing/crossfade overlap between them is preserved,
+   just pushed back to make room for Sign's longer hold up front. */
+@keyframes hero-crossfade-first {
+  0%, 35% {
+    opacity: 1;
+  }
+  39%, 100% {
+    opacity: 0;
+  }
+}
+
+.animate-hero-crossfade-first {
+  animation: hero-crossfade-first 9s ease-in-out infinite;
+}
+
 /* Sender-side "start here" cue on the Signature tool button (see
    field-editor.tsx). An on-brand yellow highlighter sweep across the
    button label — same yellow-highlight motif as the favicon (black S on
