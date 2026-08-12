@@ -106,14 +106,28 @@ body {
    as a class (not Tailwind arbitrary values) since it's shared across
    every image in the loop and easier to tune the shape of the fade in one
    place. */
+/* 2026-08-12, direct report: "the invoice, quote and draft transitions
+   arrive too fast and land on top of the old image." The hold/fade-out
+   marks below were trimmed 26%->25% / 30%->29% -- a small companion to
+   homepage-tier1-preview.tsx's own HERO_LATE_TRANSITION_EXTRA_SECONDS fix
+   (which widens the Sign->Seal/Seal->Quote/Quote->Draft gaps by 1s each).
+   The 1s gap widening alone closes most of the overlap but not quite all
+   of it once HERO_TOTAL_LOOP_SECONDS also grew (29->32) to give Draft's
+   later delay room to finish before the loop wraps -- a bigger duration
+   stretches this keyframe's own fade timings too (they're percentages),
+   which eats back into the margin the wider gap just created. Trimming
+   the hold down by 1 percentage point (and fade-out's end point along
+   with it, keeping the fade-out itself the same 4%-wide duration) closes
+   the rest of the gap: at the new numbers, an incoming slide's fade-in no
+   longer completes before the outgoing slide starts fading out. */
 @keyframes hero-crossfade {
   0%, 4% {
     opacity: 0;
   }
-  8%, 26% {
+  8%, 25% {
     opacity: 1;
   }
-  30%, 100% {
+  29%, 100% {
     opacity: 0;
   }
 }
@@ -194,20 +208,21 @@ body {
    class's default center origin.
 
    Every slide uses the regular .animate-hero-crossfade class (opaque
-   8%-26% of its own local cycle) except the intro badge row, which
-   doesn't zoom at all. Retimed to match that window: scale(1) holds
-   through 4% (matching hero-crossfade's own fade-in start) and reaches
-   scale(1.28) by 26% (matching hero-crossfade's opaque-to-fade-out
-   boundary), so the zoom finishes right as the image is fully visible
-   instead of mid-fade. The component passes this element the SAME
-   animationDelay as its outer crossfade wrapper (delaySeconds prop) so
-   the two stay in lockstep — without that, the zoom would run on its
-   own unsynced clock starting at page load. */
+   8%-25% of its own local cycle, trimmed from 26% -- see that keyframe's
+   own comment) except the intro badge row, which doesn't zoom at all.
+   Retimed to match that window: scale(1) holds through 4% (matching
+   hero-crossfade's own fade-in start) and reaches scale(1.28) by 25%
+   (matching hero-crossfade's opaque-to-fade-out boundary), so the zoom
+   finishes right as the image is fully visible instead of mid-fade. The
+   component passes this element the SAME animationDelay as its outer
+   crossfade wrapper (delaySeconds prop) so the two stay in lockstep —
+   without that, the zoom would run on its own unsynced clock starting at
+   page load. */
 @keyframes hero-zoom {
   0%, 4% {
     transform: scale(1);
   }
-  26%, 100% {
+  25%, 100% {
     transform: scale(1.28);
   }
 }

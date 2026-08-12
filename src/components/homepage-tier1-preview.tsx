@@ -315,6 +315,31 @@ const HERO_LOOP: HeroLoopItem[] = [{ key: "intro" }, ...REASONS.map((r) => ({ ke
 // leaving 1.3s of buffer before the 29s loop wraps back to the intro
 // slide (same ~1s-plus-a-bit buffer this constant has been solved for
 // every prior pass).
+// 2026-08-12, eleventh pass, direct report: "the invoice, quote and draft
+// transitions arrive too fast and land on top of the old image" (Sign was
+// fine). Root cause, worked out against globals.css's hero-crossfade
+// keyframe (opaque 8%-26%, fades out 26%-30% of its own local cycle):
+// at HERO_IMAGE_STEP_SECONDS=4.5s and HERO_TOTAL_LOOP_SECONDS=29s, an
+// incoming slide finished fading fully IN about 0.72s before the outgoing
+// slide even started fading out -- so for that 0.72s both sat at opacity
+// 1 simultaneously, and since later slides paint over earlier ones (no
+// z-index, just DOM order), the incoming one visibly sat on top of a
+// still-fully-opaque outgoing one instead of dissolving into it. This
+// only affects Sign->Seal/Seal->Quote/Quote->Draft (all three share the
+// same .animate-hero-crossfade keyframe and step spacing); intro->Sign
+// uses the separate, longer-holding hero-crossfade-first keyframe and
+// wasn't reported as a problem, so it's deliberately left alone here.
+// Direct ask, simplified: "just add a second before invoice, quote and
+// draft start animating." HERO_LATE_TRANSITION_EXTRA_SECONDS adds that
+// 1s to each of the three late gaps specifically (not intro->Sign),
+// closing the 0.72s deficit with a small margin to spare. Paired with a
+// 26%->25% / 30%->29% trim on hero-crossfade's own hold/fade-out marks
+// (globals.css) to close the gap the rest of the way to (near) zero
+// overlap, rather than leaving a smaller-but-still-present one.
+// HERO_TOTAL_LOOP_SECONDS raised 29->32 so Draft (now delayed further)
+// still finishes fading out with a buffer before the loop wraps --
+// Draft's delay is 22s (4*4.5 + 1 + 3*1 late-extra); fade-out ends at
+// 22 + 0.29*32 = 31.28s, 0.72s before the 32s wrap.
 const HERO_IMAGE_COUNT = 4;
 const HERO_LOOP_SECONDS = 18;
 const HERO_IMAGE_STEP_SECONDS = HERO_LOOP_SECONDS / HERO_IMAGE_COUNT; // 4.5s apart
@@ -322,7 +347,11 @@ const HERO_IMAGE_STEP_SECONDS = HERO_LOOP_SECONDS / HERO_IMAGE_COUNT; // 4.5s ap
 // see globals.css's .animate-hero-crossfade-first for the other half of
 // this (opaque from 0% instead of fading in).
 const HERO_FIRST_HOLD_EXTRA_SECONDS = 1;
-const HERO_TOTAL_LOOP_SECONDS = 29;
+// Extra second added to each of the Sign->Seal/Seal->Quote/Quote->Draft
+// gaps specifically -- see this block's own comment above. Not applied to
+// intro->Sign (i=1).
+const HERO_LATE_TRANSITION_EXTRA_SECONDS = 1;
+const HERO_TOTAL_LOOP_SECONDS = 32;
 
 // New first slide, 2026-08-12 direct ask: "an image of the 4 badges in a
 // row Sign, Seal, Quote, Draft with the word under each badge." Not a
@@ -682,8 +711,13 @@ export function HomepageTier1Preview({
             // image's delay is i * HERO_IMAGE_STEP_SECONDS (i=1..4, so
             // 4.5s apart -- see HERO_IMAGE_STEP_SECONDS's own comment for
             // why i isn't divided across HERO_LOOP.length) plus the flat
-            // HERO_FIRST_HOLD_EXTRA_SECONDS hold before the first image.
-            const delaySeconds = i === 0 ? 0 : i * HERO_IMAGE_STEP_SECONDS + HERO_FIRST_HOLD_EXTRA_SECONDS;
+            // HERO_FIRST_HOLD_EXTRA_SECONDS hold before the first image,
+            // plus HERO_LATE_TRANSITION_EXTRA_SECONDS once per gap AFTER
+            // Sign (i.e. (i-1) times for i>=2 -- Seal gets +1s, Quote +2s,
+            // Draft +3s -- see that constant's own comment for why Sign
+            // itself, i=1, is excluded).
+            const lateExtra = i >= 2 ? (i - 1) * HERO_LATE_TRANSITION_EXTRA_SECONDS : 0;
+            const delaySeconds = i === 0 ? 0 : i * HERO_IMAGE_STEP_SECONDS + HERO_FIRST_HOLD_EXTRA_SECONDS + lateExtra;
             return (
               <div
                 key={item.key}
