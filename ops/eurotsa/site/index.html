@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EuroTSA — free EU-hosted RFC 3161 timestamp authority</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; color: #1a1a1a; line-height: 1.6; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.2em; }
+  h2 { font-size: 1.15rem; margin-top: 2em; }
+  code, pre { background: #f2f2f2; border-radius: 4px; }
+  code { padding: 2px 5px; }
+  pre { padding: 12px; overflow-x: auto; }
+  footer { margin-top: 4em; padding-top: 1em; border-top: 1px solid #ddd; font-size: 0.85rem; color: #666; }
+  a { color: #1a1a1a; }
+</style>
+</head>
+<body>
+
+<h1>EuroTSA</h1>
+<p>A free, EU-hosted RFC 3161 timestamp authority. Same protocol, same
+"free forever" posture as FreeTSA.org — disclosed operator instead of an
+anonymous personal server.</p>
+
+<h2>Usage</h2>
+<p>Standard RFC 3161 over HTTP. Any client that speaks to FreeTSA already
+speaks to this — point it at <code>eurotsa.eu/tsr</code> instead.</p>
+<pre>openssl ts -query -data myfile -cert -sha256 -out request.tsq
+curl -sSH "Content-Type: application/timestamp-query" \
+  --data-binary @request.tsq https://eurotsa.eu/tsr -o response.tsr
+openssl ts -verify -in response.tsr -data myfile \
+  -CAfile eurotsa-root.crt.pem -untrusted eurotsa-chain.crt.pem</pre>
+
+<h2>Certificates</h2>
+<p>
+<a href="/chain.crt.pem">Download the certificate chain</a> — needed to
+verify a timestamp independently of eurotsa.eu itself.
+</p>
+
+<h2>Supported digest algorithms</h2>
+<p>sha256, sha384, sha512. No md5/sha1 — no reason to carry broken digest
+algorithms into a service built in 2026.</p>
+
+<h2>Certification Practice Statement</h2>
+<p><strong>Operator:</strong> SPRK10 B.V., a company registered in the
+Netherlands.</p>
+<p><strong>Service description:</strong> EuroTSA issues RFC 3161 trusted
+timestamps. It is <strong>not</strong> a qualified trust service under
+eIDAS — no CAB audit, no ETSI EN 319 421/422 compliance, no EU Trusted
+List filing. It carries the same evidentiary weight as any other
+non-qualified RFC 3161 timestamp.</p>
+<p><strong>Availability:</strong> made available at all times, 24x7x365,
+if possible. Offered as-is, with no SLA and no warranty of any kind,
+express or implied.</p>
+<p><strong>Privacy:</strong> EuroTSA does not log submitted hashes or
+document content. Requester IP addresses are held only transiently, in
+the rate limiter's sliding window, and are never persisted to disk or a
+database.</p>
+<p><strong>Rate limit:</strong> 100 requests/hour per IP address.</p>
+<p><strong>Contact:</strong> operated by SPRK10 B.V. — see the footer for
+contact details.</p>
+
+<footer>
+<p>Operated by SPRK10 B.V. · <a href="/waitlist.html">Need higher volume or a legally qualified EU timestamp?</a></p>
+</footer>
+
+</body>
+</html>

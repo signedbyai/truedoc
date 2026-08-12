@@ -1,0 +1,47 @@
+eurotsa.eu {
+	encode gzip
+
+	# Mirrors FreeTSA's own /tsr URL so a curl/openssl command written
+	# against freetsa.org/tsr works unchanged against eurotsa.eu/tsr —
+	# timestamp-authority's real native path is /api/v1/timestamp
+	# (confirmed against its actual README, not assumed), rewritten here
+	# rather than exposed directly.
+	@rfc3161 path /tsr
+	handle @rfc3161 {
+		rewrite * /api/v1/timestamp
+		reverse_proxy 127.0.0.1:3000
+	}
+
+	@certchain path /tsr/certchain
+	handle @certchain {
+		rewrite * /api/v1/timestamp/certchain
+		reverse_proxy 127.0.0.1:3000
+	}
+
+	# Everything else: the static CPS + usage-docs + waitlist site.
+	handle {
+		root * /var/www/eurotsa
+		file_server
+	}
+
+	# 100 req/hr/IP on the timestamp endpoint only, per EUROTSA_SCOPE.md.
+	# Needs the mholt/caddy-ratelimit plugin built in via xcaddy (see
+	# RUNBOOK.md step 5) — Caddy's core has no rate limiting of its own.
+	# Verify this block's exact syntax against that plugin's current docs
+	# with `caddy validate` before relying on it — not live-tested from
+	# here.
+	rate_limit {
+		zone tsr_zone {
+			match {
+				path /tsr*
+			}
+			key {remote_host}
+			events 100
+			window 1h
+		}
+	}
+
+	request_body {
+		max_size 2MB
+	}
+}

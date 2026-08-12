@@ -1,0 +1,21 @@
+[Unit]
+Description=EuroTSA — RFC 3161 timestamp authority (sigstore/timestamp-authority)
+After=network.target
+
+[Service]
+Type=simple
+User=eurotsa
+Environment=GOOGLE_APPLICATION_CREDENTIALS=/etc/eurotsa/eurotsa-signer-key.json
+ExecStart=/usr/local/bin/timestamp-server serve \
+  --port 3000 \
+  --timestamp-signer=kms \
+  --certificate-chain-path=/etc/eurotsa/chain.crt.pem \
+  --kms-key-resource=gcpkms://projects/REPLACE_PROJECT/locations/europe-west3/keyRings/eurotsa/cryptoKeys/eurotsa-leaf/versions/1
+Restart=on-failure
+RestartSec=5
+# 127.0.0.1 only — Caddy is the only thing that should ever reach this
+# directly; the internet-facing surface is entirely Caddy's TLS + rate
+# limiting in front of it.
+
+[Install]
+WantedBy=multi-user.target
