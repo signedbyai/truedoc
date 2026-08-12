@@ -432,24 +432,48 @@ function FeatureCornerBadge({ Icon }: { Icon: typeof Signature }) {
 }
 
 // Hero slide image content, shared by all four Sign/Seal/Quote/Draft
-// slides. Wraps the real screenshot in a sized box (aspect-ratio +
-// h-full/max-w-full, so it shrink-to-fits the crossfade card exactly
-// like a plain <Image> would) and slowly zooms toward that reason's own
-// zoomOrigin (see REASONS' own comment for how each origin was
-// measured).
+// slides. Slowly zooms toward that reason's own zoomOrigin (see REASONS'
+// own comment for how each origin was measured).
 //
 // Fixed 2026-08-12 (direct report: "the animation ... is not working" --
-// nothing was rendering at all, not just failing to animate). Root
-// cause: this box originally used `max-h-full max-w-full` with no actual
-// width/height, only caps. Its only child was `position: absolute` (the
-// fill Image), which doesn't contribute to a parent's auto content size
-// -- so with no definite width, no definite height, and no content-based
-// size to fall back to, aspect-ratio had nothing to compute from and the
-// whole box collapsed to 0x0. `h-full` (definite, resolves against the
-// flex parent's real pixel height) gives aspect-ratio a real seed to
-// derive width from; `max-w-full` still clamps it, and per the CSS
-// sizing spec that clamp correctly recomputes height back down through
-// the same ratio rather than just cropping.
+// nothing was rendering at all). Root cause: an aspect-ratio box with no
+// actual width/height (only caps) around a `fill` Image (which is
+// position:absolute and contributes no size to its parent) collapsed to
+// 0x0. First fix: `h-full` (definite) on the wrapper gave aspect-ratio a
+// seed to derive width from, `max-w-full` clamped it.
+//
+// 2026-08-12, direct report + measured proof (a live pixel probe against
+// the deployed page): that first fix had a second, quieter bug. `h-full`
+// is a DEFINITE height, and CSS's aspect-ratio auto-sizing (recomputing
+// the other dimension when a constraint clamps one of them) only applies
+// to a dimension that started as `auto` -- since height here was never
+// auto, clamping the width via max-w-full did NOT shrink height back
+// down to match, despite this file's own previous comment claiming
+// otherwise (untested assumption, not verified against a real narrow
+// layout at the time). Net effect on a real mobile width: the wrapper
+// stayed at its full h-full height while its width clamped down to fit
+// -- a box that no longer matched the image's real aspect ratio, so the
+// `fill` image's own object-contain letterboxed the actual visible
+// picture inside it, leaving a real gap between the wrapper's top and
+// where the picture's own visible pixels actually started.
+//
+// Fixed by dropping the `fill` + aspect-ratio-wrapper approach entirely.
+// The <Image> below now renders a normal (non-fill) img with its own
+// real width/height attributes -- a real img DOES participate in the
+// standard replaced-element sizing algorithm, so `h-auto max-h-full
+// w-auto max-w-full` on the img itself correctly shrinks BOTH dimensions
+// together to fit whichever of the wrapper's width/height caps binds,
+// preserving the real aspect ratio with no letterboxing. The wrapper
+// itself is now just a plain h-full w-full flex box; items-start/sm:
+// items-center on IT (not the outer slide div, which no longer needs to
+// care) is what makes the image start flush at the top on mobile and
+// centered on desktop.
+//
+// This was one of two compounding bugs behind "invoice is still
+// starting below the badge" -- the other, the outer crossfade card's own
+// fixed height not scaling down for mobile widths, is fixed separately
+// where that card is rendered below (see the comment there). Either bug
+// alone produced a visible gap; both needed fixing together.
 //
 // 2026-08-12: dropped a sliding swipe-thumb overlay that used to sit on
 // top of Sign's image (direct report: "not probably aligned and the
@@ -472,37 +496,38 @@ function FeatureCornerBadge({ Icon }: { Icon: typeof Signature }) {
 // with when the image is actually visible. globals.css's
 // .animate-hero-zoom keyframe is timed to match every slide's shared
 // .animate-hero-crossfade window: scale(1) through 4% (fade-in start),
-// reaching scale(1.28) by 26% (end of the opaque hold, matching
-// hero-crossfade's own 26% opaque-to-fade-out boundary) so the zoom
+// reaching scale(1.28) by 25% (end of the opaque hold, matching
+// hero-crossfade's own 25% opaque-to-fade-out boundary) so the zoom
 // finishes right as the image is fully visible rather than mid-fade.
+// transform-origin (reason.zoomOrigin) now applies directly to the real
+// img element rather than an outer wrapper, so the measured percentages
+// still point at the same real spot on the actual image.
 //
-// 2026-08-12: Seal opts out via noZoom (see REASONS' own comment -- its
-// zoomOrigin sits near the bottom QR code, so scaling toward it pushed
-// the medallion in the opposite/top-right corner out of frame). When
-// noZoom is set, this renders the same sized box with no animation class
-// and no animation-* style props at all, so the image just sits static
-// at scale(1) instead of running the zoom keyframe.
+// noZoom (REASONS' own optional field) is currently unused -- Seal was
+// the one reason that needed it (its zoomOrigin used to sit near the
+// bottom QR code, pushing the medallion at the opposite corner out of
+// frame) until that origin was re-measured to sit ON the medallion
+// itself. Kept as a live escape hatch for any future reason that can't
+// find a working origin, not dead code.
 function HeroImageContent({ reason, delaySeconds }: { reason: (typeof REASONS)[number]; delaySeconds: number }) {
   return (
-    <div
-      className={`relative h-full w-auto max-w-full ${reason.noZoom ? "" : "animate-hero-zoom"}`}
-      style={{
-        aspectRatio: `${reason.width} / ${reason.height}`,
-        transformOrigin: reason.zoomOrigin,
-        ...(reason.noZoom
-          ? {}
-          : {
-              animationDuration: `${HERO_TOTAL_LOOP_SECONDS}s`,
-              animationDelay: `${delaySeconds}s`,
-            }),
-      }}
-    >
+    <div className="relative flex h-full w-full items-start justify-center sm:items-center">
       <Image
         src={reason.image}
         alt={reason.alt}
-        fill
+        width={reason.width}
+        height={reason.height}
         sizes="(min-width: 640px) 36rem, 92vw"
-        className="rounded-lg object-contain shadow-lg"
+        className={`h-auto max-h-full w-auto max-w-full rounded-lg object-contain shadow-lg ${reason.noZoom ? "" : "animate-hero-zoom"}`}
+        style={{
+          transformOrigin: reason.zoomOrigin,
+          ...(reason.noZoom
+            ? {}
+            : {
+                animationDuration: `${HERO_TOTAL_LOOP_SECONDS}s`,
+                animationDelay: `${delaySeconds}s`,
+              }),
+        }}
       />
     </div>
   );
@@ -733,7 +758,37 @@ export function HomepageTier1Preview({
           slow opacity fade, not motion/parallax, so it doesn't trigger
           the concerns that setting exists for. */}
       <section className="mx-auto w-full max-w-3xl px-6 pb-12">
-        <div className="relative mx-auto h-[420px] w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200/60 bg-slate-50 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
+        {/* 2026-08-12, direct report + screenshot: "the size of the
+            animation area for iOS ... seemed to be longer" -- confirmed
+            ("yes overall height"). Root cause: this box was a single fixed
+            420px height on every screen size. That height was sized for
+            DESKTOP, where the card's max-w-xl (576px) width is wide enough
+            that even the tallest-relative-to-width image (Draft, 567x513)
+            is still HEIGHT-constrained inside 420px (528px interior width
+            would need ~477px of height for Draft at full width, more than
+            420 minus this padding allows) -- so on desktop every image ends
+            up slightly narrower than the box, not shorter than it: dead
+            space, if any, sits on the sides, which nobody reported as a
+            problem.
+            On mobile the geometry flips. Card width shrinks with the
+            viewport (this section's own px-6 + each slide's own p-6 eat
+            ~96px combined -- a 390px phone leaves only ~294px of interior
+            width), but height stayed the fixed 420px regardless -- so
+            images became WIDTH-constrained instead, rendering shorter than
+            420px tall (Draft: 294 * 513/567 ≈ 266px, +48px padding ≈ 314px
+            total). The leftover ~100px of card below the image is exactly
+            the gap visible in the screenshot: a card that reads as much
+            taller than its own content on a narrow phone. Desktop Chrome
+            ("seems fine") isn't a contradiction -- the card's own width
+            there is wide enough that this never happens; the bug only
+            shows up once the card gets narrow, regardless of browser.
+            Fixed with a responsive height instead of one fixed value: 320px
+            below the sm breakpoint (comfortably covers every reason image
+            at real mobile card widths ~294-334px interior, per the math
+            above, with only minor side-padding on the widest phones rather
+            than a large bottom gap), 420px at sm and up (unchanged desktop
+            behavior). */}
+        <div className="relative mx-auto h-[320px] w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200/60 bg-slate-50 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)] sm:h-[420px]">
           {HERO_LOOP.map((item, i) => {
             // Positive delay (2026-08-12 fix, direct report: "out of
             // sequence"). The crossfade keyframe's visible window sits
@@ -762,22 +817,33 @@ export function HomepageTier1Preview({
                 key={item.key}
                 className={`${i === 0 ? "animate-hero-crossfade-first" : "animate-hero-crossfade"} absolute inset-0 flex justify-center p-6 ${
                   // 2026-08-12, thirteenth pass, direct report + mobile
-                  // screenshot: on a real phone, the badges sat right at the
-                  // bottom edge of the visible screen, mostly hidden behind
-                  // Safari's own bottom URL bar -- vertically centering the
-                  // intro row inside this fixed 420px-tall card puts its
-                  // content at the box's midpoint, which on a narrow phone
-                  // (where the page above it -- header, hero, CTA -- already
-                  // fills most of the fold) lands low enough to run into the
-                  // browser chrome. items-start (+pt-10) on mobile pulls just
-                  // the intro slide up toward the top of the card instead;
-                  // sm:items-center reverts to the original centered look on
-                  // wider screens, where this was never an issue. The four
-                  // real image slides (i>=1) are untouched -- they rely on
-                  // full centering to balance their different aspect ratios,
-                  // and weren't reported as a problem.
-                  i === 0 ? "items-start pt-10 sm:items-center sm:pt-6" : "items-center"
-                }`}
+                  // screenshot: on a real phone, the intro badges sat right
+                  // at the bottom edge of the visible screen, mostly hidden
+                  // behind Safari's own bottom URL bar -- vertically
+                  // centering the intro row inside this fixed-height card
+                  // put its content at the box's midpoint, which on a
+                  // narrow phone (where the page above it -- header, hero,
+                  // CTA -- already fills most of the fold) lands low enough
+                  // to run into the browser chrome. items-start pulled just
+                  // the intro slide up on mobile at the time.
+                  //
+                  // 2026-08-12, fourteenth pass, direct report + 3 more
+                  // mobile screenshots: (1) the intro badges, now pulled up,
+                  // read as "good... but maybe a fraction lower" -- pt-10
+                  // nudged up to pt-12. (2) "the signing transition does not
+                  // make it to the top of the animation space before the
+                  // next transition, and the invoice transition it's not
+                  // starting from the top" -- both Sign and Seal were still
+                  // on items-center, which on the same narrow mobile card
+                  // left dead vertical space above the image before its own
+                  // zoom animation could visually close it -- the same root
+                  // cause the intro row had. items-start now applies to
+                  // EVERY slide on mobile, not just the intro one; sm:items-
+                  // center still reverts to the original centered look on
+                  // wider screens, where none of this was ever reported as
+                  // a problem.
+                  "items-start sm:items-center"
+                } ${i === 0 ? "pt-12 sm:pt-6" : ""}`}
                 style={{
                   // Shared total duration for every slide (see
                   // HERO_TOTAL_LOOP_SECONDS above) so the loop stays in
