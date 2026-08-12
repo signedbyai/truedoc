@@ -493,9 +493,21 @@ function DeveloperApiSection() {
             />
             <h2 className="text-2xl font-semibold text-slate-900">Built for developers</h2>
           </div>
-          <p className="max-w-sm text-slate-600 sm:max-w-none">
+          {/* mx-auto sm:mx-0 -- direct report: this box wasn't aligned like
+              the reason cards above it. Text-align:center alone only
+              centers the TEXT inside a box, not the box itself; the
+              reasons row gets that for free from its parent's flex
+              items-center, but this section's mobile layout is a single-
+              column CSS grid (no items-center-equivalent), so this
+              max-w-sm box sat flush-left with centered text inside it --
+              a visibly different rhythm than the fully-centered reason
+              cards. mx-auto centers the box itself to match; sm:mx-0
+              reverts to flush-left on desktop, where the section is
+              already text-left via the parent. Also dropped "Starts
+              metered on Pro, fully unlimited on Business" per direct ask. */}
+          <p className="mx-auto max-w-sm text-slate-600 sm:mx-0 sm:max-w-none">
             A REST API and outbound webhooks — create and send documents from your CRM, poll status, or get
-            notified the moment something&apos;s signed. Starts metered on Pro, fully unlimited on Business.
+            notified the moment something&apos;s signed.
           </p>
           <Link
             href="/developers"
