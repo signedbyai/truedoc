@@ -210,6 +210,105 @@ const HERO_LOOP_SECONDS = 12;
 const HERO_FIRST_HOLD_EXTRA_SECONDS = 1;
 const HERO_TOTAL_LOOP_SECONDS = HERO_LOOP_SECONDS + HERO_FIRST_HOLD_EXTRA_SECONDS;
 
+// Sign hero image content, 2026-08-12 direct ask: "animate to a zoom of
+// the signer experience and show the swipe to sign sliding left to right
+// ... put the black badge logo on the black swipe button." Wraps the
+// existing hero-sign-mobile-composite.png (unchanged, still the real
+// desktop-editor + mobile-signer composite) in a sized box (aspect-ratio +
+// max-height/max-width, so it shrink-to-fits the crossfade card exactly
+// like the plain <Image> siblings do, but as a *positioned* box the
+// overlay below can line up against) and adds two things on top:
+// (1) .animate-sign-hero-zoom slowly scales the whole composite toward
+// the phone's swipe button (transform-origin below), landing by the time
+// hero-crossfade-first's own visible plateau settles at 35% -- both
+// animations get the same HERO_TOTAL_LOOP_SECONDS duration so they stay
+// in lockstep; (2) a small overlay tracking the button's real position.
+//
+// The percentages below (68.3/86.8/30.3/6.2, and the thumb's 19.1%
+// width + 80.9% travel) are NOT eyeballed -- they came from scanning
+// hero-sign-mobile-composite.png's actual pixels for the button's yellow
+// track and navy knob (Python/PIL, tolerance-matched against the real
+// rendered colors, not guessed from a screenshot). Track: x[1122,1620]
+// y[929,995] of the 1642x1070 composite. Knob: x[1122,1217], same y --
+// width 95px, i.e. the 19.1% below.
+const SIGN_BUTTON_TRACK = { left: "68.3%", top: "86.8%", width: "30.3%", height: "6.2%" };
+const SIGN_BUTTON_THUMB_WIDTH = "19.1%";
+
+function SignHeroContent({ alt }: { alt: string }) {
+  return (
+    <div
+      className="animate-sign-hero-zoom relative max-h-full max-w-full"
+      style={{
+        aspectRatio: "1642 / 1070",
+        transformOrigin: "83% 90%",
+        animationDuration: `${HERO_TOTAL_LOOP_SECONDS}s`,
+      }}
+    >
+      <Image
+        src="/hero-sign-mobile-composite.png"
+        alt={alt}
+        fill
+        sizes="(min-width: 640px) 36rem, 92vw"
+        className="rounded-lg object-contain shadow-lg"
+      />
+      {/* The black badge stands in for the button's original navy
+          knob+arrow -- same black, so it reads as the same control, just
+          carrying the real brand mark instead of a plain arrow, sliding
+          across the track on its own short loop (globals.css's
+          swipe-thumb-slide) independent of the parent's slower cycle. */}
+      <div className="pointer-events-none absolute" style={SIGN_BUTTON_TRACK}>
+        <div className="animate-swipe-thumb-slide relative h-full" style={{ width: SIGN_BUTTON_THUMB_WIDTH }}>
+          <Image src="/brand/signedby-badge-black-small.png" alt="" fill className="rounded-[22%] object-contain" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Seal hero image content, same section, direct ask: "add the
+// verification page hero shot as an animation in the seal hero image."
+// A small two-image crossfade INSIDE the Seal slot -- the existing sealed
+// invoice (hero-verified-badge-invoice-d.png, unchanged) alternating with
+// the real /verify page result (hero-verify-result.png, already in
+// public/, not a new capture). Reuses the exact same
+// .animate-hero-crossfade keyframe the outer 4-image loop uses, just on
+// a short independent SEAL_INNER_SECONDS cycle with the two images 180°
+// out of phase -- deliberately not synced to the outer loop's timing
+// (same "let it run, it's cheap" choice as the swipe thumb above and
+// .animate-json-scroll elsewhere), so whatever phase it's in when Seal's
+// slot fades into view still reads as two real, complete images
+// crossfading, not a contrived one-shot reveal.
+const SEAL_INNER_IMAGES: { src: string; alt: string }[] = [
+  {
+    src: "/hero-verified-badge-invoice-d.png",
+    alt: "An invoice with the SignedBy Verified & Sealed medallion stamped over its top-right corner",
+  },
+  {
+    src: "/hero-verify-result.png",
+    alt: "The public /verify page confirming a sealed document is genuine, showing its trusted timestamp and identity-verified organization",
+  },
+];
+const SEAL_INNER_SECONDS = 7;
+
+function SealHeroContent() {
+  return (
+    <div className="relative max-h-full max-w-full" style={{ aspectRatio: "740 / 650" }}>
+      {SEAL_INNER_IMAGES.map((img, j) => (
+        <div
+          key={img.src}
+          className="animate-hero-crossfade absolute inset-0 flex items-center justify-center"
+          style={{
+            animationDuration: `${SEAL_INNER_SECONDS}s`,
+            animationDelay: `${(j * SEAL_INNER_SECONDS) / SEAL_INNER_IMAGES.length}s`,
+          }}
+        >
+          <Image src={img.src} alt={img.alt} fill sizes="(min-width: 640px) 24rem, 80vw" className="rounded-lg object-contain shadow-lg" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Developer/API section — /home-preview-b only (2026-08-12, direct ask:
 // "take some inspiration from documenso.com especially the api animation").
 // A live Chrome pass over documenso.com found their "API animation" is
@@ -428,14 +527,20 @@ export function HomepageTier1Preview({
                   i === 0 ? "0s" : `${(i * HERO_LOOP_SECONDS) / HERO_LOOP.length + HERO_FIRST_HOLD_EXTRA_SECONDS}s`,
               }}
             >
-              <Image
-                src={shot.image}
-                alt={shot.alt}
-                width={shot.width}
-                height={shot.height}
-                sizes="(min-width: 640px) 36rem, 92vw"
-                className="max-h-full w-auto rounded-lg object-contain shadow-lg"
-              />
+              {i === 0 ? (
+                <SignHeroContent alt={shot.alt} />
+              ) : i === 1 ? (
+                <SealHeroContent />
+              ) : (
+                <Image
+                  src={shot.image}
+                  alt={shot.alt}
+                  width={shot.width}
+                  height={shot.height}
+                  sizes="(min-width: 640px) 36rem, 92vw"
+                  className="max-h-full w-auto rounded-lg object-contain shadow-lg"
+                />
+              )}
             </div>
           ))}
         </div>

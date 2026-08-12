@@ -149,6 +149,53 @@ body {
   animation: hero-crossfade-first 9s ease-in-out infinite;
 }
 
+/* Sign hero image only (2026-08-12, direct ask: "animate to a zoom of the
+   signer experience"). Slowly scales hero-sign-mobile-composite.png in,
+   landing on the phone's swipe-to-sign button by the time Sign's own
+   visible plateau settles (35% — matches hero-crossfade-first above, so
+   the zoom and the fade stay in sync since the component gives both the
+   same animation-duration/delay). transform-origin is set inline per the
+   button's real measured position in that composite (~83% 90% — found by
+   scanning the image for its actual yellow/navy pixels, not eyeballed),
+   not the component's default center origin. */
+@keyframes sign-hero-zoom {
+  0%, 4% {
+    transform: scale(1);
+  }
+  35%, 100% {
+    transform: scale(1.28);
+  }
+}
+
+.animate-sign-hero-zoom {
+  animation: sign-hero-zoom 9s ease-in-out infinite;
+}
+
+/* The swipe-to-sign thumb overlay, same section — a small badge-sized
+   element positioned over the composite's real swipe button (see the
+   component's own measured percentages) that slides left-to-right and
+   back, on its own short independent loop rather than synced to the
+   parent's 13s cycle (same "just keep it running, it's cheap" choice as
+   .animate-json-scroll/.animate-logo-marquee elsewhere on this page) --
+   whenever the Sign image happens to be visible, the thumb is mid-slide,
+   which reads as a natural persistent "swipe this" hint rather than a
+   one-shot animation that might be missed. */
+@keyframes swipe-thumb-slide {
+  0%, 15% {
+    left: 0%;
+  }
+  50%, 65% {
+    left: 80.9%;
+  }
+  85%, 100% {
+    left: 0%;
+  }
+}
+
+.animate-swipe-thumb-slide {
+  animation: swipe-thumb-slide 3s ease-in-out infinite;
+}
+
 /* Sender-side "start here" cue on the Signature tool button (see
    field-editor.tsx). An on-brand yellow highlighter sweep across the
    button label — same yellow-highlight motif as the favicon (black S on
