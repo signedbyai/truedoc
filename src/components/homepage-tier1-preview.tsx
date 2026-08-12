@@ -716,48 +716,60 @@ export function HomepageTier1Preview({
           (odd rows flip) so the section doesn't read as a flat repeating
           list; text stacks ABOVE the image on mobile (badge+heading+copy
           first in the DOM, image second) — same pattern as
-          DeveloperApiSection below, fixed 2026-08-12 (direct report: image
-          was sitting above the badge/intro text on mobile, inconsistent
-          with the Developers section). Row/row-reverse is flipped from a
-          naive image-first reading of "even = row" because the DOM order
-          swapped: text-first + sm:flex-row-reverse now produces the same
-          image-left/text-right desktop layout the old image-first +
-          sm:flex-row markup did, and vice versa for odd rows. */}
+          DeveloperApiSection below.
+
+          2026-08-12, tenth pass, direct report: "the left side of the API
+          animation is now not lined up" -- once the images were widened
+          (ninth pass, max-w-sm -> max-w-lg), this section's rows and
+          DeveloperApiSection below no longer agreed on where the
+          left/right column boundary sits. Root cause: they were built on
+          two different layout mechanisms that only happened to look
+          aligned by coincidence at the OLD width. This row used a plain
+          flex row (text auto-width, image capped at max-w-lg) with no
+          shared column grid; DeveloperApiSection uses a real
+          `sm:grid-cols-2` grid (two exact 404px columns on this section's
+          848px content width). At the old max-w-sm image width there was
+          enough slack that the flex row's packed layout landed close to
+          where the grid's column boundary was, close enough not to
+          notice; at max-w-lg the flex row's text column has to shrink
+          below max-w-sm to fit, which shifts the image well further left
+          than the grid's fixed 404px column start -- a ~108px gap,
+          confirmed by direct pixel math against both layouts.
+
+          Fixed by switching this row to the SAME sm:grid-cols-2 gap-10
+          grid DeveloperApiSection uses, instead of matching pixel widths
+          by hand (fragile, breaks again the next time either section's
+          width changes). DOM order stays text-first/image-second on every
+          row (unchanged, still the mobile stacking order); sm:order-1/
+          sm:order-2 handle the alternating desktop side instead of
+          flex-row/flex-row-reverse. This also settles the image's actual
+          rendered width at ~404px (the grid column width) rather than the
+          max-w-lg cap of 512px -- still visibly larger than the original
+          384px, and now structurally guaranteed to line up with the API
+          panel's column at every viewport width, not just one. */}
       <section className="mx-auto w-full max-w-4xl px-6 py-12">
         <h2 className="mb-10 text-center text-2xl font-semibold text-slate-900">Why SignedBy</h2>
         <div className="flex flex-col gap-16">
           {REASONS.map((r, i) => (
-            <div key={r.title} className={`flex flex-col items-center gap-8 sm:gap-10 ${i % 2 === 1 ? "sm:flex-row" : "sm:flex-row-reverse"}`}>
-              <div className="max-w-sm text-center sm:text-left">
+            <div key={r.title} className="grid gap-8 sm:grid-cols-2 sm:items-center sm:gap-10">
+              <div className={`text-center sm:text-left ${i % 2 === 1 ? "sm:order-1" : "sm:order-2"}`}>
                 <h3 className="flex items-center justify-center gap-2 text-lg font-semibold text-slate-900 sm:justify-start">
                   <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-yellow-300 text-slate-900">
                     <r.Icon className="h-4 w-4" strokeWidth={1.75} />
                   </span>
                   {r.title}
                 </h3>
-                <p className="mt-2 text-slate-600">{r.description}</p>
+                <p className="mx-auto mt-2 max-w-sm text-slate-600 sm:mx-0 sm:max-w-none">{r.description}</p>
               </div>
-              {/* 2026-08-12, ninth pass, direct ask: "bring the ... hero
-                  images to a larger size when full screen, [but] don't
-                  expand to the edge of the text, only the API one does" --
-                  these were capped at max-w-sm (24rem/384px), noticeably
-                  small against the section's own max-w-4xl (896px)
-                  container on a wide viewport. Raised to max-w-lg
-                  (32rem/512px) -- bigger, but still an explicit cap, unlike
-                  DeveloperApiSection's JSON panel, which has no max-width
-                  and fills its whole grid column edge-to-edge (that's the
-                  "only the API one does" behavior this should NOT copy).
-                  The text column next to it (still max-w-sm below) just
-                  wraps a bit narrower to make room -- this is a flex row
-                  with a gap, not an equal-width grid, so growing the image
-                  doesn't force the text to grow too. */}
-              <div className="w-full max-w-lg shrink-0 overflow-hidden rounded-xl border border-slate-200/60 bg-slate-50 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
+              <div
+                className={`overflow-hidden rounded-xl border border-slate-200/60 bg-slate-50 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)] ${i % 2 === 1 ? "sm:order-2" : "sm:order-1"}`}
+              >
                 <Image
                   src={r.image}
                   alt={r.alt}
                   width={r.width}
                   height={r.height}
-                  sizes="(min-width: 640px) 32rem, 90vw"
+                  sizes="(min-width: 640px) 24rem, 90vw"
                   className="h-auto w-full"
                 />
               </div>
