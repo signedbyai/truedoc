@@ -151,7 +151,9 @@ export function HomepageTwoColumn({ currency, ctaColor }: { currency: Currency; 
           </div>
         </div>
         {/* EU trust badges — see the matching note in homepage-current.tsx;
-            kept identical across both A/B variants. */}
+            kept identical across both A/B variants. Third pill (AI never
+            trains on your documents) added 2026-08-12, same reasoning as
+            homepage-current.tsx's comment. */}
         <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
           <span className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600">
             EU-based company
@@ -161,6 +163,12 @@ export function HomepageTwoColumn({ currency, ctaColor }: { currency: Currency; 
             className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
           >
             GDPR-compliant · EEA data residency
+          </Link>
+          <Link
+            href="/security"
+            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+          >
+            AI never trains on your documents
           </Link>
         </div>
       </section>

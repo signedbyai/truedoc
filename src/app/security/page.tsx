@@ -165,6 +165,18 @@ export default function SecurityPage() {
           </Link>{" "}
           sets out exactly what we collect from senders and signers, why, and how long we keep it.
         </p>
+        {/* AI-training trust signal (2026-08-12) — surfaces a fact that was
+            already true and already stated in /privacy §3-4 and /dpa §2, just
+            not visible anywhere a visitor would look for it. Deliberately
+            NOT a "zero data retention" claim: that would contradict this same
+            page's own "kept ... for as long as your account is active"
+            reality a few sections up. This is the narrower, actually-true
+            claim — no AI training, not no storage. */}
+        <p className="mt-3 text-slate-600">
+          Document text sent to our AI provider for optional AI-assisted features (field-suggestion, drafting,
+          summarization) is used only to generate that result — never to train Mistral&apos;s models, and never to
+          train any model of ours.
+        </p>
       </section>
 
       {/* Being straight about the limits is part of being credible — and it

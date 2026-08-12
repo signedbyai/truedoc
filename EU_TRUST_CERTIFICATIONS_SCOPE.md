@@ -1,6 +1,24 @@
 # Scope: EU badges, next certification, and EUID login
 
-Status: SCOPED, NOT BUILT. Waiting on explicit go-ahead.
+Status: the two homepage badges below (EU-based company, GDPR-compliant ·
+EEA data residency) were actually BUILT 2026-07-30 (commit 6c38cba, both
+A/B homepage variants) and are live on signedby.ai right now — this doc's
+"NOT BUILT" header went stale and was never corrected at the time. A third
+pill, "AI never trains on your documents," was added 2026-08-12 alongside a
+matching sentence on `/security` — the true, narrower claim that replaced a
+"Zero Data Retention" badge idea considered and rejected the same day (see
+`WELCOME_EMAIL_SCOPE.md`'s neighbor conversation): ZDR directly contradicts
+this doc's own `/privacy` §5 and `/dpa` §5, which describe active,
+ongoing retention (the product's whole job is a durable, retrievable signed
+record). Everything below the certification table (ISO 27001/SOC 2, QTSP
+integration, EUID/EUDI Wallet) is still genuinely open, not addressed by
+this update.
+
+Known, still-unaddressed gap flagged in the same review: `/security` says
+"processing is kept within the European Economic Area," but `/dpa` §3
+lists 5 of 6 sub-processors (Supabase, Cloudflare, Resend, Stripe, Vercel)
+as US-incorporated, transferred under SCCs — lawful, but a different claim
+than "kept within the EEA." Not fixed as part of this pass; still open.
 
 ## Is there a "verification options" setup for adding a new certification?
 

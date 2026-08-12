@@ -252,7 +252,18 @@ export function HomepageCurrent({ currency, ctaColor }: { currency: Currency; ct
             processing, SPRK10 B.V. as the Dutch legal entity), so this is
             just surfacing existing facts, not a new commitment. Deliberately
             plain bordered pills, not the bold dark CTA-adjacent pill style
-            above, since these are supporting proof, not a competing action. */}
+            above, since these are supporting proof, not a competing action.
+
+            Third pill added 2026-08-12: "AI never trains on your documents"
+            — the true, narrower claim that replaced a "Zero Data Retention"
+            badge idea. ZDR was rejected outright: it directly contradicts
+            /privacy §5 and /dpa §5, which both describe active, ongoing
+            retention (documents kept for the life of the account, audit
+            trail retained indefinitely even after account closure) — the
+            product's whole job is producing a durable, retrievable signed
+            record, so "zero retention" can never be an honest claim here.
+            "Never trains AI" has no such conflict and was already true and
+            already stated in /privacy before this pill existed. */}
         <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
           <span className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600">
             EU-based company
@@ -262,6 +273,12 @@ export function HomepageCurrent({ currency, ctaColor }: { currency: Currency; ct
             className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
           >
             GDPR-compliant · EEA data residency
+          </Link>
+          <Link
+            href="/security"
+            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+          >
+            AI never trains on your documents
           </Link>
         </div>
       </section>
