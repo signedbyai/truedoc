@@ -409,7 +409,20 @@ function JsonPanelContent() {
 
 function DeveloperApiSection() {
   return (
-    <section className="mx-auto w-full max-w-5xl px-6 py-12">
+    // max-w-4xl -- 2026-08-12 direct report: "the text placement, either
+    // the developers text placement is correct and the others are wrong
+    // or the other way around, but make it consistent" (only visible
+    // once the viewport is stretched past ~896px, confirmed live).
+    // This section was max-w-5xl (1024px) while the reasons/Why-SignedBy
+    // section above it is max-w-4xl (896px) -- both are independently
+    // mx-auto-centered, so below 896px they're both simply clamped to
+    // the viewport and line up by coincidence, but past 896px the
+    // narrower section stops growing while this one keeps growing to
+    // 1024px, so their left edges (and therefore this section's
+    // badge+heading) drift right of the reasons row's badge+heading
+    // above it. Matched to max-w-4xl so both sections share the exact
+    // same centered width for every viewport width, not just narrow ones.
+    <section className="mx-auto w-full max-w-4xl px-6 py-12">
       <div className="grid gap-10 sm:grid-cols-2 sm:items-center">
         <div className="text-center sm:text-left">
           <div className="mb-3 flex items-center justify-center gap-2.5 sm:justify-start">
@@ -426,7 +439,22 @@ function DeveloperApiSection() {
               height={28}
               className="h-7 w-7 rounded-lg"
             />
-            <h2 className="text-2xl font-semibold text-slate-900">Built for developers</h2>
+            {/* text-lg, not text-2xl -- 2026-08-12 direct report: "the
+                font size...looks slightly different, or perhaps its just
+                larger." Checked live (getComputedStyle on the deployed
+                page): text-2xl here WAS byte-for-byte identical to the
+                "Why SignedBy"/"Simple pricing" section headers (24px/600/
+                same font stack) -- no CSS bug against THOSE. But per the
+                screenshot Michael sent, this block sits directly under
+                the Draft card and visually reads as a 5th pillar (badge +
+                bold word + description, identical shape to Sign/Seal/
+                Quote/Draft's own h3 pattern below), not as a standalone
+                section title the way "Why SignedBy" is -- so the correct
+                comparison is against THOSE titles (text-lg, 18px), which
+                this genuinely was larger than. Dropped to match. Copy
+                changed from "Built for developers" to "Wire in your CRM"
+                per direct ask, same day. */}
+            <h2 className="text-lg font-semibold text-slate-900">Wire in your CRM</h2>
           </div>
           {/* mx-auto sm:mx-0 -- direct report: this box wasn't aligned like
               the reason cards above it. Text-align:center alone only
