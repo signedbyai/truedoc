@@ -96,7 +96,7 @@ const FAQ = [
     },
     {
       q: "What actually makes the timestamp \"cryptographically verified\"?",
-      a: "Every seal is submitted to a real Time Stamping Authority (Sectigo's public RFC 3161 service, with FreeTSA as an automatic fallback if Sectigo can't be reached) that signs the file's hash together with the time. That's independently verifiable by anyone, trusting only the TSA — not just a date in SignedBy's own database. The ledger page at signedby.ai/verify shows which TSA backed a given seal.",
+      a: "Every seal is submitted to a real Time Stamping Authority (Sectigo's public RFC 3161 service, with EuroTSA and then FreeTSA as automatic fallbacks if Sectigo can't be reached) that signs the file's hash together with the time. That's independently verifiable by anyone, trusting only the TSA — not just a date in SignedBy's own database. The ledger page at signedby.ai/verify shows which TSA backed a given seal.",
     },
   ];
 

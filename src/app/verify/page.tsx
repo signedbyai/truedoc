@@ -17,7 +17,7 @@ type Result =
       isVerifiedBadge: boolean;
       sealedBy: string | null;
       identityVerifiedAt: string | null;
-      timestampTsa: "sectigo" | "freetsa" | null;
+      timestampTsa: "sectigo" | "eurotsa" | "freetsa" | null;
       timestampGenTime: string | null;
       paymentLinkUrl: string | null;
       paymentLabel: string | null;
@@ -25,23 +25,32 @@ type Result =
   | { verified: false }
   | null;
 
-// RFC 3161 trusted timestamp (TIMESTAMP_AUTHORITY_SCOPE.md, 2026-08-03).
-// Sectigo chains to an already-trusted root, so a Sectigo-backed timestamp
-// needs no caveat. FreeTSA uses a self-signed CA — real RFC 3161 proof, but
-// independently re-verifying it (rather than trusting SignedBy's own report
-// here) requires manually installing FreeTSA's root certificate first, so
-// that nuance has to stay visible rather than implying the two are
-// equivalent.
-function TimestampRow({ tsa, genTime }: { tsa: "sectigo" | "freetsa"; genTime: string | null }) {
+// RFC 3161 trusted timestamp (TIMESTAMP_AUTHORITY_SCOPE.md, 2026-08-03;
+// EuroTSA tier added 2026-08-12, EUROTSA_SCOPE.md). Sectigo chains to an
+// already-trusted root, so a Sectigo-backed timestamp needs no caveat.
+// EuroTSA and FreeTSA both use a self-signed CA — real RFC 3161 proof, but
+// independently re-verifying either (rather than trusting SignedBy's own
+// report here) requires manually installing that TSA's own root certificate
+// first, so that nuance has to stay visible rather than implying all three
+// are equivalent. (EuroTSA being SignedBy's own EU-hosted infrastructure
+// doesn't change its trust model — it's a dependency-risk improvement over
+// FreeTSA, not a stronger evidentiary claim.)
+const TSA_LABELS: Record<"sectigo" | "eurotsa" | "freetsa", string> = {
+  sectigo: "Sectigo (RFC 3161)",
+  eurotsa: "EuroTSA (RFC 3161)",
+  freetsa: "FreeTSA (RFC 3161)",
+};
+
+function TimestampRow({ tsa, genTime }: { tsa: "sectigo" | "eurotsa" | "freetsa"; genTime: string | null }) {
   return (
     <div className="flex justify-between gap-4">
       <dt className="text-emerald-700">Trusted timestamp</dt>
       <dd className="text-right font-medium">
-        {tsa === "sectigo" ? "Sectigo (RFC 3161)" : "FreeTSA (RFC 3161)"}
+        {TSA_LABELS[tsa]}
         {genTime && <span className="block text-xs font-normal text-emerald-700">{new Date(genTime).toLocaleString()}</span>}
-        {tsa === "freetsa" && (
+        {(tsa === "freetsa" || tsa === "eurotsa") && (
           <span className="block text-xs font-normal text-emerald-700">
-            Independently re-verifying this token requires installing FreeTSA&apos;s root certificate.
+            Independently re-verifying this token requires installing {tsa === "eurotsa" ? "EuroTSA's" : "FreeTSA's"} root certificate.
           </span>
         )}
       </dd>

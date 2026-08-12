@@ -17,7 +17,20 @@ import { timestampPdf, extractTimestamps, KNOWN_TSA_URLS } from "pdf-rfc3161";
 // published SLA — a real paid/contracted TSA relationship is a future
 // revisit trigger if volume or a customer ever makes that worth doing, not
 // a v1 requirement.
-export type TimestampTsa = "sectigo" | "freetsa";
+//
+// EuroTSA added as a middle tier 2026-08-12 (EUROTSA_SCOPE.md, RUNBOOK.md
+// §9) once eurotsa.eu was confirmed live end-to-end. Same self-signed-CA
+// trust model as FreeTSA (GCP KMS-backed root+leaf, not chained to an
+// already-trusted root) — it does NOT skip the "install our root cert to
+// independently re-verify" caveat, see verify/page.tsx's TimestampRow. It
+// sits ahead of FreeTSA in the chain anyway because it's SignedBy's own
+// self-hosted, EU-based infrastructure with a known operator, rather than a
+// third party's undisclosed-jurisdiction volunteer server — a real
+// dependency-risk improvement even though the legal/evidentiary weight is
+// identical to FreeTSA's. Per EUROTSA_SCOPE.md: after 30 days of EuroTSA
+// running clean as tier 2, drop FreeTSA from the chain entirely (Sectigo →
+// EuroTSA, two tiers) — that's a deliberate follow-up, not done here.
+export type TimestampTsa = "sectigo" | "eurotsa" | "freetsa";
 
 export type TimestampSuccess = {
   /** The PDF bytes with the RFC 3161 DocTimeStamp signature embedded —
@@ -33,6 +46,11 @@ export type TimestampSuccess = {
 };
 
 const SECTIGO_TSA_URL: string = KNOWN_TSA_URLS.SECTIGO;
+// Self-hosted, not in pdf-rfc3161's own KNOWN_TSA_URLS list — the /tsr path
+// mirrors FreeTSA's own URL scheme on purpose (EUROTSA_SCOPE.md), confirmed
+// live 2026-08-12 (real openssl ts-query round trip, HTTP 200, Status:
+// Granted).
+const EUROTSA_TSA_URL = "https://eurotsa.eu/tsr";
 const FREETSA_URL: string = KNOWN_TSA_URLS.FREETSA;
 
 async function tryTsa(pdfBytes: Uint8Array, url: string, tsa: TimestampTsa): Promise<TimestampSuccess> {
@@ -65,7 +83,13 @@ export async function timestampWithFallback(pdfBytes: Uint8Array): Promise<Times
   try {
     return await tryTsa(pdfBytes, SECTIGO_TSA_URL, "sectigo");
   } catch (err) {
-    console.error("RFC 3161 timestamp: Sectigo failed, trying FreeTSA fallback", err);
+    console.error("RFC 3161 timestamp: Sectigo failed, trying EuroTSA fallback", err);
+  }
+
+  try {
+    return await tryTsa(pdfBytes, EUROTSA_TSA_URL, "eurotsa");
+  } catch (err) {
+    console.error("RFC 3161 timestamp: EuroTSA failed, trying FreeTSA fallback", err);
   }
 
   try {

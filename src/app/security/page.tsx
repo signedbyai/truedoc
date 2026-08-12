@@ -124,7 +124,8 @@ export default function SecurityPage() {
           </p>
           <p className="mt-3 text-slate-600">
             That fingerprint is also given an independent timestamp: every seal is submitted to a real Time Stamping
-            Authority — Sectigo&apos;s public RFC 3161 service, with FreeTSA as an automatic fallback — which signs
+            Authority — Sectigo&apos;s public RFC 3161 service, with EuroTSA and then FreeTSA as automatic fallbacks —
+            which signs
             the hash together with the time. That&apos;s a neutral third party&apos;s proof of exactly when the
             document existed, not just an entry in SignedBy&apos;s own database.
           </p>
