@@ -239,17 +239,21 @@ const HERO_TOTAL_LOOP_SECONDS = HERO_LOOP_SECONDS + HERO_FIRST_HOLD_EXTRA_SECOND
 // the phone's swipe button (transform-origin below), landing by the time
 // hero-crossfade-first's own visible plateau settles at 35% -- both
 // animations get the same HERO_TOTAL_LOOP_SECONDS duration so they stay
-// in lockstep; (2) a small overlay tracking the button's real position.
+// in lockstep.
 //
-// The percentages below (68.3/86.8/30.3/6.2, and the thumb's 19.1%
-// width + 80.9% travel) are NOT eyeballed -- they came from scanning
-// hero-sign-mobile-composite.png's actual pixels for the button's yellow
-// track and navy knob (Python/PIL, tolerance-matched against the real
-// rendered colors, not guessed from a screenshot). Track: x[1122,1620]
-// y[929,995] of the 1642x1070 composite. Knob: x[1122,1217], same y --
-// width 95px, i.e. the 19.1% below.
-const SIGN_BUTTON_TRACK = { left: "68.3%", top: "86.8%", width: "30.3%", height: "6.2%" };
-const SIGN_BUTTON_THUMB_WIDTH = "19.1%";
+// 2026-08-12: dropped the sliding swipe-thumb overlay that used to sit
+// here (direct report: "not probably aligned and the starting button is
+// still visible underneath" -- the black-badge thumb only covered part
+// of the real track, leaving the actual yellow/navy button peeking out
+// from behind it, which read as broken rather than as one control).
+// Left as a plain zoom on the real screenshot for now; the swipe hint is
+// a later revisit, not abandoned -- see signer-share-qr and homepage
+// preview notes for the general "come back to this" pattern. The real
+// SIGN_BUTTON_TRACK/THUMB_WIDTH measurements (scanned from
+// hero-sign-mobile-composite.png's actual pixels, not eyeballed) are
+// still valid and worth reusing whenever this comes back: track
+// x[1122,1620] y[929,995] of the 1642x1070 composite, knob x[1122,1217]
+// same y (95px wide, i.e. 19.1% of track width).
 
 function SignHeroContent({ alt }: { alt: string }) {
   return (
@@ -268,16 +272,6 @@ function SignHeroContent({ alt }: { alt: string }) {
         sizes="(min-width: 640px) 36rem, 92vw"
         className="rounded-lg object-contain shadow-lg"
       />
-      {/* The black badge stands in for the button's original navy
-          knob+arrow -- same black, so it reads as the same control, just
-          carrying the real brand mark instead of a plain arrow, sliding
-          across the track on its own short loop (globals.css's
-          swipe-thumb-slide) independent of the parent's slower cycle. */}
-      <div className="pointer-events-none absolute" style={SIGN_BUTTON_TRACK}>
-        <div className="animate-swipe-thumb-slide relative h-full" style={{ width: SIGN_BUTTON_THUMB_WIDTH }}>
-          <Image src="/brand/signedby-badge-black-small.png" alt="" fill className="rounded-[22%] object-contain" />
-        </div>
-      </div>
     </div>
   );
 }
