@@ -736,7 +736,24 @@ export function HomepageTier1Preview({
             return (
               <div
                 key={item.key}
-                className={`${i === 0 ? "animate-hero-crossfade-first" : "animate-hero-crossfade"} absolute inset-0 flex items-center justify-center p-6`}
+                className={`${i === 0 ? "animate-hero-crossfade-first" : "animate-hero-crossfade"} absolute inset-0 flex justify-center p-6 ${
+                  // 2026-08-12, thirteenth pass, direct report + mobile
+                  // screenshot: on a real phone, the badges sat right at the
+                  // bottom edge of the visible screen, mostly hidden behind
+                  // Safari's own bottom URL bar -- vertically centering the
+                  // intro row inside this fixed 420px-tall card puts its
+                  // content at the box's midpoint, which on a narrow phone
+                  // (where the page above it -- header, hero, CTA -- already
+                  // fills most of the fold) lands low enough to run into the
+                  // browser chrome. items-start (+pt-10) on mobile pulls just
+                  // the intro slide up toward the top of the card instead;
+                  // sm:items-center reverts to the original centered look on
+                  // wider screens, where this was never an issue. The four
+                  // real image slides (i>=1) are untouched -- they rely on
+                  // full centering to balance their different aspect ratios,
+                  // and weren't reported as a problem.
+                  i === 0 ? "items-start pt-10 sm:items-center sm:pt-6" : "items-center"
+                }`}
                 style={{
                   // Shared total duration for every slide (see
                   // HERO_TOTAL_LOOP_SECONDS above) so the loop stays in
