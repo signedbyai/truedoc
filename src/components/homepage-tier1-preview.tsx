@@ -309,6 +309,92 @@ function SealHeroContent() {
   );
 }
 
+// Quote hero image content, direct ask 2026-08-12: "add an animation on
+// Magic Quote to the quote output (just the top half so you can see it
+// as quote)." Crossfades between two real states of Magic Quote:
+// (1) the DESCRIBE step (hero-magic-quote-describe.png, new -- no real
+// screenshot of this step existed anywhere in public/, so this was built
+// the same way generate-hero-new-document-draft.tsx's superseded version
+// was: real copy pulled verbatim from src/lib/quote-labels.ts and
+// magic-quote-form.tsx's own JSX, not invented), and (2) the existing
+// review/output screen (hero-magic-quote.png, unchanged) cropped to just
+// its top half via object-cover + object-top -- shows the heading/title/
+// currency fields (enough to read as "a quote") rather than shrinking
+// the whole tall image down to fit, which would make the line items and
+// button illegibly small at this card size.
+const QUOTE_INNER_SECONDS = 7;
+
+function QuoteHeroContent() {
+  return (
+    <div className="relative max-h-full max-w-full" style={{ aspectRatio: "568 / 241" }}>
+      <div
+        className="animate-hero-crossfade absolute inset-0 flex items-center justify-center"
+        style={{ animationDuration: `${QUOTE_INNER_SECONDS}s`, animationDelay: "0s" }}
+      >
+        <Image
+          src="/hero-magic-quote-describe.png"
+          alt="Magic Quote's describe step: a plain-language job description and a Generate quote button"
+          fill
+          sizes="(min-width: 640px) 24rem, 80vw"
+          className="rounded-lg object-contain shadow-lg"
+        />
+      </div>
+      <div
+        className="animate-hero-crossfade absolute inset-0"
+        style={{ animationDuration: `${QUOTE_INNER_SECONDS}s`, animationDelay: `${QUOTE_INNER_SECONDS / 2}s` }}
+      >
+        <Image
+          src="/hero-magic-quote.png"
+          alt="The top of the Magic Quote itemized editor: quote title, currency, and bill-to fields"
+          fill
+          sizes="(min-width: 640px) 24rem, 80vw"
+          className="rounded-lg object-cover object-top shadow-lg"
+        />
+      </div>
+    </div>
+  );
+}
+
+// Draft hero image content, direct ask 2026-08-12: "the Draft if you can
+// animate to the list of templates to pick from." Crossfades between the
+// existing describe screen (hero-new-document-draft.png, unchanged --
+// Document type field shown collapsed, "Freelance / Services Agreement"
+// selected) and a new second state showing that same field OPEN
+// (hero-draft-type-list.png, new -- same no-live-capture constraint as
+// the Quote describe image above, so this reuses six real entries
+// verbatim from src/lib/ai-draft-types.ts's DOCUMENT_TYPES rather than
+// inventing a document-type list).
+const DRAFT_INNER_SECONDS = 7;
+const DRAFT_INNER_IMAGES: { src: string; alt: string }[] = [
+  {
+    src: "/hero-new-document-draft.png",
+    alt: "The Draft tab: document type and language pickers, a plain-language description, and a Generate draft button",
+  },
+  {
+    src: "/hero-draft-type-list.png",
+    alt: "The Document type field open, listing real document types to pick from, including Freelance/Services Agreement, NDA, Waiver, Board Resolution, Shareholder Consent, and General Agreement",
+  },
+];
+
+function DraftHeroContent() {
+  return (
+    <div className="relative max-h-full max-w-full" style={{ aspectRatio: "567 / 513" }}>
+      {DRAFT_INNER_IMAGES.map((img, j) => (
+        <div
+          key={img.src}
+          className="animate-hero-crossfade absolute inset-0 flex items-center justify-center"
+          style={{
+            animationDuration: `${DRAFT_INNER_SECONDS}s`,
+            animationDelay: `${(j * DRAFT_INNER_SECONDS) / DRAFT_INNER_IMAGES.length}s`,
+          }}
+        >
+          <Image src={img.src} alt={img.alt} fill sizes="(min-width: 640px) 24rem, 80vw" className="rounded-lg object-contain shadow-lg" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Developer/API section — /home-preview-b only (2026-08-12, direct ask:
 // "take some inspiration from documenso.com especially the api animation").
 // A live Chrome pass over documenso.com found their "API animation" is
@@ -531,15 +617,10 @@ export function HomepageTier1Preview({
                 <SignHeroContent alt={shot.alt} />
               ) : i === 1 ? (
                 <SealHeroContent />
+              ) : i === 2 ? (
+                <QuoteHeroContent />
               ) : (
-                <Image
-                  src={shot.image}
-                  alt={shot.alt}
-                  width={shot.width}
-                  height={shot.height}
-                  sizes="(min-width: 640px) 36rem, 92vw"
-                  className="max-h-full w-auto rounded-lg object-contain shadow-lg"
-                />
+                <DraftHeroContent />
               )}
             </div>
           ))}
