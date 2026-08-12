@@ -140,22 +140,37 @@ body {
   animation: hero-crossfade 9s ease-in-out infinite backwards;
 }
 
-/* First image in the loop (Sign) only — direct ask 2026-08-12: "make the
-   animation start on the signing hero and pause on that one for just one
-   second longer before the animation starts." Two differences from the
-   shared hero-crossfade keyframe above: (1) opacity is 1 already at 0%
-   instead of fading in from 0% to 8% — Sign should just be there the
-   instant the page loads, not fade into view; (2) the visible plateau
-   runs to 35% instead of 26% before fading out, which — combined with
-   the component adding a matching HERO_FIRST_HOLD_EXTRA_SECONDS to the
-   shared total loop duration — works out to holding on Sign for one
-   full second longer than the other three images get. The other three
-   keep using .animate-hero-crossfade unchanged; the component shifts
-   their animation-delay later by that same extra second so the relative
-   3-second-apart spacing/crossfade overlap between them is preserved,
-   just pushed back to make room for Sign's longer hold up front. */
+/* First slide in the loop only — originally Sign (direct ask 2026-08-12:
+   "make the animation start on the signing hero and pause on that one
+   for just one second longer before the animation starts"), now the
+   intro badge row that took Sign's old index-0 slot the same day. Two
+   differences from the shared hero-crossfade keyframe above: (1)
+   opacity is 1 already at 0% instead of fading in from 0% to 8% — the
+   first slide should just be there the instant the page loads, not
+   fade into view; (2) the visible plateau runs to 35% instead of 26%
+   before fading out, giving it a longer hold than the four images get.
+   The four images keep using .animate-hero-crossfade unchanged; the
+   component staggers their animation-delay by HERO_IMAGE_STEP_SECONDS
+   (3s apart) plus a flat HERO_FIRST_HOLD_EXTRA_SECONDS to make room for
+   this slide's longer hold up front. See homepage-tier1-preview.tsx's
+   own HERO_TOTAL_LOOP_SECONDS comment for how the loop's total length
+   is sized so the last image's fade-out fully completes, with a full
+   second to spare, before this slide reappears — direct report
+   2026-08-12: "the 4 badges come in too soon at the end of the loop so
+   they pop in behind the last image."
+
+   2026-08-12, direct follow-up: "the last transition is a bit fast in"
+   — this slide's own re-entry (the wrap from Draft back to the intro
+   row) was the one transition with NO fade at all, snapping straight to
+   opaque, which reads as abrupt next to the four images' own 4%-8% fades.
+   Given a real 4%-8% fade-in here too, same window as the shared
+   .animate-hero-crossfade keyframe, at the small cost of the original
+   "instantly there on page load" behavior also now fading in briefly. */
 @keyframes hero-crossfade-first {
-  0%, 35% {
+  0%, 4% {
+    opacity: 0;
+  }
+  8%, 35% {
     opacity: 1;
   }
   39%, 100% {
@@ -167,26 +182,28 @@ body {
   animation: hero-crossfade-first 9s ease-in-out infinite;
 }
 
-/* Sign hero image only (2026-08-12, direct ask: "animate to a zoom of the
-   signer experience"). Slowly scales hero-sign-mobile-composite.png in,
-   landing on the phone's swipe-to-sign button. transform-origin is set
-   inline per the button's real measured position in that composite
-   (~83% 90% — found by scanning the image for its actual yellow/navy
-   pixels, not eyeballed), not the component's default center origin.
+/* All four Sign/Seal/Quote/Draft hero slides (2026-08-12, direct ask:
+   "animate to a zoom of the signer experience" for Sign originally, then
+   "do some zoom in on the QR code" / "the generate your quote button" /
+   "the generate draft button" for the other three the same day, at
+   which point this became one shared class instead of a Sign-only one).
+   Slowly scales the slide's real screenshot in, landing on whatever
+   real UI element that reason's zoomOrigin points at (see REASONS' own
+   comment in the component for how each origin was measured — never
+   eyeballed). transform-origin is set inline per-slide, not this
+   class's default center origin.
 
-   2026-08-12 reorder: Sign moved from index 0 to index 1 in the hero
-   loop (a new intro badge-row slide took index 0), so it now uses the
-   regular .animate-hero-crossfade class instead of
-   .animate-hero-crossfade-first — opaque 8%-26% of its own local cycle,
-   not 0%-35%. Retimed to match: scale(1) holds through 4% (matching
-   hero-crossfade's own fade-in start) and reaches scale(1.28) by 26%
-   (matching hero-crossfade's opaque-to-fade-out boundary), so the zoom
-   finishes right as the image is fully visible instead of mid-fade. The
-   component passes this element the SAME animationDelay as its outer
-   crossfade wrapper (delaySeconds prop) so the two stay in lockstep —
-   without that, the zoom would run on its own unsynced clock starting at
-   page load. */
-@keyframes sign-hero-zoom {
+   Every slide uses the regular .animate-hero-crossfade class (opaque
+   8%-26% of its own local cycle) except the intro badge row, which
+   doesn't zoom at all. Retimed to match that window: scale(1) holds
+   through 4% (matching hero-crossfade's own fade-in start) and reaches
+   scale(1.28) by 26% (matching hero-crossfade's opaque-to-fade-out
+   boundary), so the zoom finishes right as the image is fully visible
+   instead of mid-fade. The component passes this element the SAME
+   animationDelay as its outer crossfade wrapper (delaySeconds prop) so
+   the two stay in lockstep — without that, the zoom would run on its
+   own unsynced clock starting at page load. */
+@keyframes hero-zoom {
   0%, 4% {
     transform: scale(1);
   }
@@ -195,8 +212,8 @@ body {
   }
 }
 
-.animate-sign-hero-zoom {
-  animation: sign-hero-zoom 9s ease-in-out infinite;
+.animate-hero-zoom {
+  animation: hero-zoom 9s ease-in-out infinite;
 }
 
 /* The swipe-to-sign thumb overlay, same section — a small badge-sized

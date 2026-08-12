@@ -155,6 +155,43 @@ const REASONS: {
   width: number;
   height: number;
   Icon: typeof Signature;
+  // Hero-slide zoom target, 2026-08-12 direct ask: "on the Invoice do
+  // some zoom in on the QR code, on the Quote zoom in on the yellow
+  // generate you quote button, and on the draft zoom in on the yellow
+  // generate draft button." A CSS transform-origin percentage pair, NOT
+  // eyeballed -- each one was measured directly against the actual
+  // public/ image file: Seal's QR via opencv's QRCodeDetector (the wax
+  // seal medallion elsewhere in that same image is itself circular/
+  // patterned enough to false-positive as a QR, so detection was run on
+  // just the bottom half of the image to isolate the real one); Quote's
+  // button from scripts/fix-hero-magic-quote-button.py's own
+  // BTN_MARGIN_X/BTN_HEIGHT/BTN_BOTTOM_PAD constants (that script drew
+  // the button, so its coordinates are exact, not estimated); Draft's
+  // button by scanning hero-new-document-draft.png for its dense
+  // yellow-pixel region (that image is a real screenshot, not a
+  // generated one, so there's no source script with coordinates to read
+  // -- the scanned button height, 39px in a 513px-tall image, matches
+  // the exact figure already cited elsewhere in this file for that same
+  // real button, cross-confirming the scan found the right region).
+  // Sign's was already established in an earlier pass (its swipe
+  // button, scanned from hero-sign-mobile-composite.png).
+  zoomOrigin: string;
+  // 2026-08-12, seventh pass, direct report: "the seal on the top right
+  // of the invoice heads out of the screen the top right" -- Seal's
+  // zoomOrigin used to sit down near the QR code (bottom half of the
+  // image), so scaling toward it dragged the OPPOSITE corner -- the
+  // top-right, where the actual medallion is stamped -- outward past the
+  // frame edge as the zoom progressed. Temporarily fixed by opting Seal
+  // out of the zoom entirely (noZoom). Re-enabled eighth pass, direct
+  // ask: "turn on the seal zoom again, but it has to be pushed out toward
+  // the bottom left if it is to work" -- re-anchored zoomOrigin ON the
+  // medallion itself (see Seal's own zoomOrigin comment below) instead of
+  // the QR code, so the seal is what stays fixed/framed as the zoom
+  // progresses, and everything far from that origin -- the QR code, the
+  // line items, the rest of the invoice -- is what gets pushed out toward
+  // the bottom-left edge instead. noZoom kept as an optional escape hatch
+  // for any future reason that can't find a working origin.
+  noZoom?: boolean;
 }[] = [
   {
     title: "Sign",
@@ -164,6 +201,7 @@ const REASONS: {
     width: 1642,
     height: 1070,
     Icon: Signature,
+    zoomOrigin: "83% 90%",
   },
   {
     title: "Seal",
@@ -174,6 +212,19 @@ const REASONS: {
     width: 740,
     height: 650,
     Icon: ShieldCheck,
+    // Re-measured against generate-hero-verified-badge-invoice-d.tsx's own
+    // layout constants, not eyeballed -- that script places the seal
+    // medallion centered exactly on the invoice card's own top-right
+    // corner point, which its own comment gives as canvas coordinates
+    // (600, cardTop=140) on this image's 740x650 canvas (40px left/
+    // OUTER_PAD_TOP=140px top padding + a 560px-wide card + the seal's own
+    // top:-120/right:-120 placement centering it on that corner --
+    // (40+560, 140) = (600, 140)). As a percentage of the 740x650 canvas:
+    // 600/740 = 81.1%, 140/650 = 21.5%. Anchoring the zoom here keeps the
+    // medallion itself fixed/framed as the image scales up; everything
+    // else (QR code, line items) is far from this top-right-ish point and
+    // gets pushed out toward the bottom-left instead, per the ask.
+    zoomOrigin: "81.1% 21.5%",
   },
   {
     title: "Quote",
@@ -183,6 +234,7 @@ const REASONS: {
     width: 568,
     height: 483,
     Icon: Receipt,
+    zoomOrigin: "50% 89.3%",
   },
   {
     title: "Draft",
@@ -192,6 +244,7 @@ const REASONS: {
     width: 567,
     height: 513,
     Icon: Sparkles,
+    zoomOrigin: "49.3% 91.3%",
   },
 ];
 
@@ -205,18 +258,71 @@ const REASONS: {
 type HeroLoopItem = { key: string } & ({ reason?: undefined } | { reason: (typeof REASONS)[number] });
 
 const HERO_LOOP: HeroLoopItem[] = [{ key: "intro" }, ...REASONS.map((r) => ({ key: r.image, reason: r }))];
-const HERO_LOOP_SECONDS = 12;
-// Direct ask 2026-08-12: hold on the first slide for one extra second
-// before the crossfade starts cycling -- originally Sign (when it was
-// index 0), now the new intro badge row that took its place as index 0.
-// The total loop grows by that same second so the four screenshots'
-// original 3-seconds-apart stagger — computed below from the unchanged
-// HERO_LOOP_SECONDS and now-5-item HERO_LOOP.length — just shifts later
-// by one second each, preserving their spacing/overlap instead of
-// compressing it. See globals.css's .animate-hero-crossfade-first for
-// the other half of this (opaque from 0% instead of fading in).
+
+// Timing, 2026-08-12 direct report: "the 4 badges come in too soon at
+// the end of the loop so they pop in behind the last image, needs
+// another second." Root cause: when the intro badge slide was added as
+// a 5th HERO_LOOP entry, the per-image delay spacing below was (bug)
+// computed as a fraction of HERO_LOOP.length (now 5) instead of the
+// fixed count of REAL images (still 4) -- so adding a 5th array entry
+// silently squeezed the four screenshots' spacing tighter without
+// anyone asking for that, on top of a pre-existing timing issue this
+// exposed: the last image's own fade-out (which, per globals.css's
+// hero-crossfade keyframe, ends at local 30% of whatever duration is
+// given) needs to actually finish, with room to spare, before the loop
+// wraps and the intro slide reappears -- intro uses
+// hero-crossfade-first, which snaps straight to opaque at its own local
+// 0% with no fade-in, so if the previous slide hasn't fully faded out
+// yet, the intro row pops in already fully visible but hidden behind
+// whatever's still on top of it, then only becomes visible once that
+// slide's fade-out catches up -- reading as a sudden "pop" instead of a
+// dissolve. HERO_IMAGE_COUNT (4, the fixed number of real screenshots)
+// replaces HERO_LOOP.length as the spacing divisor, restoring the
+// original 3-seconds-apart stagger; HERO_TOTAL_LOOP_SECONDS was solved
+// for directly rather than left as a fixed +1 offset, so it's
+// guaranteed to satisfy the "another second" ask: Draft (the last
+// image) starts at delay 13s and its own fade-out ends at
+// 13 + 0.3 * 20 = 19s, one full second before the 20s loop wraps.
+// 2026-08-12, sixth pass, direct ask: "leave a little bit more time
+// between the transitions and the [Draft] image" -- the Draft slide (the
+// last one before the loop wraps) was reaching its own transition too
+// soon after Quote's. HERO_LOOP_SECONDS raised 12 -> 14 (step 3s -> 3.5s
+// apart), pushing every image's delay back a bit and Draft's specifically
+// from 13s to 15s. HERO_TOTAL_LOOP_SECONDS re-solved the same way the
+// previous pass derived it (not left as a stale +1 offset): Draft's own
+// fade-out ends at delay + 0.3 * duration, and this should land with
+// about a second of buffer before the loop wraps back to the intro slide
+// -- 15 + 0.3*23 = 21.9s, leaving 1.1s before the 23s wrap (was 13 + 0.3*20
+// = 19s / 1s buffer on the old numbers). The larger duration also
+// stretches every slide's own fade-in/hold/fade-out proportionally (all
+// keyframe timings are percentages of duration), so each image now holds
+// fully visible ~0.5s longer too, not just Draft.
+//
+// 2026-08-12, eighth pass, direct ask: "wait a bit more before the
+// transition to the next image on each animation turn, just another
+// second." Read as a per-transition ask, not a Draft-only one this time
+// -- every hop (intro->Sign, Sign->Seal, Seal->Quote, Quote->Draft)
+// should wait 1s longer than it currently does before starting the next
+// image's fade-in. HERO_IMAGE_STEP_SECONDS is the delta between one
+// slide's delay and the next, so +1s there does exactly that: raised
+// 3.5 -> 4.5 (HERO_LOOP_SECONDS 14 -> 18). Because delay is
+// i * HERO_IMAGE_STEP_SECONDS, this compounds by index -- Sign (i=1) is
+// 1s later than before, Seal (i=2) 2s later, Quote (i=3) 3s later, Draft
+// (i=4) 4s later -- which is correct: each of the four transitions
+// individually got the same 1s-longer wait, so by the last one the
+// cumulative shift is 4s. HERO_TOTAL_LOOP_SECONDS re-solved again the
+// same way: Draft's delay is now 4*4.5 + 1 = 19s; 19 + 0.3*29 = 27.7s,
+// leaving 1.3s of buffer before the 29s loop wraps back to the intro
+// slide (same ~1s-plus-a-bit buffer this constant has been solved for
+// every prior pass).
+const HERO_IMAGE_COUNT = 4;
+const HERO_LOOP_SECONDS = 18;
+const HERO_IMAGE_STEP_SECONDS = HERO_LOOP_SECONDS / HERO_IMAGE_COUNT; // 4.5s apart
+// Hold on the intro badge row before the first image's delay begins —
+// see globals.css's .animate-hero-crossfade-first for the other half of
+// this (opaque from 0% instead of fading in).
 const HERO_FIRST_HOLD_EXTRA_SECONDS = 1;
-const HERO_TOTAL_LOOP_SECONDS = HERO_LOOP_SECONDS + HERO_FIRST_HOLD_EXTRA_SECONDS;
+const HERO_TOTAL_LOOP_SECONDS = 29;
 
 // New first slide, 2026-08-12 direct ask: "an image of the 4 badges in a
 // row Sign, Seal, Quote, Draft with the word under each badge." Not a
@@ -244,9 +350,9 @@ function IntroBadgeRow() {
 // direct ask 2026-08-12: "keep the badge for the relevant animation in
 // the top right" (moved to top LEFT same day, direct follow-up). Rendered
 // as a sibling of the slide's image content in the crossfade map below,
-// not nested inside SignHeroContent's zooming box -- nesting it in there
-// would have scaled and dragged the badge along with the image toward
-// the zoom's own transform-origin. As a sibling of the (non-zooming,
+// not nested inside HeroImageContent's zooming box -- nesting it in
+// there would have scaled and dragged the badge along with the image
+// toward the zoom's own transform-origin. As a sibling of the (non-zooming,
 // only-opacity-animated) outer slide div, it stays fixed in the corner
 // regardless of what the content underneath is doing.
 function FeatureCornerBadge({ Icon }: { Icon: typeof Signature }) {
@@ -257,11 +363,12 @@ function FeatureCornerBadge({ Icon }: { Icon: typeof Signature }) {
   );
 }
 
-// Sign hero image content, 2026-08-12 direct ask: "animate to a zoom of
-// the signer experience." Wraps the existing hero-sign-mobile-
-// composite.png (the real desktop-editor + mobile-signer composite) in a
-// sized box (aspect-ratio + h-full/max-w-full, so it shrink-to-fits the
-// crossfade card exactly like the plain <Image> siblings do).
+// Hero slide image content, shared by all four Sign/Seal/Quote/Draft
+// slides. Wraps the real screenshot in a sized box (aspect-ratio +
+// h-full/max-w-full, so it shrink-to-fits the crossfade card exactly
+// like a plain <Image> would) and slowly zooms toward that reason's own
+// zoomOrigin (see REASONS' own comment for how each origin was
+// measured).
 //
 // Fixed 2026-08-12 (direct report: "the animation ... is not working" --
 // nothing was rendering at all, not just failing to animate). Root
@@ -276,75 +383,57 @@ function FeatureCornerBadge({ Icon }: { Icon: typeof Signature }) {
 // sizing spec that clamp correctly recomputes height back down through
 // the same ratio rather than just cropping.
 //
-// 2026-08-12: dropped the sliding swipe-thumb overlay that used to sit
-// here (direct report: "not probably aligned and the starting button is
-// still visible underneath"). Left as a plain zoom on the real
-// screenshot for now -- a later revisit, not abandoned. The real
+// 2026-08-12: dropped a sliding swipe-thumb overlay that used to sit on
+// top of Sign's image (direct report: "not probably aligned and the
+// starting button is still visible underneath"). Left as a plain zoom
+// on the real screenshot -- a later revisit, not abandoned. The real
 // button-track measurements (scanned from hero-sign-mobile-composite.png's
 // actual pixels): track x[1122,1620] y[929,995] of the 1642x1070
 // composite, knob x[1122,1217] same y (95px wide, 19.1% of track width).
 //
-// 2026-08-12 reorder: Sign moved from index 0 to index 1 in HERO_LOOP
-// (the new intro badge row took index 0), so it now uses the regular
-// .animate-hero-crossfade class/window (opaque 8%-26% of its own local
-// cycle) instead of .animate-hero-crossfade-first (opaque 0%-35%).
-// delaySeconds (passed down from the crossfade map below, the same value
-// given to this slide's own outer div) keeps the zoom's local 0% in sync
-// with the outer div's fade timing -- without it the zoom would run on
-// its own unsynced clock starting at page load, out of phase with when
-// the image is actually visible. globals.css's .animate-sign-hero-zoom
-// keyframe was retimed to match: scale(1) through 4% (fade-in start),
+// 2026-08-12: the zoom, originally Sign-only (its own SignHeroContent
+// component, "animate to a zoom of the signer experience"), was
+// extended to Seal/Quote/Draft the same day per direct ask ("zoom in on
+// the QR code" / "the generate your quote button" / "the generate draft
+// button") and merged into this one shared component -- all four now
+// use the identical mechanism, just a different zoomOrigin each.
+// delaySeconds (passed down from the crossfade map below, the same
+// value given to this slide's own outer div) keeps the zoom's local 0%
+// in sync with the outer div's fade timing -- without it the zoom would
+// run on its own unsynced clock starting at page load, out of phase
+// with when the image is actually visible. globals.css's
+// .animate-hero-zoom keyframe is timed to match every slide's shared
+// .animate-hero-crossfade window: scale(1) through 4% (fade-in start),
 // reaching scale(1.28) by 26% (end of the opaque hold, matching
 // hero-crossfade's own 26% opaque-to-fade-out boundary) so the zoom
 // finishes right as the image is fully visible rather than mid-fade.
-function SignHeroContent({ alt, delaySeconds }: { alt: string; delaySeconds: number }) {
+//
+// 2026-08-12: Seal opts out via noZoom (see REASONS' own comment -- its
+// zoomOrigin sits near the bottom QR code, so scaling toward it pushed
+// the medallion in the opposite/top-right corner out of frame). When
+// noZoom is set, this renders the same sized box with no animation class
+// and no animation-* style props at all, so the image just sits static
+// at scale(1) instead of running the zoom keyframe.
+function HeroImageContent({ reason, delaySeconds }: { reason: (typeof REASONS)[number]; delaySeconds: number }) {
   return (
     <div
-      className="animate-sign-hero-zoom relative h-full w-auto max-w-full"
+      className={`relative h-full w-auto max-w-full ${reason.noZoom ? "" : "animate-hero-zoom"}`}
       style={{
-        aspectRatio: "1642 / 1070",
-        transformOrigin: "83% 90%",
-        animationDuration: `${HERO_TOTAL_LOOP_SECONDS}s`,
-        animationDelay: `${delaySeconds}s`,
+        aspectRatio: `${reason.width} / ${reason.height}`,
+        transformOrigin: reason.zoomOrigin,
+        ...(reason.noZoom
+          ? {}
+          : {
+              animationDuration: `${HERO_TOTAL_LOOP_SECONDS}s`,
+              animationDelay: `${delaySeconds}s`,
+            }),
       }}
     >
-      <Image
-        src="/hero-sign-mobile-composite.png"
-        alt={alt}
-        fill
-        sizes="(min-width: 640px) 36rem, 92vw"
-        className="rounded-lg object-contain shadow-lg"
-      />
-    </div>
-  );
-}
-
-// Seal/Quote/Draft hero slide content, 2026-08-12 direct follow-up: "then
-// move to the Seal image with the wax seal, (remove verify a document
-// hero shot), then the magic quote (remove the transition to the quote
-// itself), then the draft document (remove the transition to the
-// document types as its too hard to read)." All three of these had
-// grown an inner two-state crossfade earlier the same day (Seal <->
-// /verify result, quote-describe <-> quote-review, draft-collapsed <->
-// draft-type-list open); all three are reverted here to a single plain
-// image -- exactly the same file/dimensions/alt each reason card in the
-// "Why SignedBy" row below already uses (REASONS' own image/width/
-// height/alt), so the hero slide and the reasons-row card for the same
-// pillar are now visually identical, just larger. One shared component
-// instead of three near-duplicate ones now that none of them carry any
-// inner animation. The generated describe/type-list/verify-result PNGs
-// (hero-magic-quote-describe.png, hero-draft-type-list.png,
-// hero-verify-result.png) are left in public/ unused rather than
-// deleted, in case any of these transitions comes back later.
-function ReasonHeroContent({ reason }: { reason: (typeof REASONS)[number] }) {
-  return (
-    // h-full, not max-h-full -- see SignHeroContent's comment above.
-    <div className="relative h-full w-auto max-w-full" style={{ aspectRatio: `${reason.width} / ${reason.height}` }}>
       <Image
         src={reason.image}
         alt={reason.alt}
         fill
-        sizes="(min-width: 640px) 24rem, 80vw"
+        sizes="(min-width: 640px) 36rem, 92vw"
         className="rounded-lg object-contain shadow-lg"
       />
     </div>
@@ -589,13 +678,12 @@ export function HomepageTier1Preview({
             // delay pushes the start later instead, which is what
             // staggering slides in ascending order actually requires.
             //
-            // index 0 (now the intro badge row -- see 2026-08-12 reorder
-            // comment on HERO_LOOP above) always starts at 0s. The four
-            // screenshots keep their original stagger (computed from the
-            // unchanged HERO_LOOP_SECONDS, not the new total) but shift
-            // later by HERO_FIRST_HOLD_EXTRA_SECONDS to make room for the
-            // intro slide's longer hold.
-            const delaySeconds = i === 0 ? 0 : (i * HERO_LOOP_SECONDS) / HERO_LOOP.length + HERO_FIRST_HOLD_EXTRA_SECONDS;
+            // index 0 (the intro badge row) always starts at 0s. Each
+            // image's delay is i * HERO_IMAGE_STEP_SECONDS (i=1..4, so
+            // 4.5s apart -- see HERO_IMAGE_STEP_SECONDS's own comment for
+            // why i isn't divided across HERO_LOOP.length) plus the flat
+            // HERO_FIRST_HOLD_EXTRA_SECONDS hold before the first image.
+            const delaySeconds = i === 0 ? 0 : i * HERO_IMAGE_STEP_SECONDS + HERO_FIRST_HOLD_EXTRA_SECONDS;
             return (
               <div
                 key={item.key}
@@ -609,13 +697,7 @@ export function HomepageTier1Preview({
                   animationDelay: `${delaySeconds}s`,
                 }}
               >
-                {!item.reason ? (
-                  <IntroBadgeRow />
-                ) : item.reason.title === "Sign" ? (
-                  <SignHeroContent alt={item.reason.alt} delaySeconds={delaySeconds} />
-                ) : (
-                  <ReasonHeroContent reason={item.reason} />
-                )}
+                {!item.reason ? <IntroBadgeRow /> : <HeroImageContent reason={item.reason} delaySeconds={delaySeconds} />}
                 {/* Corner badge (top left, moved from top right same day) --
                     skipped on the intro slide itself, which already shows
                     all four badges. */}
@@ -655,13 +737,27 @@ export function HomepageTier1Preview({
                 </h3>
                 <p className="mt-2 text-slate-600">{r.description}</p>
               </div>
-              <div className="w-full max-w-sm shrink-0 overflow-hidden rounded-xl border border-slate-200/60 bg-slate-50 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
+              {/* 2026-08-12, ninth pass, direct ask: "bring the ... hero
+                  images to a larger size when full screen, [but] don't
+                  expand to the edge of the text, only the API one does" --
+                  these were capped at max-w-sm (24rem/384px), noticeably
+                  small against the section's own max-w-4xl (896px)
+                  container on a wide viewport. Raised to max-w-lg
+                  (32rem/512px) -- bigger, but still an explicit cap, unlike
+                  DeveloperApiSection's JSON panel, which has no max-width
+                  and fills its whole grid column edge-to-edge (that's the
+                  "only the API one does" behavior this should NOT copy).
+                  The text column next to it (still max-w-sm below) just
+                  wraps a bit narrower to make room -- this is a flex row
+                  with a gap, not an equal-width grid, so growing the image
+                  doesn't force the text to grow too. */}
+              <div className="w-full max-w-lg shrink-0 overflow-hidden rounded-xl border border-slate-200/60 bg-slate-50 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
                 <Image
                   src={r.image}
                   alt={r.alt}
                   width={r.width}
                   height={r.height}
-                  sizes="(min-width: 640px) 24rem, 90vw"
+                  sizes="(min-width: 640px) 32rem, 90vw"
                   className="h-auto w-full"
                 />
               </div>
