@@ -107,6 +107,47 @@ mismatch for SignedBy's anti-enterprise positioning — that objection was
 about aesthetic, not this specific interaction mechanism, but worth
 confirming you want the mechanism without the register before building it.
 
+## Addendum, 2026-08-12 — Documenso inspiration
+
+Checked documenso.com live (Chrome, not just static fetch, since the ask
+was specifically about "the API animation"). Two patterns worth stealing
+the *mechanism* of, not the visual identity:
+
+**The hero isn't actually animated on load — it's a static product-embed
+mockup.** A dark browser-chrome frame ("Your App") with a faint dotted
+grid and a single "Start" button; nothing plays automatically, and
+clicking Start didn't trigger anything visible either (likely wired to
+their actual signup flow, not a demo). So there's no motion to copy here
+— what's copy-worthy is the *framing*: "this is what it looks like
+embedded in your product," not "this is our product." That's a specific
+pitch to developers evaluating an API, different from what our hero pill
+crossfade is trying to say.
+
+**The "API animation" is a real JSON response, not a video.** Below the
+fold, their API section runs a genuine, syntax-highlighted API response
+(a `templates` payload — id, fields, recipients) as a full-bleed,
+top/bottom-faded background panel, with a green "Check our API" button
+floating centered on top of it. It reads as "peek at the real wire
+format," which is a credible signal to a developer audience specifically
+*because* it's real JSON, not marketing copy pretending to be technical.
+
+**A third pattern, not asked about but relevant:** a small floating
+"notification card" (a signing-complete toast, drop-shadowed, tilted
+slightly) layered over the document-list mockup in the "Signing" section
+— cheap motion-adjacent polish (it's static, just visually layered) that
+reads as more alive than a flat screenshot without needing real video.
+
+### B5 — a developer-facing panel using this mechanism
+None of this replaces Part A's hero-video decision above — it's a
+second-half addition, closest to slotting in alongside or after B1's
+reasons section. Concretely: pull a real response from one of our own
+`/api/v1/*` routes (e.g. `documents/[id]` or the `void` response shape)
+and render it the same way — real JSON, not invented — with a CTA to
+`/developers`. This is honest in the same way the `/vs/*` pages'
+real-facts rule is: the payload would be our actual API, not a mockup.
+Low effort relative to a real video, and gives the site a developer-
+credibility beat it currently doesn't have anywhere above the fold.
+
 ## Sequencing note
 
 Whichever direction gets picked here is exactly the category of change

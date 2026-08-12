@@ -65,6 +65,32 @@ body {
   animation-play-state: paused;
 }
 
+/* /home-preview-b's developer/API section — a real API response scrolling
+   in a slow vertical loop, styled after documenso.com's JSON-panel section
+   (checked live 2026-08-12: theirs turns out to be a static panel, not
+   actually animated — see HOMEPAGE_HERO_VIDEO_AND_SECOND_HALF_SCOPE.md's
+   addendum). Direct ask was for real motion here, so this makes it
+   genuinely animated where Documenso's own version isn't. Same
+   duplicate-content-then-translate-50%-loop technique as
+   .animate-logo-marquee above, just on the Y axis. Starts on load like
+   every other animation on this page — no scroll-trigger, no JS. */
+@keyframes json-scroll {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+.animate-json-scroll {
+  animation: json-scroll 16s linear infinite;
+}
+
+.animate-json-scroll:hover {
+  animation-play-state: paused;
+}
+
 /* /home-preview's "hero video" — a looping crossfade of real product
    screenshots stacked in one container (see homepage-tier1-preview.tsx),
    not an actual video file. Same idea as Aracor's looping hero animation
