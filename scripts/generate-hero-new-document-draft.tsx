@@ -2,6 +2,19 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { ImageResponse } from "next/og";
 
+// SUPERSEDED 2026-08-12, third pass -- public/hero-new-document-draft.png is
+// no longer this script's output. Michael supplied a real screenshot of the
+// live /dashboard/documents/new Draft tab directly (matches this script's
+// own second-pass version closely: centered yellow spark badge, heading,
+// subtitle, Document type/language selects, description field, disclaimer,
+// checkbox, Generate draft button -- confirming that version's layout was
+// accurate) -- the real capture replaced the synthetic render outright
+// rather than being edited. Left in place for history/re-reference (same
+// "keep it, don't delete" convention as the *.orphaned-do-not-track files
+// elsewhere in this repo) -- do NOT re-run this expecting it to regenerate
+// the current public/hero-new-document-draft.png; it would overwrite the
+// real screenshot with the synthetic one again.
+//
 // Draft card's redesigned hero (2026-08-12, direct ask: "the hero image
 // needs to be redone... We can just shoot part of the New document screen
 // for Draft perhaps to keep it simple"). Replaces hero-ai-draft-mockup.png

@@ -92,6 +92,34 @@ import { TRUSTED_BY, PRICING } from "@/lib/homepage-content";
 //   (deliberately NOT recolored like Quote's — no instruction to deviate
 //   from the live product here).
 //
+// 2026-08-12, fourth pass, direct follow-up: two real fixes plus a course
+// correction on the previous pass's assumptions.
+// - Animation bug: the hero crossfade's per-image animationDelay used
+//   `i * -HERO_LOOP_SECONDS / length` (negative). Negative animation-delay
+//   fast-forwards an element into its own cycle, so a LARGER negative
+//   offset (higher i) reaches its visible window SOONER in wall-clock time
+//   — the opposite of the intended stagger. Order was actually ~1,0,3,2
+//   instead of 0,1,2,3 ("out of sequence," direct report). Fixed by
+//   dropping the negative sign.
+// - Quote and Draft: Michael supplied real, CURRENT screenshots of both
+//   screens directly (not requested — sent while reviewing the previous
+//   pass), which turned out to contradict two assumptions the previous
+//   pass made: (1) hero-magic-quote.png was a stale Jul-29 capture that
+//   predated the 2026-08-05 redesign — the real current itemized-quote
+//   screen has the same centered yellow-badge/heading treatment
+//   Seal/Draft already got, not the plain left-aligned title the old
+//   capture showed. (2) the "left-justify Draft's heading to match
+//   Quote" ask was built on that stale reference — once the real Quote
+//   screenshot showed centered, Michael confirmed Draft should STAY
+//   centered too ("it's all centered now"). Both images replaced outright
+//   with the real screenshots (edit-hero-magic-quote.py's job shrank to
+//   just cropping "Valid until" + truncating before "Tax rate %" on the
+//   NEW capture; generate-hero-new-document-draft.tsx is fully
+//   superseded, real screenshot used as-is, no edits needed). This also
+//   resolves the earlier font-size mismatch a different way than
+//   planned — both real captures share the same 567px source width, so
+//   nominal text sizes now match on the page without any manual scaling.
+//
 // Copy for the hero (headline/subhead/value props/pricing/trusted-by) is
 // deliberately identical to homepage-current.tsx's proven version — this
 // is asset/visual work, not a copy test, so nothing about the words
@@ -129,18 +157,18 @@ const REASONS: {
     title: "Quote",
     description: "Describe the job in plain language and Magic Quote turns it into a signable, itemized quote.",
     image: "/hero-magic-quote.png",
-    alt: "The Magic Quote tool generating an itemized price quote from a plain-language job description",
-    width: 592,
-    height: 758,
+    alt: "The Magic Quote itemized editor: quote title, currency, bill-to, and line items with computed totals",
+    width: 568,
+    height: 434,
     Icon: Receipt,
   },
   {
     title: "Draft",
     description: "Describe what you need and AI drafts a ready-to-send agreement — review, edit, and send in the same flow.",
     image: "/hero-new-document-draft.png",
-    alt: "The Draft tab: document type and language pickers, a plain-language description, a Generate draft button, and the generated draft title and text ready to review",
-    width: 860,
-    height: 1075,
+    alt: "The Draft tab: document type and language pickers, a plain-language description, and a Generate draft button",
+    width: 567,
+    height: 689,
     Icon: Sparkles,
   },
 ];
@@ -222,7 +250,19 @@ export function HomepageTier1Preview({ currency }: { currency: Currency }) {
               className="animate-hero-crossfade absolute inset-0 flex items-center justify-center p-6"
               style={{
                 animationDuration: `${HERO_LOOP_SECONDS}s`,
-                animationDelay: `${(i * -HERO_LOOP_SECONDS) / HERO_LOOP.length}s`,
+                // Positive delay (2026-08-12 fix, direct report: "out of
+                // sequence"). The crossfade keyframe's visible window sits
+                // near the START of its own local cycle (see globals.css's
+                // hero-crossfade: opaque at 8%-26%). A NEGATIVE delay makes
+                // an element act as though its animation already ran for
+                // that long before t=0 -- i.e. it fast-forwards INTO the
+                // cycle -- so a larger negative offset (higher i) reaches
+                // its visible window SOONER in wall-clock time, not later.
+                // That inverted the order to roughly 1,0,3,2 instead of the
+                // intended 0,1,2,3. A positive delay pushes the start
+                // later instead, which is what staggering images in
+                // ascending order actually requires.
+                animationDelay: `${(i * HERO_LOOP_SECONDS) / HERO_LOOP.length}s`,
               }}
             >
               <Image
