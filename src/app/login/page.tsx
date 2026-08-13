@@ -161,6 +161,21 @@ function LoginPageInner() {
 
   function handleMagicLink(formData: FormData) {
     const email = String(formData.get("email") || "").trim();
+    // Hand the stashed first-touch attribution to the server along with the
+    // email (2026-08-13, see 0055_pending_attribution.sql). This is the last
+    // moment it's reachable: if they finish by clicking the magic link rather
+    // than typing the code, that link very likely opens in a DIFFERENT
+    // browser (Reddit in-app webview -> mail app -> Safari/Chrome) where this
+    // localStorage doesn't exist, and attribution-claim.tsx would find
+    // nothing. Read here rather than in a hidden input so it reflects
+    // localStorage at submit time, and deliberately NOT cleared — the
+    // same-browser claim path still uses it, and both writes are set-once.
+    try {
+      const stashed = window.localStorage.getItem("sb_attribution");
+      if (stashed) formData.set("attribution", stashed);
+    } catch {
+      // storage disabled — the server-side row just won't be staged
+    }
     startTransition(async () => {
       const result = await sendMagicLink(formData);
       if (result?.error) {

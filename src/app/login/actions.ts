@@ -8,6 +8,7 @@ import { sanitizeNextPath } from "@/lib/safe-redirect";
 import { isDisposableEmailAddress } from "@/lib/disposable-email";
 import { isFirstLogin } from "@/lib/first-login";
 import { recordSignupOriginHost } from "@/lib/signup-origin";
+import { storePendingAttribution, claimPendingAttribution } from "@/lib/pending-attribution";
 import { isConsoleHost } from "@/lib/console-host";
 
 /** Best-effort client IP from standard proxy headers — server actions don't get a Request object. */
@@ -93,6 +94,24 @@ export async function sendMagicLink(formData: FormData) {
   });
 
   if (error) return { error: error.message };
+
+  // First-touch attribution hand-off (2026-08-13, see
+  // 0055_pending_attribution.sql). This is the last moment the ORIGINAL
+  // browser — the one that actually landed on the ad and holds the
+  // localStorage AttributionCapture wrote — is still in play. If they finish
+  // via the magic link it will very likely open in a different browser
+  // (Reddit in-app webview -> mail app -> Safari/Chrome) with no localStorage
+  // to claim, so stash it server-side keyed by a hash of this address now and
+  // let the first successful login pick it up.
+  //
+  // Only after the OTP send actually succeeded: no reason to stage
+  // attribution for a request that never produced an email. Awaited rather
+  // than fire-and-forget for the same reason recordSignupOriginHost is — a
+  // detached promise risks being cut off when this action's response is sent
+  // on Vercel's serverless runtime — but it can never fail the sign-in, since
+  // storePendingAttribution swallows all its own errors.
+  await storePendingAttribution(email, formData.get("attribution"));
+
   return { success: true };
 }
 
@@ -130,6 +149,13 @@ export async function verifyLoginCode(formData: FormData) {
   if (firstLogin && data.user) {
     const originHost = isConsoleHost((await headers()).get("host")) ? "console.signedby.ai" : "signedby.ai";
     await recordSignupOriginHost(data.user.id, originHost);
+    // Claims the row sendMagicLink staged for this address. On THIS path the
+    // person never left the original browser (they typed the code instead of
+    // clicking the link), so attribution-claim.tsx's localStorage read would
+    // usually also work — this just makes the outcome identical either way,
+    // and recordOrgAttribution is set-once so whichever lands first wins and
+    // the other is a no-op.
+    await claimPendingAttribution(data.user.id, data.user.email);
   }
   return { success: true, firstLogin };
 }
