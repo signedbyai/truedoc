@@ -228,6 +228,42 @@ export async function GET(request: Request) {
   const tsaTallyWeek = tallyTsa(tsaRowsWeek);
   const tsaTallyMonth = tallyTsa(tsaMonthRows || []);
 
+  // Conversions API send health (2026-08-13, direct ask: surface CAPI send
+  // failures "instead of you finding out weeks later from a suspiciously
+  // flat conversion count"). See 0056_conversion_sends.sql — the sends are
+  // fire-and-forget by design, so without this every failure mode is a
+  // silent one. Three distinct problems this distinguishes:
+  //   * no rows at all      -> no signup carried a click ID (ad-side issue,
+  //                            or simply no ad-driven signups that week)
+  //   * all 'skipped'       -> env vars not set in Vercel
+  //   * all 'failed'/'error'-> expired LinkedIn OAuth token (~60-day
+  //                            lifetime, shows as 401) or payload schema drift
+  // Same non-fatal treatment as the sections above.
+  const { data: capiWeekRows, error: capiError } = await admin
+    .from("conversion_sends")
+    .select("platform, outcome, status_code, error, created_at")
+    .gte("created_at", weekAgoDate)
+    .order("created_at", { ascending: false });
+  if (capiError) {
+    console.error("Admin digest cron: conversion_sends fetch failed", capiError);
+  }
+  type CapiTally = { ok: number; failed: number; error: number; skipped: number };
+  function tallyCapi(platform: "reddit" | "linkedin"): CapiTally {
+    const t: CapiTally = { ok: 0, failed: 0, error: 0, skipped: 0 };
+    for (const r of capiWeekRows || []) {
+      if (r.platform !== platform) continue;
+      const outcome = r.outcome as keyof CapiTally;
+      if (outcome in t) t[outcome]++;
+    }
+    return t;
+  }
+  const capiReddit = tallyCapi("reddit");
+  const capiLinkedin = tallyCapi("linkedin");
+  // Most recent non-OK message, as a starting point for debugging — rows are
+  // already sorted newest-first above.
+  const capiLastError =
+    (capiWeekRows || []).find((r) => r.outcome === "failed" || r.outcome === "error")?.error ?? null;
+
   const dateLabel = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -264,6 +300,9 @@ export async function GET(request: Request) {
       disposableBlocksMonth: disposableBlocksMonth ?? 0,
       tsaTallyWeek,
       tsaTallyMonth,
+      capiReddit,
+      capiLinkedin,
+      capiLastError,
     });
   } catch (err) {
     console.error("Admin digest cron: send failed", err);
@@ -295,5 +334,8 @@ export async function GET(request: Request) {
     disposableBlocksMonth: disposableBlocksMonth ?? 0,
     tsaTallyWeek,
     tsaTallyMonth,
+    capiReddit,
+    capiLinkedin,
+    capiLastError,
   });
 }
