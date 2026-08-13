@@ -221,12 +221,37 @@ function VerifyPageInner() {
                 </div>
               )}
               {result.timestampTsa && <TimestampRow tsa={result.timestampTsa} genTime={result.timestampGenTime} />}
-              {result.orgName && (
-                <div className="flex justify-between gap-4">
-                  <dt className="text-emerald-700">Organization</dt>
-                  <dd className="text-right font-medium">{result.orgName}</dd>
-                </div>
-              )}
+              {/* Organization row REMOVED from the sealed-badge view
+                  2026-08-13, direct instruction, after working through what
+                  actually stops a scammer signing up and sealing a fake
+                  invoice.
+
+                  The answer is the Stripe Identity check: their real legal
+                  name lands on this panel, so impersonating a supplier is
+                  detectable by a recipient who looks. That control only
+                  works if everything in this panel is genuinely verified.
+                  organizations.name is NOT — it's free user text typed at
+                  signup. Rendered here it sat in the same card, in the same
+                  styling, directly beneath identity-verified facts, so a
+                  scammer could name their workspace "Northwind Studio B.V."
+                  and have it inherit the credibility of the green panel
+                  around it. That's the one field on this page that could
+                  actively help an impersonation rather than expose one.
+                  Dropped rather than relabelled ("self-declared") because at
+                  a glance nobody reads the qualifier — the styling is the
+                  message.
+
+                  Deliberately still shown on the NON-badge result below as
+                  "Sent via": that path has no identity verification at all,
+                  makes no claim about who anyone is, and the org name there
+                  is context for "which account sent this", not evidence.
+                  Nothing around it is claiming to be verified, so there's no
+                  borrowed credibility to worry about.
+
+                  Bring this back when org identity is actually verified —
+                  business verification via Stripe Identity, or a company
+                  registry check (Companies House / KVK). At that point it
+                  becomes a real second claim rather than decoration. */}
             </dl>
             <p className="mt-3 text-xs text-emerald-700">
               {result.timestampTsa
