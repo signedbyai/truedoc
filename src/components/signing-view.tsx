@@ -1005,8 +1005,16 @@ export function SigningView({
                 height={130}
                 className="mt-3 h-auto w-full max-w-[260px] rounded border border-slate-200 bg-white"
               />
+              {/* &from=signer (2026-08-13) — without it /verify falls back to
+                  its default "← SignedBy" control pointing at the marketing
+                  homepage, so a signer who had just finished signing and
+                  tapped through to verify got ejected onto a sales page.
+                  Because this opens in a new tab there's no history to go
+                  back to either; /verify hides the control entirely for this
+                  source rather than inventing a destination. See that page's
+                  own isSigner comment. */}
               <a
-                href={`/verify?hash=${documentHash}`}
+                href={`/verify?hash=${documentHash}&from=signer`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-1 inline-block text-xs text-slate-600 underline"

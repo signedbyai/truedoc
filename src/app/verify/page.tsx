@@ -90,12 +90,32 @@ function VerifyPageInner() {
   // Goes to the SPECIFIC document (not just a bare "/dashboard") since the
   // id is already available at both call sites building this link.
   //
-  // The signer's own completed screen (signing-view.tsx) and any QR-code/
-  // badge scan stay on the plain "/" link deliberately — neither has a
-  // dashboard session to return to, so the marketing homepage genuinely is
-  // the right destination for those, same reasoning as before.
+  // ?from=signer (2026-08-13, third report in this same class, found by
+  // Michael while screen-recording the signing flow: "the final verify link
+  // and QR code at the end of the signing, when you verify the link takes
+  // you all the way out to the home page"). Visible in the recording — the
+  // Seal flow's verify page shows "← Back to document", the signer's shows
+  // "← SignedBy" and lands on marketing.
+  //
+  // This reverses an earlier deliberate decision, recorded a few lines up,
+  // that the signer's completed screen should keep the plain "/" link
+  // because a signer "has no dashboard session to return to, so the
+  // marketing homepage genuinely is the right destination." What that
+  // reasoning missed is that signing-view.tsx opens this link with
+  // target="_blank" — so there is no history to go back to in that tab at
+  // all, and the control reads as "return to where I was" while actually
+  // ejecting someone who has just finished signing onto a sales page.
+  //
+  // The fix is to show no back control at all in that case rather than
+  // invent a destination: the signer's own completed screen is still sitting
+  // in the original tab, which is exactly where they should return to, and
+  // closing this one gets them there. A cold QR-code/badge scan (no `from`
+  // at all) keeps the "← SignedBy" homepage link — someone verifying an
+  // invoice they were sent has no other context, and "what is SignedBy" is a
+  // genuinely reasonable next step for them.
   const from = searchParams.get("from");
   const backDocId = searchParams.get("doc");
+  const isSigner = from === "signer";
   const backHref =
     from === "console" ? consoleAppUrl() : from === "dashboard" && backDocId ? `/dashboard/documents/${backDocId}` : "/";
   const backLabel = from === "console" ? "← Back to console" : from === "dashboard" && backDocId ? "← Back to document" : "← SignedBy";
@@ -140,11 +160,18 @@ function VerifyPageInner() {
   return (
     <main className="flex min-h-screen flex-col items-center bg-slate-50 px-6 py-16">
       <div className="w-full max-w-md">
-        <Link href={backHref} className="text-sm font-medium text-slate-500 hover:text-slate-700">
-          {backLabel}
-        </Link>
+        {/* No back control for a signer (see the isSigner comment above) —
+            this tab was opened with target="_blank" from their completed
+            screen, so there's nothing behind it and any "back" affordance
+            here is a one-way trip to marketing. Their own confirmation is
+            still open in the tab they came from. */}
+        {!isSigner && (
+          <Link href={backHref} className="text-sm font-medium text-slate-500 hover:text-slate-700">
+            {backLabel}
+          </Link>
+        )}
 
-        <h1 className="mt-4 text-2xl font-semibold text-slate-900">Verify a document</h1>
+        <h1 className={`${isSigner ? "" : "mt-4 "}text-2xl font-semibold text-slate-900`}>Verify a document</h1>
         <p className="mt-2 text-sm text-slate-600">
           Every document signed with SignedBy gets a Certificate of Completion page with a checksum. Paste that
           checksum below to independently confirm it&apos;s genuine — no account needed.
