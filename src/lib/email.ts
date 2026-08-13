@@ -320,6 +320,8 @@ export async function sendAdminDigestEmail(opts: {
   disposableBlocksToday: number;
   disposableBlocksWeek: number;
   disposableBlocksMonth: number;
+  tsaTallyWeek: { sectigo: number; eurotsa: number; freetsa: number; none: number };
+  tsaTallyMonth: { sectigo: number; eurotsa: number; freetsa: number; none: number };
 }) {
   const totalOrgs = opts.freeOrgs + opts.paidOrgs;
   const row = (label: string, value: string | number) => `
@@ -387,10 +389,31 @@ export async function sendAdminDigestEmail(opts: {
         </table>
 
         <h3 style="margin:0 0 4px;color:#0f172a;font-size:15px;">Signups blocked (disposable email)</h3>
-        <table style="width:100%;border-collapse:collapse;">
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
           ${row("Today", opts.disposableBlocksToday)}
           ${row("This week", opts.disposableBlocksWeek)}
           ${row("This month", opts.disposableBlocksMonth)}
+        </table>
+
+        <h3 style="margin:0 0 4px;color:#0f172a;font-size:15px;">Trusted timestamp tiers</h3>
+        <p style="color:#94a3b8;font-size:11px;margin:0 0 6px;">Which TSA actually stamped completed documents -- "None" means all three failed (sealing still succeeded, just without a timestamp).</p>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="padding:6px 0;color:#64748b;font-size:14px;"></td>
+            <td style="padding:6px 0;color:#94a3b8;font-size:11px;text-align:right;">Week</td>
+            <td style="padding:6px 0 6px 12px;color:#94a3b8;font-size:11px;text-align:right;">Month</td>
+          </tr>
+          ${["sectigo", "eurotsa", "freetsa", "none"]
+            .map(
+              (tier) => `
+            <tr>
+              <td style="padding:4px 0;color:#64748b;font-size:14px;">${tier === "none" ? "None" : tier === "eurotsa" ? "EuroTSA" : tier === "freetsa" ? "FreeTSA" : "Sectigo"}</td>
+              <td style="padding:4px 0;color:#0f172a;font-size:14px;font-weight:700;text-align:right;">${opts.tsaTallyWeek[tier as "sectigo" | "eurotsa" | "freetsa" | "none"]}</td>
+              <td style="padding:4px 0 4px 12px;color:#0f172a;font-size:14px;font-weight:700;text-align:right;">${opts.tsaTallyMonth[tier as "sectigo" | "eurotsa" | "freetsa" | "none"]}</td>
+            </tr>
+          `
+            )
+            .join("")}
         </table>
       </div>
     `,

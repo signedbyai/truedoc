@@ -190,6 +190,44 @@ export async function GET(request: Request) {
     );
   }
 
+  // Trusted-timestamp TSA-tier breakdown (2026-08-13, direct ask: "is there
+  // a way to verify [EuroTSA is] up and working from the signedby site
+  // rather than needing a separate monitoring tool"). Better Stack's ping
+  // only confirms /tsr responds; this checks something a synthetic ping
+  // can't -- whether EuroTSA is actually being selected and succeeding
+  // during REAL signing/sealing traffic. Both write paths
+  // (sign/[token]/submit/route.ts and verified-badge-actions.ts) stamp
+  // which tier won onto that document's "completed" audit_events row;
+  // `timestamp_tsa` is left null only when all three TSAs failed and the
+  // fallback chain let sealing proceed without a timestamp at all --
+  // deliberately silent by design (TIMESTAMP_AUTHORITY_SCOPE.md), which is
+  // exactly why it needs a passive check like this one rather than relying
+  // on nobody noticing. If EuroTSA's share quietly drops to 0% here while
+  // completions are still non-trivial, that's a real signal Better Stack's
+  // uptime ping wouldn't catch (e.g. it answers health-checks fine but is
+  // failing on some other request path). Same non-fatal treatment as the
+  // sections above -- reused rather than blocking the whole digest.
+  const { data: tsaMonthRows, error: tsaError } = await admin
+    .from("audit_events")
+    .select("created_at, timestamp_tsa")
+    .eq("event_type", "completed")
+    .gte("created_at", monthAgoDate);
+  if (tsaError) {
+    console.error("Admin digest cron: audit_events TSA fetch failed", tsaError);
+  }
+  type TsaTier = "sectigo" | "eurotsa" | "freetsa" | "none";
+  function tallyTsa(rows: { timestamp_tsa: string | null }[]) {
+    const tally: Record<TsaTier, number> = { sectigo: 0, eurotsa: 0, freetsa: 0, none: 0 };
+    for (const r of rows) {
+      const tier = (r.timestamp_tsa as TsaTier | null) ?? "none";
+      tally[tier]++;
+    }
+    return tally;
+  }
+  const tsaRowsWeek = (tsaMonthRows || []).filter((r) => new Date(r.created_at).getTime() >= weekAgo);
+  const tsaTallyWeek = tallyTsa(tsaRowsWeek);
+  const tsaTallyMonth = tallyTsa(tsaMonthRows || []);
+
   const dateLabel = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -224,6 +262,8 @@ export async function GET(request: Request) {
       disposableBlocksToday: disposableBlocksToday ?? 0,
       disposableBlocksWeek: disposableBlocksWeek ?? 0,
       disposableBlocksMonth: disposableBlocksMonth ?? 0,
+      tsaTallyWeek,
+      tsaTallyMonth,
     });
   } catch (err) {
     console.error("Admin digest cron: send failed", err);
@@ -253,5 +293,7 @@ export async function GET(request: Request) {
     disposableBlocksToday: disposableBlocksToday ?? 0,
     disposableBlocksWeek: disposableBlocksWeek ?? 0,
     disposableBlocksMonth: disposableBlocksMonth ?? 0,
+    tsaTallyWeek,
+    tsaTallyMonth,
   });
 }

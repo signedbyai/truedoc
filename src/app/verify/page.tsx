@@ -46,7 +46,26 @@ function TimestampRow({ tsa, genTime }: { tsa: "sectigo" | "eurotsa" | "freetsa"
     <div className="flex justify-between gap-4">
       <dt className="text-emerald-700">Trusted timestamp</dt>
       <dd className="text-right font-medium">
-        {TSA_LABELS[tsa]}
+        {tsa === "eurotsa" ? (
+          // 2026-08-13, direct ask: link this one out. Sectigo needs no
+          // link (a globally-trusted commercial CA, already independently
+          // googleable/verifiable). EuroTSA is SignedBy's own self-hosted
+          // infra on an unfamiliar domain, so unlike Sectigo it benefits
+          // from a click-through that shows it's a real, EU-hosted, live
+          // service rather than an unverifiable name in a report. FreeTSA
+          // stays plain text too — it's a third party, not ours to vouch
+          // for by linking.
+          <a
+            href="https://eurotsa.eu"
+            target="_blank"
+            rel="noreferrer"
+            className="underline decoration-emerald-300 underline-offset-2 hover:text-emerald-900"
+          >
+            {TSA_LABELS[tsa]}
+          </a>
+        ) : (
+          TSA_LABELS[tsa]
+        )}
         {genTime && <span className="block text-xs font-normal text-emerald-700">{new Date(genTime).toLocaleString()}</span>}
         {(tsa === "freetsa" || tsa === "eurotsa") && (
           <span className="block text-xs font-normal text-emerald-700">
