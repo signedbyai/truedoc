@@ -55,7 +55,12 @@ const TABS: {
     alt: "The SignedBy field editor with the mobile signing screen overlaid, showing the Slide to sign & submit control",
     width: 1642,
     height: 1070,
-    objectPosition: "65% center",
+    // 2026-08-13 QA round: Michael's own screenshot showed too much of the
+    // desktop-editor background still surviving the crop (logo reading as
+    // "dBy", "Recipients:" as "ts:") while the whole point of this image
+    // is the mobile signing overlay — moved from a soft 65% lean to a hard
+    // right anchor so the phone is never the thing that gets cut.
+    objectPosition: "right top",
     Icon: Signature,
   },
   {
@@ -67,6 +72,10 @@ const TABS: {
     alt: "An invoice with the SignedBy Verified & Sealed medallion stamped over its top-right corner",
     width: 740,
     height: 650,
+    // Direct ask: top-right anchor so the Verified & Sealed medallion
+    // (and its own QR) is never cropped, even though it costs some of the
+    // invoice body below it.
+    objectPosition: "right top",
     Icon: ShieldCheck,
   },
   {
@@ -77,6 +86,9 @@ const TABS: {
     alt: "The Magic Quote itemized editor: quote title, currency, bill-to, and line items with computed totals",
     width: 568,
     height: 483,
+    // Direct ask: top anchor so "Generate your Magic Quote" is always
+    // visible, even though it costs some of the line-items area below.
+    objectPosition: "center top",
     Icon: Receipt,
   },
   {
@@ -87,6 +99,8 @@ const TABS: {
     alt: "The Draft tab: document type and language pickers, a plain-language description, and a Generate draft button",
     width: 567,
     height: 513,
+    // Same reasoning as Quote — top anchor keeps "Generate your Draft" visible.
+    objectPosition: "center top",
     Icon: Sparkles,
   },
 ];
@@ -97,7 +111,15 @@ export function InteractiveProductTabsE() {
 
   return (
     <div className="w-full">
-      <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
+      {/* 2026-08-13 QA round: at real iPhone widths (~340-345px content
+          width after padding) four icon+label pills need ~410px in one
+          row, so plain flex-wrap produced a ragged 3+1 split (Michael's
+          own screenshot: Sign/Seal/Quote on row one, Draft orphaned alone
+          on row two). Below sm, force an even 2x2 grid instead — same
+          idea, deliberate instead of an overflow accident. At sm+ there's
+          room for all four in a row, so it reverts to the original
+          auto-width flex row. */}
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-start">
         {TABS.map((t, i) => {
           const isActive = i === active;
           return (
@@ -106,7 +128,7 @@ export function InteractiveProductTabsE() {
               type="button"
               onClick={() => setActive(i)}
               aria-pressed={isActive}
-              className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold transition-colors ${
+              className={`flex w-full items-center justify-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold transition-colors sm:w-auto sm:justify-start ${
                 isActive
                   ? "bg-yellow-300 text-slate-900"
                   : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
