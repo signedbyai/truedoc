@@ -103,7 +103,17 @@ const FAQ = [
 // scoping as its own follow-up rather than folding into this flag.
 const CTA_COPY: Record<VerifiedBadgeInvoiceCtaVariant, { pill: string; button: string; heading: string }> = {
   A: {
-    pill: "Secure Your Invoice for Free – Verified & Tamper-Evident",
+    // Shortened 2026-08-13. Was "Secure Your Invoice for Free – Verified &
+    // Tamper-Evident" (55 chars): at text-xs with px-3 padding and the status
+    // dot that needs ~383px on one line, against the ~327px of content width a
+    // 375px iPhone actually has, so it wrapped to two lines on every common
+    // phone while B-F's shorter copy all fit on one. A is the control, so the
+    // control was rendering worse than its challengers for 92% of this page's
+    // traffic — the test was partly measuring layout, not copy. Trimmed rather
+    // than restyled so the pill stays one line everywhere; the
+    // "tamper-evident" claim it dropped is still made in the page body and the
+    // FAQ.
+    pill: "Secure Your Invoice for Free",
     button: "Get Your Verified Badge Now →",
     heading: "Secure Your Invoice for Free",
   },
