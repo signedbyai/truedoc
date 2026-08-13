@@ -126,7 +126,17 @@ export function HomepagePreviewF({ currency }: { currency: Currency }) {
       <section className="mx-auto w-full max-w-2xl px-6 py-12">
         <h2 className="mb-6 text-center text-2xl font-semibold text-slate-900">The real cost difference</h2>
         <div className="overflow-hidden rounded-xl border border-slate-200">
-          <div className="grid grid-cols-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 sm:px-6">
+          {/* 2026-08-13 polish: below sm this used to force each of the 3
+              columns into an equal 1/3 width, so the DocuSign column had to
+              wrap a phrase like "$75-195/mo total, priced per user" inside
+              ~100px — cramped rather than genuinely readable. Below sm, each
+              row now stacks into its own block (label as a mini-heading,
+              then a SignedBy line and a DocuSign line, each with the full
+              row width to wrap into), and reverts to the original 3-column
+              grid at sm+ where there's room. Same fix applied to D and E —
+              this table's markup is identical across all three preview
+              variants, so keep them in sync if it changes again. */}
+          <div className="hidden bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 sm:grid sm:grid-cols-3 sm:px-6">
             <span></span>
             <span className="text-center">SignedBy</span>
             <span className="text-center">DocuSign</span>
@@ -134,11 +144,17 @@ export function HomepagePreviewF({ currency }: { currency: Currency }) {
           {DOCUSIGN_COMPARISON.map((row, i) => (
             <div
               key={row.label}
-              className={`grid grid-cols-3 items-center px-4 py-4 text-sm sm:px-6 ${i > 0 ? "border-t border-slate-100" : ""}`}
+              className={`flex flex-col gap-2.5 px-4 py-4 text-sm sm:grid sm:grid-cols-3 sm:items-center sm:gap-0 sm:px-6 ${i > 0 ? "border-t border-slate-100" : ""}`}
             >
-              <span className="text-slate-600">{row.label}</span>
-              <span className="text-center font-semibold text-slate-900">{row.signedby}</span>
-              <span className="text-center text-slate-500">{row.competitor}</span>
+              <span className="font-semibold text-slate-900 sm:font-normal sm:text-slate-600">{row.label}</span>
+              <div className="flex items-baseline justify-between gap-3 sm:block sm:text-center">
+                <span className="shrink-0 text-xs font-medium text-slate-400 sm:hidden">SignedBy</span>
+                <span className="flex-1 text-right font-semibold text-slate-900 sm:text-center">{row.signedby}</span>
+              </div>
+              <div className="flex items-baseline justify-between gap-3 sm:block sm:text-center">
+                <span className="shrink-0 text-xs font-medium text-slate-400 sm:hidden">DocuSign</span>
+                <span className="flex-1 text-right text-slate-500 sm:text-center">{row.competitor}</span>
+              </div>
             </div>
           ))}
         </div>
