@@ -193,7 +193,17 @@ function MiniInvoiceCard({ sealed }: { sealed?: boolean }) {
 // threading a size variant through the shared one.
 function HeroInvoiceCard({ sealed }: { sealed?: boolean }) {
   return (
-    <div className="relative w-40 shrink-0 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm sm:w-48">
+    // 2026-08-13 mobile fix: was a flat `w-40 shrink-0` (160px) at every
+    // width. Two of those plus the 24px arrow and the row's gap-4 came to
+    // 376px, plus another 24px of badge overhang on the sealed card — against
+    // ~327px of usable width on a 375px iPhone (px-6 either side). Because
+    // both cards are shrink-0 nothing could give, so this pair overflowed the
+    // viewport on every common phone. Since 92% of this page's traffic is
+    // mobile and it's the site's top landing page, that was the single worst
+    // rendering bug on it. Narrower below sm, unchanged at sm+ (still the
+    // deliberately-bigger sibling of MiniInvoiceCard — see this component's
+    // own comment above).
+    <div className="relative w-32 shrink-0 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm sm:w-48">
       <p className="text-sm font-semibold text-slate-900">Invoice</p>
       <p className="text-[11px] text-slate-400">INV-0148</p>
       <div className="mt-3 space-y-1.5">
@@ -208,7 +218,11 @@ function HeroInvoiceCard({ sealed }: { sealed?: boolean }) {
         // ~40% of the card's own width, vs. the 3-step section's ~32% —
         // deliberately bigger ratio, not just a scaled-up copy, per "the
         // badge more prominent on the after image."
-        <div className="absolute -right-6 -top-6 h-16 w-16 drop-shadow-md sm:h-20 sm:w-20">
+        // Overhang scaled down to match the narrower mobile card (2026-08-13)
+        // — a -right-6 (24px) overhang on a 128px card is what pushed the row
+        // past the viewport edge. Ratio to card width is preserved (~37% vs
+        // ~40% at sm+), so it still reads as the more prominent badge.
+        <div className="absolute -right-4 -top-4 h-12 w-12 drop-shadow-md sm:-right-6 sm:-top-6 sm:h-20 sm:w-20">
           <Image
             src="/verified-seal-badge.png"
             alt="A wax-seal style verified and sealed badge with a scannable QR code"
@@ -346,7 +360,11 @@ export default async function VerifiedBadgeInvoicesPage({
              to bring back if this before/after direction doesn't win out. */
           <div className="flex flex-col items-center gap-6 py-6">
             <h2 className="text-center text-lg font-semibold text-slate-900">Protect Your Invoices and Get Paid</h2>
-            <div className="flex items-center justify-center gap-4 sm:gap-8">
+            {/* gap-2 below sm (2026-08-13): part of the same overflow fix as
+                HeroInvoiceCard's width — 128+128+24 card/arrow widths plus
+                2x8px gaps and the 16px badge overhang comes to ~312px, inside
+                the ~327px a 375px iPhone actually gives you. */}
+            <div className="flex items-center justify-center gap-2 sm:gap-8">
               <HeroInvoiceCard />
               <ArrowRight className="h-6 w-6 shrink-0 text-slate-300 sm:h-8 sm:w-8" aria-hidden="true" />
               <HeroInvoiceCard sealed />
