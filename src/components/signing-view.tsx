@@ -914,7 +914,12 @@ export function SigningView({
 
   if (done) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+      // flex-col + gap-6 (2026-08-13) so the growth CTA below can sit as a
+      // sibling card under the status card, exactly like the Declined screen
+      // and StatusScreen already do. Was a plain centred row, which had no
+      // second slot at all — see the CTA's own comment at the bottom of this
+      // block for why one was needed.
+      <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-slate-50 px-4 py-10">
         <div className="w-full max-w-sm rounded-lg border border-slate-200/60 bg-white p-8 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
           {endScreenLogo}
           <h1 className="text-lg font-semibold text-slate-900">Signed</h1>
@@ -1060,6 +1065,47 @@ export function SigningView({
             </div>
           )}
         </div>
+
+        {/* Signer-to-sender growth CTA (2026-08-13, SIGNER_EXIT_PATHS_SCOPE.md).
+            This screen was the ONLY dead-end in the signer funnel with no path
+            back to SignedBy: the Declined screen above has one
+            (utm_source=signer_decline) and every StatusScreen state in
+            sign/[token]/page.tsx has one (utm_source=signer_status_screen), but
+            the signer who actually succeeded — the highest-intent moment in the
+            whole flow — got Download, the QR and nothing else. The only outbound
+            path was accidental (the verify link's default "← SignedBy" control
+            landing on the homepage) and that was removed in ac18cc3.
+
+            Copy leans on what this person just personally experienced rather
+            than a generic pitch — they signed a real document in seconds
+            without creating an account, which is the actual product claim. The
+            speed card directly above often puts a number on it.
+
+            Secondary placement below the status card, same as the Declined
+            screen, for the same reason its own comment gives: this has to not
+            read as pushy at a moment that belongs to someone else's agreement.
+
+            Gated off for branding-tier orgs — identical !hasCustomBranding
+            logic to the other two touchpoints. A white-label customer's
+            counterparty must never be sold to. */}
+        {!branding.hasCustomBranding && (
+          <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 text-center">
+            <p className="text-sm text-slate-600">
+              Signed in seconds, no account needed. You can send your own documents the same way.
+            </p>
+            {/* utm_source distinct from signer_decline and
+                signer_status_screen so this touchpoint is separately
+                attributable — and, as of fd579c9, actually measurable through
+                the magic-link browser hop that used to lose it. */}
+            <a
+              href="/login?intent=signup&utm_source=signer_signed&utm_medium=growth_cta&utm_campaign=signer_to_sender"
+              className="mt-3 inline-block rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              Start free
+            </a>
+            <p className="mt-2 text-xs text-slate-400">3 documents a month, no card required.</p>
+          </div>
+        )}
       </main>
     );
   }
