@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
@@ -49,6 +50,7 @@
     "@types/react-signature-canvas": "^1.0.7",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "patch-package": "^8.0.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.10"

@@ -1,0 +1,56 @@
+diff --git a/node_modules/pdf-lib-incremental-save/cjs/core/writers/PDFStreamWriter.js b/node_modules/pdf-lib-incremental-save/cjs/core/writers/PDFStreamWriter.js
+index 2a37008..66d4904 100644
+--- a/node_modules/pdf-lib-incremental-save/cjs/core/writers/PDFStreamWriter.js
++++ b/node_modules/pdf-lib-incremental-save/cjs/core/writers/PDFStreamWriter.js
+@@ -54,7 +54,8 @@ var PDFStreamWriter = /** @class */ (function (_super) {
+                             object instanceof PDFInvalidObject_1.default ||
+                             ref.generationNumber !== 0 ||
+                             (object instanceof PDFDict_1.default &&
+-                                object.lookup(PDFName_1.default.of('Type')) === PDFName_1.default.of('Sig'));
++                                (object.lookup(PDFName_1.default.of('Type')) === PDFName_1.default.of('Sig') ||
++                                    object.lookup(PDFName_1.default.of('Type')) === PDFName_1.default.of('DocTimeStamp')));
+                         if (!shouldNotCompress) return [3 /*break*/, 4];
+                         uncompressedObjects.push(indirectObject);
+                         xrefStream.addUncompressedEntry(ref, size);
+diff --git a/node_modules/pdf-lib-incremental-save/dist/pdf-lib.esm.js b/node_modules/pdf-lib-incremental-save/dist/pdf-lib.esm.js
+index f0d06dd..d8027bf 100644
+--- a/node_modules/pdf-lib-incremental-save/dist/pdf-lib.esm.js
++++ b/node_modules/pdf-lib-incremental-save/dist/pdf-lib.esm.js
+@@ -17371,7 +17371,8 @@ var PDFStreamWriter = /** @class */ (function (_super) {
+                             object instanceof PDFInvalidObject ||
+                             ref.generationNumber !== 0 ||
+                             (object instanceof PDFDict &&
+-                                object.lookup(PDFName.of('Type')) === PDFName.of('Sig'));
++                                (object.lookup(PDFName.of('Type')) === PDFName.of('Sig') ||
++                                    object.lookup(PDFName.of('Type')) === PDFName.of('DocTimeStamp')));
+                         if (!shouldNotCompress) return [3 /*break*/, 4];
+                         uncompressedObjects.push(indirectObject);
+                         xrefStream.addUncompressedEntry(ref, size);
+diff --git a/node_modules/pdf-lib-incremental-save/dist/pdf-lib.js b/node_modules/pdf-lib-incremental-save/dist/pdf-lib.js
+index 9bcde6e..04aae7c 100644
+--- a/node_modules/pdf-lib-incremental-save/dist/pdf-lib.js
++++ b/node_modules/pdf-lib-incremental-save/dist/pdf-lib.js
+@@ -17377,7 +17377,8 @@
+                                 object instanceof PDFInvalidObject ||
+                                 ref.generationNumber !== 0 ||
+                                 (object instanceof PDFDict &&
+-                                    object.lookup(PDFName.of('Type')) === PDFName.of('Sig'));
++                                    (object.lookup(PDFName.of('Type')) === PDFName.of('Sig') ||
++                                    object.lookup(PDFName.of('Type')) === PDFName.of('DocTimeStamp')));
+                             if (!shouldNotCompress) return [3 /*break*/, 4];
+                             uncompressedObjects.push(indirectObject);
+                             xrefStream.addUncompressedEntry(ref, size);
+diff --git a/node_modules/pdf-lib-incremental-save/es/core/writers/PDFStreamWriter.js b/node_modules/pdf-lib-incremental-save/es/core/writers/PDFStreamWriter.js
+index 23dca7e..7de5751 100644
+--- a/node_modules/pdf-lib-incremental-save/es/core/writers/PDFStreamWriter.js
++++ b/node_modules/pdf-lib-incremental-save/es/core/writers/PDFStreamWriter.js
+@@ -52,7 +52,8 @@ var PDFStreamWriter = /** @class */ (function (_super) {
+                             object instanceof PDFInvalidObject ||
+                             ref.generationNumber !== 0 ||
+                             (object instanceof PDFDict &&
+-                                object.lookup(PDFName.of('Type')) === PDFName.of('Sig'));
++                                (object.lookup(PDFName.of('Type')) === PDFName.of('Sig') ||
++                                    object.lookup(PDFName.of('Type')) === PDFName.of('DocTimeStamp')));
+                         if (!shouldNotCompress) return [3 /*break*/, 4];
+                         uncompressedObjects.push(indirectObject);
+                         xrefStream.addUncompressedEntry(ref, size);
