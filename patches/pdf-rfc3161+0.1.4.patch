@@ -1,0 +1,26 @@
+diff --git a/node_modules/pdf-rfc3161/dist/index.cjs b/node_modules/pdf-rfc3161/dist/index.cjs
+index d5736a1..3681669 100644
+--- a/node_modules/pdf-rfc3161/dist/index.cjs
++++ b/node_modules/pdf-rfc3161/dist/index.cjs
+@@ -597,7 +597,7 @@ async function preparePdfForTimestamp(pdfBytes, options = {}) {
+   sigContextInternal.largestObjectNumber = maxObjNum;
+   const snapshot = sigPdfDoc.takeSnapshot();
+   const sigDictFields = {
+-    Type: pdfLibIncrementalSave.PDFName.of("Sig"),
++    Type: pdfLibIncrementalSave.PDFName.of("DocTimeStamp"),
+     Filter: pdfLibIncrementalSave.PDFName.of("Adobe.PPKLite"),
+     SubFilter: pdfLibIncrementalSave.PDFName.of("ETSI.RFC3161"),
+     ByteRange: pdfLibIncrementalSave.PDFArray.withContext(sigContext),
+diff --git a/node_modules/pdf-rfc3161/dist/index.js b/node_modules/pdf-rfc3161/dist/index.js
+index dca1877..e0d59a1 100644
+--- a/node_modules/pdf-rfc3161/dist/index.js
++++ b/node_modules/pdf-rfc3161/dist/index.js
+@@ -574,7 +574,7 @@ async function preparePdfForTimestamp(pdfBytes, options = {}) {
+   sigContextInternal.largestObjectNumber = maxObjNum;
+   const snapshot = sigPdfDoc.takeSnapshot();
+   const sigDictFields = {
+-    Type: PDFName.of("Sig"),
++    Type: PDFName.of("DocTimeStamp"),
+     Filter: PDFName.of("Adobe.PPKLite"),
+     SubFilter: PDFName.of("ETSI.RFC3161"),
+     ByteRange: PDFArray.withContext(sigContext),
