@@ -245,12 +245,25 @@ export async function sealDocumentAction(params: {
       timestamp = result.timestamp;
 
       if (certificateMode === "both") {
-        // "both" mode's separate certificate copy deliberately does NOT get
-        // its own independent timestamp call — it's built from the same
-        // hash/signers as the already-timestamped signed_file_path above,
-        // and one real TSA round trip per seal (not per artifact) is the
-        // right unit here, same as the hash itself is computed once.
-        const certBytes = await buildStandaloneCertificatePdf({
+        // Reversed 2026-08-14. This copy previously got no timestamp of its
+        // own, on the reasoning that one TSA round trip per seal (not per
+        // artifact) was the right unit, since it carries the same
+        // hash/signers as the already-timestamped signed_file_path above.
+        //
+        // The problem with that: `certificate-<id>.pdf` IS timestamped in
+        // "separate" mode (see the branch above), so the same filename,
+        // built by the same function for the same purpose, carried
+        // different guarantees depending on a certificateMode the
+        // recipient cannot see. Someone holding one of these standalone
+        // had no way to tell which kind they had. That inconsistency was
+        // the defect, more than the missing timestamp itself.
+        //
+        // The seal's primary timestamp is still generateSignedPdf's, above
+        // — `timestamp` is deliberately NOT reassigned here, so what gets
+        // persisted to audit_events is unchanged. This token only makes
+        // the standalone artifact self-verifying. Non-blocking, and must
+        // stay after the build, same rules as everywhere else.
+        let certBytes = await buildStandaloneCertificatePdf({
           title: doc.title,
           documentId: doc.id,
           hash,
@@ -258,6 +271,8 @@ export async function sealDocumentAction(params: {
           ipBySigner: new Map(),
           sealed: { identityVerifiedName: identity.name, identityVerifiedAt: identity.verifiedAt },
         });
+        const certTimestamped = await timestampWithFallback(certBytes);
+        if (certTimestamped) certBytes = Buffer.from(certTimestamped.pdf);
         const certKey = `${orgId}/${doc.id}/certificate-${doc.id}.pdf`;
         await uploadToR2(certKey, Buffer.from(certBytes), "application/pdf");
         await admin.from("documents").update({ certificate_file_path: certKey }).eq("id", doc.id);
@@ -293,7 +308,7 @@ export async function sealDocumentAction(params: {
 
   try {
     const { body: originalBytes } = await getFromR2(doc.file_path);
-    const stampedBytes = await buildBadgeStampedPdf(originalBytes, {
+    let stampedBytes: Uint8Array = await buildBadgeStampedPdf(originalBytes, {
       ...badgeRect,
       verifyUrl: `${appUrl()}/verify?hash=${hash}`,
       // V2.4, promoted from optional to required 2026-08-10: a client
@@ -303,6 +318,29 @@ export async function sealDocumentAction(params: {
       // flow's field-editor both already write, no separate storage.
       paymentUrl: doc.payment_link_url ?? undefined,
     });
+
+    // RFC 3161 timestamp on the badge-on copy too (2026-08-14). This is a
+    // deliberate exception to the "one TSA round trip per seal, not per
+    // artifact" rule used for "both" mode's certificate above, and the
+    // reason the cases differ: that certificate duplicates a file that is
+    // already timestamped, whereas this one had no timestamp anywhere.
+    //
+    // It matters because the badge-on copy is the artifact a client
+    // actually receives — the invoice with the trust marker printed on
+    // it — so it was the one file carrying a visible trust claim and no
+    // cryptographic proof to back it. An independent verifier
+    // (verifiedby.ai) correctly reported "no timestamp" for it.
+    //
+    // Safe with respect to hashes: `hash` is computed above from the
+    // original/signed bytes and is already baked into the QR verifyUrl.
+    // Nothing hashes these badge-stamped bytes, so timestamping them
+    // changes no stored value — see VERIFY_BY_FILE_SCOPE.md. Must stay
+    // AFTER buildBadgeStampedPdf, since any later resave would invalidate
+    // the signature. Non-blocking, same as everywhere else: null just
+    // means no timestamp and the badge file still ships.
+    const badgeTimestamp = await timestampWithFallback(stampedBytes);
+    if (badgeTimestamp) stampedBytes = badgeTimestamp.pdf;
+
     const badgeKey = `${orgId}/${doc.id}/badge-on-${doc.id}.pdf`;
     await uploadToR2(badgeKey, Buffer.from(stampedBytes), "application/pdf");
     await admin.from("documents").update({ badge_stamped_file_path: badgeKey }).eq("id", doc.id);
