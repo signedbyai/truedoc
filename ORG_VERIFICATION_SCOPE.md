@@ -8,6 +8,99 @@ is not approval to build — see [[feedback-scope-means-scope-only]].
 (paid, deeper claim, reaches registered companies). They address different
 populations, which is why one doesn't replace the other.
 
+## Priority (2026-08-14): bank last-4 check goes FIRST
+
+Ahead of both mechanisms below. Decided 2026-08-14; scoped here rather than
+in its own doc because it competes for the same slot. **Not built.**
+
+**Build it as a challenge, not a display.** The recipient types the last 4
+digits of the bank account from the invoice they are holding, and `/verify`
+answers match / no match. Store a salted hash; never store or publish the
+digits themselves.
+
+Do **not** render the digits on the page. `api/verify/route.ts` states in its
+own header comment that it returns "only non-sensitive aggregate facts …
+never signer names/emails/IPs — so this can be safely shared with anyone."
+Publishing bank digits on a public, unauthenticated page reverses that, and
+is the same mistake as the Organization row removed in `4c3f4ba`.
+
+**Why it ranks first:** it is the only one of the three that defends the
+actual attack in `VERIFY_BY_FILE_SCOPE.md` — a copied badge pasted onto a
+fraudulent invoice with altered bank details. Domain control and Stripe KYB
+both verify the *sender*; neither says anything about the payment
+instruction, which is the thing the money follows.
+
+**Effort: ~half a day.** Follows the existing `payment_link_url` /
+`payment_label` pattern exactly — per-document column, gated at write time,
+its own top-level field on the verify response, rendered as a visually
+distinct separately-labelled section. Snapshot at seal time into
+`audit_events.metadata` the way `identity_verified_at` already is, so a later
+edit cannot rewrite what an older seal asserts.
+
+**Rate limiting needs attention.** Only 10,000 possibilities. The route's
+current `checkRateLimit(30, 300)` allows ~8,640 attempts/day — roughly a day
+to enumerate. Tighten per-hash, not just per-IP.
+
+### The sender leg — the half that decides whether this works
+
+There are two legs, and the recipient challenge above is the easy one. The
+sender has to record the digits at seal time, and that is where the feature
+lives or dies.
+
+**Where.** An optional collapsible row in the Seal panel, directly modelled on
+the existing `Badge placement` row ("Choose exactly where the badge sits" /
+"Position saved — tap to adjust"). Same visual weight, same optionality. Never
+on the path of a first seal.
+
+**Remember it per org — this is the whole ballgame.** Almost every sender
+invoices from the same account every time. If they must type four digits on
+every document, adoption stays near zero, and low adoption is fatal for the
+reason already stated: a signal whose absence means nothing changes nobody's
+behaviour. Store an org-level default so a repeat send is a confirm, not an
+entry. That turns the sender leg from four keystrokes into one tap.
+
+Consequence to decide: an org-level default implies the same salted hash
+recurring across that org's documents. Acceptable — it's already the same
+account in the real world — but it means the per-document salt option in the
+open questions below conflicts with remembering, and the two can't both be
+chosen.
+
+**A typo is permanent and silent.** The value is snapshotted at seal; a
+mistyped digit means every honest recipient who checks gets "no match" on a
+genuine invoice. That is the same false-rejection problem raised against
+drag-and-drop verify, and it is worse here because the sender never finds out.
+Needs at minimum: a confirm-on-entry step, the value shown back to the sender
+on the document page so it's visible after the fact, and a decision on whether
+a seal can be corrected or must be redone.
+
+**Notify the sender on a failed check.** If a recipient enters digits that
+don't match, that is either the sender's typo or an actual fraud attempt in
+progress. Either way the sender is the one who can act. This is also the only
+way the sender ever learns their own typo exists.
+
+### Limits — state these plainly wherever it ships
+
+- Proves only that the sender **declared** those digits at seal time. It does
+  not prove the account is theirs or legitimate. A fraudster who signs up and
+  seals their own fake invoice declares their mule account and the page
+  confirms it — same boundary as the org-name hole.
+- **Optional signals whose absence means nothing don't change behaviour.** If
+  most invoices carry no bank check, a recipient cannot treat its absence as
+  suspicious, so this only helps people already inclined to check.
+- Risk of *reducing* safety: a match may talk a recipient out of the phone
+  call to a known-good number, which is the control that actually stops
+  invoice fraud. Copy must not imply the payment instruction is safe.
+
+### Open questions
+
+- Salt per-document or per-org? (Per-document is safer; per-org allows
+  "same account as last time" signalling.)
+- Which tier — free, or gated like `payment_link_url` is to Business?
+- Does a non-match get logged, and does the sender get notified?
+- IBAN last 4 vs account-number last 4 in markets using both.
+- `/privacy` and `/dpa` need a new data-category entry even though nothing is
+  published — see [[feedback-update-legal-pages-with-new-processors]].
+
 ## Why — and why there's no urgency
 
 The sealed-badge verify panel lost its `Organization` row today (`4c3f4ba`):
