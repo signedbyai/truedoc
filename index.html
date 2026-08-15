@@ -32,13 +32,21 @@
   table{width:100%;border-collapse:collapse;font-size:14.5px}
   td{padding:8px 0;border-bottom:1px solid var(--line);vertical-align:top}
   td:first-child{color:var(--muted);width:40%}
-  td.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;word-break:break-all}
+  /* Matches .mono ANYWHERE, not just on a <td>. The results table emits the
+     digest as <td><span class="mono">, so a td-only selector silently stopped
+     applying word-break — a 128-char SHA-512 digest then became one unbreakable
+     token and widened the whole page. Confirmed at 320-1280px. */
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;word-break:break-all}
+  /* Belt and braces: never let a long token push the page sideways. */
+  table{table-layout:fixed}
+  td{overflow-wrap:anywhere}
   .checks{list-style:none;padding:0;margin:14px 0 0;font-size:14.5px}
   .checks li{padding:5px 0 5px 26px;position:relative}
   .checks li:before{position:absolute;left:0;font-weight:600}
   .checks li.y:before{content:"✓";color:var(--ok)}
   .checks li.n:before{content:"✕";color:var(--bad)}
-  .checks li.i:before{content:"–";color:var(--muted)}
+  .checks li.i:before{content:"–";color:#9ca3af}
+  .checks li.i{color:var(--muted)}
   .notes{margin:16px 0 0;padding:14px 16px;background:#f8fafc;border-radius:8px;font-size:13.5px;color:#475569}
   .notes p{margin:0 0 8px}.notes p:last-child{margin:0}
   h3{font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:26px 0 10px}
@@ -52,6 +60,15 @@
   .horizon{margin-top:16px;padding:14px 16px;border:1px solid var(--infoline);background:var(--infobg);
            border-radius:8px;font-size:14px;color:#1e3a8a}
   .horizon strong{color:#1e3a8a}
+  .how{display:flex;gap:14px;margin:18px 0 0;padding:0;list-style:none;font-size:13.5px;color:var(--muted)}
+  .how li{flex:1;padding-left:22px;position:relative;line-height:1.45}
+  .how li:before{content:attr(data-n);position:absolute;left:0;top:0;width:16px;height:16px;border-radius:50%;
+                 background:#e5e7eb;color:#374151;font-size:11px;font-weight:600;text-align:center;line-height:16px}
+  @media(max-width:560px){.how{flex-direction:column;gap:8px}}
+  .src{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13.5px;color:var(--muted)}
+  .src a{color:#374151}
+  .src svg{vertical-align:-3px;margin-right:5px}
+  .src code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-size:12px}
 </style>
 </head>
 <body>
@@ -61,9 +78,15 @@
 
   <div id="drop" tabindex="0" role="button" aria-label="Choose a PDF to check">
     <strong>Choose a PDF, or drag one here</strong>
-    <span>Nothing leaves your device</span>
+    <span>Read in your browser. Never uploaded.</span>
   </div>
   <input type="file" id="file" accept="application/pdf,.pdf">
+
+  <ul class="how">
+    <li data-n="1">Your browser opens the file locally.</li>
+    <li data-n="2">The signature is checked on your machine.</li>
+    <li data-n="3">Nothing is sent anywhere — including to us.</li>
+  </ul>
 
   <div class="res" id="res"></div>
 
@@ -72,7 +95,20 @@
     <p><strong>What it does not mean.</strong> A timestamp records <em>when</em>, never <em>who</em>. A signature proves which certificate was used, which is a fact about a key rather than a verified fact about a person. Neither can tell you the document is honest, that the sender is who they say, or that the payment details on it are right. Confirm those the way you always would.</p>
     <p><strong>Who made this.</strong> Built and operated by SPRK10 B.V., the company behind SignedBy. That is stated plainly rather than left to be discovered: this page is useful <em>because</em> you do not have to trust us. It runs entirely in your browser, makes no network requests, and the whole verifier is right here in the page — read it with <code>⌘U</code>.</p>
     <p><strong>Unrecognised authority is not a failure.</strong> This page pins a deliberately short list of roots so the list stays checkable by a human. Most documents from elsewhere will say the authority is unrecognised; that means confirm it yourself, not that anything is wrong.</p>
+    <p><strong>Where this runs.</strong> Served from Germany, with access logging switched off. That matters less than it sounds: your document is never uploaded, so there is nothing at either end to record.</p>
     <p>No analytics, no cookies, no network requests. Save this page with <code>⌘S</code> and it keeps working with no internet and no us.</p>
+  </div>
+
+  <div class="src">
+    <p style="margin:0 0 6px">
+      <a href="https://github.com/signedbyai/verifiedby"><svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.42 7.42 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>github.com/signedbyai/verifiedby</a>
+      · Apache-2.0 · build <code>4735d778a472</code>
+    </p>
+    <p style="margin:0">Confirm the page you are running is the code you can read:<br>
+      <code>curl -s https://verifiedby.dev | shasum -a 256</code><br>
+      and that the build above is the source in the repo:<br>
+      <code>cat verify-core.mjs shell.html | shasum -a 256 | cut -c1-12</code></p>
+    <p style="margin:8px 0 0">Operated by SPRK10 B.V., registered in the Netherlands.</p>
   </div>
 </div>
 
@@ -1086,7 +1122,15 @@ async function run(file) {
   let html = `<div class="banner ${cls}"><h2>${esc(head)}</h2><p>${esc(note)}</p></div>`;
 
   if (r.elements && r.elements.length && r.status !== "no-signature") {
-    const yn = (b) => b === true ? "y" : b === false ? "n" : "i";
+    // ✓ / ✕ / –.  ONLY genuine pass-fail conditions may render as ✕ (red).
+    // Everything else is a PROPERTY of the document, not a defect: most files
+    // legitimately lack a document-level timestamp, come from a root we do not
+    // pin, or omit the issuer certificate. Marking those red made a valid
+    // document look broken — and directly contradicted this page's own footer,
+    // which says in as many words that an unrecognised authority is not a
+    // failure. Properties get a neutral dash.
+    const yn = (b) => b === true ? "y" : "i";
+    const passfail = (b) => b === true ? "y" : b === false ? "n" : "i";
     const rows = [];
     if (r.signedBy) rows.push(["Signed by", esc(r.signedBy) + (r.signedByOrg && r.signedByOrg !== r.signedBy ? ` <span style="color:#6b7280">(${esc(r.signedByOrg)})</span>` : "")]);
     rows.push([r.genTimeTrusted ? "Timestamped at" : "Claimed signing time",
@@ -1099,7 +1143,7 @@ async function run(file) {
     html += `<div class="card">
       <table>${rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("")}</table>
       <ul class="checks">
-        <li class="${yn(r.documentMatches)}">File matches the digest that was signed</li>
+        <li class="${passfail(r.documentMatches)}">File matches the digest that was signed</li>
         <li class="${yn(r.hasDocumentTimestamp)}">Carries a document-level timestamp covering the whole file</li>
         <li class="${yn(r.genTimeTrusted)}">The time shown is attested by a timestamp authority</li>
         <li class="${yn(r.anchored)}">Root is one this page recognises</li>

@@ -1,0 +1,90 @@
+# Two questions this answers, continuously and in public:
+#
+#   1. Does index.html actually come from the source in this repo?
+#   2. Are the bytes served at verifiedby.dev exactly those bytes?
+#
+# Publishing source for a HOSTED tool proves nothing on its own — nothing
+# forces the served page to match the published code. This makes that link
+# checkable by anyone, on a schedule, without taking our word for it.
+#
+# It also catches the boring failure: editing source and forgetting to
+# redeploy, or editing the deployed file and forgetting to commit.
+
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Daily. Drift and tampering are both worth noticing within a day.
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reproducible-build:
+    name: index.html is reproducible from source
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Rebuild from source
+        run: node build.mjs
+
+      - name: Committed artifact must equal a fresh build
+        # If this fails, index.html was edited directly instead of being
+        # generated — which breaks the promise that reading the source tells
+        # you what the page does.
+        run: git diff --exit-code -- index.html
+
+      - name: Fixture harness
+        # NOTE: the fixture PDFs are gitignored (some are real sealed
+        # documents, one is a third party's), so in CI this runs green
+        # having checked nothing. It is here as a smoke test that the
+        # harness itself still executes. Real assertion happens locally.
+        run: node test/verify-fixtures.mjs
+
+  served-matches-source:
+    name: verifiedby.dev serves exactly this commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build
+        run: node build.mjs
+
+      - name: Compare live site against this commit
+        run: |
+          set -euo pipefail
+          expected=$(sha256sum index.html | cut -d' ' -f1)
+          served=$(curl -fsSL --retry 3 --retry-delay 5 https://verifiedby.dev | sha256sum | cut -d' ' -f1)
+          echo "expected (this commit): $expected"
+          echo "served   (live site)  : $served"
+          if [ "$expected" != "$served" ]; then
+            echo "::error::Served bytes do not match this commit. Either a deploy is outstanding, or the served file has been altered."
+            exit 1
+          fi
+          echo "Match."
+
+      - name: Security headers are present
+        run: |
+          set -euo pipefail
+          h=$(curl -fsSI --retry 3 --retry-delay 5 https://verifiedby.dev)
+          for want in "content-security-policy" "strict-transport-security" "x-content-type-options" "x-frame-options" "referrer-policy"; do
+            echo "$h" | grep -qi "^$want:" || { echo "::error::missing header: $want"; exit 1; }
+          done
+          # default-src 'none' is the load-bearing one: it is what stops the
+          # page making network requests at all. Its absence would silently
+          # turn a browser-enforced guarantee back into a promise.
+          echo "$h" | grep -qi "content-security-policy:.*default-src 'none'" \
+            || { echo "::error::CSP no longer starts from default-src 'none'"; exit 1; }
+          echo "Headers OK."

@@ -1,5 +1,8 @@
 # VerifiedBy
 
+[![verify](https://github.com/signedbyai/verifiedby/actions/workflows/verify.yml/badge.svg)](https://github.com/signedbyai/verifiedby/actions/workflows/verify.yml)
+[![licence](https://img.shields.io/badge/licence-Apache--2.0-blue)](LICENSE)
+
 An independent, offline verifier for signed and timestamped PDFs.
 
 **[verifiedby.dev](https://verifiedby.dev)** — drop a PDF in. It runs
@@ -39,6 +42,14 @@ working with no internet and nobody's servers, including ours.
 A verifier that overclaims is worse than none, so these limits are stated
 in the interface, not only here.
 
+## How it decides
+
+Every check, in order, what each verdict means, and what would have to be
+true for each to be wrong: **[METHODOLOGY.md](METHODOLOGY.md)**.
+
+The rubric is published because that is what makes a verdict arguable. If
+the document and the code disagree, the document is the bug.
+
 ## "Authority unrecognised" is not a failure
 
 This tool pins a deliberately tiny list of trust anchors, so that the list
@@ -67,7 +78,11 @@ curl -s https://verifiedby.dev | shasum -a 256
 node build.mjs && shasum -a 256 index.html
 ```
 
-Those two must match. `index.html` is generated deterministically from
+Those two must match. When the hash changes, [CHANGELOG.md](CHANGELOG.md)
+records why — an unexplained hash change is indistinguishable from
+tampering, so every release lists its build stamp and deployed digest.
+
+`index.html` is generated deterministically from
 `verify-core.mjs` and `shell.html` by `build.mjs`, which only inlines one
 into the other — so anyone can reproduce it and confirm the page they are
 running is the code they just read.
