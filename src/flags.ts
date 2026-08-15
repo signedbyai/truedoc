@@ -149,20 +149,49 @@ export const consoleHeroIconFlag = flag<ConsoleHeroIconColor>({
 // cta-color test: Vercel Analytics, `flags/verified-badge-invoice-cta`
 // breakdown cross-referenced with `cta_click` events (CtaLink already
 // passes `variant` as a plain event property too, belt-and-suspenders).
+// NARROWED TO 2 ARMS 2026-08-13, direct ask. The 6-way split was
+// unresolvable at this page's traffic: ~1,200 visitors/week (Vercel Web
+// Analytics, 7-day) split six ways is ~200 per arm per week, and picking the
+// best of six noisy estimates carries a multiple-comparisons penalty on top.
+// Two arms puts ~600/week behind each, which is answerable in weeks rather
+// than never.
+//
+// A and C kept; B, D, E and F dropped from live traffic:
+// - A stays as control. It's the only framing that continues the message of
+//   the ad actually driving this page's traffic ("Verified Badge - Portrait -
+//   Invoice Fraud Angle", 3.585% CTR, the account's best performer), and the
+//   A/B/C headline ("AI can fake an invoice in seconds...") names a specific
+//   fear rather than the generic trust language D/E/F substitute in.
+// - C is the challenger: same visual design, genuinely different copy axis
+//   (action framing vs security claim), and carries "for Free" in all three
+//   slots.
+// - B dropped: removes "for Free" everywhere, which is the strongest single
+//   word available to a free-tier product with no card required.
+// - D/E/F dropped: each replaces the differentiated headline with
+//   interchangeable trust copy, and their visual changes add weight to a page
+//   that is 92% mobile with a 78% bounce rate.
+//
+// Deliberately NOT deleted from the union below — all six stay renderable via
+// the ?variant=A..F preview override on the page itself, so nothing has to be
+// rebuilt if one is wanted back. Only ACTIVE_VARIANTS gets live traffic.
 export const VERIFIED_BADGE_INVOICE_CTA_VARIANTS = ["A", "B", "C", "D", "E", "F"] as const;
 export type VerifiedBadgeInvoiceCtaVariant = (typeof VERIFIED_BADGE_INVOICE_CTA_VARIANTS)[number];
+
+// The arms real visitors are bucketed into. Widen or swap here rather than
+// touching the union above, which exists for preview/rendering.
+const ACTIVE_VARIANTS: readonly VerifiedBadgeInvoiceCtaVariant[] = ["A", "C"];
 
 export const verifiedBadgeInvoiceCtaFlag = flag<VerifiedBadgeInvoiceCtaVariant>({
   key: "verified-badge-invoice-cta",
   identify,
   decide({ entities }) {
     const key = entities?.visitorKey ?? "anonymous";
-    const bucket = hashString(key) % VERIFIED_BADGE_INVOICE_CTA_VARIANTS.length;
-    return VERIFIED_BADGE_INVOICE_CTA_VARIANTS[bucket];
+    const bucket = hashString(key) % ACTIVE_VARIANTS.length;
+    return ACTIVE_VARIANTS[bucket];
   },
   defaultValue: "A",
   description:
-    "Verified Badge invoice page pill + CTA copy test: A (current, security-claim) vs B (shorter, no claims) vs C (action framing) vs D (outcome/get-paid framing) vs E (speed framing) vs F (client-experience framing). Started 2026-08-09 as a 3-way, widened to 6-way same day.",
+    "Verified Badge invoice page pill + CTA copy test. Narrowed 2026-08-13 from 6 arms to 2: A (control, security-claim framing) vs C (action framing). B/D/E/F remain renderable via ?variant= but get no live traffic — see the comment above for why each was dropped.",
   options: VERIFIED_BADGE_INVOICE_CTA_VARIANTS.map((value) => ({ value })),
 });
 

@@ -260,7 +260,7 @@ export async function generateVerifiedBadgeImage(verifyUrl: string, hasTrustedTi
             the time of sealing" — see generate-signed-pdf.ts). */}
         {/* hasTrustedTimestamp (TIMESTAMP_AUTHORITY_SCOPE.md, 2026-08-03):
             adds the RFC 3161 timestamp claim only for documents that
-            actually got one — a real Sectigo/FreeTSA-signed token, not just
+            actually got one — a real Sectigo/EuroTSA/FreeTSA-signed token, not just
             this database row's created_at. Falls back to the same wording
             fixed 2026-08-01 above for documents sealed before this
             feature shipped, or where both TSAs failed at seal time. */}

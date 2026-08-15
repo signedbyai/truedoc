@@ -13,14 +13,21 @@
   pre { padding: 12px; overflow-x: auto; }
   footer { margin-top: 4em; padding-top: 1em; border-top: 1px solid #ddd; font-size: 0.85rem; color: #666; }
   a { color: #1a1a1a; }
+  .intro { display: flex; align-items: flex-start; gap: 24px; flex-wrap: wrap; }
+  .intro .badge { width: 120px; height: 120px; flex-shrink: 0; }
+  @media (max-width: 480px) { .intro { flex-direction: column-reverse; align-items: center; text-align: center; } }
 </style>
 </head>
 <body>
 
 <h1>EuroTSA</h1>
-<p>A free, EU-hosted RFC 3161 timestamp authority. Same protocol, same
-"free forever" posture as FreeTSA.org — disclosed operator instead of an
-anonymous personal server.</p>
+<div class="intro">
+  <p>A free, EU-hosted RFC 3161 timestamp authority. Same protocol, same
+  "free forever" posture as FreeTSA.org — disclosed operator instead of an
+  anonymous personal server.</p>
+  <img class="badge" src="/badges/eurotsa-badge-eu-hosted.svg" width="120" height="120"
+       alt="EU-Hosted Infrastructure — Frankfurt and Falkenstein, EU">
+</div>
 
 <h2>Usage</h2>
 <p>Standard RFC 3161 over HTTP. Any client that speaks to FreeTSA already

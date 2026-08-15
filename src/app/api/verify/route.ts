@@ -100,15 +100,16 @@ export async function GET(request: Request) {
     isVerifiedBadge: doc?.is_verified_badge ?? false,
     sealedBy,
     identityVerifiedAt,
-    // RFC 3161 trusted timestamp (TIMESTAMP_AUTHORITY_SCOPE.md, 2026-08-03).
-    // timestampTsa null means this document sealed before the feature
-    // shipped, or both TSAs were unreachable at seal time — the page falls
-    // back to its pre-existing, still-honest wording in that case. Sectigo
-    // vs. freetsa matters to the page: a Sectigo-backed timestamp chains to
-    // an already-trusted root and needs no caveat; a freetsa one used a
-    // self-signed CA and independent re-verification needs a manual
-    // trust-store step, so the client branches its copy on this field
-    // rather than treating both as equivalent.
+    // RFC 3161 trusted timestamp (TIMESTAMP_AUTHORITY_SCOPE.md, 2026-08-03;
+    // eurotsa tier added 2026-08-12, EUROTSA_SCOPE.md). timestampTsa null
+    // means this document sealed before the feature shipped, or all TSAs
+    // were unreachable at seal time — the page falls back to its
+    // pre-existing, still-honest wording in that case. Which TSA matters to
+    // the page: a Sectigo-backed timestamp chains to an already-trusted
+    // root and needs no caveat; eurotsa/freetsa both used a self-signed CA
+    // and independent re-verification needs a manual trust-store step, so
+    // the client branches its copy on this field rather than treating all
+    // three as equivalent.
     timestampTsa: event.timestamp_tsa,
     timestampGenTime: event.timestamp_gen_time,
     // IN_DOCUMENT_BADGE_AND_API_SEAL_SCOPE.md V1.5 — a Business org's own

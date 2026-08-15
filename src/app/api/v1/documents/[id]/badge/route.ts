@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { authenticateApiRequest } from "@/lib/api-auth";
 import { appUrl } from "@/lib/email";
 import { generateVerifiedBadgeImage } from "@/lib/badge-asset";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // GET /api/v1/documents/[id]/badge — API-key-gated download of the
 // standalone Badge image (VERIFIED_BADGE_SCOPE.md deliverable #2). The
@@ -13,6 +14,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const auth = await authenticateApiRequest(request);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  // Added 2026-08-12 — no rate limit at all previously. Generates an
+  // image on every call, not just a DB read, so a lower ceiling than the
+  // pure-read routes.
+  const rateOk = await checkRateLimit(`api-v1-badge:${auth.orgId}`, 120, 3600);
+  if (!rateOk) return NextResponse.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });
 
   const admin = createAdminClient();
   const { data: doc, error } = await admin

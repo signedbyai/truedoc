@@ -15,6 +15,11 @@ const pdfOut = new Uint8Array([4, 5, 6]);
 const genTime = new Date("2026-08-03T12:00:00Z");
 const token = new Uint8Array([9, 9, 9]);
 
+// EuroTSA is a hardcoded literal in timestamp-authority.ts (self-hosted,
+// not part of pdf-rfc3161's own KNOWN_TSA_URLS), so it's asserted against
+// directly here rather than via the mocked KNOWN_TSA_URLS object above.
+const EUROTSA_URL = "https://eurotsa.eu/tsr";
+
 describe("timestampWithFallback", () => {
   beforeEach(() => {
     timestampPdf.mockReset();
@@ -34,39 +39,55 @@ describe("timestampWithFallback", () => {
     );
   });
 
-  it("falls back to freetsa when sectigo fails", async () => {
+  it("falls back to eurotsa (the new middle tier) when sectigo fails", async () => {
     timestampPdf.mockRejectedValueOnce(new Error("sectigo unreachable"));
     timestampPdf.mockResolvedValueOnce({ pdf: pdfOut, timestamp: { genTime } });
     extractTimestamps.mockResolvedValueOnce([{ info: { genTime }, token }]);
 
     const result = await timestampWithFallback(pdfIn);
 
-    expect(result).toEqual({ pdf: pdfOut, tsa: "freetsa", genTime, token });
+    expect(result).toEqual({ pdf: pdfOut, tsa: "eurotsa", genTime, token });
     expect(timestampPdf).toHaveBeenCalledTimes(2);
+    expect(timestampPdf).toHaveBeenNthCalledWith(2, expect.objectContaining({ tsa: { url: EUROTSA_URL } }));
+  });
+
+  it("falls all the way through to freetsa when both sectigo and eurotsa fail", async () => {
+    timestampPdf.mockRejectedValueOnce(new Error("sectigo unreachable"));
+    timestampPdf.mockRejectedValueOnce(new Error("eurotsa unreachable"));
+    timestampPdf.mockResolvedValueOnce({ pdf: pdfOut, timestamp: { genTime } });
+    extractTimestamps.mockResolvedValueOnce([{ info: { genTime }, token }]);
+
+    const result = await timestampWithFallback(pdfIn);
+
+    expect(result).toEqual({ pdf: pdfOut, tsa: "freetsa", genTime, token });
+    expect(timestampPdf).toHaveBeenCalledTimes(3);
     expect(timestampPdf).toHaveBeenNthCalledWith(
-      2,
+      3,
       expect.objectContaining({ tsa: { url: "https://freetsa.org/tsr" } })
     );
   });
 
-  it("returns null (never throws) when both TSAs fail", async () => {
+  it("returns null (never throws) when all three TSAs fail", async () => {
     timestampPdf.mockRejectedValueOnce(new Error("sectigo unreachable"));
+    timestampPdf.mockRejectedValueOnce(new Error("eurotsa unreachable"));
     timestampPdf.mockRejectedValueOnce(new Error("freetsa unreachable"));
 
     const result = await timestampWithFallback(pdfIn);
 
     expect(result).toBeNull();
-    expect(timestampPdf).toHaveBeenCalledTimes(2);
+    expect(timestampPdf).toHaveBeenCalledTimes(3);
   });
 
-  it("returns null if a TSA reports success but no token can be extracted back out", async () => {
+  it("returns null if every TSA reports success but no token can be extracted back out", async () => {
     timestampPdf.mockResolvedValueOnce({ pdf: pdfOut, timestamp: { genTime } });
-    extractTimestamps.mockResolvedValueOnce([]); // nothing extractable
+    extractTimestamps.mockResolvedValueOnce([]); // sectigo: nothing extractable
+    timestampPdf.mockRejectedValueOnce(new Error("eurotsa unreachable"));
     timestampPdf.mockRejectedValueOnce(new Error("freetsa unreachable"));
 
     const result = await timestampWithFallback(pdfIn);
 
     expect(result).toBeNull();
+    expect(timestampPdf).toHaveBeenCalledTimes(3);
   });
 
   it("picks the LAST extracted timestamp, in case more than one is present", async () => {

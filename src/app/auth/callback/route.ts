@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { consoleUrl } from "@/lib/console-host";
 import { isFirstLogin } from "@/lib/first-login";
 import { recordSignupOriginHost } from "@/lib/signup-origin";
+import { claimPendingAttribution } from "@/lib/pending-attribution";
 
 // Handles the redirect from the Supabase magic-link email (and, via
 // login/page.tsx's handleOAuth, Google/Microsoft), exchanges the code for
@@ -52,6 +53,14 @@ export async function GET(request: Request) {
         // the magic-link's emailRedirectTo when the login page was reached
         // via console/app/page.tsx's own auth gate (consoleAppNextPath).
         await recordSignupOriginHost(data.user.id, next === "/app" ? "console.signedby.ai" : "signedby.ai");
+        // THE path this fix exists for (2026-08-13, see
+        // 0055_pending_attribution.sql). Getting here means they completed
+        // signup by clicking the magic link, which on mobile almost always
+        // opens in a different browser than the ad landed in — so the
+        // localStorage attribution-claim.tsx looks for is gone, and this
+        // server-side row keyed off their email address is the only surviving
+        // record of which campaign brought them.
+        await claimPendingAttribution(data.user.id, data.user.email);
       }
       // Every sign-in with no explicit ?next destination (not just the
       // first) lands on the new-document flow instead of the dashboard

@@ -65,6 +65,32 @@ body {
   animation-play-state: paused;
 }
 
+/* /home-preview-b's developer/API section — a real API response scrolling
+   in a slow vertical loop, styled after documenso.com's JSON-panel section
+   (checked live 2026-08-12: theirs turns out to be a static panel, not
+   actually animated — see HOMEPAGE_HERO_VIDEO_AND_SECOND_HALF_SCOPE.md's
+   addendum). Direct ask was for real motion here, so this makes it
+   genuinely animated where Documenso's own version isn't. Same
+   duplicate-content-then-translate-50%-loop technique as
+   .animate-logo-marquee above, just on the Y axis. Starts on load like
+   every other animation on this page — no scroll-trigger, no JS. */
+@keyframes json-scroll {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+.animate-json-scroll {
+  animation: json-scroll 16s linear infinite;
+}
+
+.animate-json-scroll:hover {
+  animation-play-state: paused;
+}
+
 /* /home-preview's "hero video" — a looping crossfade of real product
    screenshots stacked in one container (see homepage-tier1-preview.tsx),
    not an actual video file. Same idea as Aracor's looping hero animation
@@ -80,20 +106,154 @@ body {
    as a class (not Tailwind arbitrary values) since it's shared across
    every image in the loop and easier to tune the shape of the fade in one
    place. */
+/* 2026-08-12, direct report: "the invoice, quote and draft transitions
+   arrive too fast and land on top of the old image." The hold/fade-out
+   marks below were trimmed 26%->25% / 30%->29% -- a small companion to
+   homepage-tier1-preview.tsx's own HERO_LATE_TRANSITION_EXTRA_SECONDS fix
+   (which widens the Sign->Seal/Seal->Quote/Quote->Draft gaps by 1s each).
+   The 1s gap widening alone closes most of the overlap but not quite all
+   of it once HERO_TOTAL_LOOP_SECONDS also grew (29->32) to give Draft's
+   later delay room to finish before the loop wraps -- a bigger duration
+   stretches this keyframe's own fade timings too (they're percentages),
+   which eats back into the margin the wider gap just created. Trimming
+   the hold down by 1 percentage point (and fade-out's end point along
+   with it, keeping the fade-out itself the same 4%-wide duration) closes
+   the rest of the gap: at the new numbers, an incoming slide's fade-in no
+   longer completes before the outgoing slide starts fading out. */
 @keyframes hero-crossfade {
   0%, 4% {
     opacity: 0;
   }
-  8%, 26% {
+  8%, 25% {
     opacity: 1;
   }
-  30%, 100% {
+  29%, 100% {
     opacity: 0;
   }
 }
 
+/* animation-fill-mode: backwards -- 2026-08-12 direct report, "the
+   loading at the start is not great, some of the last ones land on top
+   as it loads." Root cause: each slide's animation-delay (staggered up
+   to ~10.6s for the last slide) is a gap BEFORE that element's animation
+   starts. With no fill-mode, an element outside its animation's active
+   period (including during its own delay) renders at its plain,
+   non-keyframe styles -- and since none of these slide divs have an
+   explicit base opacity, that default is opacity:1 (fully visible). So
+   from page load until each slide's own delay elapsed, every slide sat
+   fully opaque, stacked on top of each other (all `absolute inset-0`,
+   same stacking context, no z-index -- later DOM order paints on top),
+   which is exactly "the last ones land on top" during that gap: the
+   slide with the longest delay was the most recent to be added to the
+   DOM and so painted over everything else for the longest stretch.
+   `backwards` makes the browser apply the FIRST keyframe's styles (0%,
+   4%: opacity 0) during that pre-start delay instead of the element's
+   own default, so every slide starts invisible and only becomes visible
+   when its own animation actually begins. */
 .animate-hero-crossfade {
-  animation: hero-crossfade 9s ease-in-out infinite;
+  animation: hero-crossfade 9s ease-in-out infinite backwards;
+}
+
+/* First slide in the loop only — originally Sign (direct ask 2026-08-12:
+   "make the animation start on the signing hero and pause on that one
+   for just one second longer before the animation starts"), now the
+   intro badge row that took Sign's old index-0 slot the same day. Two
+   differences from the shared hero-crossfade keyframe above: (1)
+   opacity is 1 already at 0% instead of fading in from 0% to 8% — the
+   first slide should just be there the instant the page loads, not
+   fade into view; (2) the visible plateau runs to 35% instead of 26%
+   before fading out, giving it a longer hold than the four images get.
+   The four images keep using .animate-hero-crossfade unchanged; the
+   component staggers their animation-delay by HERO_IMAGE_STEP_SECONDS
+   (3s apart) plus a flat HERO_FIRST_HOLD_EXTRA_SECONDS to make room for
+   this slide's longer hold up front. See homepage-tier1-preview.tsx's
+   own HERO_TOTAL_LOOP_SECONDS comment for how the loop's total length
+   is sized so the last image's fade-out fully completes, with a full
+   second to spare, before this slide reappears — direct report
+   2026-08-12: "the 4 badges come in too soon at the end of the loop so
+   they pop in behind the last image."
+
+   2026-08-12, direct follow-up: "the last transition is a bit fast in"
+   — this slide's own re-entry (the wrap from Draft back to the intro
+   row) was the one transition with NO fade at all, snapping straight to
+   opaque, which reads as abrupt next to the four images' own 4%-8% fades.
+   Given a real 4%-8% fade-in here too, same window as the shared
+   .animate-hero-crossfade keyframe, at the small cost of the original
+   "instantly there on page load" behavior also now fading in briefly. */
+@keyframes hero-crossfade-first {
+  0%, 4% {
+    opacity: 0;
+  }
+  8%, 35% {
+    opacity: 1;
+  }
+  39%, 100% {
+    opacity: 0;
+  }
+}
+
+.animate-hero-crossfade-first {
+  animation: hero-crossfade-first 9s ease-in-out infinite;
+}
+
+/* All four Sign/Seal/Quote/Draft hero slides (2026-08-12, direct ask:
+   "animate to a zoom of the signer experience" for Sign originally, then
+   "do some zoom in on the QR code" / "the generate your quote button" /
+   "the generate draft button" for the other three the same day, at
+   which point this became one shared class instead of a Sign-only one).
+   Slowly scales the slide's real screenshot in, landing on whatever
+   real UI element that reason's zoomOrigin points at (see REASONS' own
+   comment in the component for how each origin was measured — never
+   eyeballed). transform-origin is set inline per-slide, not this
+   class's default center origin.
+
+   Every slide uses the regular .animate-hero-crossfade class (opaque
+   8%-25% of its own local cycle, trimmed from 26% -- see that keyframe's
+   own comment) except the intro badge row, which doesn't zoom at all.
+   Retimed to match that window: scale(1) holds through 4% (matching
+   hero-crossfade's own fade-in start) and reaches scale(1.28) by 25%
+   (matching hero-crossfade's opaque-to-fade-out boundary), so the zoom
+   finishes right as the image is fully visible instead of mid-fade. The
+   component passes this element the SAME animationDelay as its outer
+   crossfade wrapper (delaySeconds prop) so the two stay in lockstep —
+   without that, the zoom would run on its own unsynced clock starting at
+   page load. */
+@keyframes hero-zoom {
+  0%, 4% {
+    transform: scale(1);
+  }
+  25%, 100% {
+    transform: scale(1.28);
+  }
+}
+
+.animate-hero-zoom {
+  animation: hero-zoom 9s ease-in-out infinite;
+}
+
+/* The swipe-to-sign thumb overlay, same section — a small badge-sized
+   element positioned over the composite's real swipe button (see the
+   component's own measured percentages) that slides left-to-right and
+   back, on its own short independent loop rather than synced to the
+   parent's 13s cycle (same "just keep it running, it's cheap" choice as
+   .animate-json-scroll/.animate-logo-marquee elsewhere on this page) --
+   whenever the Sign image happens to be visible, the thumb is mid-slide,
+   which reads as a natural persistent "swipe this" hint rather than a
+   one-shot animation that might be missed. */
+@keyframes swipe-thumb-slide {
+  0%, 15% {
+    left: 0%;
+  }
+  50%, 65% {
+    left: 80.9%;
+  }
+  85%, 100% {
+    left: 0%;
+  }
+}
+
+.animate-swipe-thumb-slide {
+  animation: swipe-thumb-slide 3s ease-in-out infinite;
 }
 
 /* Sender-side "start here" cue on the Signature tool button (see

@@ -320,6 +320,11 @@ export async function sendAdminDigestEmail(opts: {
   disposableBlocksToday: number;
   disposableBlocksWeek: number;
   disposableBlocksMonth: number;
+  tsaTallyWeek: { sectigo: number; eurotsa: number; freetsa: number; none: number };
+  tsaTallyMonth: { sectigo: number; eurotsa: number; freetsa: number; none: number };
+  capiReddit: { ok: number; failed: number; error: number; skipped: number };
+  capiLinkedin: { ok: number; failed: number; error: number; skipped: number };
+  capiLastError: string | null;
 }) {
   const totalOrgs = opts.freeOrgs + opts.paidOrgs;
   const row = (label: string, value: string | number) => `
@@ -387,11 +392,68 @@ export async function sendAdminDigestEmail(opts: {
         </table>
 
         <h3 style="margin:0 0 4px;color:#0f172a;font-size:15px;">Signups blocked (disposable email)</h3>
-        <table style="width:100%;border-collapse:collapse;">
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
           ${row("Today", opts.disposableBlocksToday)}
           ${row("This week", opts.disposableBlocksWeek)}
           ${row("This month", opts.disposableBlocksMonth)}
         </table>
+
+        <h3 style="margin:0 0 4px;color:#0f172a;font-size:15px;">Trusted timestamp tiers</h3>
+        <p style="color:#94a3b8;font-size:11px;margin:0 0 6px;">Which TSA actually stamped completed documents -- "None" means all three failed (sealing still succeeded, just without a timestamp).</p>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="padding:6px 0;color:#64748b;font-size:14px;"></td>
+            <td style="padding:6px 0;color:#94a3b8;font-size:11px;text-align:right;">Week</td>
+            <td style="padding:6px 0 6px 12px;color:#94a3b8;font-size:11px;text-align:right;">Month</td>
+          </tr>
+          ${["sectigo", "eurotsa", "freetsa", "none"]
+            .map(
+              (tier) => `
+            <tr>
+              <td style="padding:4px 0;color:#64748b;font-size:14px;">${tier === "none" ? "None" : tier === "eurotsa" ? "EuroTSA" : tier === "freetsa" ? "FreeTSA" : "Sectigo"}</td>
+              <td style="padding:4px 0;color:#0f172a;font-size:14px;font-weight:700;text-align:right;">${opts.tsaTallyWeek[tier as "sectigo" | "eurotsa" | "freetsa" | "none"]}</td>
+              <td style="padding:4px 0 4px 12px;color:#0f172a;font-size:14px;font-weight:700;text-align:right;">${opts.tsaTallyMonth[tier as "sectigo" | "eurotsa" | "freetsa" | "none"]}</td>
+            </tr>
+          `
+            )
+            .join("")}
+        </table>
+
+        <h3 style="margin:20px 0 4px;color:#0f172a;font-size:15px;">Conversions API sends (7 days)</h3>
+        <p style="color:#94a3b8;font-size:11px;margin:0 0 6px;">All zeros = no signup carried a click ID. "Skipped" = env vars unset. "Failed" = expired token or schema change.</p>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="padding:6px 0;color:#64748b;font-size:14px;"></td>
+            <td style="padding:6px 0;color:#94a3b8;font-size:11px;text-align:right;">OK</td>
+            <td style="padding:6px 0 6px 10px;color:#94a3b8;font-size:11px;text-align:right;">Failed</td>
+            <td style="padding:6px 0 6px 10px;color:#94a3b8;font-size:11px;text-align:right;">Error</td>
+            <td style="padding:6px 0 6px 10px;color:#94a3b8;font-size:11px;text-align:right;">Skipped</td>
+          </tr>
+          ${(
+            [
+              ["Reddit", opts.capiReddit],
+              ["LinkedIn", opts.capiLinkedin],
+            ] as const
+          )
+            .map(([label, t]) => {
+              const bad = t.failed + t.error;
+              return `
+            <tr>
+              <td style="padding:4px 0;color:#64748b;font-size:14px;">${label}</td>
+              <td style="padding:4px 0;color:#0f172a;font-size:14px;font-weight:700;text-align:right;">${t.ok}</td>
+              <td style="padding:4px 0 4px 10px;font-size:14px;font-weight:700;text-align:right;color:${bad > 0 ? "#dc2626" : "#0f172a"};">${t.failed}</td>
+              <td style="padding:4px 0 4px 10px;font-size:14px;font-weight:700;text-align:right;color:${bad > 0 ? "#dc2626" : "#0f172a"};">${t.error}</td>
+              <td style="padding:4px 0 4px 10px;color:#0f172a;font-size:14px;font-weight:700;text-align:right;">${t.skipped}</td>
+            </tr>
+          `;
+            })
+            .join("")}
+        </table>
+        ${
+          opts.capiLastError
+            ? `<p style="margin:8px 0 0;padding:8px 10px;background:#fef2f2;border-radius:6px;color:#991b1b;font-size:11px;font-family:monospace;word-break:break-all;">Last error: ${opts.capiLastError.replace(/</g, "&lt;").slice(0, 300)}</p>`
+            : ""
+        }
       </div>
     `,
   });

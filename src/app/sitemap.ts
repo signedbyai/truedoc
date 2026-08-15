@@ -36,6 +36,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // one major-competitor comparison page still missing.
     { url: `${BASE_URL}/vs/adobe`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${BASE_URL}/vs/dropbox`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    // Eurosign and SwissSign pages were live and footer-linked from every
+    // other /vs/* page but never added here — caught 2026-08-12 while
+    // adding /vs/documenso below.
+    { url: `${BASE_URL}/vs/eurosign`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${BASE_URL}/vs/swisssign`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    // Added 2026-08-12 — Documenso is the open-source/self-hosted angle,
+    // a genuinely different buyer question (self-host vs. hosted-AI-first)
+    // than the other /vs pages, which are all hosted-vs-hosted.
+    { url: `${BASE_URL}/vs/documenso`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     // Programmatic-SEO template pages, added 2026-07-21 (see the DocuSign/
     // SignNow GTM research this was modeled on) — one per AI Drafter
     // document type, index page plus each individual /templates/[slug].

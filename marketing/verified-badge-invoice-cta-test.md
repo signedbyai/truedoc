@@ -112,3 +112,73 @@ Once a winner is picked: hardcode that variant into `CTA_COPY` (or set it as
 `verifiedBadgeInvoiceCtaFlag`'s `defaultValue` and drop the others from
 `VERIFIED_BADGE_INVOICE_CTA_VARIANTS`), same pattern the cta-color test used
 to lock in `purple`.
+
+---
+
+## Narrowed to 2 arms — 2026-08-13
+
+Direct ask, after working through whether this test could actually resolve.
+It couldn't: ~1,200 visitors/week to this page (Vercel Web Analytics, 7-day)
+split six ways is ~200 per arm per week, and picking the best of six noisy
+estimates carries a multiple-comparisons penalty on top of that. Two arms puts
+~600/week behind each, which is answerable in weeks rather than never.
+
+**Live arms now: A (control) vs C (challenger).** Set in `ACTIVE_VARIANTS` in
+`src/flags.ts` — deliberately separate from
+`VERIFIED_BADGE_INVOICE_CTA_VARIANTS`, which still lists all six so every
+variant stays renderable.
+
+### Why A stays as control
+
+It's the only framing that continues the message of the ad actually driving
+this page's traffic — "Verified Badge - Portrait - Invoice Fraud Angle",
+3.585% CTR, the best-performing ad in the Reddit account. The A/B/C headline
+("AI can fake an invoice in seconds. Prove yours is genuinely you.") names a
+specific, current fear; D/E/F replace it with trust language any competitor
+could run.
+
+A's pill was also shortened the same day, from "Secure Your Invoice for Free –
+Verified & Tamper-Evident" (55 chars) to "Secure Your Invoice for Free". The
+long version needed ~383px on one line against the ~327px a 375px iPhone
+actually gives, so it wrapped to two lines while B–F all fit on one. With 92%
+of traffic on mobile, the control was rendering worse than its own challengers
+— the test was partly measuring layout rather than copy. Any result from
+before 2026-08-13 is confounded by this and should not be used.
+
+### Archived variants
+
+Not deleted. All copy still lives in `CTA_COPY` (and `REDESIGN_HEADLINES` for
+D/E/F) in `src/app/verified-badge-invoices/page.tsx`, and every variant
+remains viewable at `/verified-badge-invoices?variant=A` … `?variant=F`. Only
+live bucketing changed.
+
+| Variant | Pill | Button | Why dropped |
+|---|---|---|---|
+| B | "Secure Your Invoice Now" | "Get Your Verified Badge →" | Drops "for Free" from every slot — the strongest single word available to a free-tier product with no card required. |
+| D | "Protect Your Invoices and Get Paid" | "Secure Your First Invoice Now →" | Generic outcome framing; also carries the heaviest visual treatment (large floating hero + 3-step section) on a page that is 92% mobile with a 78% bounce rate. |
+| E | "Seal in Seconds. Protect Always." | "Start Sealing →" | Generic speed framing. Its before/after hero card pair also overflowed the viewport on every common iPhone until fixed in `d0ba7dd`. |
+| F | "Client Trust, Instantly Verified" | "Seal Your Invoices Now →" | Generic trust framing, and removes the invoice mockup entirely in favour of a decorative wax seal — which explains nothing to someone arriving from an invoice-fraud ad. |
+
+### Bringing one back
+
+Add it to `ACTIVE_VARIANTS` in `src/flags.ts`. Nothing else needs rebuilding —
+the copy, the D/E/F redesign branches, `HeroInvoiceCard`, `MiniInvoiceCard`
+and the 3-step section are all still in place and reachable.
+
+### How to read it
+
+Web Analytics is now enabled (it wasn't on 2026-08-09, which is why nothing
+from the first four days of the original 6-way run is queryable).
+
+**Read it through the Vercel web dashboard** — Analytics → Flags panel broken
+down by `flags/verified-badge-invoice-cta`, cross-referenced with the Events
+panel filtered to `cta_click`. The `get_web_analytics` MCP tool is NOT a
+reliable path: the connector was unresponsive throughout 2026-08-13, so the
+dashboard is the working route.
+
+One thing still worth confirming on the first read: the UTM Parameters panel
+is gated behind Web Analytics Plus on this project. If the Flags breakdown or
+custom-event properties turn out to be gated the same way, this test has no
+read path regardless of how many arms it has — narrowing to two fixes the
+statistics, not the instrumentation. Check that before letting it run two
+weeks.

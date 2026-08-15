@@ -1,6 +1,16 @@
 eurotsa.eu {
 	encode gzip
 
+	# Security audit 2026-08-12: Caddy doesn't set these by default, and a
+	# bare curl -sI only came back with "server: Caddy" — no HSTS, no
+	# clickjacking/MIME-sniffing protection. Applies to every response from
+	# this site block (static site + the /tsr proxy responses alike).
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+	}
+
 	# Mirrors FreeTSA's own /tsr URL so a curl/openssl command written
 	# against freetsa.org/tsr works unchanged against eurotsa.eu/tsr —
 	# timestamp-authority's real native path is /api/v1/timestamp
@@ -27,9 +37,10 @@ eurotsa.eu {
 	# 100 req/hr/IP on the timestamp endpoint only, per EUROTSA_SCOPE.md.
 	# Needs the mholt/caddy-ratelimit plugin built in via xcaddy (see
 	# RUNBOOK.md step 5) — Caddy's core has no rate limiting of its own.
-	# Verify this block's exact syntax against that plugin's current docs
-	# with `caddy validate` before relying on it — not live-tested from
-	# here.
+	# 2026-08-12: syntax below (zone/match/key/events/window) checked
+	# directly against the plugin's real README — matches its documented
+	# Caddyfile config exactly. Still worth a `caddy validate` on the VM
+	# after the real binary is built, but this isn't a guess anymore.
 	rate_limit {
 		zone tsr_zone {
 			match {

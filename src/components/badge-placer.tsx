@@ -66,6 +66,31 @@ const CORNER_LABELS: Record<BadgeCorner, string> = {
   "top-left": "Top left",
 };
 
+// Render order for the mobile 2x2 grid — SPATIAL, deliberately not
+// Object.keys(CORNER_LABELS) (2026-08-13, direct report: "the buttons, left
+// and right, are not actually on the matching left and right, and the top
+// and bottom are also switched around").
+//
+// That's exactly what it was doing. CORNER_LABELS is declared
+// bottom-right/bottom-left/top-right/top-left — bottom-right first because
+// it's the default — and mapping those keys straight into `grid-cols-2`
+// produced:
+//
+//     [Bottom right] [Bottom left]
+//     [Top right]    [Top left]
+//
+// i.e. mirrored on BOTH axes: "Bottom" in the top row, "right" in the left
+// column. The control panel was a mirror image of the page it controls, so
+// reaching for the top-left button gave you a bottom-right badge. Not
+// intentional — nobody picked that arrangement, it fell out of the order the
+// labels happened to be typed in.
+//
+// The labels themselves were always truthful and cornerBadgeRect() places
+// correctly (see badge-resize.ts) — this was purely where the buttons sat,
+// which is why it reads as "switched around" rather than as broken output.
+// Explicit array so the grid can only ever match the page.
+const CORNER_GRID: BadgeCorner[] = ["top-left", "top-right", "bottom-left", "bottom-right"];
+
 export function BadgePlacer({
   file,
   initialRect,
@@ -257,7 +282,7 @@ export function BadgePlacer({
       {isMobile && (
         <div className="mt-3 space-y-3">
           <div className="grid grid-cols-2 gap-2">
-            {(Object.keys(CORNER_LABELS) as BadgeCorner[]).map((corner) => (
+            {CORNER_GRID.map((corner) => (
               <button
                 key={corner}
                 type="button"

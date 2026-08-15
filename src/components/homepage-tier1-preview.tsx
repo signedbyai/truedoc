@@ -155,6 +155,43 @@ const REASONS: {
   width: number;
   height: number;
   Icon: typeof Signature;
+  // Hero-slide zoom target, 2026-08-12 direct ask: "on the Invoice do
+  // some zoom in on the QR code, on the Quote zoom in on the yellow
+  // generate you quote button, and on the draft zoom in on the yellow
+  // generate draft button." A CSS transform-origin percentage pair, NOT
+  // eyeballed -- each one was measured directly against the actual
+  // public/ image file: Seal's QR via opencv's QRCodeDetector (the wax
+  // seal medallion elsewhere in that same image is itself circular/
+  // patterned enough to false-positive as a QR, so detection was run on
+  // just the bottom half of the image to isolate the real one); Quote's
+  // button from scripts/fix-hero-magic-quote-button.py's own
+  // BTN_MARGIN_X/BTN_HEIGHT/BTN_BOTTOM_PAD constants (that script drew
+  // the button, so its coordinates are exact, not estimated); Draft's
+  // button by scanning hero-new-document-draft.png for its dense
+  // yellow-pixel region (that image is a real screenshot, not a
+  // generated one, so there's no source script with coordinates to read
+  // -- the scanned button height, 39px in a 513px-tall image, matches
+  // the exact figure already cited elsewhere in this file for that same
+  // real button, cross-confirming the scan found the right region).
+  // Sign's was already established in an earlier pass (its swipe
+  // button, scanned from hero-sign-mobile-composite.png).
+  zoomOrigin: string;
+  // 2026-08-12, seventh pass, direct report: "the seal on the top right
+  // of the invoice heads out of the screen the top right" -- Seal's
+  // zoomOrigin used to sit down near the QR code (bottom half of the
+  // image), so scaling toward it dragged the OPPOSITE corner -- the
+  // top-right, where the actual medallion is stamped -- outward past the
+  // frame edge as the zoom progressed. Temporarily fixed by opting Seal
+  // out of the zoom entirely (noZoom). Re-enabled eighth pass, direct
+  // ask: "turn on the seal zoom again, but it has to be pushed out toward
+  // the bottom left if it is to work" -- re-anchored zoomOrigin ON the
+  // medallion itself (see Seal's own zoomOrigin comment below) instead of
+  // the QR code, so the seal is what stays fixed/framed as the zoom
+  // progresses, and everything far from that origin -- the QR code, the
+  // line items, the rest of the invoice -- is what gets pushed out toward
+  // the bottom-left edge instead. noZoom kept as an optional escape hatch
+  // for any future reason that can't find a working origin.
+  noZoom?: boolean;
 }[] = [
   {
     title: "Sign",
@@ -164,6 +201,7 @@ const REASONS: {
     width: 1642,
     height: 1070,
     Icon: Signature,
+    zoomOrigin: "83% 90%",
   },
   {
     title: "Seal",
@@ -174,6 +212,19 @@ const REASONS: {
     width: 740,
     height: 650,
     Icon: ShieldCheck,
+    // Re-measured against generate-hero-verified-badge-invoice-d.tsx's own
+    // layout constants, not eyeballed -- that script places the seal
+    // medallion centered exactly on the invoice card's own top-right
+    // corner point, which its own comment gives as canvas coordinates
+    // (600, cardTop=140) on this image's 740x650 canvas (40px left/
+    // OUTER_PAD_TOP=140px top padding + a 560px-wide card + the seal's own
+    // top:-120/right:-120 placement centering it on that corner --
+    // (40+560, 140) = (600, 140)). As a percentage of the 740x650 canvas:
+    // 600/740 = 81.1%, 140/650 = 21.5%. Anchoring the zoom here keeps the
+    // medallion itself fixed/framed as the image scales up; everything
+    // else (QR code, line items) is far from this top-right-ish point and
+    // gets pushed out toward the bottom-left instead, per the ask.
+    zoomOrigin: "81.1% 21.5%",
   },
   {
     title: "Quote",
@@ -183,6 +234,22 @@ const REASONS: {
     width: 568,
     height: 483,
     Icon: Receipt,
+    // 2026-08-12, direct ask: "rather than fix at the bottom and zoom out
+    // the top, fix at the top and zoom out of the bottom, so the title
+    // expands next to the badge." Was 50% 89.3% (anchored on the
+    // "Generate quote" button near the bottom) -- anchoring there kept
+    // the button fixed/framed while the zoom pushed the TOP of the image
+    // (the "Generate your Magic Quote" heading, which sits right next to
+    // this card's own corner badge) up and out of frame as the animation
+    // progressed. Flipped to the heading's own real position instead:
+    // measured directly (a per-row dark-pixel scan of the current
+    // hero-magic-quote.png, same method
+    // fix-hero-new-document-draft-header.py used) at ink rows 31-49,
+    // x[158,395] -- center (276.5, 40) on this 568x483 image = 48.7%,
+    // 8.3%. Anchoring here keeps the heading fixed/framed next to the
+    // badge as the zoom progresses; the button and line items below it
+    // are what get pushed out toward the bottom instead.
+    zoomOrigin: "48.7% 8.3%",
   },
   {
     title: "Draft",
@@ -192,16 +259,442 @@ const REASONS: {
     width: 567,
     height: 513,
     Icon: Sparkles,
+    // 2026-08-12, same ask/reasoning as Quote's own comment above -- was
+    // 49.3% 91.3% (anchored on the "Generate draft" button near the
+    // bottom), flipped to the "Generate your Draft" heading's own real
+    // position instead. Measured directly (same per-row scan, rows
+    // 31-49, x[187,373] -- center (280, 40) on this 567x513 image =
+    // 49.4%, 7.8%; matches the exact center
+    // fix-hero-new-document-draft-header.py already used to place this
+    // same heading's text, so this anchor sits precisely on the real
+    // rendered heading, not an approximation).
+    zoomOrigin: "49.4% 7.8%",
   },
 ];
 
-// The hero crossfade cycles through the same 4 shots, same order, as the
-// reasons grid below — one visual vocabulary for the whole page instead of
-// a separate curated set for the hero.
-const HERO_LOOP = REASONS;
-const HERO_LOOP_SECONDS = 12;
+// The hero crossfade, 2026-08-12 reorder (direct ask): a new first slide
+// -- a row of all four Sign/Seal/Quote/Draft badges with their labels,
+// establishing the four pillars up front -- followed by the four real
+// screenshots in that same order, then loops. HeroLoopItem is a
+// discriminated union (no "reason" key = the intro slide) so the render
+// below can branch on `"reason" in item` instead of juggling magic
+// indices.
+type HeroLoopItem = { key: string } & ({ reason?: undefined } | { reason: (typeof REASONS)[number] });
 
-export function HomepageTier1Preview({ currency }: { currency: Currency }) {
+const HERO_LOOP: HeroLoopItem[] = [{ key: "intro" }, ...REASONS.map((r) => ({ key: r.image, reason: r }))];
+
+// Timing, 2026-08-12 direct report: "the 4 badges come in too soon at
+// the end of the loop so they pop in behind the last image, needs
+// another second." Root cause: when the intro badge slide was added as
+// a 5th HERO_LOOP entry, the per-image delay spacing below was (bug)
+// computed as a fraction of HERO_LOOP.length (now 5) instead of the
+// fixed count of REAL images (still 4) -- so adding a 5th array entry
+// silently squeezed the four screenshots' spacing tighter without
+// anyone asking for that, on top of a pre-existing timing issue this
+// exposed: the last image's own fade-out (which, per globals.css's
+// hero-crossfade keyframe, ends at local 30% of whatever duration is
+// given) needs to actually finish, with room to spare, before the loop
+// wraps and the intro slide reappears -- intro uses
+// hero-crossfade-first, which snaps straight to opaque at its own local
+// 0% with no fade-in, so if the previous slide hasn't fully faded out
+// yet, the intro row pops in already fully visible but hidden behind
+// whatever's still on top of it, then only becomes visible once that
+// slide's fade-out catches up -- reading as a sudden "pop" instead of a
+// dissolve. HERO_IMAGE_COUNT (4, the fixed number of real screenshots)
+// replaces HERO_LOOP.length as the spacing divisor, restoring the
+// original 3-seconds-apart stagger; HERO_TOTAL_LOOP_SECONDS was solved
+// for directly rather than left as a fixed +1 offset, so it's
+// guaranteed to satisfy the "another second" ask: Draft (the last
+// image) starts at delay 13s and its own fade-out ends at
+// 13 + 0.3 * 20 = 19s, one full second before the 20s loop wraps.
+// 2026-08-12, sixth pass, direct ask: "leave a little bit more time
+// between the transitions and the [Draft] image" -- the Draft slide (the
+// last one before the loop wraps) was reaching its own transition too
+// soon after Quote's. HERO_LOOP_SECONDS raised 12 -> 14 (step 3s -> 3.5s
+// apart), pushing every image's delay back a bit and Draft's specifically
+// from 13s to 15s. HERO_TOTAL_LOOP_SECONDS re-solved the same way the
+// previous pass derived it (not left as a stale +1 offset): Draft's own
+// fade-out ends at delay + 0.3 * duration, and this should land with
+// about a second of buffer before the loop wraps back to the intro slide
+// -- 15 + 0.3*23 = 21.9s, leaving 1.1s before the 23s wrap (was 13 + 0.3*20
+// = 19s / 1s buffer on the old numbers). The larger duration also
+// stretches every slide's own fade-in/hold/fade-out proportionally (all
+// keyframe timings are percentages of duration), so each image now holds
+// fully visible ~0.5s longer too, not just Draft.
+//
+// 2026-08-12, eighth pass, direct ask: "wait a bit more before the
+// transition to the next image on each animation turn, just another
+// second." Read as a per-transition ask, not a Draft-only one this time
+// -- every hop (intro->Sign, Sign->Seal, Seal->Quote, Quote->Draft)
+// should wait 1s longer than it currently does before starting the next
+// image's fade-in. HERO_IMAGE_STEP_SECONDS is the delta between one
+// slide's delay and the next, so +1s there does exactly that: raised
+// 3.5 -> 4.5 (HERO_LOOP_SECONDS 14 -> 18). Because delay is
+// i * HERO_IMAGE_STEP_SECONDS, this compounds by index -- Sign (i=1) is
+// 1s later than before, Seal (i=2) 2s later, Quote (i=3) 3s later, Draft
+// (i=4) 4s later -- which is correct: each of the four transitions
+// individually got the same 1s-longer wait, so by the last one the
+// cumulative shift is 4s. HERO_TOTAL_LOOP_SECONDS re-solved again the
+// same way: Draft's delay is now 4*4.5 + 1 = 19s; 19 + 0.3*29 = 27.7s,
+// leaving 1.3s of buffer before the 29s loop wraps back to the intro
+// slide (same ~1s-plus-a-bit buffer this constant has been solved for
+// every prior pass).
+// 2026-08-12, eleventh pass, direct report: "the invoice, quote and draft
+// transitions arrive too fast and land on top of the old image" (Sign was
+// fine). Root cause, worked out against globals.css's hero-crossfade
+// keyframe (opaque 8%-26%, fades out 26%-30% of its own local cycle):
+// at HERO_IMAGE_STEP_SECONDS=4.5s and HERO_TOTAL_LOOP_SECONDS=29s, an
+// incoming slide finished fading fully IN about 0.72s before the outgoing
+// slide even started fading out -- so for that 0.72s both sat at opacity
+// 1 simultaneously, and since later slides paint over earlier ones (no
+// z-index, just DOM order), the incoming one visibly sat on top of a
+// still-fully-opaque outgoing one instead of dissolving into it. This
+// only affects Sign->Seal/Seal->Quote/Quote->Draft (all three share the
+// same .animate-hero-crossfade keyframe and step spacing); intro->Sign
+// uses the separate, longer-holding hero-crossfade-first keyframe and
+// wasn't reported as a problem, so it's deliberately left alone here.
+// Direct ask, simplified: "just add a second before invoice, quote and
+// draft start animating." HERO_LATE_TRANSITION_EXTRA_SECONDS adds that
+// 1s to each of the three late gaps specifically (not intro->Sign),
+// closing the 0.72s deficit with a small margin to spare. Paired with a
+// 26%->25% / 30%->29% trim on hero-crossfade's own hold/fade-out marks
+// (globals.css) to close the gap the rest of the way to (near) zero
+// overlap, rather than leaving a smaller-but-still-present one.
+// HERO_TOTAL_LOOP_SECONDS raised 29->32 so Draft (now delayed further)
+// still finishes fading out with a buffer before the loop wraps --
+// Draft's delay is 22s (4*4.5 + 1 + 3*1 late-extra); fade-out ends at
+// 22 + 0.29*32 = 31.28s, 0.72s before the 32s wrap.
+const HERO_IMAGE_COUNT = 4;
+const HERO_LOOP_SECONDS = 18;
+const HERO_IMAGE_STEP_SECONDS = HERO_LOOP_SECONDS / HERO_IMAGE_COUNT; // 4.5s apart
+// Hold on the intro badge row before the first image's delay begins —
+// see globals.css's .animate-hero-crossfade-first for the other half of
+// this (opaque from 0% instead of fading in).
+const HERO_FIRST_HOLD_EXTRA_SECONDS = 1;
+// Extra second added to each of the Sign->Seal/Seal->Quote/Quote->Draft
+// gaps specifically -- see this block's own comment above. Not applied to
+// intro->Sign (i=1).
+const HERO_LATE_TRANSITION_EXTRA_SECONDS = 1;
+const HERO_TOTAL_LOOP_SECONDS = 32;
+
+// New first slide, 2026-08-12 direct ask: "an image of the 4 badges in a
+// row Sign, Seal, Quote, Draft with the word under each badge." Not a
+// generated image -- the exact same yellow-badge + lucide-icon markup the
+// reasons row below already uses (see the r.Icon span further down),
+// reused here at a larger size, so this establishing slide shares one
+// visual vocabulary with the rest of the page rather than introducing a
+// new graphic style or another generated PNG.
+// 2026-08-12, twelfth pass, direct report (mobile screenshot attached):
+// on a real phone (~375-390px viewport) the row of 4 badges wrapped --
+// Sign/Seal/Quote on one line, Draft alone on a second. Root cause: the
+// available width inside this card is viewport minus 96px (48px from the
+// section's own px-6, another 48px from the crossfade slide's own p-6),
+// so at 375px that's only 279px to fit 4 badges in -- at the old 56px
+// badge size + 36px gap (gap-9), 4 of them need 224+108=332px, well over
+// budget. Asked to either stop the wrap or tighten the spacing,
+// "whichever is better" -- tightening wins here: forcing flex-nowrap
+// without also shrinking things would just clip the badges off-screen
+// instead of wrapping them, which is worse. Mobile badge size dropped
+// 56px->48px (h-14->h-12) and gap dropped 36px->16px (gap-9->gap-4): 4
+// badges now need 192+48=240px, comfortably under budget even on a
+// 360px-wide phone (264px available). sm: sizes (larger screens, where
+// this never wrapped) are untouched.
+function IntroBadgeRow() {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-14">
+      {REASONS.map((r) => (
+        <div key={r.title} className="flex flex-col items-center gap-2.5">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-yellow-300 text-slate-900 sm:h-16 sm:w-16">
+            <r.Icon className="h-6 w-6 sm:h-8 sm:w-8" strokeWidth={1.5} />
+          </span>
+          <span className="text-sm font-semibold text-slate-900 sm:text-base">{r.title}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Small yellow icon badge pinned to a hero slide's own OUTER wrapper --
+// direct ask 2026-08-12: "keep the badge for the relevant animation in
+// the top right" (moved to top LEFT same day, direct follow-up). Rendered
+// as a sibling of the slide's image content in the crossfade map below,
+// not nested inside HeroImageContent's zooming box -- nesting it in
+// there would have scaled and dragged the badge along with the image
+// toward the zoom's own transform-origin. As a sibling of the (non-zooming,
+// only-opacity-animated) outer slide div, it stays fixed in the corner
+// regardless of what the content underneath is doing.
+function FeatureCornerBadge({ Icon }: { Icon: typeof Signature }) {
+  return (
+    <span className="pointer-events-none absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-300 text-slate-900 shadow-sm sm:left-4 sm:top-4">
+      <Icon className="h-4 w-4" strokeWidth={1.75} />
+    </span>
+  );
+}
+
+// Hero slide image content, shared by all four Sign/Seal/Quote/Draft
+// slides. Slowly zooms toward that reason's own zoomOrigin (see REASONS'
+// own comment for how each origin was measured).
+//
+// Fixed 2026-08-12 (direct report: "the animation ... is not working" --
+// nothing was rendering at all). Root cause: an aspect-ratio box with no
+// actual width/height (only caps) around a `fill` Image (which is
+// position:absolute and contributes no size to its parent) collapsed to
+// 0x0. First fix: `h-full` (definite) on the wrapper gave aspect-ratio a
+// seed to derive width from, `max-w-full` clamped it.
+//
+// 2026-08-12, direct report + measured proof (a live pixel probe against
+// the deployed page): that first fix had a second, quieter bug. `h-full`
+// is a DEFINITE height, and CSS's aspect-ratio auto-sizing (recomputing
+// the other dimension when a constraint clamps one of them) only applies
+// to a dimension that started as `auto` -- since height here was never
+// auto, clamping the width via max-w-full did NOT shrink height back
+// down to match, despite this file's own previous comment claiming
+// otherwise (untested assumption, not verified against a real narrow
+// layout at the time). Net effect on a real mobile width: the wrapper
+// stayed at its full h-full height while its width clamped down to fit
+// -- a box that no longer matched the image's real aspect ratio, so the
+// `fill` image's own object-contain letterboxed the actual visible
+// picture inside it, leaving a real gap between the wrapper's top and
+// where the picture's own visible pixels actually started.
+//
+// Fixed by dropping the `fill` + aspect-ratio-wrapper approach entirely.
+// The <Image> below now renders a normal (non-fill) img with its own
+// real width/height attributes -- a real img DOES participate in the
+// standard replaced-element sizing algorithm, so `h-auto max-h-full
+// w-auto max-w-full` on the img itself correctly shrinks BOTH dimensions
+// together to fit whichever of the wrapper's width/height caps binds,
+// preserving the real aspect ratio with no letterboxing. The wrapper
+// itself is now just a plain h-full w-full flex box; items-start/sm:
+// items-center on IT (not the outer slide div, which no longer needs to
+// care) is what makes the image start flush at the top on mobile and
+// centered on desktop.
+//
+// This was one of two compounding bugs behind "invoice is still
+// starting below the badge" -- the other, the outer crossfade card's own
+// fixed height not scaling down for mobile widths, is fixed separately
+// where that card is rendered below (see the comment there). Either bug
+// alone produced a visible gap; both needed fixing together.
+//
+// 2026-08-12: dropped a sliding swipe-thumb overlay that used to sit on
+// top of Sign's image (direct report: "not probably aligned and the
+// starting button is still visible underneath"). Left as a plain zoom
+// on the real screenshot -- a later revisit, not abandoned. The real
+// button-track measurements (scanned from hero-sign-mobile-composite.png's
+// actual pixels): track x[1122,1620] y[929,995] of the 1642x1070
+// composite, knob x[1122,1217] same y (95px wide, 19.1% of track width).
+//
+// 2026-08-12: the zoom, originally Sign-only (its own SignHeroContent
+// component, "animate to a zoom of the signer experience"), was
+// extended to Seal/Quote/Draft the same day per direct ask ("zoom in on
+// the QR code" / "the generate your quote button" / "the generate draft
+// button") and merged into this one shared component -- all four now
+// use the identical mechanism, just a different zoomOrigin each.
+// delaySeconds (passed down from the crossfade map below, the same
+// value given to this slide's own outer div) keeps the zoom's local 0%
+// in sync with the outer div's fade timing -- without it the zoom would
+// run on its own unsynced clock starting at page load, out of phase
+// with when the image is actually visible. globals.css's
+// .animate-hero-zoom keyframe is timed to match every slide's shared
+// .animate-hero-crossfade window: scale(1) through 4% (fade-in start),
+// reaching scale(1.28) by 25% (end of the opaque hold, matching
+// hero-crossfade's own 25% opaque-to-fade-out boundary) so the zoom
+// finishes right as the image is fully visible rather than mid-fade.
+// transform-origin (reason.zoomOrigin) now applies directly to the real
+// img element rather than an outer wrapper, so the measured percentages
+// still point at the same real spot on the actual image.
+//
+// noZoom (REASONS' own optional field) is currently unused -- Seal was
+// the one reason that needed it (its zoomOrigin used to sit near the
+// bottom QR code, pushing the medallion at the opposite corner out of
+// frame) until that origin was re-measured to sit ON the medallion
+// itself. Kept as a live escape hatch for any future reason that can't
+// find a working origin, not dead code.
+function HeroImageContent({ reason, delaySeconds }: { reason: (typeof REASONS)[number]; delaySeconds: number }) {
+  return (
+    <div className="relative flex h-full w-full items-start justify-center sm:items-center">
+      <Image
+        src={reason.image}
+        alt={reason.alt}
+        width={reason.width}
+        height={reason.height}
+        sizes="(min-width: 640px) 36rem, 92vw"
+        className={`h-auto max-h-full w-auto max-w-full rounded-lg object-contain shadow-lg ${reason.noZoom ? "" : "animate-hero-zoom"}`}
+        style={{
+          transformOrigin: reason.zoomOrigin,
+          ...(reason.noZoom
+            ? {}
+            : {
+                animationDuration: `${HERO_TOTAL_LOOP_SECONDS}s`,
+                animationDelay: `${delaySeconds}s`,
+              }),
+        }}
+      />
+    </div>
+  );
+}
+
+// Developer/API section — /home-preview-b only (2026-08-12, direct ask:
+// "take some inspiration from documenso.com especially the api animation").
+// A live Chrome pass over documenso.com found their "API animation" is
+// actually a static, full-bleed, syntax-highlighted JSON response panel —
+// no motion at all (see HOMEPAGE_HERO_VIDEO_AND_SECOND_HALF_SCOPE.md's
+// addendum). Two deliberate departures from copying that panel outright:
+// (1) the JSON below is REAL — the exact GET /api/v1/documents/{id}
+// response already published on /developers (same id used there,
+// 7fdd90eb-...), not an invented shape, matching the same real-facts rule
+// the /vs/* pages follow; (2) it's actually animated (a slow vertical
+// scroll loop, globals.css's .animate-json-scroll), since that's what was
+// asked for, not what Documenso's own page does.
+type JsonTok = { t: string; c?: string };
+const jline = (...toks: JsonTok[]) => toks;
+const KEY = "text-sky-300";
+const STR = "text-emerald-300";
+const LIT = "text-amber-300";
+const PUNCT = "text-slate-500";
+
+const JSON_LINES: JsonTok[][] = [
+  jline({ t: "{", c: PUNCT }),
+  jline({ t: '  "id"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"7fdd90eb-9152-4031-a767-c0632126dc53"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '  "title"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"Freelance Agreement"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '  "status"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"completed"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '  "created_at"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"2026-07-28T10:04:00Z"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '  "updated_at"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"2026-07-29T09:11:00Z"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '  "expires_at"', c: KEY }, { t: ": ", c: PUNCT }, { t: "null", c: LIT }, { t: ",", c: PUNCT }),
+  jline({ t: '  "signers"', c: KEY }, { t: ": [", c: PUNCT }),
+  jline({ t: "    {", c: PUNCT }),
+  jline({ t: '      "email"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"jane@acme.com"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '      "name"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"Jane"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '      "status"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"signed"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '      "signed_at"', c: KEY }, { t: ": ", c: PUNCT }, { t: '"2026-07-29T09:11:00Z"', c: STR }, { t: ",", c: PUNCT }),
+  jline({ t: '      "auth_required"', c: KEY }, { t: ": ", c: PUNCT }, { t: "false", c: LIT }, { t: ",", c: PUNCT }),
+  jline({ t: '      "auth_verified"', c: KEY }, { t: ": ", c: PUNCT }, { t: "false", c: LIT }),
+  jline({ t: "    }", c: PUNCT }),
+  jline({ t: "  ]", c: PUNCT }),
+  jline({ t: "}", c: PUNCT }),
+];
+
+function JsonPanelContent() {
+  return (
+    <>
+      {JSON_LINES.map((line, i) => (
+        <div key={i} className="whitespace-pre">
+          {line.map((tok, j) => (
+            <span key={j} className={tok.c}>
+              {tok.t}
+            </span>
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
+
+function DeveloperApiSection() {
+  return (
+    // max-w-4xl -- 2026-08-12 direct report: "the text placement, either
+    // the developers text placement is correct and the others are wrong
+    // or the other way around, but make it consistent" (only visible
+    // once the viewport is stretched past ~896px, confirmed live).
+    // This section was max-w-5xl (1024px) while the reasons/Why-SignedBy
+    // section above it is max-w-4xl (896px) -- both are independently
+    // mx-auto-centered, so below 896px they're both simply clamped to
+    // the viewport and line up by coincidence, but past 896px the
+    // narrower section stops growing while this one keeps growing to
+    // 1024px, so their left edges (and therefore this section's
+    // badge+heading) drift right of the reasons row's badge+heading
+    // above it. Matched to max-w-4xl so both sections share the exact
+    // same centered width for every viewport width, not just narrow ones.
+    <section className="mx-auto w-full max-w-4xl px-6 py-12">
+      <div className="grid gap-10 sm:grid-cols-2 sm:items-center">
+        <div className="text-center sm:text-left">
+          <div className="mb-3 flex items-center justify-center gap-2.5 sm:justify-start">
+            {/* Black badge mark in place of the yellow icon-squares the
+                Sign/Seal/Quote/Draft reasons use above — direct ask, "use a
+                black version of the logo badge for that dev section in
+                place of the other badges." Real brand asset
+                (signedby-badge-black-slash-optionC), not a recolored
+                lucide icon like the others. */}
+            <Image
+              src="/brand/signedby-badge-black-small.png"
+              alt=""
+              width={28}
+              height={28}
+              className="h-7 w-7 rounded-lg"
+            />
+            {/* text-lg, not text-2xl -- 2026-08-12 direct report: "the
+                font size...looks slightly different, or perhaps its just
+                larger." Checked live (getComputedStyle on the deployed
+                page): text-2xl here WAS byte-for-byte identical to the
+                "Why SignedBy"/"Simple pricing" section headers (24px/600/
+                same font stack) -- no CSS bug against THOSE. But per the
+                screenshot Michael sent, this block sits directly under
+                the Draft card and visually reads as a 5th pillar (badge +
+                bold word + description, identical shape to Sign/Seal/
+                Quote/Draft's own h3 pattern below), not as a standalone
+                section title the way "Why SignedBy" is -- so the correct
+                comparison is against THOSE titles (text-lg, 18px), which
+                this genuinely was larger than. Dropped to match. Copy
+                changed from "Built for developers" to "Wire in your CRM"
+                per direct ask, same day. */}
+            <h2 className="text-lg font-semibold text-slate-900">Wire in your CRM</h2>
+          </div>
+          {/* mx-auto sm:mx-0 -- direct report: this box wasn't aligned like
+              the reason cards above it. Text-align:center alone only
+              centers the TEXT inside a box, not the box itself; the
+              reasons row gets that for free from its parent's flex
+              items-center, but this section's mobile layout is a single-
+              column CSS grid (no items-center-equivalent), so this
+              max-w-sm box sat flush-left with centered text inside it --
+              a visibly different rhythm than the fully-centered reason
+              cards. mx-auto centers the box itself to match; sm:mx-0
+              reverts to flush-left on desktop, where the section is
+              already text-left via the parent. Also dropped "Starts
+              metered on Pro, fully unlimited on Business" per direct ask. */}
+          <p className="mx-auto max-w-sm text-slate-600 sm:mx-0 sm:max-w-none">
+            A REST API and outbound webhooks — create and send documents from your CRM, poll status, or get
+            notified the moment something&apos;s signed.
+          </p>
+          <Link
+            href="/developers"
+            className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-900 hover:text-slate-700"
+          >
+            Check the API docs <span aria-hidden>→</span>
+          </Link>
+        </div>
+
+        <div className="relative h-64 overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.25)]">
+          <div className="flex items-center gap-1.5 border-b border-slate-800 bg-slate-900/95 px-4 py-2.5 text-xs text-slate-400">
+            <span className="h-2 w-2 rounded-full bg-slate-700" />
+            <span className="h-2 w-2 rounded-full bg-slate-700" />
+            <span className="h-2 w-2 rounded-full bg-slate-700" />
+            <span className="ml-2 font-mono">GET /api/v1/documents/{"{id}"}</span>
+          </div>
+          <div className="h-[calc(100%-2.75rem)] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_12%,black_88%,transparent)]">
+            <div className="animate-json-scroll px-4 py-4 font-mono text-xs leading-relaxed">
+              <JsonPanelContent />
+              {/* Duplicate block for a seamless loop — same technique as
+                  the trusted-by marquee's translateX(-50%) above, on the Y
+                  axis instead. */}
+              <div className="mt-4" aria-hidden="true">
+                <JsonPanelContent />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function HomepageTier1Preview({
+  currency,
+  showDeveloperSection = false,
+}: {
+  currency: Currency;
+  // /home-preview-b only (2026-08-12) — see DeveloperApiSection's own
+  // comment above. Defaults false so /home-preview-a is unaffected.
+  showDeveloperSection?: boolean;
+}) {
   return (
     <>
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
@@ -251,52 +744,123 @@ export function HomepageTier1Preview({ currency }: { currency: Currency }) {
         <p className="mt-3 text-xs text-slate-400">No credit card required — 3 free documents every month.</p>
       </section>
 
-      {/* The "hero video" — a looping crossfade of real screenshots in one
-          fixed-size card rather than an actual recorded clip (see the file
-          comment above and globals.css's .animate-hero-crossfade). A neutral
-          bg-slate-50 card with object-contain lets the 4 pillars' very
-          different shapes (field editor landscape, the square seal, the
-          tall Quote panel, the two-panel Draft mockup) share one frame
-          without any of them looking cropped or stretched. Duration and
-          per-image delay both derive from HERO_LOOP_SECONDS /
-          HERO_LOOP.length so adding/removing a pillar doesn't require
-          re-tuning the timing by hand. prefers-reduced-motion isn't
-          special-cased: the crossfade is a slow opacity fade, not motion/
-          parallax, so it doesn't trigger the concerns that setting exists
-          for. */}
+      {/* The "hero video" — a looping crossfade of real screenshots (plus
+          one intro badge-row slide) in one fixed-size card rather than an
+          actual recorded clip (see the file comment above and
+          globals.css's .animate-hero-crossfade). A neutral bg-slate-50
+          card with object-contain lets the different shapes (badge row,
+          field editor landscape, the square seal, the tall Quote panel,
+          the Draft mockup) share one frame without any of them looking
+          cropped or stretched. Duration and per-slide delay both derive
+          from HERO_LOOP_SECONDS / HERO_LOOP.length so adding/removing a
+          slide doesn't require re-tuning the timing by hand.
+          prefers-reduced-motion isn't special-cased: the crossfade is a
+          slow opacity fade, not motion/parallax, so it doesn't trigger
+          the concerns that setting exists for. */}
       <section className="mx-auto w-full max-w-3xl px-6 pb-12">
-        <div className="relative mx-auto h-[420px] w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200/60 bg-slate-50 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
-          {HERO_LOOP.map((shot, i) => (
-            <div
-              key={shot.image}
-              className="animate-hero-crossfade absolute inset-0 flex items-center justify-center p-6"
-              style={{
-                animationDuration: `${HERO_LOOP_SECONDS}s`,
-                // Positive delay (2026-08-12 fix, direct report: "out of
-                // sequence"). The crossfade keyframe's visible window sits
-                // near the START of its own local cycle (see globals.css's
-                // hero-crossfade: opaque at 8%-26%). A NEGATIVE delay makes
-                // an element act as though its animation already ran for
-                // that long before t=0 -- i.e. it fast-forwards INTO the
-                // cycle -- so a larger negative offset (higher i) reaches
-                // its visible window SOONER in wall-clock time, not later.
-                // That inverted the order to roughly 1,0,3,2 instead of the
-                // intended 0,1,2,3. A positive delay pushes the start
-                // later instead, which is what staggering images in
-                // ascending order actually requires.
-                animationDelay: `${(i * HERO_LOOP_SECONDS) / HERO_LOOP.length}s`,
-              }}
-            >
-              <Image
-                src={shot.image}
-                alt={shot.alt}
-                width={shot.width}
-                height={shot.height}
-                sizes="(min-width: 640px) 36rem, 92vw"
-                className="max-h-full w-auto rounded-lg object-contain shadow-lg"
-              />
-            </div>
-          ))}
+        {/* 2026-08-12, direct report + screenshot: "the size of the
+            animation area for iOS ... seemed to be longer" -- confirmed
+            ("yes overall height"). Root cause: this box was a single fixed
+            420px height on every screen size. That height was sized for
+            DESKTOP, where the card's max-w-xl (576px) width is wide enough
+            that even the tallest-relative-to-width image (Draft, 567x513)
+            is still HEIGHT-constrained inside 420px (528px interior width
+            would need ~477px of height for Draft at full width, more than
+            420 minus this padding allows) -- so on desktop every image ends
+            up slightly narrower than the box, not shorter than it: dead
+            space, if any, sits on the sides, which nobody reported as a
+            problem.
+            On mobile the geometry flips. Card width shrinks with the
+            viewport (this section's own px-6 + each slide's own p-6 eat
+            ~96px combined -- a 390px phone leaves only ~294px of interior
+            width), but height stayed the fixed 420px regardless -- so
+            images became WIDTH-constrained instead, rendering shorter than
+            420px tall (Draft: 294 * 513/567 ≈ 266px, +48px padding ≈ 314px
+            total). The leftover ~100px of card below the image is exactly
+            the gap visible in the screenshot: a card that reads as much
+            taller than its own content on a narrow phone. Desktop Chrome
+            ("seems fine") isn't a contradiction -- the card's own width
+            there is wide enough that this never happens; the bug only
+            shows up once the card gets narrow, regardless of browser.
+            Fixed with a responsive height instead of one fixed value: 320px
+            below the sm breakpoint (comfortably covers every reason image
+            at real mobile card widths ~294-334px interior, per the math
+            above, with only minor side-padding on the widest phones rather
+            than a large bottom gap), 420px at sm and up (unchanged desktop
+            behavior). */}
+        <div className="relative mx-auto h-[320px] w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200/60 bg-slate-50 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)] sm:h-[420px]">
+          {HERO_LOOP.map((item, i) => {
+            // Positive delay (2026-08-12 fix, direct report: "out of
+            // sequence"). The crossfade keyframe's visible window sits
+            // near the START of its own local cycle (see globals.css's
+            // hero-crossfade: opaque at 8%-26%). A NEGATIVE delay makes an
+            // element act as though its animation already ran for that
+            // long before t=0 -- i.e. it fast-forwards INTO the cycle --
+            // so a larger negative offset (higher i) reaches its visible
+            // window SOONER in wall-clock time, not later. A positive
+            // delay pushes the start later instead, which is what
+            // staggering slides in ascending order actually requires.
+            //
+            // index 0 (the intro badge row) always starts at 0s. Each
+            // image's delay is i * HERO_IMAGE_STEP_SECONDS (i=1..4, so
+            // 4.5s apart -- see HERO_IMAGE_STEP_SECONDS's own comment for
+            // why i isn't divided across HERO_LOOP.length) plus the flat
+            // HERO_FIRST_HOLD_EXTRA_SECONDS hold before the first image,
+            // plus HERO_LATE_TRANSITION_EXTRA_SECONDS once per gap AFTER
+            // Sign (i.e. (i-1) times for i>=2 -- Seal gets +1s, Quote +2s,
+            // Draft +3s -- see that constant's own comment for why Sign
+            // itself, i=1, is excluded).
+            const lateExtra = i >= 2 ? (i - 1) * HERO_LATE_TRANSITION_EXTRA_SECONDS : 0;
+            const delaySeconds = i === 0 ? 0 : i * HERO_IMAGE_STEP_SECONDS + HERO_FIRST_HOLD_EXTRA_SECONDS + lateExtra;
+            return (
+              <div
+                key={item.key}
+                className={`${i === 0 ? "animate-hero-crossfade-first" : "animate-hero-crossfade"} absolute inset-0 flex justify-center p-6 ${
+                  // 2026-08-12, thirteenth pass, direct report + mobile
+                  // screenshot: on a real phone, the intro badges sat right
+                  // at the bottom edge of the visible screen, mostly hidden
+                  // behind Safari's own bottom URL bar -- vertically
+                  // centering the intro row inside this fixed-height card
+                  // put its content at the box's midpoint, which on a
+                  // narrow phone (where the page above it -- header, hero,
+                  // CTA -- already fills most of the fold) lands low enough
+                  // to run into the browser chrome. items-start pulled just
+                  // the intro slide up on mobile at the time.
+                  //
+                  // 2026-08-12, fourteenth pass, direct report + 3 more
+                  // mobile screenshots: (1) the intro badges, now pulled up,
+                  // read as "good... but maybe a fraction lower" -- pt-10
+                  // nudged up to pt-12. (2) "the signing transition does not
+                  // make it to the top of the animation space before the
+                  // next transition, and the invoice transition it's not
+                  // starting from the top" -- both Sign and Seal were still
+                  // on items-center, which on the same narrow mobile card
+                  // left dead vertical space above the image before its own
+                  // zoom animation could visually close it -- the same root
+                  // cause the intro row had. items-start now applies to
+                  // EVERY slide on mobile, not just the intro one; sm:items-
+                  // center still reverts to the original centered look on
+                  // wider screens, where none of this was ever reported as
+                  // a problem.
+                  "items-start sm:items-center"
+                } ${i === 0 ? "pt-12 sm:pt-6" : ""}`}
+                style={{
+                  // Shared total duration for every slide (see
+                  // HERO_TOTAL_LOOP_SECONDS above) so the loop stays in
+                  // sync even though index 0 uses a different keyframe
+                  // shape.
+                  animationDuration: `${HERO_TOTAL_LOOP_SECONDS}s`,
+                  animationDelay: `${delaySeconds}s`,
+                }}
+              >
+                {!item.reason ? <IntroBadgeRow /> : <HeroImageContent reason={item.reason} delaySeconds={delaySeconds} />}
+                {/* Corner badge (top left, moved from top right same day) --
+                    skipped on the intro slide itself, which already shows
+                    all four badges. */}
+                {item.reason && <FeatureCornerBadge Icon={item.reason.Icon} />}
+              </div>
+            );
+          })}
         </div>
         <p className="mt-3 text-center text-xs text-slate-400">Real product output — Sign, Seal, Quote, Draft.</p>
       </section>
@@ -306,13 +870,56 @@ export function HomepageTier1Preview({ currency }: { currency: Currency }) {
           Draft, same order and icons as the dashboard's own tab picker —
           see the file comment above). Alternating image side on desktop
           (odd rows flip) so the section doesn't read as a flat repeating
-          list; stacks image-above-text on mobile either way. */}
+          list; text stacks ABOVE the image on mobile (badge+heading+copy
+          first in the DOM, image second) — same pattern as
+          DeveloperApiSection below.
+
+          2026-08-12, tenth pass, direct report: "the left side of the API
+          animation is now not lined up" -- once the images were widened
+          (ninth pass, max-w-sm -> max-w-lg), this section's rows and
+          DeveloperApiSection below no longer agreed on where the
+          left/right column boundary sits. Root cause: they were built on
+          two different layout mechanisms that only happened to look
+          aligned by coincidence at the OLD width. This row used a plain
+          flex row (text auto-width, image capped at max-w-lg) with no
+          shared column grid; DeveloperApiSection uses a real
+          `sm:grid-cols-2` grid (two exact 404px columns on this section's
+          848px content width). At the old max-w-sm image width there was
+          enough slack that the flex row's packed layout landed close to
+          where the grid's column boundary was, close enough not to
+          notice; at max-w-lg the flex row's text column has to shrink
+          below max-w-sm to fit, which shifts the image well further left
+          than the grid's fixed 404px column start -- a ~108px gap,
+          confirmed by direct pixel math against both layouts.
+
+          Fixed by switching this row to the SAME sm:grid-cols-2 gap-10
+          grid DeveloperApiSection uses, instead of matching pixel widths
+          by hand (fragile, breaks again the next time either section's
+          width changes). DOM order stays text-first/image-second on every
+          row (unchanged, still the mobile stacking order); sm:order-1/
+          sm:order-2 handle the alternating desktop side instead of
+          flex-row/flex-row-reverse. This also settles the image's actual
+          rendered width at ~404px (the grid column width) rather than the
+          max-w-lg cap of 512px -- still visibly larger than the original
+          384px, and now structurally guaranteed to line up with the API
+          panel's column at every viewport width, not just one. */}
       <section className="mx-auto w-full max-w-4xl px-6 py-12">
         <h2 className="mb-10 text-center text-2xl font-semibold text-slate-900">Why SignedBy</h2>
         <div className="flex flex-col gap-16">
           {REASONS.map((r, i) => (
-            <div key={r.title} className={`flex flex-col items-center gap-8 sm:gap-10 ${i % 2 === 1 ? "sm:flex-row-reverse" : "sm:flex-row"}`}>
-              <div className="w-full max-w-sm shrink-0 overflow-hidden rounded-xl border border-slate-200/60 bg-slate-50 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)]">
+            <div key={r.title} className="grid gap-8 sm:grid-cols-2 sm:items-center sm:gap-10">
+              <div className={`text-center sm:text-left ${i % 2 === 1 ? "sm:order-1" : "sm:order-2"}`}>
+                <h3 className="flex items-center justify-center gap-2 text-lg font-semibold text-slate-900 sm:justify-start">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-yellow-300 text-slate-900">
+                    <r.Icon className="h-4 w-4" strokeWidth={1.75} />
+                  </span>
+                  {r.title}
+                </h3>
+                <p className="mx-auto mt-2 max-w-sm text-slate-600 sm:mx-0 sm:max-w-none">{r.description}</p>
+              </div>
+              <div
+                className={`overflow-hidden rounded-xl border border-slate-200/60 bg-slate-50 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-8px_rgba(15,23,42,0.12)] ${i % 2 === 1 ? "sm:order-2" : "sm:order-1"}`}
+              >
                 <Image
                   src={r.image}
                   alt={r.alt}
@@ -322,19 +929,12 @@ export function HomepageTier1Preview({ currency }: { currency: Currency }) {
                   className="h-auto w-full"
                 />
               </div>
-              <div className="max-w-sm text-center sm:text-left">
-                <h3 className="flex items-center justify-center gap-2 text-lg font-semibold text-slate-900 sm:justify-start">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-yellow-300 text-slate-900">
-                    <r.Icon className="h-4 w-4" strokeWidth={1.75} />
-                  </span>
-                  {r.title}
-                </h3>
-                <p className="mt-2 text-slate-600">{r.description}</p>
-              </div>
             </div>
           ))}
         </div>
       </section>
+
+      {showDeveloperSection && <DeveloperApiSection />}
 
       <section className="mx-auto w-full max-w-3xl px-6 pb-16">
         <p className="mb-4 text-center text-xs font-medium uppercase tracking-wide text-slate-400">Trusted by</p>

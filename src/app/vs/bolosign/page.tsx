@@ -182,6 +182,9 @@ export default async function VsBoloSignPage() {
           <Link href="/vs/swisssign" className="hover:text-slate-600">
             SignedBy vs SwissSign
           </Link>
+          <Link href="/vs/documenso" className="hover:text-slate-600">
+            SignedBy vs Documenso
+          </Link>
           <Link href="/templates" className="hover:text-slate-600">
             Free templates
           </Link>

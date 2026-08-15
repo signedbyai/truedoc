@@ -17,7 +17,7 @@ type Result =
       isVerifiedBadge: boolean;
       sealedBy: string | null;
       identityVerifiedAt: string | null;
-      timestampTsa: "sectigo" | "freetsa" | null;
+      timestampTsa: "sectigo" | "eurotsa" | "freetsa" | null;
       timestampGenTime: string | null;
       paymentLinkUrl: string | null;
       paymentLabel: string | null;
@@ -25,23 +25,39 @@ type Result =
   | { verified: false }
   | null;
 
-// RFC 3161 trusted timestamp (TIMESTAMP_AUTHORITY_SCOPE.md, 2026-08-03).
-// Sectigo chains to an already-trusted root, so a Sectigo-backed timestamp
-// needs no caveat. FreeTSA uses a self-signed CA — real RFC 3161 proof, but
-// independently re-verifying it (rather than trusting SignedBy's own report
-// here) requires manually installing FreeTSA's root certificate first, so
-// that nuance has to stay visible rather than implying the two are
-// equivalent.
-function TimestampRow({ tsa, genTime }: { tsa: "sectigo" | "freetsa"; genTime: string | null }) {
+// RFC 3161 trusted timestamp (TIMESTAMP_AUTHORITY_SCOPE.md, 2026-08-03;
+// EuroTSA tier added 2026-08-12, EUROTSA_SCOPE.md). Sectigo chains to an
+// already-trusted root, so a Sectigo-backed timestamp needs no caveat.
+// EuroTSA and FreeTSA both use a self-signed CA — real RFC 3161 proof, but
+// independently re-verifying either (rather than trusting SignedBy's own
+// report here) requires manually installing that TSA's own root certificate
+// first, so that nuance has to stay visible rather than implying all three
+// are equivalent. (EuroTSA being SignedBy's own EU-hosted infrastructure
+// doesn't change its trust model — it's a dependency-risk improvement over
+// FreeTSA, not a stronger evidentiary claim.)
+const TSA_LABELS: Record<"sectigo" | "eurotsa" | "freetsa", string> = {
+  sectigo: "Sectigo (RFC 3161)",
+  eurotsa: "EuroTSA (RFC 3161)",
+  freetsa: "FreeTSA (RFC 3161)",
+};
+
+function TimestampRow({ tsa, genTime }: { tsa: "sectigo" | "eurotsa" | "freetsa"; genTime: string | null }) {
   return (
     <div className="flex justify-between gap-4">
       <dt className="text-emerald-700">Trusted timestamp</dt>
       <dd className="text-right font-medium">
-        {tsa === "sectigo" ? "Sectigo (RFC 3161)" : "FreeTSA (RFC 3161)"}
+        {/* 2026-08-13: briefly linked EuroTSA's label out to https://eurotsa.eu
+            (a click-through to substantiate an unfamiliar self-hosted TSA).
+            Pulled the same day, direct ask: "let's remove the link... we can
+            add it back later if needed" -- realistic click-through audience
+            is narrow (someone doing real diligence on one specific document,
+            not a typical /verify visitor), not worth the exposure for now.
+            Plain text, same as Sectigo/FreeTSA, until revisited. */}
+        {TSA_LABELS[tsa]}
         {genTime && <span className="block text-xs font-normal text-emerald-700">{new Date(genTime).toLocaleString()}</span>}
-        {tsa === "freetsa" && (
+        {(tsa === "freetsa" || tsa === "eurotsa") && (
           <span className="block text-xs font-normal text-emerald-700">
-            Independently re-verifying this token requires installing FreeTSA&apos;s root certificate.
+            Independently re-verifying this token requires installing {tsa === "eurotsa" ? "EuroTSA's" : "FreeTSA's"} root certificate.
           </span>
         )}
       </dd>
@@ -74,12 +90,32 @@ function VerifyPageInner() {
   // Goes to the SPECIFIC document (not just a bare "/dashboard") since the
   // id is already available at both call sites building this link.
   //
-  // The signer's own completed screen (signing-view.tsx) and any QR-code/
-  // badge scan stay on the plain "/" link deliberately — neither has a
-  // dashboard session to return to, so the marketing homepage genuinely is
-  // the right destination for those, same reasoning as before.
+  // ?from=signer (2026-08-13, third report in this same class, found by
+  // Michael while screen-recording the signing flow: "the final verify link
+  // and QR code at the end of the signing, when you verify the link takes
+  // you all the way out to the home page"). Visible in the recording — the
+  // Seal flow's verify page shows "← Back to document", the signer's shows
+  // "← SignedBy" and lands on marketing.
+  //
+  // This reverses an earlier deliberate decision, recorded a few lines up,
+  // that the signer's completed screen should keep the plain "/" link
+  // because a signer "has no dashboard session to return to, so the
+  // marketing homepage genuinely is the right destination." What that
+  // reasoning missed is that signing-view.tsx opens this link with
+  // target="_blank" — so there is no history to go back to in that tab at
+  // all, and the control reads as "return to where I was" while actually
+  // ejecting someone who has just finished signing onto a sales page.
+  //
+  // The fix is to show no back control at all in that case rather than
+  // invent a destination: the signer's own completed screen is still sitting
+  // in the original tab, which is exactly where they should return to, and
+  // closing this one gets them there. A cold QR-code/badge scan (no `from`
+  // at all) keeps the "← SignedBy" homepage link — someone verifying an
+  // invoice they were sent has no other context, and "what is SignedBy" is a
+  // genuinely reasonable next step for them.
   const from = searchParams.get("from");
   const backDocId = searchParams.get("doc");
+  const isSigner = from === "signer";
   const backHref =
     from === "console" ? consoleAppUrl() : from === "dashboard" && backDocId ? `/dashboard/documents/${backDocId}` : "/";
   const backLabel = from === "console" ? "← Back to console" : from === "dashboard" && backDocId ? "← Back to document" : "← SignedBy";
@@ -124,11 +160,18 @@ function VerifyPageInner() {
   return (
     <main className="flex min-h-screen flex-col items-center bg-slate-50 px-6 py-16">
       <div className="w-full max-w-md">
-        <Link href={backHref} className="text-sm font-medium text-slate-500 hover:text-slate-700">
-          {backLabel}
-        </Link>
+        {/* No back control for a signer (see the isSigner comment above) —
+            this tab was opened with target="_blank" from their completed
+            screen, so there's nothing behind it and any "back" affordance
+            here is a one-way trip to marketing. Their own confirmation is
+            still open in the tab they came from. */}
+        {!isSigner && (
+          <Link href={backHref} className="text-sm font-medium text-slate-500 hover:text-slate-700">
+            {backLabel}
+          </Link>
+        )}
 
-        <h1 className="mt-4 text-2xl font-semibold text-slate-900">Verify a document</h1>
+        <h1 className={`${isSigner ? "" : "mt-4 "}text-2xl font-semibold text-slate-900`}>Verify a document</h1>
         <p className="mt-2 text-sm text-slate-600">
           Every document signed with SignedBy gets a Certificate of Completion page with a checksum. Paste that
           checksum below to independently confirm it&apos;s genuine — no account needed.
@@ -178,12 +221,37 @@ function VerifyPageInner() {
                 </div>
               )}
               {result.timestampTsa && <TimestampRow tsa={result.timestampTsa} genTime={result.timestampGenTime} />}
-              {result.orgName && (
-                <div className="flex justify-between gap-4">
-                  <dt className="text-emerald-700">Organization</dt>
-                  <dd className="text-right font-medium">{result.orgName}</dd>
-                </div>
-              )}
+              {/* Organization row REMOVED from the sealed-badge view
+                  2026-08-13, direct instruction, after working through what
+                  actually stops a scammer signing up and sealing a fake
+                  invoice.
+
+                  The answer is the Stripe Identity check: their real legal
+                  name lands on this panel, so impersonating a supplier is
+                  detectable by a recipient who looks. That control only
+                  works if everything in this panel is genuinely verified.
+                  organizations.name is NOT — it's free user text typed at
+                  signup. Rendered here it sat in the same card, in the same
+                  styling, directly beneath identity-verified facts, so a
+                  scammer could name their workspace "Northwind Studio B.V."
+                  and have it inherit the credibility of the green panel
+                  around it. That's the one field on this page that could
+                  actively help an impersonation rather than expose one.
+                  Dropped rather than relabelled ("self-declared") because at
+                  a glance nobody reads the qualifier — the styling is the
+                  message.
+
+                  Deliberately still shown on the NON-badge result below as
+                  "Sent via": that path has no identity verification at all,
+                  makes no claim about who anyone is, and the org name there
+                  is context for "which account sent this", not evidence.
+                  Nothing around it is claiming to be verified, so there's no
+                  borrowed credibility to worry about.
+
+                  Bring this back when org identity is actually verified —
+                  business verification via Stripe Identity, or a company
+                  registry check (Companies House / KVK). At that point it
+                  becomes a real second claim rather than decoration. */}
             </dl>
             <p className="mt-3 text-xs text-emerald-700">
               {result.timestampTsa

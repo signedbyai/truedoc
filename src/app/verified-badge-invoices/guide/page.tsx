@@ -77,7 +77,7 @@ const SETUP_STEPS: GuideStep[] = [
     image: "/guide-badge-invoice-sealed-first.png",
     imageWidth: 1170,
     imageHeight: 700,
-    body: "SignedBy hashes the file, timestamps it with a real Time Stamping Authority (Sectigo, with FreeTSA as an automatic fallback), and generates your badge — then drops you onto the document's own page.",
+    body: "SignedBy hashes the file, timestamps it with a real Time Stamping Authority (Sectigo, with EuroTSA and then FreeTSA as automatic fallbacks), and generates your badge — then drops you onto the document's own page.",
   },
 ];
 
