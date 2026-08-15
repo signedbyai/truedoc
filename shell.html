@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>verifiedby.dev — check a signed or timestamped PDF</title>
+<meta name="description" content="Check that a signed or timestamped PDF is unaltered, and see how long its proof can still be demonstrated. Runs entirely in your browser. Your file is never uploaded.">
+<style>
+  :root{--ink:#111827;--muted:#6b7280;--line:#e5e7eb;--bg:#f9fafb;--ok:#047857;--okbg:#ecfdf5;--okline:#a7f3d0;
+        --bad:#b91c1c;--badbg:#fef2f2;--badline:#fecaca;--warn:#92400e;--warnbg:#fffbeb;--warnline:#fde68a;
+        --info:#1e40af;--infobg:#eff6ff;--infoline:#bfdbfe}
+  *{box-sizing:border-box}
+  body{margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+       color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:680px;margin:0 auto;padding:40px 20px 80px}
+  h1{font-size:26px;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--muted);margin:0 0 28px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px}
+  #drop{border:2px dashed #cbd5e1;border-radius:12px;background:#fff;padding:44px 20px;text-align:center;cursor:pointer;transition:.15s}
+  #drop:hover,#drop.over{border-color:#6b7280;background:#fcfcfd}
+  #drop strong{display:block;font-size:17px;margin-bottom:4px}
+  #drop span{color:var(--muted);font-size:14px}
+  input[type=file]{display:none}
+  .res{margin-top:24px;display:none}
+  .banner{border-radius:12px;padding:18px 20px;border:1px solid;margin-bottom:16px}
+  .banner h2{margin:0 0 4px;font-size:19px}
+  .banner p{margin:0;font-size:15px}
+  .ok{background:var(--okbg);border-color:var(--okline);color:var(--ok)}
+  .bad{background:var(--badbg);border-color:var(--badline);color:var(--bad)}
+  .warn{background:var(--warnbg);border-color:var(--warnline);color:var(--warn)}
+  .info{background:var(--infobg);border-color:var(--infoline);color:var(--info)}
+  table{width:100%;border-collapse:collapse;font-size:14.5px}
+  td{padding:8px 0;border-bottom:1px solid var(--line);vertical-align:top}
+  td:first-child{color:var(--muted);width:40%}
+  td.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;word-break:break-all}
+  .checks{list-style:none;padding:0;margin:14px 0 0;font-size:14.5px}
+  .checks li{padding:5px 0 5px 26px;position:relative}
+  .checks li:before{position:absolute;left:0;font-weight:600}
+  .checks li.y:before{content:"✓";color:var(--ok)}
+  .checks li.n:before{content:"✕";color:var(--bad)}
+  .checks li.i:before{content:"–";color:var(--muted)}
+  .notes{margin:16px 0 0;padding:14px 16px;background:#f8fafc;border-radius:8px;font-size:13.5px;color:#475569}
+  .notes p{margin:0 0 8px}.notes p:last-child{margin:0}
+  h3{font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:26px 0 10px}
+  details{margin-top:14px;font-size:14px}
+  summary{cursor:pointer;color:var(--muted)}
+  .foot{margin-top:36px;font-size:13.5px;color:var(--muted)}
+  .foot code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-size:12.5px}
+  .el{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-top:12px;background:#fff}
+  .el h4{margin:0 0 2px;font-size:15px}
+  .el .meta{color:var(--muted);font-size:13.5px;margin:0}
+  .horizon{margin-top:16px;padding:14px 16px;border:1px solid var(--infoline);background:var(--infobg);
+           border-radius:8px;font-size:14px;color:#1e3a8a}
+  .horizon strong{color:#1e3a8a}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Is this PDF still the document it claims to be?</h1>
+  <p class="sub">Drop it below. Everything happens inside your browser — the file is never uploaded, and this page talks to no server, including ours.</p>
+
+  <div id="drop" tabindex="0" role="button" aria-label="Choose a PDF to check">
+    <strong>Choose a PDF, or drag one here</strong>
+    <span>Nothing leaves your device</span>
+  </div>
+  <input type="file" id="file" accept="application/pdf,.pdf">
+
+  <div class="res" id="res"></div>
+
+  <div class="foot">
+    <p><strong>What a pass actually means.</strong> The file is byte-for-byte identical to the one that was signed or timestamped at the moment shown, and that signature checks out. Change a single byte and it fails.</p>
+    <p><strong>What it does not mean.</strong> A timestamp records <em>when</em>, never <em>who</em>. A signature proves which certificate was used, which is a fact about a key rather than a verified fact about a person. Neither can tell you the document is honest, that the sender is who they say, or that the payment details on it are right. Confirm those the way you always would.</p>
+    <p><strong>Who made this.</strong> Built and operated by SPRK10 B.V., the company behind SignedBy. That is stated plainly rather than left to be discovered: this page is useful <em>because</em> you do not have to trust us. It runs entirely in your browser, makes no network requests, and the whole verifier is right here in the page — read it with <code>⌘U</code>.</p>
+    <p><strong>Unrecognised authority is not a failure.</strong> This page pins a deliberately short list of roots so the list stays checkable by a human. Most documents from elsewhere will say the authority is unrecognised; that means confirm it yourself, not that anything is wrong.</p>
+    <p>No analytics, no cookies, no network requests. Save this page with <code>⌘S</code> and it keeps working with no internet and no us.</p>
+  </div>
+</div>
+
+<script type="module">
+/*__CORE__*/
+
+const $ = (s) => document.querySelector(s);
+const drop = $("#drop"), input = $("#file"), res = $("#res");
+
+drop.onclick = () => input.click();
+drop.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } };
+["dragenter","dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave","drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if (f) run(f); });
+input.onchange = () => { if (input.files[0]) run(input.files[0]); };
+
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const when = (d) => d ? new Date(d).toISOString().replace("T", " ").replace(".000Z", " UTC") : "—";
+const day  = (d) => d ? new Date(d).toISOString().slice(0, 10) : "—";
+
+async function run(file) {
+  res.style.display = "block";
+  res.innerHTML = '<div class="card">Checking…</div>';
+  let r;
+  try {
+    r = await verify(new Uint8Array(await file.arrayBuffer()));
+  } catch (err) {
+    // Reaching here means the tool broke, not that the document is bad —
+    // so it must not be dressed up in the same red as a tampered file.
+    res.innerHTML = `<div class="banner warn"><h2>This page could not read the file</h2>
+      <p>That is a limit of this tool, not a finding about your document. Details: ${esc(err.message)}</p></div>`;
+    return;
+  }
+
+  const timeWord = r.genTimeTrusted ? "timestamped" : "signed";
+  const BANNERS = {
+    "verified": ["ok", `Unaltered since it was ${timeWord}`,
+      `This file is exactly as it stood at ${when(r.genTime)}.`],
+    "verified-untrusted-root": ["warn", "Proof is valid, authority unrecognised",
+      "The signature and its chain check out, but the root is not one this page pins. That is common and expected for documents from elsewhere — confirm the authority yourself before relying on it."],
+    "signed-untimed": ["warn", "Signed, but with no proven time",
+      "The signature checks out and the file is unaltered, but nothing here proves when it was signed. The date shown is claimed by the signer's own software."],
+    "mismatch": ["bad", `This file has changed since it was ${timeWord}`,
+      "The content does not match what was signed. It may have been edited — or simply re-saved by a mail gateway or PDF viewer, which also changes the bytes."],
+    "unverified": ["bad", "The proof could not be verified",
+      "A signature or timestamp is present but did not check out."],
+    "no-signature": ["warn", "No signature or timestamp in this file",
+      "There is nothing here to check. That is not evidence of a problem — many genuine documents carry their proof separately."],
+    "unsupported": ["warn", "Signed in a format this page cannot read",
+      "The document is signed, but not in a form this tool parses. That is a limit of this page, not a finding about the file."],
+  };
+  const [cls, head, note] = BANNERS[r.status] || ["warn", "Unexpected result", String(r.status)];
+
+  let html = `<div class="banner ${cls}"><h2>${esc(head)}</h2><p>${esc(note)}</p></div>`;
+
+  if (r.elements && r.elements.length && r.status !== "no-signature") {
+    const yn = (b) => b === true ? "y" : b === false ? "n" : "i";
+    const rows = [];
+    if (r.signedBy) rows.push(["Signed by", esc(r.signedBy) + (r.signedByOrg && r.signedByOrg !== r.signedBy ? ` <span style="color:#6b7280">(${esc(r.signedByOrg)})</span>` : "")]);
+    rows.push([r.genTimeTrusted ? "Timestamped at" : "Claimed signing time",
+      `<strong>${esc(when(r.genTime))}</strong>${r.genTimeTrusted ? "" : ' <span style="color:#92400e">— not independently proven</span>'}`]);
+    if (r.authority) rows.push([r.genTimeTrusted ? "Time attested by" : "Authority", esc(r.authority)]);
+    rows.push(["Root certificate", esc(r.rootName) + (r.anchored ? "" : " — not one this page pins")]);
+    if (r.hashAlg) rows.push(["Digest algorithm", esc(r.hashAlg)]);
+    if (r.computed) rows.push(["Document digest", `<span class="mono">${esc(r.computed)}</span>`]);
+
+    html += `<div class="card">
+      <table>${rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("")}</table>
+      <ul class="checks">
+        <li class="${yn(r.documentMatches)}">File matches the digest that was signed</li>
+        <li class="${yn(r.hasDocumentTimestamp)}">Carries a document-level timestamp covering the whole file</li>
+        <li class="${yn(r.genTimeTrusted)}">The time shown is attested by a timestamp authority</li>
+        <li class="${yn(r.anchored)}">Root is one this page recognises</li>
+        <li class="${yn(r.chainComplete)}">Full certificate chain is embedded in the file</li>
+      </ul>`;
+
+    // The honest "and then what?" — finite for every document seen so far,
+    // and the single most useful thing this page can tell a reader who cares
+    // about a document they must keep for years.
+    // Only meaningful when the proof actually holds. Telling someone how long
+    // a broken proof lasts invites them to read past the failure.
+    if (r.provableUntil && r.status !== "mismatch" && r.status !== "unverified") {
+      html += `<div class="horizon">
+        <strong>Provable until ${esc(day(r.provableUntil))}.</strong>
+        After that the certificate behind this proof${r.provableVia ? ` (${esc(r.provableVia)})` : ""} has expired, and
+        validity can no longer be demonstrated from this file alone. Nothing about the document changes on that
+        date — what changes is your ability to show it was valid. Extending it means re-timestamping the file
+        before then, repeatedly, for as long as the proof needs to last.
+      </div>`;
+    }
+
+    if (r.elements.length > 1 || (r.elements[0] && r.elements[0].kind === "signature")) {
+      html += `<h3 style="margin-bottom:6px">What is in this file</h3>`;
+      html += r.elements.map((e) => {
+        if (!e.supported) {
+          return `<div class="el"><h4>Unreadable signature</h4>
+            <p class="meta">${esc((e.notes && e.notes[0]) || "This page could not parse it.")}</p></div>`;
+        }
+        const bits = [];
+        bits.push(e.kind === "doctimestamp"
+          ? `Attested by ${esc(e.authority)} at ${esc(when(e.time && e.time.value))}`
+          : `Signed by ${esc(e.authority)}${e.authorityOrg && e.authorityOrg !== e.authority ? ` (${esc(e.authorityOrg)})` : ""}`);
+        if (e.signatureTimestamp) {
+          bits.push(e.signatureTimestamp.valid
+            ? `Signature timestamped by ${esc(e.signatureTimestamp.authority)} at ${esc(when(e.signatureTimestamp.genTime))}`
+            : "A signature timestamp is present but did not verify");
+        }
+        if (e.revocation) bits.push(`Carries revocation data (${e.revocation.crls} CRL, ${e.revocation.ocsps} OCSP)`);
+        bits.push(`Signing certificate valid to ${esc(day(e.signerNotAfter))}`);
+        return `<div class="el">
+          <h4>${esc(e.label || e.kind)}${e.documentMatches === false ? " — does not match this file" : ""}</h4>
+          <p class="meta">${bits.join("<br>")}</p></div>`;
+      }).join("");
+    }
+
+    if (r.chain && r.chain.length) {
+      html += `<details>
+        <summary>Certificate chain and root fingerprint</summary>
+        <table style="margin-top:10px">
+          ${r.chain.map(c => `<tr><td>${esc(c.cn)}</td><td>valid to ${esc(day(c.notAfter))}</td></tr>`).join("")}
+          <tr><td>Root public key SHA-256</td><td class="mono">${esc(r.rootKeyFingerprint)}</td></tr>
+          <tr><td>Root certificate SHA-256</td><td class="mono">${esc(r.rootFingerprint)}</td></tr>
+        </table>
+        <p style="color:#6b7280;font-size:13px;margin-top:10px">Check the <strong>public key</strong> hash, not the certificate hash — a root is often cross-signed, giving several certificates that share one key. On macOS:</p>
+        <pre style="background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:6px;font-size:11.5px;overflow-x:auto;margin:8px 0 0"># compare against the root your own machine already trusts
+security find-certificate -p -c "${esc(r.rootName)}" \\
+  /System/Library/Keychains/SystemRootCertificates.keychain \\
+  | openssl x509 -noout -pubkey | openssl pkey -pubin -outform DER \\
+  | openssl dgst -sha256</pre>
+        <p style="color:#6b7280;font-size:13px;margin-top:10px">Do not trust these values because this page printed them.</p>
+      </details>`;
+    }
+
+    const allNotes = (r.notes || []).concat(
+      ...r.elements.filter(e => e.supported && e.notes).map(e => e.notes)
+    );
+    if (allNotes.length) {
+      html += `<div class="notes">${allNotes.map(n => `<p>${esc(n)}</p>`).join("")}</div>`;
+    }
+    html += `</div>`;
+  } else if (r.notes && r.notes.length) {
+    html += `<div class="card"><div class="notes">${r.notes.map(n => `<p>${esc(n)}</p>`).join("")}</div></div>`;
+  }
+
+  res.innerHTML = html;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+{
+  "_comment": [
+    "Expected results per fixture. The harness asserts these; it does not",
+    "just print them. Add your own files to test/fixtures/ and an entry",
+    "here — a fixture with no entry is reported as unchecked, never as a",
+    "silent pass.",
+    "",
+    "The PDFs themselves are gitignored: some are real sealed documents and",
+    "one is a third party's export, so the set is not redistributable. See",
+    "test/README.md to make your own."
+  ],
+  "postdocsealed.pdf": {
+    "status": "verified",
+    "timestampCount": 1,
+    "signatureCount": 0,
+    "note": "SignedBy seal, Sectigo DocTimeStamp, root pinned"
+  },
+  "badgeonsealed.pdf": {
+    "status": "verified",
+    "timestampCount": 1,
+    "note": "Badge-stamped variant; regression guard for the badge pipeline"
+  },
+  "certificate.pdf": {
+    "status": "verified",
+    "timestampCount": 1,
+    "note": "Standalone certificate artifact"
+  },
+  "tampered.pdf": {
+    "status": "mismatch",
+    "note": "One byte flipped in postdocsealed.pdf. The control: if this ever passes, stop and fix it before anything else."
+  },
+  "lta-sectigo.pdf": {
+    "status": "verified",
+    "timestampCount": 2,
+    "note": "PAdES-LTA. Guards the multi-signature fix: the OUTER archive timestamp must be read, not the first one, and the appended update must not be reported as page content."
+  },
+  "lta-eurotsa.pdf": {
+    "status": "verified-untrusted-root",
+    "timestampCount": 2,
+    "note": "Archive timestamp from an EC P-384 authority whose root is deliberately not pinned. Untrusted-root is the CORRECT answer here, not a failure."
+  },
+  "third-party-cades.pdf": {
+    "status": "verified-untrusted-root",
+    "signatureCount": 1,
+    "note": "An ordinary /adbe.pkcs7.detached signature with a CAdES-T signature timestamp. Guards the fix for the bug where every non-DocTimeStamp PDF threw and rendered red."
+  }
+}

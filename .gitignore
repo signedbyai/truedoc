@@ -1,0 +1,9 @@
+# Fixture PDFs are NOT redistributable as a set: some are real sealed
+# documents and one is a third party's export. Keep them local; see
+# test/README.md for how to make your own.
+test/fixtures/*.pdf
+
+
+node_modules/
+.DS_Store
+_to_delete/
