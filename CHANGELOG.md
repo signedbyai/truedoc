@@ -17,7 +17,37 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Nothing yet.
 
-## 2026-08-15
+## 2026-08-15 (second release)
+
+Build stamp `bf3853076aff` · deployed SHA-256 `c6986f7822539285e6c142e9ce718a5d296fa397f6fb94b3e925acf90df1f454`
+
+### Added
+
+- Open Graph and Twitter card metadata, so a shared link renders a preview
+  instead of a bare URL. Safe under the Content-Security-Policy: these are
+  read by the sharing platform's crawler, never fetched by a visitor's
+  browser.
+- Screen-reader text on each verdict row ("Yes:", "No:", "Not present:").
+  The marks are CSS `:before` content, which assistive technology routinely
+  skips — so the page's actual conclusions were not reaching a non-sighted
+  reader at all. The results region is now an `aria-live` status region too.
+
+### Changed
+
+- The two interpretation paragraphs and the note on unrecognised
+  authorities now sit behind a "How to read the result" disclosure. Nothing
+  was cut; the footer had grown to five dense paragraphs before the source
+  block.
+
+### Not done, deliberately
+
+- **No favicon.** Verified: a favicon is refused under `default-src 'none'`
+  because `img-src` inherits it, including `data:` URIs. Allowing one means
+  `img-src 'self'` or `data:`, which reopens
+  `new Image().src = "/leak?" + secret` as an exfiltration channel — the
+  precise thing this policy exists to close. The cost is a blank tab icon.
+
+## 2026-08-15 (first release)
 
 Build stamp `4735d778a472` · deployed SHA-256 `6f07dd607a0a1fe623c2c77e477dd45cee0e1256a94aab802b8a9b9b0851a468`
 
