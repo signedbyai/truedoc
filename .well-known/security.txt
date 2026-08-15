@@ -1,0 +1,12 @@
+# RFC 9116. Kept in version control and deployed with the site, so it is
+# never out of step with SECURITY.md.
+#
+# The worst realistic bug in this tool is not a crash: it is a file that
+# SHOULD fail and instead reports "Unaltered". If you find one, please tell
+# us before telling everyone.
+
+Contact: mailto:security@signedby.ai
+Expires: 2027-08-15T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://verifiedby.dev/.well-known/security.txt
+Policy: https://github.com/signedbyai/verifiedby/blob/main/SECURITY.md
