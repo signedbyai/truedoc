@@ -18,9 +18,15 @@ const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, "fixtures");
 const expected = JSON.parse(readFileSync(join(here, "expected.json"), "utf8"));
 
+// A missing fixtures directory is a LEGITIMATE state, not a failure: the
+// PDFs are gitignored (some are real sealed documents, one is a third
+// party's), and git cannot track an empty directory — so a fresh clone or
+// a CI checkout has no test/fixtures at all. Exiting non-zero here made
+// every CI run red for reasons unrelated to the code under test.
 if (!existsSync(fixtures)) {
-  console.error("No test/fixtures directory. See test/README.md.");
-  process.exit(1);
+  console.log("No test/fixtures directory — nothing to check.");
+  console.log("The fixtures are not redistributable; see test/README.md to make your own.");
+  process.exit(0);
 }
 const files = readdirSync(fixtures).filter((f) => f.toLowerCase().endsWith(".pdf")).sort();
 if (!files.length) {

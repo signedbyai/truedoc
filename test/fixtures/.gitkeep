@@ -1,0 +1,4 @@
+Keeps this directory present in a clone. The fixture PDFs themselves are
+gitignored — some are real sealed documents and one is another company's
+export — so without this file git would not track the directory at all and
+a fresh checkout would not have it. See ../README.md to build your own set.
