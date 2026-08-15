@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ReferralCapture } from "@/components/referral-capture";
-import { HomepageTier1Preview } from "@/components/homepage-tier1-preview";
+import { HomepagePreviewG } from "@/components/homepage-preview-g";
 import { getRequestCurrency } from "@/lib/currency.server";
 
 // Self-canonical so the homepage is the one indexed URL for the brand — title
@@ -10,26 +10,35 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-// 2026-08-12, direct ask: "deploy preview-B as the new home page." Promotes
-// what had been the unlinked /home-preview-b route (Tier 1 redesign, +
-// developer/API section) to the real homepage — same component
-// (HomepageTier1Preview) with the same showDeveloperSection=true variant B
-// used, just without that route's own "Internal preview" banner.
+// 2026-08-15, direct ask: "push home page variant g to production." Promotes
+// what had been the unlinked /home-preview-g route to the real homepage —
+// same component (HomepagePreviewG), just without that route's own "Internal
+// preview" banner.
 //
-// Dropped along with the old homepage-current.tsx / homepage-two-column.tsx
-// A/B setup: ctaColorFlag (already concluded/locked to "purple" since
-// 2026-07-24 — HomepageTier1Preview's CtaLink already hardcodes "purple", so
-// calling the flag would just re-derive a value nothing here reads) and
-// homepageVariantFlag (already paused/hardcoded to "current" since
-// 2026-07-27 — there's no more "current vs v20" choice to make; this page IS
-// the new "current"). Neither flag is deleted from src/flags.ts — same "kept
-// for a future test" convention that file already documents — just no
-// longer called from this specific page.
+// Variant G is F with auto-rotating product tabs: they advance every 5s on
+// their own, stop permanently once the visitor taps one, pause on
+// hover/focus, and don't rotate at all under prefers-reduced-motion. The
+// reason for rotation is that with ~92% mobile traffic most visitors never
+// tap, so under F three of the four products were effectively never seen.
+// See homepage-preview-g-tabs.tsx.
 //
-// The pre-promotion homepage is preserved as homepage-versions/ v26
-// (homepage-current.tsx + homepage-two-column.tsx + this router file, as
-// they were immediately before this change) — see that folder's INDEX.md to
-// restore it.
+// Two things this page adds back that /home-preview-g deliberately did NOT
+// have, and which must survive any future variant promotion:
+//
+//   1. <ReferralCapture />. It is mounted on this page and NOWHERE else in
+//      the app — src/components/referral-card.tsx only renders the card.
+//      Promoting a preview route verbatim silently drops referral
+//      attribution site-wide. It is first in the tree here so it mounts
+//      before anything below can redirect.
+//   2. Indexable, self-canonical metadata. Every /home-preview-* route
+//      carries `robots: { index: false, follow: false }`, which is correct
+//      for a preview and catastrophic on "/". This page must never inherit
+//      that block.
+//
+// The outgoing homepage (Tier 1 + developer section, promoted 2026-08-12) is
+// snapshotted at /home-archive-2026-08-15 — noindexed, banner-marked, with
+// rollback instructions in its own header comment. The same layout also
+// remains at /home-preview-b, where it originated.
 export default async function LandingPage() {
   // EUR for Eurozone visitors, USD for the rest (from geo/cookie) — same
   // resolution the /pricing page and checkout use, so the figures stay in
@@ -39,7 +48,7 @@ export default async function LandingPage() {
   return (
     <main className="flex min-h-screen flex-col bg-white">
       <ReferralCapture />
-      <HomepageTier1Preview currency={currency} showDeveloperSection />
+      <HomepagePreviewG currency={currency} />
 
       <footer className="mt-auto border-t border-slate-100 px-6 py-8 text-center text-xs text-slate-400">
         <p>© {new Date().getFullYear()} SignedBy. signedby.ai</p>
