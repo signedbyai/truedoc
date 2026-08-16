@@ -978,12 +978,27 @@ export function SigningView({
             // outline-style secondary buttons used for this everywhere else
             // in the app, rather than duplicating the Share button's own
             // solid dark styling right above it.
+            //
+            // LABEL FIXED 2026-08-16 (first external tester, item #6: "the
+            // Download button doesn't download — you need a second
+            // Download/share click"). This is an EmbeddedPdfPreview, so the
+            // trigger opens an in-page preview and the actual download lives
+            // inside that panel; labelling it "Download signed PDF" promised
+            // something the control doesn't do. The preview-first pattern
+            // itself is deliberate and stays (see the note at the top of
+            // sealed-document-outputs.tsx) — only the label was wrong. Every
+            // other EmbeddedPdfPreview call site already uses a noun label
+            // ("Post-doc sealed PDF", "Badge-on sealed PDF") that promises
+            // no action; this was the one site claiming a verb. "View &
+            // download" rather than bare "View" because on the Signed screen
+            // the download is what the signer actually came for — the label
+            // has to keep that reachable, not just stop over-promising.
             <EmbeddedPdfPreview
               href={`/api/sign/${token}/signed-file`}
               filename={`${documentTitle.replace(/[^\w.\- ]/g, "")}-signed.pdf`}
               triggerClassName="mt-4 inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-900 hover:bg-slate-50"
             >
-              Download signed PDF
+              View &amp; download signed PDF
             </EmbeddedPdfPreview>
           )}
           {/* Certificate/verify QR (CERTIFICATE_VISIBILITY_PROMOTION_SCOPE.md,

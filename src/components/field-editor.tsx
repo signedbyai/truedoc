@@ -102,6 +102,20 @@ const RECIPIENT_COLORS = [
 // they're unrelated discovery moments.
 const LOCK_HINT_SEEN_KEY = "sb_lock_hint_seen";
 
+// First-run editor walkthrough (2026-08-16, tester item #2). Same one-time
+// localStorage gate as LOCK_HINT_SEEN_KEY above and the other *_INTRO_KEY /
+// *_SEEN_KEY hints across the app — an established pattern, not a new one.
+//
+// This REPLACED a `showIntro` banner that listed all three steps at once, in
+// text-xs, on every document until the first field was placed. The first
+// external tester had that banner on screen, sent a document successfully,
+// and still reported not realising they were meant to click the document to
+// place a field — so "explain everything upfront and let them dismiss it" is
+// a demonstrated failure here, not a hypothesis. The replacement says ONE
+// thing at a time and derives which thing from what the sender has actually
+// done, so it can't turn back into a wall of text.
+const WALKTHROUGH_SEEN_KEY = "sb_editor_walkthrough_seen";
+
 function LockIcon({ filled }: { filled: boolean }) {
   return (
     <svg
@@ -431,7 +445,10 @@ export function FieldEditor({
   // won't flash for a returning document that already has fields once the
   // initial fetch below resolves.
   const [fieldsLoaded, setFieldsLoaded] = useState(false);
-  const [showIntro, setShowIntro] = useState(true);
+  // Starts false so server and first client render agree (localStorage isn't
+  // readable during SSR); the effect below turns it on for a sender who
+  // hasn't seen it. See WALKTHROUGH_SEEN_KEY.
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
   // Mobile-only overflow menu for secondary actions — on a phone the full
   // desktop button row (Back / Save / Suggest / Duplicate / Delete /
   // Template / Send) wrapped into 3-4 lines inside the *sticky* header,
@@ -545,6 +562,20 @@ export function FieldEditor({
   const hasConfirmedRef = useRef(false);
 
   const confirmedFields = fields.filter((f) => !f.suggested);
+
+  // Which single step the first-run walkthrough is currently on, derived from
+  // what the sender has actually done rather than from a counter they click
+  // through. That's the whole point of it: it can't get out of step with the
+  // UI, it advances by itself when they do the thing, and there is never more
+  // than one instruction on screen. null = all three done.
+  //
+  // The steps deliberately mirror the `next-step-highlight` glow that already
+  // exists on the "+ Add recipient" button and the signature tool — the
+  // walkthrough narrates the same sequence those were already pointing at,
+  // rather than introducing a competing one. Step 3's visual counterpart is
+  // the ring on the page itself (see the page container's className).
+  const walkthroughStep: 1 | 2 | 3 | null =
+    confirmedFields.length > 0 ? null : recipients.length === 0 ? 1 : selectedTool ? 3 : 2;
   // Whether the "This looks like it needs N signer(s)" panel is on screen.
   // Read by the panel itself and by the "+ Add recipient" glow, so the
   // guided cue can never point at the manual path while the guided one is
@@ -560,8 +591,11 @@ export function FieldEditor({
   // recipient when there's exactly one (an unassigned field still reaches that
   // single signer — see the send-time orphan guard). Used for the pre-send
   // "who signs where" check + review modal.
+  // Still used by the send-review modal's per-recipient field count. The
+  // companion `recipientsWithoutFields` that used to live here was removed
+  // 2026-08-16: handleSend became its only consumer and now derives its own
+  // over the arrays it is actually about to persist (see the comment there).
   const effectiveOwner = (f: Field) => f.signerId ?? (recipients.length === 1 ? recipients[0].id : null);
-  const recipientsWithoutFields = recipients.filter((r) => !confirmedFields.some((f) => effectiveOwner(f) === r.id));
 
   // The recipient a newly-placed field will belong to — surfaced next to the
   // field tools ("Fields go to: ● Name") so it's obvious that picking a
@@ -1017,9 +1051,62 @@ export function FieldEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recipients.length > 0]);
 
-  function addRecipient() {
+  // Turns the first-run walkthrough on for a sender who hasn't seen it. Waits
+  // for fieldsLoaded so it never flashes on a returning document that already
+  // has fields (same reasoning as fieldsLoaded's own comment). The "seen" flag
+  // is written on dismissal/completion rather than here, so closing the tab
+  // mid-way doesn't burn it.
+  useEffect(() => {
+    if (!fieldsLoaded) return;
+    let alreadySeen = true;
+    try {
+      alreadySeen = window.localStorage.getItem(WALKTHROUGH_SEEN_KEY) === "1";
+    } catch {
+      alreadySeen = true;
+    }
+    if (alreadySeen) return;
+    // Deferred a tick — same react-hooks/set-state-in-effect workaround as
+    // the lock-hint effect above.
+    Promise.resolve().then(() => setShowWalkthrough(true));
+  }, [fieldsLoaded]);
+
+  function dismissWalkthrough() {
+    setShowWalkthrough(false);
+    try {
+      window.localStorage.setItem(WALKTHROUGH_SEEN_KEY, "1");
+    } catch {
+      // storage disabled — it'll just offer itself again next visit, harmless
+    }
+  }
+
+  // Completing all three steps counts as having seen it, same as skipping.
+  // Without this the flag is never written on the success path, so someone who
+  // did everything right would be walked through it again on their next
+  // document — the one person who has clearly proved they don't need it.
+  useEffect(() => {
+    if (!showWalkthrough || walkthroughStep !== null) return;
+    Promise.resolve().then(dismissWalkthrough);
+  }, [showWalkthrough, walkthroughStep]);
+
+  // Builds the recipient currently sitting uncommitted in the "+ Add
+  // recipient" form, along with the `recipients` and `fields` arrays that
+  // committing it produces.
+  //
+  // Deliberately PURE — it sets no state. handleSend needs both to commit the
+  // recipient AND to use the resulting arrays within the same tick, and
+  // setRecipients/setFields don't take effect until the next render, so
+  // reading state back after committing would silently see the OLD arrays.
+  // Persisting a stale `fields` array is the exact mechanism behind the three
+  // CRITICAL null-signer_id bugs in this file's history, so the committing
+  // path and the reading path are derived from one function here rather than
+  // written twice and left to drift.
+  function buildPendingRecipient(): {
+    recipient: Recipient;
+    nextRecipients: Recipient[];
+    nextFields: Field[];
+  } | null {
     const email = newEmail.trim();
-    if (!email) return;
+    if (!email) return null;
     const roleClaimed = recipients.length;
     const recipient: Recipient = {
       id: `new-${crypto.randomUUID()}`,
@@ -1028,22 +1115,37 @@ export function FieldEditor({
       order_index: roleClaimed,
       auth_required: false,
     };
-    setRecipients((prev) => [...prev, recipient]);
-    setActiveRecipientId(recipient.id);
-    setNewName("");
-    setNewEmail("");
-    setShowAddRecipient(false);
-
-    // Claim any template-seeded fields waiting for this recipient slot —
-    // roles are numbered in the order recipients were added, both when a
-    // template was saved and here when it's reused.
-    setFields((prev) =>
-      prev.map((f) =>
+    return {
+      recipient,
+      nextRecipients: [...recipients, recipient],
+      // Claim any template-seeded fields waiting for this recipient slot —
+      // roles are numbered in the order recipients were added, both when a
+      // template was saved and here when it's reused.
+      nextFields: fields.map((f) =>
         f.signerId === null && f.templateRole === roleClaimed
           ? { ...f, signerId: recipient.id, templateRole: null }
           : f
-      )
-    );
+      ),
+    };
+  }
+
+  // Applies what buildPendingRecipient computed and clears the form. Sets the
+  // arrays by value rather than with the functional form the two setters used
+  // before: the values ARE this render's arrays plus the new recipient, and
+  // handleSend relies on them matching what it goes on to persist.
+  function commitPendingRecipient(built: NonNullable<ReturnType<typeof buildPendingRecipient>>) {
+    setRecipients(built.nextRecipients);
+    setFields(built.nextFields);
+    setActiveRecipientId(built.recipient.id);
+    setNewName("");
+    setNewEmail("");
+    setShowAddRecipient(false);
+  }
+
+  function addRecipient() {
+    const built = buildPendingRecipient();
+    if (!built) return;
+    commitPendingRecipient(built);
   }
 
   function removeRecipient(id: string) {
@@ -1406,9 +1508,18 @@ export function FieldEditor({
   // point at those ids, then saves fields. Returns false on failure —
   // including a network-level throw, so callers never leave a spinner stuck
   // (see handleSend) and autosave can quietly retry on the next change.
-  async function persist(): Promise<boolean> {
+  // The two overrides exist for handleSend's auto-commit path: a recipient
+  // committed in the same tick is not yet visible in `recipients`/`fields`
+  // (React re-renders afterwards), so that caller passes the arrays it just
+  // computed. Every other caller — autosave, handleSaveDraft — omits them and
+  // gets current state, exactly as before. Do NOT reintroduce direct reads of
+  // `recipients`/`fields` inside this function: saving a stale `fields` array
+  // is what caused all three CRITICAL null-signer_id bugs in this file.
+  async function persist(recipientsOverride?: Recipient[], fieldsOverride?: Field[]): Promise<boolean> {
+    const srcRecipients = recipientsOverride ?? recipients;
+    const srcFields = fieldsOverride ?? fields;
     try {
-      let savedRecipients = recipients;
+      let savedRecipients = srcRecipients;
       // old recipient id -> new (server-assigned) id. Declared out here so the
       // fields payload below can be remapped too — NOT just the React state.
       // Missing that remap silently nulled every field's signer_id on save
@@ -1417,12 +1528,12 @@ export function FieldEditor({
       // fields assigned to nobody and each signer saw an empty document.
       const oldToNew = new Map<string, string>();
 
-      if (recipients.length > 0) {
+      if (srcRecipients.length > 0) {
         const res = await fetch(`/api/documents/${documentId}/signers`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            signers: recipients.map((r) => ({
+            signers: srcRecipients.map((r) => ({
               name: r.name || null,
               email: r.email,
               order_index: r.order_index,
@@ -1436,12 +1547,12 @@ export function FieldEditor({
 
         // Match by array position (single batch insert preserves order); fall
         // back to email match if that ever isn't true.
-        recipients.forEach((r, i) => {
+        srcRecipients.forEach((r, i) => {
           const match = returned[i]?.email === r.email ? returned[i] : returned.find((x) => x.email === r.email);
           if (match) oldToNew.set(r.id, match.id);
         });
 
-        savedRecipients = recipients.map((r) => ({ ...r, id: oldToNew.get(r.id) ?? r.id }));
+        savedRecipients = srcRecipients.map((r) => ({ ...r, id: oldToNew.get(r.id) ?? r.id }));
         setRecipients(savedRecipients);
         setActiveRecipientId((prev) => (prev ? oldToNew.get(prev) ?? prev : prev));
         setFields((prev) =>
@@ -1455,7 +1566,7 @@ export function FieldEditor({
       // — skipping this nulled every assignment on multi-recipient docs).
       const validRecipientIds = new Set(savedRecipients.map((r) => r.id));
       const currentFields = remapFieldSignerIds(
-        fields.filter((f) => !f.suggested),
+        srcFields.filter((f) => !f.suggested),
         oldToNew,
         validRecipientIds
       );
@@ -1534,11 +1645,64 @@ export function FieldEditor({
       setShowUpgradeModal(true);
       return;
     }
-    if (recipients.length === 0) {
+    // A recipient typed into the "+ Add recipient" form but never committed
+    // with the small "Add" button is still sitting in newName/newEmail and has
+    // never reached `recipients`. Before 2026-08-16 that fell straight through
+    // to the "Add at least one recipient" message below — baffling when the
+    // address you just typed is still visible on screen. Reported by the first
+    // external tester (item #1) as: "you type your email, click Send, does not
+    // work; you have to bring the focus out of the email field before Send
+    // works." The blur was a red herring: leaving the field is simply what
+    // prompted them to click Add. Nothing about focus was ever involved.
+    //
+    // Commit it for them rather than making them click twice. THE ARRAYS
+    // BUILT HERE ARE USED FOR THE REST OF THIS FUNCTION — commitPendingRecipient
+    // only queues setState, so `recipients`/`fields`/`confirmedFields` and
+    // every value derived from them still hold the pre-commit arrays until the
+    // next render. Reading those below would silently drop the recipient we
+    // just added, and persisting a stale `fields` array is the exact mechanism
+    // behind the three CRITICAL null-signer_id bugs in this file's history.
+    // Everything downstream therefore uses sendRecipients/sendFields, and
+    // persist() takes them as arguments instead of closing over state.
+    let sendRecipients = recipients;
+    let sendFields = fields;
+    if (showAddRecipient && newEmail.trim()) {
+      // Auto-commit is deliberately stricter than the "Add" button, which
+      // accepts any non-empty string. Clicking Add is an explicit "yes, this
+      // person" — inferring it from a Send click is not, so an address that
+      // isn't even shaped like one gets queried rather than quietly turned
+      // into a recipient the sender never confirmed. Same rough shape check
+      // as checkBillToEmailOnBlur (magic-quote-form.tsx); the send route
+      // still does the real domain validation afterwards either way.
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim())) {
+        setStatusMessage(
+          `"${newEmail.trim()}" doesn't look like an email address — check it, then send.`
+        );
+        return;
+      }
+      const built = buildPendingRecipient();
+      if (built) {
+        commitPendingRecipient(built);
+        sendRecipients = built.nextRecipients;
+        sendFields = built.nextFields;
+      }
+    }
+    // Local re-derivations over the arrays above, mirroring confirmedFields
+    // and effectiveOwner as they're defined near the top of the component
+    // against live state. Keep them structurally identical to those — if one
+    // changes, change both.
+    const sendConfirmedFields = sendFields.filter((f) => !f.suggested);
+    const sendEffectiveOwner = (f: Field) =>
+      f.signerId ?? (sendRecipients.length === 1 ? sendRecipients[0].id : null);
+    const sendRecipientsWithoutFields = sendRecipients.filter(
+      (r) => !sendConfirmedFields.some((f) => sendEffectiveOwner(f) === r.id)
+    );
+
+    if (sendRecipients.length === 0) {
       setStatusMessage("Add at least one recipient before sending.");
       return;
     }
-    if (confirmedFields.length === 0) {
+    if (sendConfirmedFields.length === 0) {
       setStatusMessage("Place at least one field before sending.");
       return;
     }
@@ -1550,8 +1714,8 @@ export function FieldEditor({
     // claimed, or an unassigned field when there's more than one recipient)
     // would otherwise either vanish for every signer or, worse, bleed onto
     // the wrong one — block the send and say so instead of shipping that.
-    const orphanedFields = confirmedFields.filter(
-      (f) => f.signerId === null && (f.templateRole !== null || recipients.length > 1)
+    const orphanedFields = sendConfirmedFields.filter(
+      (f) => f.signerId === null && (f.templateRole !== null || sendRecipients.length > 1)
     );
     if (orphanedFields.length > 0) {
       setStatusMessage(
@@ -1566,13 +1730,13 @@ export function FieldEditor({
     // consent to an empty document, which can quietly complete the whole thing
     // without them actually signing (the reported bug). Show the who-signs-where
     // review as a HARD block, not an override. The send route enforces the same.
-    if (recipientsWithoutFields.length > 0) {
+    if (sendRecipientsWithoutFields.length > 0) {
       setShowSendReview(true);
       return;
     }
     setSending(true);
     setStatusMessage("");
-    const ok = await persist();
+    const ok = await persist(sendRecipients, sendFields);
     if (!ok) {
       setStatusMessage("Couldn't save — check your connection and try again.");
       setSending(false);
@@ -2565,30 +2729,73 @@ export function FieldEditor({
         </div>
       </div>
 
-      {showIntro && fieldsLoaded && confirmedFields.length === 0 && (
-        <div className="flex items-center justify-between gap-3 border-b border-blue-100 bg-blue-50 px-4 py-2.5 sm:px-6">
-          <p className="text-xs text-blue-900">
-            <strong>1.</strong> Add who needs to sign (below). <strong>2.</strong> Select a recipient, pick a field
-            type above, and click on the document to place their field — or press{" "}
-            {/* Explicit {" "} — your production screenshot rendered this as
-                "Suggest fieldsto scan", so don't rely on the literal space
-                after the closing tag surviving the build. */}
-            <strong>Suggest fields</strong>
-            {" to place them automatically. Then send when you're ready."}
-          </p>
+      {/* First-run walkthrough — one step at a time, advancing by itself as
+          the sender acts. See WALKTHROUGH_SEEN_KEY for why this replaced the
+          all-three-steps-at-once banner that used to live here. */}
+      {showWalkthrough && walkthroughStep !== null && (
+        <div className="flex items-start justify-between gap-3 border-b border-blue-200 bg-blue-50 px-4 py-3 sm:px-6">
+          <div className="flex items-start gap-3">
+            <span
+              className="mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white"
+              aria-hidden="true"
+            >
+              {walkthroughStep}
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-blue-950">
+                {walkthroughStep === 1 && "Add who needs to sign"}
+                {walkthroughStep === 2 && "Pick a field type"}
+                {walkthroughStep === 3 && "Now click the document"}
+              </p>
+              <p className="mt-0.5 text-xs text-blue-900">
+                {walkthroughStep === 1 &&
+                  "Use “+ Add recipient” below — the highlighted button. You can add more than one."}
+                {walkthroughStep === 2 && (
+                  <>
+                    Choose <strong>Signature</strong> (or Date, Initials…) from the tools above — or press{" "}
+                    {/* Explicit {" "} — a production screenshot once rendered
+                        this as "Suggest fieldsto scan", so don't rely on the
+                        literal space after the closing tag surviving the
+                        build. */}
+                    <strong>Suggest fields</strong>
+                    {" to place them automatically."}
+                  </>
+                )}
+                {walkthroughStep === 3 &&
+                  "Click anywhere on the outlined page to drop the field where you want it. Then send."}
+              </p>
+            </div>
+          </div>
           <button
-            onClick={() => setShowIntro(false)}
+            onClick={dismissWalkthrough}
             className="whitespace-nowrap text-xs font-medium text-blue-700 hover:text-blue-900"
           >
-            Got it
+            Skip
           </button>
         </div>
       )}
 
+      {/* The armed-to-place instruction. Made louder 2026-08-16 (first
+          external tester, item #2: didn't notice they were meant to click the
+          document). It was a thin text-xs strip that read as a static caption
+          rather than a live instruction telling you to do something right
+          now. Kept slate-900 deliberately — that's the same colour the
+          selected field-tool chip uses, so the bar reads as "this tool is
+          armed" rather than as an unrelated banner; only its weight, size and
+          the pulsing dot changed.
+
+          Note this bar can only ever help someone who has already selected a
+          field tool — it doesn't render otherwise. A sender who never picks a
+          tool never sees it, which is the deeper half of item #2 and is NOT
+          addressed here (the `next-step-highlight` glow on the signature tool
+          is the existing answer to that). */}
       {selectedTool && (
-        <p className="bg-slate-900 px-6 py-1.5 text-center text-xs text-white">
-          Click anywhere on the document to place a {fieldDef(selectedTool).label.toLowerCase()} field
-          {activeRecipientId ? " for the selected recipient." : " (unassigned — select a recipient chip above to assign it)."}
+        <p className="flex items-center justify-center gap-2 bg-slate-900 px-6 py-2.5 text-center text-sm font-medium text-white">
+          <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-white" aria-hidden="true" />
+          <span>
+            Click anywhere on the document to place a {fieldDef(selectedTool).label.toLowerCase()} field
+            {activeRecipientId ? " for the selected recipient." : " (unassigned — select a recipient chip above to assign it)."}
+          </span>
         </p>
       )}
 
@@ -2680,7 +2887,16 @@ export function FieldEditor({
             }}
             data-page-canvas
             onClick={(e) => handlePageClick(e, page)}
-            className="relative w-full border border-slate-300 bg-white shadow-sm"
+            className={cn(
+              "relative w-full border border-slate-300 bg-white shadow-sm",
+              // Ring the page itself while a field tool is armed (2026-08-16,
+              // tester item #2). The crosshair cursor below already signals
+              // this, but only once the pointer is over the page and not at
+              // all on touch — where 92% of traffic is. Ringing the target
+              // makes "the document is what you click" visible before the
+              // sender moves or taps anything.
+              selectedTool && "ring-2 ring-slate-900"
+            )}
             // Sized by aspect-ratio (not a fixed height alongside maxWidth:
             // 100%) so the page scales down correctly on any viewport
             // narrower than its native rendered width — e.g. a phone screen
