@@ -17,6 +17,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // just never added here. Caught 2026-08-06 while building the API
     // catalog/MCP server card (which both point agents at this page).
     { url: `${BASE_URL}/developers`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    // Console landing page was live and linked from the homepage/nav but
+    // missing from here entirely -- caught 2026-08-16 during an LLM/AI-crawler
+    // indexing audit.
+    { url: `${BASE_URL}/console`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     // /research added 2026-08-15 with its first post. Listed at 0.7 (same as
     // /developers) rather than 0.8: it earns links rather than converting,
     // and the post is the page worth ranking, not the index.

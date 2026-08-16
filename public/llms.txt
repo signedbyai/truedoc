@@ -31,6 +31,9 @@
 - [SignedBy vs Dropbox Sign](https://signedby.ai/vs/dropbox)
 - [SignedBy vs Hix (Hix Signing)](https://signedby.ai/vs/hix)
 - [SignedBy vs BoloSign](https://signedby.ai/vs/bolosign)
+- [SignedBy vs Eurosign](https://signedby.ai/vs/eurosign)
+- [SignedBy vs SwissSign](https://signedby.ai/vs/swisssign)
+- [SignedBy vs Documenso](https://signedby.ai/vs/documenso)
 
 ## Optional
 
