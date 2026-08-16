@@ -17,7 +17,7 @@ import { signerForArrivingSuggestion, signerForConfirmedSuggestion } from "@/lib
 import { matchFrequentSignerByName, type MatchableSigner } from "@/lib/frequent-signer-match";
 import { DeleteDocumentButton } from "@/components/delete-document-button";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
-import { BookmarkIcon, MENU_ITEM_CLASS, SaveIcon, MailIcon, ClockIcon, ShieldIcon } from "@/components/ui/menu-item";
+import { BookmarkIcon, MENU_ITEM_CLASS, SaveIcon, MailIcon, ClockIcon, ShieldIcon, HelpIcon } from "@/components/ui/menu-item";
 import { FIELD_TYPES, fieldDef, type FieldType } from "@/lib/field-types";
 import { defaultRecipientNotice } from "@/lib/recipient-notice";
 import { installMapUpsertPolyfill } from "@/lib/pdfjs-map-polyfill";
@@ -1079,6 +1079,27 @@ export function FieldEditor({
     }
   }
 
+  // Manual on/off from the "More ⋯" menu (2026-08-16). The seen-flag lives in
+  // localStorage, so it's per browser and per device: a sender who skipped the
+  // walkthrough on their laptop had no way back to it there, even while their
+  // phone still offered it. Skipping was already the "off" switch; nothing
+  // advertised it and nothing undid it.
+  //
+  // Turning it ON clears the flag as well as showing it, so it survives a
+  // reload rather than reappearing only until the next page view.
+  function toggleWalkthrough() {
+    if (showWalkthrough) {
+      dismissWalkthrough();
+      return;
+    }
+    setShowWalkthrough(true);
+    try {
+      window.localStorage.removeItem(WALKTHROUGH_SEEN_KEY);
+    } catch {
+      // storage disabled — still shows for this page view, just won't persist
+    }
+  }
+
   // Completing all three steps counts as having seen it, same as skipping.
   // Without this the flag is never written on the success path, so someone who
   // did everything right would be walked through it again on their next
@@ -2006,6 +2027,23 @@ export function FieldEditor({
                       <SaveIcon />
                       {saving ? "Saving…" : "Save draft"}
                     </button>
+                    {/* Disabled when there's nothing left to guide — the
+                        walkthrough is derived from what the sender has done,
+                        so on a document that already has fields there is no
+                        next step to show. Same disabled-row treatment as
+                        "Save as template" below rather than a row that looks
+                        live and then does nothing. */}
+                    <button
+                      onClick={() => {
+                        toggleWalkthrough();
+                        setShowMoreMenu(false);
+                      }}
+                      disabled={!showWalkthrough && walkthroughStep === null}
+                      className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
+                    >
+                      <HelpIcon />
+                      {showWalkthrough ? "Hide setup help" : "Show setup help"}
+                    </button>
                     <DuplicateDocumentButton
                       documentId={documentId}
                       asMenuItem
@@ -2727,6 +2765,39 @@ export function FieldEditor({
             </button>
           )}
         </div>
+
+        {/* The armed-to-place instruction. Made louder 2026-08-16 (first
+            external tester, item #2: didn't notice they were meant to click
+            the document). Kept slate-900 deliberately — that's the same colour
+            the selected field-tool chip uses, so the bar reads as "this tool
+            is armed" rather than as an unrelated banner.
+
+            MOVED INSIDE the sticky header 2026-08-16 (second report, with
+            screenshots): it used to sit in normal flow just below it, so on
+            desktop the instruction scrolled away the moment you scrolled down
+            to the part of the page you actually wanted to click — i.e. it
+            vanished exactly when it became useful, since the signature block
+            is usually near the end of a document. Living inside the sticky
+            container means it follows the page down without needing to know
+            the header's height, which varies as the toolbar wraps.
+
+            It shares the sticky block with nothing else in practice: this only
+            renders when a field tool is armed, and the blue walkthrough only
+            renders at steps 1-2, which by definition have no tool selected.
+
+            Note this bar can only ever help someone who has already selected a
+            field tool. A sender who never picks one never sees it — the
+            `next-step-highlight` glow on the signature tool is the existing
+            answer to that. */}
+        {selectedTool && (
+          <p className="flex items-center justify-center gap-2 bg-slate-900 px-6 py-2.5 text-center text-sm font-medium text-white">
+            <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-white" aria-hidden="true" />
+            <span>
+              Click anywhere on the document to place a {fieldDef(selectedTool).label.toLowerCase()} field
+              {activeRecipientId ? " for the selected recipient." : " (unassigned — select a recipient chip above to assign it)."}
+            </span>
+          </p>
+        )}
       </div>
 
       {/* First-run walkthrough — one step at a time, advancing by itself as
@@ -2779,30 +2850,6 @@ export function FieldEditor({
             Skip
           </button>
         </div>
-      )}
-
-      {/* The armed-to-place instruction. Made louder 2026-08-16 (first
-          external tester, item #2: didn't notice they were meant to click the
-          document). It was a thin text-xs strip that read as a static caption
-          rather than a live instruction telling you to do something right
-          now. Kept slate-900 deliberately — that's the same colour the
-          selected field-tool chip uses, so the bar reads as "this tool is
-          armed" rather than as an unrelated banner; only its weight, size and
-          the pulsing dot changed.
-
-          Note this bar can only ever help someone who has already selected a
-          field tool — it doesn't render otherwise. A sender who never picks a
-          tool never sees it, which is the deeper half of item #2 and is NOT
-          addressed here (the `next-step-highlight` glow on the signature tool
-          is the existing answer to that). */}
-      {selectedTool && (
-        <p className="flex items-center justify-center gap-2 bg-slate-900 px-6 py-2.5 text-center text-sm font-medium text-white">
-          <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-white" aria-hidden="true" />
-          <span>
-            Click anywhere on the document to place a {fieldDef(selectedTool).label.toLowerCase()} field
-            {activeRecipientId ? " for the selected recipient." : " (unassigned — select a recipient chip above to assign it)."}
-          </span>
-        </p>
       )}
 
       {suggesting && (
