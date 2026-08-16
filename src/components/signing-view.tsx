@@ -1713,13 +1713,36 @@ export function SigningView({
                     placeholder={isInitials ? "Your initials" : "Your full name"}
                     className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400"
                   />
+                  {/* Matches the shared "Double-check this address" warning
+                      card used by the email-domain checks
+                      (frequent-signers-settings.tsx, magic-quote-form.tsx,
+                      signer-row.tsx — BOUNCE_TRACKING_SCOPE.md): white card,
+                      slate border, bold short title, muted detail line. Those
+                      replaced inline warning text deliberately (825e14e,
+                      af45d22), so a bare coloured <p> here was out of step
+                      with the rest of the app.
+
+                      Deliberately NOT the floating-popover half of that
+                      pattern — no X, no fixed-inset dismiss layer. Those exist
+                      because the domain check is a one-shot async result you
+                      acknowledge once. This warning re-evaluates on every
+                      keystroke, so a close button would be meaningless (the
+                      next character brings it back), and the popover's
+                      z-40/z-50 layers would stack on top of the pad modal
+                      this sits inside. Same visual language, appropriate
+                      mechanics. */}
                   {typedNameMismatch && (
-                    <p className="mt-2 text-xs text-amber-700">
-                      {isInitials
-                        ? `That doesn't look like the initials for ${signerName} (${expectedTyped}).`
-                        : `That doesn't match the name this was sent to (${expectedTyped}).`}{" "}
-                      You can still use it.
-                    </p>
+                    <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {isInitials ? "Double-check these initials" : "Double-check this name"}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-600">
+                        {isInitials
+                          ? `We expected ${expectedTyped} for ${signerName}.`
+                          : `This was sent to ${expectedTyped}.`}{" "}
+                        You can still use what you&apos;ve typed.
+                      </p>
+                    </div>
                   )}
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     {SIGNATURE_STYLES.map((style, i) => (
