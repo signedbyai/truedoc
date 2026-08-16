@@ -1158,6 +1158,19 @@ export function FieldEditor({
       // Claim any template-seeded fields waiting for this recipient slot —
       // roles are numbered in the order recipients were added, both when a
       // template was saved and here when it's reused.
+      //
+      // UNTESTED, and inline for a reason. Extracting this into a lib module
+      // so it could be unit-tested was attempted on 2026-08-16 and reverted:
+      // calling ANY imported helper on this component's state — the array, or
+      // each field object, or even a derived count — trips
+      // react-hooks/preserve-manual-memoization, because the compiler can't
+      // see inside the callee and must assume it mutates. That breaks
+      // draftSignature's useCallback and makes React Compiler skip optimizing
+      // the entire editor, which is too high a price on this component.
+      //
+      // The server-side counterpart of this rule IS tested — see
+      // lib/signer-field-claim.ts's ownerOfField. If the two ever disagree,
+      // that file is the specification and this is the copy.
       nextFields: fields.map((f) =>
         f.signerId === null && f.templateRole === roleClaimed
           ? { ...f, signerId: recipient.id, templateRole: null }

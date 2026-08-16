@@ -6,6 +6,7 @@ import { appUrl } from "@/lib/email";
 import { generateCertificateBadge, generatePaymentBadge } from "@/lib/badge-asset";
 import { BADGE_ASPECT } from "@/lib/badge-resize";
 import { timestampWithFallback, type TimestampTsa } from "@/lib/timestamp-authority";
+import { signatureMethodBySigner } from "@/lib/signature-method-summary";
 
 // If the uploaded PDF already had its own interactive form fields (an
 // "AcroForm" — e.g. an existing fillable contract template), they're
@@ -238,41 +239,16 @@ export async function generateSignedPdf(
   const stampedBytes = await pdfDoc.save();
   const hash = crypto.createHash("sha512").update(stampedBytes).digest("hex");
 
-  // Collapse each signer's per-field methods into one display phrase. A signer
-  // with several marks normally used the same method for all of them (later
-  // fields reuse the first value), but "typing and drawing" is possible if
-  // they redid one — report that honestly rather than picking a winner.
-  // Fields with no recorded method are skipped entirely, so a pre-0057
-  // document yields an empty map and the certificate simply omits the line.
-  //
-  // Ownership MUST mirror visibleFieldsForSigner (lib/field-visibility.ts),
-  // not just read signer_id. On a single-recipient document the sender very
-  // often places fields without ever selecting the recipient chip, leaving
-  // signer_id NULL — that rule treats such a field as belonging to the sole
-  // signer, and the submit route (which uses it) duly records a
-  // signature_method on it. A first pass here checked `!f.signer_id` and
-  // skipped exactly those fields, so the method line silently never appeared
-  // on the commonest kind of document. The template_role condition carries
-  // over for the same reason it exists there: a field still tagged for a
-  // specific party was never generic, so it must not be attributed to whoever
-  // happens to be the only signer.
-  const soleSignerId = signers?.length === 1 ? signers[0].id : null;
-  const methodsBySigner = new Map<string, Set<string>>();
-  for (const f of fields || []) {
-    if (f.type !== "signature" && f.type !== "initials") continue;
-    if (!f.signature_method) continue;
-    const ownerId = f.signer_id ?? (f.template_role === null ? soleSignerId : null);
-    if (!ownerId) continue;
-    const phrase = f.signature_method === "typed" ? "typing" : "drawing";
-    const existing = methodsBySigner.get(ownerId) ?? new Set<string>();
-    existing.add(phrase);
-    methodsBySigner.set(ownerId, existing);
-  }
-  const signatureMethodBySigner = new Map<string, string>(
-    Array.from(methodsBySigner, ([signerId, phrases]) => [
-      signerId,
-      Array.from(phrases).sort().join(" and "),
-    ])
+  // Per-signer signing-method phrases for the certificate. The rules — which
+  // signer an unassigned field belongs to, and how several marks collapse into
+  // one phrase — live in lib/signature-method-summary.ts so they're unit-
+  // tested; a first pass wrote them inline here, read `signer_id` alone, and
+  // silently reported nothing on every single-recipient document where the
+  // sender never clicked the recipient chip. See that module and
+  // lib/signer-field-claim.ts for why the sole-signer fallback is conditional.
+  const methodBySigner = signatureMethodBySigner(
+    fields || [],
+    (signers || []).map((s) => s.id)
   );
 
   await addCertificatePage(pdfDoc, {
@@ -281,7 +257,7 @@ export async function generateSignedPdf(
     hash,
     signers: signers || [],
     ipBySigner,
-    signatureMethodBySigner,
+    signatureMethodBySigner: methodBySigner,
     sealed: opts?.sealed,
   });
 
