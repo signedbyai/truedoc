@@ -5,6 +5,7 @@ import { generateSignedPdf } from "@/lib/generate-signed-pdf";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { computeSigningOutcome } from "@/lib/signing-routing";
 import { visibleFieldsForSigner } from "@/lib/field-visibility";
+import { validateFieldValue, type FieldValueType } from "@/lib/field-value-validation";
 import { scheduleWebhookEvent } from "@/lib/webhooks";
 import { bodySchema } from "./schema";
 
@@ -104,6 +105,37 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     );
   }
 
+  // Per-type value validation (SIGNATURE_FIELD_VALIDATION_SCOPE.md layer 1).
+  // `bodySchema` can only check the SHAPE of the payload — it has no idea what
+  // type each field id refers to — so this has to live here, after myFields is
+  // fetched. No extra query: that select already includes `type`.
+  //
+  // Runs AFTER the required check on purpose, so a signer who left something
+  // blank gets the "fill in the highlighted field" message rather than a
+  // type complaint about an empty value.
+  //
+  // A legitimate signer can't trigger this through the signing view, so the
+  // realistic caller is a script or a stale/replayed payload. Reject rather
+  // than store: an unvalidated value here is what produced a blank signature
+  // inside an otherwise sealed, hashed, certificated PDF.
+  const fieldTypeById = new Map(myFields.map((f) => [f.id, f.type as FieldValueType]));
+  for (const [fieldId, value] of Object.entries(parsed.data.values)) {
+    const fieldType = fieldTypeById.get(fieldId);
+    // Not one of this signer's fields — the write loop below ignores it too,
+    // so there's nothing to validate and nothing that can be persisted.
+    if (!fieldType) continue;
+    const problem = validateFieldValue(fieldType, value);
+    if (problem) {
+      console.error(
+        `Rejected ${fieldType} value for field ${fieldId} on document ${document.id}: ${problem}`
+      );
+      return NextResponse.json(
+        { error: `That ${fieldType} field ${problem}.`, invalidFieldIds: [fieldId] },
+        { status: 400 }
+      );
+    }
+  }
+
   const ip = request.headers.get("x-forwarded-for");
   const userAgent = request.headers.get("user-agent");
 
@@ -111,7 +143,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   const myFieldIds = new Set(myFields.map((f) => f.id));
   for (const [fieldId, value] of Object.entries(parsed.data.values)) {
     if (!myFieldIds.has(fieldId)) continue;
-    await admin.from("document_fields").update({ value }).eq("id", fieldId);
+    // signature_method is only meaningful for a mark that was drawn or typed
+    // (layer 3). Recording it on a date or text field would be noise at best
+    // and a false claim on the certificate at worst, so it's gated on the
+    // field's real type rather than trusting whatever the client sent.
+    const fieldType = fieldTypeById.get(fieldId);
+    const isMark = fieldType === "signature" || fieldType === "initials";
+    const method = isMark ? parsed.data.methods?.[fieldId] ?? null : null;
+    await admin
+      .from("document_fields")
+      .update({ value, ...(isMark ? { signature_method: method } : {}) })
+      .eq("id", fieldId);
   }
 
   await admin.from("signers").update({ status: "signed", signed_at: new Date().toISOString() }).eq("id", signer.id);

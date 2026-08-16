@@ -56,13 +56,23 @@ export type StampField = {
 // is the part of the app with the least room for a silent regression: a
 // field that doesn't stamp, stamps the wrong value, or stamps in the wrong
 // place undermines the document's legal validity, not just its looks.
+/** A field that could not be stamped, and why. Returned rather than thrown:
+ *  aborting the whole document over one bad field is worse than producing the
+ *  rest of it (see the catch at the bottom of the loop, which predates this).
+ *  But it must not be SILENT either — a skipped signature leaves an empty box
+ *  in a document that still completes, still hashes and still gets a
+ *  certificate, which is the failure mode this type exists to surface.
+ *  See SIGNATURE_FIELD_VALIDATION_SCOPE.md layer 1. */
+export type StampProblem = { fieldId: string; type: string; reason: string };
+
 export async function stampFields(
   pdfDoc: PDFDocument,
   fields: StampField[],
   fonts: { font: Awaited<ReturnType<PDFDocument["embedFont"]>>; boldFont: Awaited<ReturnType<PDFDocument["embedFont"]>> }
-): Promise<void> {
+): Promise<StampProblem[]> {
   const pages = pdfDoc.getPages();
   const { font, boldFont } = fonts;
+  const problems: StampProblem[] = [];
 
   for (const field of fields) {
     if (!field.value) continue;
@@ -78,9 +88,24 @@ export async function stampFields(
 
     try {
       if (field.type === "signature" || field.type === "initials") {
-        if (!field.value.startsWith("data:image")) continue;
+        // These two used to be bare `continue`s. That meant a signature value
+        // which wasn't an image produced an EMPTY BOX in a document that
+        // otherwise completed, hashed, sealed and got a certificate of
+        // completion — invisible to the sender, invisible to the signer, and
+        // baked into the artifact third parties are asked to trust at /verify.
+        // The submit route now rejects such values outright
+        // (lib/field-value-validation.ts), so reaching here means legacy data
+        // or a path that bypassed it: still don't abort the document, but say
+        // so loudly instead of swallowing it.
+        if (!field.value.startsWith("data:image")) {
+          problems.push({ fieldId: field.id, type: field.type, reason: "value is not an image data URL" });
+          continue;
+        }
         const base64 = field.value.split(",")[1];
-        if (!base64) continue;
+        if (!base64) {
+          problems.push({ fieldId: field.id, type: field.type, reason: "image data URL has no base64 payload" });
+          continue;
+        }
         const imgBytes = Buffer.from(base64, "base64");
         const img = field.value.includes("image/jpeg")
           ? await pdfDoc.embedJpg(imgBytes)
@@ -119,8 +144,15 @@ export async function stampFields(
     } catch (err) {
       // Never let one malformed field value abort the whole document.
       console.error(`Failed to stamp field ${field.id}`, err);
+      problems.push({
+        fieldId: field.id,
+        type: field.type,
+        reason: err instanceof Error ? err.message : "threw while stamping",
+      });
     }
   }
+
+  return problems;
 }
 
 // Stamps every filled-in field value onto the original PDF, appends a
@@ -149,7 +181,7 @@ export async function generateSignedPdf(
 
   const { data: fields } = await admin
     .from("document_fields")
-    .select("id, type, page, x, y, width, height, value")
+    .select("id, type, page, x, y, width, height, value, signer_id, signature_method")
     .eq("document_id", documentId);
 
   const { data: signers } = await admin
@@ -177,7 +209,19 @@ export async function generateSignedPdf(
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
   flattenOriginalForm(pdfDoc, documentId);
-  await stampFields(pdfDoc, fields || [], { font, boldFont });
+  const stampProblems = await stampFields(pdfDoc, fields || [], { font, boldFont });
+  if (stampProblems.length > 0) {
+    // Loud on purpose — this is the one failure in the whole pipeline that
+    // produces a plausible-looking but evidentially wrong artifact, so it
+    // needs to be greppable in the logs rather than inferred later from a
+    // confused customer. The document is still produced (see StampProblem's
+    // comment for why), but a signature problem in particular means a sealed
+    // PDF went out with a blank where someone's signature should be.
+    console.error(
+      `STAMP PROBLEMS on document ${documentId} — ${stampProblems.length} field(s) did not stamp:`,
+      JSON.stringify(stampProblems)
+    );
+  }
 
   // Hash the stamped content itself (before the certificate page), since
   // that's the part that actually carries legal meaning. SHA-512 (not
@@ -194,12 +238,35 @@ export async function generateSignedPdf(
   const stampedBytes = await pdfDoc.save();
   const hash = crypto.createHash("sha512").update(stampedBytes).digest("hex");
 
+  // Collapse each signer's per-field methods into one display phrase. A signer
+  // with several marks normally used the same method for all of them (later
+  // fields reuse the first value), but "typing and drawing" is possible if
+  // they redid one — report that honestly rather than picking a winner.
+  // Fields with no recorded method are skipped entirely, so a pre-0057
+  // document yields an empty map and the certificate simply omits the line.
+  const methodsBySigner = new Map<string, Set<string>>();
+  for (const f of fields || []) {
+    if (f.type !== "signature" && f.type !== "initials") continue;
+    if (!f.signer_id || !f.signature_method) continue;
+    const phrase = f.signature_method === "typed" ? "typing" : "drawing";
+    const existing = methodsBySigner.get(f.signer_id) ?? new Set<string>();
+    existing.add(phrase);
+    methodsBySigner.set(f.signer_id, existing);
+  }
+  const signatureMethodBySigner = new Map<string, string>(
+    Array.from(methodsBySigner, ([signerId, phrases]) => [
+      signerId,
+      Array.from(phrases).sort().join(" and "),
+    ])
+  );
+
   await addCertificatePage(pdfDoc, {
     title: doc.title,
     documentId,
     hash,
     signers: signers || [],
     ipBySigner,
+    signatureMethodBySigner,
     sealed: opts?.sealed,
   });
 
@@ -245,6 +312,20 @@ export type CertificatePageOpts = {
   hash: string;
   signers: { id: string; name: string | null; email: string; signed_at: string | null }[];
   ipBySigner: Map<string, string>;
+  /** Signer id -> how that signer's marks were produced, already phrased for
+   *  display ("typing", "drawing", or "typing and drawing" when a signer used
+   *  both across several fields). SIGNATURE_FIELD_VALIDATION_SCOPE.md layer 3.
+   *
+   *  Optional, and absent entries render nothing: every field signed before
+   *  2026-08-16 has no recorded method and never can (see migration 0057), so
+   *  the page must stay silent rather than guess.
+   *
+   *  WORDING CONSTRAINT — decided 2026-08-16: this is a statement about METHOD
+   *  only. It must never be phrased so as to imply anything about the signer's
+   *  identity, or about the signature's legal weight under ESIGN/UETA/eIDAS.
+   *  Same discipline as the AES-not-QES framing used elsewhere in this
+   *  project's legal-facing copy. */
+  signatureMethodBySigner?: Map<string, string>;
   // Verified Badge framing (VERIFIED_BADGE_SCOPE.md) — present only for a
   // self-sign seal, where there's exactly one signer (the freelancer
   // signing their own file) and the credibility claim is "identity
@@ -323,7 +404,22 @@ export async function addCertificatePage(pdfDoc: PDFDocument, opts: CertificateP
       y -= 14;
       const signedAt = signer.signed_at ? new Date(signer.signed_at).toISOString() : "not recorded";
       page.drawText(`Signed: ${signedAt}    IP address: ${ip}`, { x: margin + 12, y, size: 9, font, color: gray });
-      y -= 24;
+      y -= 13;
+      // Method line — omitted entirely when unknown (pre-0057 documents), so
+      // silence means "not recorded", never "drawn". See the type's comment
+      // for the wording constraint: method only, no identity or legal claim.
+      const signatureMethod = opts.signatureMethodBySigner?.get(signer.id);
+      if (signatureMethod) {
+        page.drawText(`Signature applied by ${signatureMethod}`, {
+          x: margin + 12,
+          y,
+          size: 9,
+          font,
+          color: gray,
+        });
+        y -= 13;
+      }
+      y -= 11;
     }
   }
 
