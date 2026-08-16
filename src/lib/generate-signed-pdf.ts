@@ -181,7 +181,7 @@ export async function generateSignedPdf(
 
   const { data: fields } = await admin
     .from("document_fields")
-    .select("id, type, page, x, y, width, height, value, signer_id, signature_method")
+    .select("id, type, page, x, y, width, height, value, signer_id, signature_method, template_role")
     .eq("document_id", documentId);
 
   const { data: signers } = await admin
@@ -244,14 +244,29 @@ export async function generateSignedPdf(
   // they redid one — report that honestly rather than picking a winner.
   // Fields with no recorded method are skipped entirely, so a pre-0057
   // document yields an empty map and the certificate simply omits the line.
+  //
+  // Ownership MUST mirror visibleFieldsForSigner (lib/field-visibility.ts),
+  // not just read signer_id. On a single-recipient document the sender very
+  // often places fields without ever selecting the recipient chip, leaving
+  // signer_id NULL — that rule treats such a field as belonging to the sole
+  // signer, and the submit route (which uses it) duly records a
+  // signature_method on it. A first pass here checked `!f.signer_id` and
+  // skipped exactly those fields, so the method line silently never appeared
+  // on the commonest kind of document. The template_role condition carries
+  // over for the same reason it exists there: a field still tagged for a
+  // specific party was never generic, so it must not be attributed to whoever
+  // happens to be the only signer.
+  const soleSignerId = signers?.length === 1 ? signers[0].id : null;
   const methodsBySigner = new Map<string, Set<string>>();
   for (const f of fields || []) {
     if (f.type !== "signature" && f.type !== "initials") continue;
-    if (!f.signer_id || !f.signature_method) continue;
+    if (!f.signature_method) continue;
+    const ownerId = f.signer_id ?? (f.template_role === null ? soleSignerId : null);
+    if (!ownerId) continue;
     const phrase = f.signature_method === "typed" ? "typing" : "drawing";
-    const existing = methodsBySigner.get(f.signer_id) ?? new Set<string>();
+    const existing = methodsBySigner.get(ownerId) ?? new Set<string>();
     existing.add(phrase);
-    methodsBySigner.set(f.signer_id, existing);
+    methodsBySigner.set(ownerId, existing);
   }
   const signatureMethodBySigner = new Map<string, string>(
     Array.from(methodsBySigner, ([signerId, phrases]) => [

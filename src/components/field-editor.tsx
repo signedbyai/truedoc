@@ -2732,7 +2732,16 @@ export function FieldEditor({
       {/* First-run walkthrough — one step at a time, advancing by itself as
           the sender acts. See WALKTHROUGH_SEEN_KEY for why this replaced the
           all-three-steps-at-once banner that used to live here. */}
-      {showWalkthrough && walkthroughStep !== null && (
+      {/* Step 3 is deliberately NOT rendered here. The armed-tool bar directly
+          below already says "Click anywhere on the document to place a <type>
+          field", so showing a step-3 panel too put two near-identical
+          instructions on screen at once and pushed the document itself further
+          down — on a phone that's most of the viewport spent saying the same
+          thing twice (reported 2026-08-16 with a screenshot). The walkthrough
+          covers the two steps nothing else narrates; the existing bar keeps
+          step 3. walkthroughStep still reaches 3 and then null, so completion
+          and the seen-flag below are unaffected. */}
+      {showWalkthrough && walkthroughStep !== null && walkthroughStep !== 3 && (
         <div className="flex items-start justify-between gap-3 border-b border-blue-200 bg-blue-50 px-4 py-3 sm:px-6">
           <div className="flex items-start gap-3">
             <span
@@ -2745,7 +2754,6 @@ export function FieldEditor({
               <p className="text-sm font-semibold text-blue-950">
                 {walkthroughStep === 1 && "Add who needs to sign"}
                 {walkthroughStep === 2 && "Pick a field type"}
-                {walkthroughStep === 3 && "Now click the document"}
               </p>
               <p className="mt-0.5 text-xs text-blue-900">
                 {walkthroughStep === 1 &&
@@ -2761,8 +2769,6 @@ export function FieldEditor({
                     {" to place them automatically."}
                   </>
                 )}
-                {walkthroughStep === 3 &&
-                  "Click anywhere on the outlined page to drop the field where you want it. Then send."}
               </p>
             </div>
           </div>
@@ -2887,16 +2893,15 @@ export function FieldEditor({
             }}
             data-page-canvas
             onClick={(e) => handlePageClick(e, page)}
-            className={cn(
-              "relative w-full border border-slate-300 bg-white shadow-sm",
-              // Ring the page itself while a field tool is armed (2026-08-16,
-              // tester item #2). The crosshair cursor below already signals
-              // this, but only once the pointer is over the page and not at
-              // all on touch — where 92% of traffic is. Ringing the target
-              // makes "the document is what you click" visible before the
-              // sender moves or taps anything.
-              selectedTool && "ring-2 ring-slate-900"
-            )}
+            // A `selectedTool && "ring-2 ring-slate-900"` was added here on
+            // 2026-08-16 and removed the same day: on a phone the heavy ring
+            // read as chrome competing with the page's own border rather than
+            // as a cue, and it duplicated what the armed-tool bar above
+            // already says in words. The crosshair cursor stays (see the
+            // style below) — it costs no space and helps on desktop. If the
+            // "which surface do I click" cue needs strengthening again, do it
+            // without adding a second border around the page.
+            className="relative w-full border border-slate-300 bg-white shadow-sm"
             // Sized by aspect-ratio (not a fixed height alongside maxWidth:
             // 100%) so the page scales down correctly on any viewport
             // narrower than its native rendered width — e.g. a phone screen
