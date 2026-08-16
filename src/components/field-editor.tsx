@@ -2053,7 +2053,7 @@ export function FieldEditor({
                         anything on this particular document.
                         Turning it on still clears the seen-flag, so it takes
                         effect on the next document, and the label flipping to
-                        "Hide setup help" is the confirmation that the click
+                        "Hide guided help" is the confirmation that the click
                         registered. */}
                     <button
                       onClick={() => {
@@ -2063,7 +2063,7 @@ export function FieldEditor({
                       className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
                     >
                       <HelpIcon />
-                      {showWalkthrough ? "Hide setup help" : "Show setup help"}
+                      {showWalkthrough ? "Hide guided help" : "Show guided help"}
                     </button>
                     <DuplicateDocumentButton
                       documentId={documentId}
@@ -2385,6 +2385,23 @@ export function FieldEditor({
                 >
                   <SaveIcon />
                   {saving ? "Saving…" : "Save draft"}
+                </button>
+                {/* Mirrors the desktop dropdown's row, same position — see the
+                    running-order note above. Added here a beat after the
+                    desktop one and only because it was reported missing:
+                    the guided-help row went into the desktop menu alone, which
+                    is the exact parity break that comment warns about, on the
+                    surface carrying most of the traffic. If you add a row to
+                    one of these menus, add it to both. */}
+                <button
+                  onClick={() => {
+                    toggleWalkthrough();
+                    setShowMoreMenu(false);
+                  }}
+                  className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
+                >
+                  <HelpIcon />
+                  {showWalkthrough ? "Hide guided help" : "Show guided help"}
                 </button>
                 <DuplicateDocumentButton
                   documentId={documentId}
@@ -2864,11 +2881,19 @@ export function FieldEditor({
               </p>
             </div>
           </div>
+          {/* "Off", not "Skip" (renamed 2026-08-16). Skip implied it moved
+              past this one step; it actually turns guided help off for good,
+              which is the same thing the More menu's toggle does. Matching
+              language means the two controls read as one setting rather than
+              two unrelated dismissals.
+              aria-label spells it out because a bare "Off" gives a screen
+              reader no idea what is being turned off. */}
           <button
             onClick={dismissWalkthrough}
+            aria-label="Turn guided help off"
             className="whitespace-nowrap text-xs font-medium text-blue-700 hover:text-blue-900"
           >
-            Skip
+            Off
           </button>
         </div>
       )}
