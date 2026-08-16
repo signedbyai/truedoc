@@ -17,7 +17,7 @@ import { signerForArrivingSuggestion, signerForConfirmedSuggestion } from "@/lib
 import { matchFrequentSignerByName, type MatchableSigner } from "@/lib/frequent-signer-match";
 import { DeleteDocumentButton } from "@/components/delete-document-button";
 import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
-import { BookmarkIcon, MENU_ITEM_CLASS, SaveIcon, MailIcon, ClockIcon, ShieldIcon } from "@/components/ui/menu-item";
+import { BookmarkIcon, MENU_ITEM_CLASS, SaveIcon, MailIcon, ClockIcon, ShieldIcon, HelpIcon } from "@/components/ui/menu-item";
 import { FIELD_TYPES, fieldDef, type FieldType } from "@/lib/field-types";
 import { defaultRecipientNotice } from "@/lib/recipient-notice";
 import { installMapUpsertPolyfill } from "@/lib/pdfjs-map-polyfill";
@@ -101,6 +101,20 @@ const RECIPIENT_COLORS = [
 // button's SEEN_KEY (referral-gift-button.tsx), just a separate key since
 // they're unrelated discovery moments.
 const LOCK_HINT_SEEN_KEY = "sb_lock_hint_seen";
+
+// First-run editor walkthrough (2026-08-16, tester item #2). Same one-time
+// localStorage gate as LOCK_HINT_SEEN_KEY above and the other *_INTRO_KEY /
+// *_SEEN_KEY hints across the app — an established pattern, not a new one.
+//
+// This REPLACED a `showIntro` banner that listed all three steps at once, in
+// text-xs, on every document until the first field was placed. The first
+// external tester had that banner on screen, sent a document successfully,
+// and still reported not realising they were meant to click the document to
+// place a field — so "explain everything upfront and let them dismiss it" is
+// a demonstrated failure here, not a hypothesis. The replacement says ONE
+// thing at a time and derives which thing from what the sender has actually
+// done, so it can't turn back into a wall of text.
+const WALKTHROUGH_SEEN_KEY = "sb_editor_walkthrough_seen";
 
 function LockIcon({ filled }: { filled: boolean }) {
   return (
@@ -431,7 +445,10 @@ export function FieldEditor({
   // won't flash for a returning document that already has fields once the
   // initial fetch below resolves.
   const [fieldsLoaded, setFieldsLoaded] = useState(false);
-  const [showIntro, setShowIntro] = useState(true);
+  // Starts false so server and first client render agree (localStorage isn't
+  // readable during SSR); the effect below turns it on for a sender who
+  // hasn't seen it. See WALKTHROUGH_SEEN_KEY.
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
   // Mobile-only overflow menu for secondary actions — on a phone the full
   // desktop button row (Back / Save / Suggest / Duplicate / Delete /
   // Template / Send) wrapped into 3-4 lines inside the *sticky* header,
@@ -545,6 +562,36 @@ export function FieldEditor({
   const hasConfirmedRef = useRef(false);
 
   const confirmedFields = fields.filter((f) => !f.suggested);
+
+  // Which single step the first-run walkthrough is currently on, derived from
+  // what the sender has actually done rather than from a counter they click
+  // through. That's the whole point of it: it can't get out of step with the
+  // UI, it advances by itself when they do the thing, and there is never more
+  // than one instruction on screen. null = all three done.
+  //
+  // The steps deliberately mirror the `next-step-highlight` glow that already
+  // exists on the "+ Add recipient" button and the signature tool — the
+  // walkthrough narrates the same sequence those were already pointing at,
+  // rather than introducing a competing one. Step 3's visual counterpart is
+  // the ring on the page itself (see the page container's className).
+  const walkthroughStep: 1 | 2 | 3 | null =
+    confirmedFields.length > 0 ? null : recipients.length === 0 ? 1 : selectedTool ? 3 : 2;
+
+  // THE ONE-HELPER-AT-A-TIME RULE. Two things can explain what to do next: the
+  // blue walkthrough (first-run only, steps 1-2) and the black armed-tool bar
+  // (whenever a field tool is selected). Only one may be on screen.
+  //
+  // Dropping walkthrough step 3 covers the ordinary path, because step 3 is
+  // exactly "a tool is selected" and that's the black bar's job. It does NOT
+  // cover selecting a tool BEFORE adding a recipient: recipients.length === 0
+  // pins the step at 1, so the blue panel and the black bar both rendered —
+  // reachable in one click, since the tools row sits above the recipients row.
+  //
+  // Derived once here rather than repeated in two JSX guards so the invariant
+  // can't quietly drift apart again. The walkthrough wins when both could
+  // show: it's asking for the recipient, which is the thing actually blocking
+  // progress, while the bar would be inviting a click that lands unassigned.
+  const walkthroughVisible = showWalkthrough && walkthroughStep !== null && walkthroughStep !== 3;
   // Whether the "This looks like it needs N signer(s)" panel is on screen.
   // Read by the panel itself and by the "+ Add recipient" glow, so the
   // guided cue can never point at the manual path while the guided one is
@@ -560,8 +607,11 @@ export function FieldEditor({
   // recipient when there's exactly one (an unassigned field still reaches that
   // single signer — see the send-time orphan guard). Used for the pre-send
   // "who signs where" check + review modal.
+  // Still used by the send-review modal's per-recipient field count. The
+  // companion `recipientsWithoutFields` that used to live here was removed
+  // 2026-08-16: handleSend became its only consumer and now derives its own
+  // over the arrays it is actually about to persist (see the comment there).
   const effectiveOwner = (f: Field) => f.signerId ?? (recipients.length === 1 ? recipients[0].id : null);
-  const recipientsWithoutFields = recipients.filter((r) => !confirmedFields.some((f) => effectiveOwner(f) === r.id));
 
   // The recipient a newly-placed field will belong to — surfaced next to the
   // field tools ("Fields go to: ● Name") so it's obvious that picking a
@@ -1017,9 +1067,83 @@ export function FieldEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recipients.length > 0]);
 
-  function addRecipient() {
+  // Turns the first-run walkthrough on for a sender who hasn't seen it. Waits
+  // for fieldsLoaded so it never flashes on a returning document that already
+  // has fields (same reasoning as fieldsLoaded's own comment). The "seen" flag
+  // is written on dismissal/completion rather than here, so closing the tab
+  // mid-way doesn't burn it.
+  useEffect(() => {
+    if (!fieldsLoaded) return;
+    let alreadySeen = true;
+    try {
+      alreadySeen = window.localStorage.getItem(WALKTHROUGH_SEEN_KEY) === "1";
+    } catch {
+      alreadySeen = true;
+    }
+    if (alreadySeen) return;
+    // Deferred a tick — same react-hooks/set-state-in-effect workaround as
+    // the lock-hint effect above.
+    Promise.resolve().then(() => setShowWalkthrough(true));
+  }, [fieldsLoaded]);
+
+  function dismissWalkthrough() {
+    setShowWalkthrough(false);
+    try {
+      window.localStorage.setItem(WALKTHROUGH_SEEN_KEY, "1");
+    } catch {
+      // storage disabled — it'll just offer itself again next visit, harmless
+    }
+  }
+
+  // Manual on/off from the "More ⋯" menu (2026-08-16). The seen-flag lives in
+  // localStorage, so it's per browser and per device: a sender who skipped the
+  // walkthrough on their laptop had no way back to it there, even while their
+  // phone still offered it. Skipping was already the "off" switch; nothing
+  // advertised it and nothing undid it.
+  //
+  // Turning it ON clears the flag as well as showing it, so it survives a
+  // reload rather than reappearing only until the next page view.
+  function toggleWalkthrough() {
+    if (showWalkthrough) {
+      dismissWalkthrough();
+      return;
+    }
+    setShowWalkthrough(true);
+    try {
+      window.localStorage.removeItem(WALKTHROUGH_SEEN_KEY);
+    } catch {
+      // storage disabled — still shows for this page view, just won't persist
+    }
+  }
+
+  // Completing all three steps counts as having seen it, same as skipping.
+  // Without this the flag is never written on the success path, so someone who
+  // did everything right would be walked through it again on their next
+  // document — the one person who has clearly proved they don't need it.
+  useEffect(() => {
+    if (!showWalkthrough || walkthroughStep !== null) return;
+    Promise.resolve().then(dismissWalkthrough);
+  }, [showWalkthrough, walkthroughStep]);
+
+  // Builds the recipient currently sitting uncommitted in the "+ Add
+  // recipient" form, along with the `recipients` and `fields` arrays that
+  // committing it produces.
+  //
+  // Deliberately PURE — it sets no state. handleSend needs both to commit the
+  // recipient AND to use the resulting arrays within the same tick, and
+  // setRecipients/setFields don't take effect until the next render, so
+  // reading state back after committing would silently see the OLD arrays.
+  // Persisting a stale `fields` array is the exact mechanism behind the three
+  // CRITICAL null-signer_id bugs in this file's history, so the committing
+  // path and the reading path are derived from one function here rather than
+  // written twice and left to drift.
+  function buildPendingRecipient(): {
+    recipient: Recipient;
+    nextRecipients: Recipient[];
+    nextFields: Field[];
+  } | null {
     const email = newEmail.trim();
-    if (!email) return;
+    if (!email) return null;
     const roleClaimed = recipients.length;
     const recipient: Recipient = {
       id: `new-${crypto.randomUUID()}`,
@@ -1028,22 +1152,50 @@ export function FieldEditor({
       order_index: roleClaimed,
       auth_required: false,
     };
-    setRecipients((prev) => [...prev, recipient]);
-    setActiveRecipientId(recipient.id);
-    setNewName("");
-    setNewEmail("");
-    setShowAddRecipient(false);
-
-    // Claim any template-seeded fields waiting for this recipient slot —
-    // roles are numbered in the order recipients were added, both when a
-    // template was saved and here when it's reused.
-    setFields((prev) =>
-      prev.map((f) =>
+    return {
+      recipient,
+      nextRecipients: [...recipients, recipient],
+      // Claim any template-seeded fields waiting for this recipient slot —
+      // roles are numbered in the order recipients were added, both when a
+      // template was saved and here when it's reused.
+      //
+      // UNTESTED, and inline for a reason. Extracting this into a lib module
+      // so it could be unit-tested was attempted on 2026-08-16 and reverted:
+      // calling ANY imported helper on this component's state — the array, or
+      // each field object, or even a derived count — trips
+      // react-hooks/preserve-manual-memoization, because the compiler can't
+      // see inside the callee and must assume it mutates. That breaks
+      // draftSignature's useCallback and makes React Compiler skip optimizing
+      // the entire editor, which is too high a price on this component.
+      //
+      // The server-side counterpart of this rule IS tested — see
+      // lib/signer-field-claim.ts's ownerOfField. If the two ever disagree,
+      // that file is the specification and this is the copy.
+      nextFields: fields.map((f) =>
         f.signerId === null && f.templateRole === roleClaimed
           ? { ...f, signerId: recipient.id, templateRole: null }
           : f
-      )
-    );
+      ),
+    };
+  }
+
+  // Applies what buildPendingRecipient computed and clears the form. Sets the
+  // arrays by value rather than with the functional form the two setters used
+  // before: the values ARE this render's arrays plus the new recipient, and
+  // handleSend relies on them matching what it goes on to persist.
+  function commitPendingRecipient(built: NonNullable<ReturnType<typeof buildPendingRecipient>>) {
+    setRecipients(built.nextRecipients);
+    setFields(built.nextFields);
+    setActiveRecipientId(built.recipient.id);
+    setNewName("");
+    setNewEmail("");
+    setShowAddRecipient(false);
+  }
+
+  function addRecipient() {
+    const built = buildPendingRecipient();
+    if (!built) return;
+    commitPendingRecipient(built);
   }
 
   function removeRecipient(id: string) {
@@ -1406,9 +1558,18 @@ export function FieldEditor({
   // point at those ids, then saves fields. Returns false on failure —
   // including a network-level throw, so callers never leave a spinner stuck
   // (see handleSend) and autosave can quietly retry on the next change.
-  async function persist(): Promise<boolean> {
+  // The two overrides exist for handleSend's auto-commit path: a recipient
+  // committed in the same tick is not yet visible in `recipients`/`fields`
+  // (React re-renders afterwards), so that caller passes the arrays it just
+  // computed. Every other caller — autosave, handleSaveDraft — omits them and
+  // gets current state, exactly as before. Do NOT reintroduce direct reads of
+  // `recipients`/`fields` inside this function: saving a stale `fields` array
+  // is what caused all three CRITICAL null-signer_id bugs in this file.
+  async function persist(recipientsOverride?: Recipient[], fieldsOverride?: Field[]): Promise<boolean> {
+    const srcRecipients = recipientsOverride ?? recipients;
+    const srcFields = fieldsOverride ?? fields;
     try {
-      let savedRecipients = recipients;
+      let savedRecipients = srcRecipients;
       // old recipient id -> new (server-assigned) id. Declared out here so the
       // fields payload below can be remapped too — NOT just the React state.
       // Missing that remap silently nulled every field's signer_id on save
@@ -1417,12 +1578,12 @@ export function FieldEditor({
       // fields assigned to nobody and each signer saw an empty document.
       const oldToNew = new Map<string, string>();
 
-      if (recipients.length > 0) {
+      if (srcRecipients.length > 0) {
         const res = await fetch(`/api/documents/${documentId}/signers`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            signers: recipients.map((r) => ({
+            signers: srcRecipients.map((r) => ({
               name: r.name || null,
               email: r.email,
               order_index: r.order_index,
@@ -1436,12 +1597,12 @@ export function FieldEditor({
 
         // Match by array position (single batch insert preserves order); fall
         // back to email match if that ever isn't true.
-        recipients.forEach((r, i) => {
+        srcRecipients.forEach((r, i) => {
           const match = returned[i]?.email === r.email ? returned[i] : returned.find((x) => x.email === r.email);
           if (match) oldToNew.set(r.id, match.id);
         });
 
-        savedRecipients = recipients.map((r) => ({ ...r, id: oldToNew.get(r.id) ?? r.id }));
+        savedRecipients = srcRecipients.map((r) => ({ ...r, id: oldToNew.get(r.id) ?? r.id }));
         setRecipients(savedRecipients);
         setActiveRecipientId((prev) => (prev ? oldToNew.get(prev) ?? prev : prev));
         setFields((prev) =>
@@ -1455,7 +1616,7 @@ export function FieldEditor({
       // — skipping this nulled every assignment on multi-recipient docs).
       const validRecipientIds = new Set(savedRecipients.map((r) => r.id));
       const currentFields = remapFieldSignerIds(
-        fields.filter((f) => !f.suggested),
+        srcFields.filter((f) => !f.suggested),
         oldToNew,
         validRecipientIds
       );
@@ -1534,11 +1695,64 @@ export function FieldEditor({
       setShowUpgradeModal(true);
       return;
     }
-    if (recipients.length === 0) {
+    // A recipient typed into the "+ Add recipient" form but never committed
+    // with the small "Add" button is still sitting in newName/newEmail and has
+    // never reached `recipients`. Before 2026-08-16 that fell straight through
+    // to the "Add at least one recipient" message below — baffling when the
+    // address you just typed is still visible on screen. Reported by the first
+    // external tester (item #1) as: "you type your email, click Send, does not
+    // work; you have to bring the focus out of the email field before Send
+    // works." The blur was a red herring: leaving the field is simply what
+    // prompted them to click Add. Nothing about focus was ever involved.
+    //
+    // Commit it for them rather than making them click twice. THE ARRAYS
+    // BUILT HERE ARE USED FOR THE REST OF THIS FUNCTION — commitPendingRecipient
+    // only queues setState, so `recipients`/`fields`/`confirmedFields` and
+    // every value derived from them still hold the pre-commit arrays until the
+    // next render. Reading those below would silently drop the recipient we
+    // just added, and persisting a stale `fields` array is the exact mechanism
+    // behind the three CRITICAL null-signer_id bugs in this file's history.
+    // Everything downstream therefore uses sendRecipients/sendFields, and
+    // persist() takes them as arguments instead of closing over state.
+    let sendRecipients = recipients;
+    let sendFields = fields;
+    if (showAddRecipient && newEmail.trim()) {
+      // Auto-commit is deliberately stricter than the "Add" button, which
+      // accepts any non-empty string. Clicking Add is an explicit "yes, this
+      // person" — inferring it from a Send click is not, so an address that
+      // isn't even shaped like one gets queried rather than quietly turned
+      // into a recipient the sender never confirmed. Same rough shape check
+      // as checkBillToEmailOnBlur (magic-quote-form.tsx); the send route
+      // still does the real domain validation afterwards either way.
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim())) {
+        setStatusMessage(
+          `"${newEmail.trim()}" doesn't look like an email address — check it, then send.`
+        );
+        return;
+      }
+      const built = buildPendingRecipient();
+      if (built) {
+        commitPendingRecipient(built);
+        sendRecipients = built.nextRecipients;
+        sendFields = built.nextFields;
+      }
+    }
+    // Local re-derivations over the arrays above, mirroring confirmedFields
+    // and effectiveOwner as they're defined near the top of the component
+    // against live state. Keep them structurally identical to those — if one
+    // changes, change both.
+    const sendConfirmedFields = sendFields.filter((f) => !f.suggested);
+    const sendEffectiveOwner = (f: Field) =>
+      f.signerId ?? (sendRecipients.length === 1 ? sendRecipients[0].id : null);
+    const sendRecipientsWithoutFields = sendRecipients.filter(
+      (r) => !sendConfirmedFields.some((f) => sendEffectiveOwner(f) === r.id)
+    );
+
+    if (sendRecipients.length === 0) {
       setStatusMessage("Add at least one recipient before sending.");
       return;
     }
-    if (confirmedFields.length === 0) {
+    if (sendConfirmedFields.length === 0) {
       setStatusMessage("Place at least one field before sending.");
       return;
     }
@@ -1550,8 +1764,8 @@ export function FieldEditor({
     // claimed, or an unassigned field when there's more than one recipient)
     // would otherwise either vanish for every signer or, worse, bleed onto
     // the wrong one — block the send and say so instead of shipping that.
-    const orphanedFields = confirmedFields.filter(
-      (f) => f.signerId === null && (f.templateRole !== null || recipients.length > 1)
+    const orphanedFields = sendConfirmedFields.filter(
+      (f) => f.signerId === null && (f.templateRole !== null || sendRecipients.length > 1)
     );
     if (orphanedFields.length > 0) {
       setStatusMessage(
@@ -1566,13 +1780,13 @@ export function FieldEditor({
     // consent to an empty document, which can quietly complete the whole thing
     // without them actually signing (the reported bug). Show the who-signs-where
     // review as a HARD block, not an override. The send route enforces the same.
-    if (recipientsWithoutFields.length > 0) {
+    if (sendRecipientsWithoutFields.length > 0) {
       setShowSendReview(true);
       return;
     }
     setSending(true);
     setStatusMessage("");
-    const ok = await persist();
+    const ok = await persist(sendRecipients, sendFields);
     if (!ok) {
       setStatusMessage("Couldn't save — check your connection and try again.");
       setSending(false);
@@ -1841,6 +2055,28 @@ export function FieldEditor({
                     >
                       <SaveIcon />
                       {saving ? "Saving…" : "Save draft"}
+                    </button>
+                    {/* Always enabled. It was briefly `disabled` when there was
+                        no step left to show (a document that already has
+                        fields) on the reasoning that clicking it would be a
+                        no-op — but that greys it to 50% at exactly the moment
+                        someone goes hunting for it, and it was reported as
+                        missing within the hour. A control you can't find when
+                        you want it is worse than one that doesn't visibly do
+                        anything on this particular document.
+                        Turning it on still clears the seen-flag, so it takes
+                        effect on the next document, and the label flipping to
+                        "Hide guided help" is the confirmation that the click
+                        registered. */}
+                    <button
+                      onClick={() => {
+                        toggleWalkthrough();
+                        setShowMoreMenu(false);
+                      }}
+                      className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
+                    >
+                      <HelpIcon />
+                      {showWalkthrough ? "Hide guided help" : "Show guided help"}
                     </button>
                     <DuplicateDocumentButton
                       documentId={documentId}
@@ -2162,6 +2398,23 @@ export function FieldEditor({
                 >
                   <SaveIcon />
                   {saving ? "Saving…" : "Save draft"}
+                </button>
+                {/* Mirrors the desktop dropdown's row, same position — see the
+                    running-order note above. Added here a beat after the
+                    desktop one and only because it was reported missing:
+                    the guided-help row went into the desktop menu alone, which
+                    is the exact parity break that comment warns about, on the
+                    surface carrying most of the traffic. If you add a row to
+                    one of these menus, add it to both. */}
+                <button
+                  onClick={() => {
+                    toggleWalkthrough();
+                    setShowMoreMenu(false);
+                  }}
+                  className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
+                >
+                  <HelpIcon />
+                  {showWalkthrough ? "Hide guided help" : "Show guided help"}
                 </button>
                 <DuplicateDocumentButton
                   documentId={documentId}
@@ -2563,33 +2816,99 @@ export function FieldEditor({
             </button>
           )}
         </div>
+
+        {/* The armed-to-place instruction. Made louder 2026-08-16 (first
+            external tester, item #2: didn't notice they were meant to click
+            the document). Kept slate-900 deliberately — that's the same colour
+            the selected field-tool chip uses, so the bar reads as "this tool
+            is armed" rather than as an unrelated banner.
+
+            MOVED INSIDE the sticky header 2026-08-16 (second report, with
+            screenshots): it used to sit in normal flow just below it, so on
+            desktop the instruction scrolled away the moment you scrolled down
+            to the part of the page you actually wanted to click — i.e. it
+            vanished exactly when it became useful, since the signature block
+            is usually near the end of a document. Living inside the sticky
+            container means it follows the page down without needing to know
+            the header's height, which varies as the toolbar wraps.
+
+            It shares the sticky block with nothing else in practice: this only
+            renders when a field tool is armed, and the blue walkthrough only
+            renders at steps 1-2, which by definition have no tool selected.
+
+            Note this bar can only ever help someone who has already selected a
+            field tool. A sender who never picks one never sees it — the
+            `next-step-highlight` glow on the signature tool is the existing
+            answer to that. */}
+        {selectedTool && !walkthroughVisible && (
+          <p className="flex items-center justify-center gap-2 bg-slate-900 px-6 py-2.5 text-center text-sm font-medium text-white">
+            <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-white" aria-hidden="true" />
+            <span>
+              Click anywhere on the document to place a {fieldDef(selectedTool).label.toLowerCase()} field
+              {activeRecipientId ? " for the selected recipient." : " (unassigned — select a recipient chip above to assign it)."}
+            </span>
+          </p>
+        )}
       </div>
 
-      {showIntro && fieldsLoaded && confirmedFields.length === 0 && (
-        <div className="flex items-center justify-between gap-3 border-b border-blue-100 bg-blue-50 px-4 py-2.5 sm:px-6">
-          <p className="text-xs text-blue-900">
-            <strong>1.</strong> Add who needs to sign (below). <strong>2.</strong> Select a recipient, pick a field
-            type above, and click on the document to place their field — or press{" "}
-            {/* Explicit {" "} — your production screenshot rendered this as
-                "Suggest fieldsto scan", so don't rely on the literal space
-                after the closing tag surviving the build. */}
-            <strong>Suggest fields</strong>
-            {" to place them automatically. Then send when you're ready."}
-          </p>
+      {/* First-run walkthrough — one step at a time, advancing by itself as
+          the sender acts. See WALKTHROUGH_SEEN_KEY for why this replaced the
+          all-three-steps-at-once banner that used to live here. */}
+      {/* Step 3 is deliberately NOT rendered here. The armed-tool bar directly
+          below already says "Click anywhere on the document to place a <type>
+          field", so showing a step-3 panel too put two near-identical
+          instructions on screen at once and pushed the document itself further
+          down — on a phone that's most of the viewport spent saying the same
+          thing twice (reported 2026-08-16 with a screenshot). The walkthrough
+          covers the two steps nothing else narrates; the existing bar keeps
+          step 3. walkthroughStep still reaches 3 and then null, so completion
+          and the seen-flag below are unaffected. */}
+      {walkthroughVisible && (
+        <div className="flex items-start justify-between gap-3 border-b border-blue-200 bg-blue-50 px-4 py-3 sm:px-6">
+          <div className="flex items-start gap-3">
+            <span
+              className="mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white"
+              aria-hidden="true"
+            >
+              {walkthroughStep}
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-blue-950">
+                {walkthroughStep === 1 && "Add who needs to sign"}
+                {walkthroughStep === 2 && "Pick a field type"}
+              </p>
+              <p className="mt-0.5 text-xs text-blue-900">
+                {walkthroughStep === 1 &&
+                  "Use “+ Add recipient” below — the highlighted button. You can add more than one."}
+                {walkthroughStep === 2 && (
+                  <>
+                    Choose <strong>Signature</strong> (or Date, Initials…) from the tools above — or press{" "}
+                    {/* Explicit {" "} — a production screenshot once rendered
+                        this as "Suggest fieldsto scan", so don't rely on the
+                        literal space after the closing tag surviving the
+                        build. */}
+                    <strong>Suggest fields</strong>
+                    {" to place them automatically."}
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+          {/* "Off", not "Skip" (renamed 2026-08-16). Skip implied it moved
+              past this one step; it actually turns guided help off for good,
+              which is the same thing the More menu's toggle does. Matching
+              language means the two controls read as one setting rather than
+              two unrelated dismissals.
+              aria-label spells it out because a bare "Off" gives a screen
+              reader no idea what is being turned off. */}
           <button
-            onClick={() => setShowIntro(false)}
+            onClick={dismissWalkthrough}
+            aria-label="Turn guided help off"
             className="whitespace-nowrap text-xs font-medium text-blue-700 hover:text-blue-900"
           >
-            Got it
+            Off
           </button>
         </div>
-      )}
-
-      {selectedTool && (
-        <p className="bg-slate-900 px-6 py-1.5 text-center text-xs text-white">
-          Click anywhere on the document to place a {fieldDef(selectedTool).label.toLowerCase()} field
-          {activeRecipientId ? " for the selected recipient." : " (unassigned — select a recipient chip above to assign it)."}
-        </p>
       )}
 
       {suggesting && (
@@ -2680,6 +2999,14 @@ export function FieldEditor({
             }}
             data-page-canvas
             onClick={(e) => handlePageClick(e, page)}
+            // A `selectedTool && "ring-2 ring-slate-900"` was added here on
+            // 2026-08-16 and removed the same day: on a phone the heavy ring
+            // read as chrome competing with the page's own border rather than
+            // as a cue, and it duplicated what the armed-tool bar above
+            // already says in words. The crosshair cursor stays (see the
+            // style below) — it costs no space and helps on desktop. If the
+            // "which surface do I click" cue needs strengthening again, do it
+            // without adding a second border around the page.
             className="relative w-full border border-slate-300 bg-white shadow-sm"
             // Sized by aspect-ratio (not a fixed height alongside maxWidth:
             // 100%) so the page scales down correctly on any viewport

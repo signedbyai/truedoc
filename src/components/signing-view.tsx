@@ -110,6 +110,28 @@ function defaultTypedValue(field: Field, signerName: string | null): string {
   return signerName;
 }
 
+/** Hard cap on a typed initials value (SIGNATURE_FIELD_VALIDATION_SCOPE.md
+ *  layer 2). Decided 2026-08-16: "typically 1 to 5 characters are fine for
+ *  initials". Before this the initials pad was the same unbounded text input
+ *  as the signature pad, so an entire sentence could be saved as someone's
+ *  initials. Enforced with maxLength rather than validation-on-save so the
+ *  field simply stops accepting input — no error state, no extra click, per
+ *  feedback-no-friction-in-signing-flow. */
+const MAX_INITIALS_LENGTH = 5;
+
+/** How a signature/initials mark was produced. Recorded per field and sent
+ *  with the submit payload — see the signatureMethods state below. */
+type SignatureMethod = "typed" | "drawn";
+
+/** Loose comparison for the mismatch warning only — case-, space- and
+ *  punctuation-insensitive, so "j.smith" still matches "J Smith" and
+ *  "J.S." still matches "JS". Deliberately forgiving: this drives a WARNING,
+ *  never a block (see the warning's own comment), so a false positive costs
+ *  the signer an unnecessary caution while a false negative costs nothing. */
+function normalizeForNameMatch(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 export function SigningView({
   token,
   documentTitle,
@@ -164,6 +186,26 @@ export function SigningView({
     signature: "",
     initials: "",
   });
+  // How each signature/initials value was actually produced
+  // (SIGNATURE_FIELD_VALIDATION_SCOPE.md layer 3). Until 2026-08-16 nothing
+  // recorded this: both pad modes render to a PNG data URL, so a name typed in
+  // a script font and a genuinely hand-drawn mark were indistinguishable at
+  // the storage layer. That made the certificate of completion unable to say
+  // which happened, and made the four signing options mean the same thing —
+  // exactly what the first external tester asked about ("what's the point of
+  // all the different signing options?").
+  //
+  // Note this is a CAPTURE gap, not just a display one: no document signed
+  // before this shipped can ever be back-filled, because the information was
+  // never recorded in the first place.
+  const [signatureMethods, setSignatureMethods] = useState<Record<string, SignatureMethod>>({});
+  // Parallel to savedTypeValues: when a later field of the same type is
+  // auto-filled from the remembered value, it must carry that value's METHOD
+  // too, or the reused fields would look method-less on the certificate.
+  const [savedTypeMethods, setSavedTypeMethods] = useState<{
+    signature: SignatureMethod | null;
+    initials: SignatureMethod | null;
+  }>({ signature: null, initials: null });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [missingFieldIds, setMissingFieldIds] = useState<Set<string>>(new Set());
@@ -639,10 +681,12 @@ export function SigningView({
     }
     const dataUrl = padRef.current.getTrimmedCanvas().toDataURL("image/png");
     setValue(signaturePadFor, dataUrl);
+    setSignatureMethods((prev) => ({ ...prev, [signaturePadFor]: "drawn" }));
     advanceCardIfCurrent(signaturePadFor);
     const field = initialFields.find((f) => f.id === signaturePadFor);
     if (field?.type === "signature" || field?.type === "initials") {
       setSavedTypeValues((prev) => ({ ...prev, [field.type]: dataUrl }));
+      setSavedTypeMethods((prev) => ({ ...prev, [field.type]: "drawn" }));
     }
     setSignaturePadFor(null);
   }
@@ -653,10 +697,12 @@ export function SigningView({
     if (!text) return;
     const dataUrl = renderTypedSignature(text, SIGNATURE_STYLES[typedStyleIndex]);
     setValue(signaturePadFor, dataUrl);
+    setSignatureMethods((prev) => ({ ...prev, [signaturePadFor]: "typed" }));
     advanceCardIfCurrent(signaturePadFor);
     const field = initialFields.find((f) => f.id === signaturePadFor);
     if (field?.type === "signature" || field?.type === "initials") {
       setSavedTypeValues((prev) => ({ ...prev, [field.type]: dataUrl }));
+      setSavedTypeMethods((prev) => ({ ...prev, [field.type]: "typed" }));
     }
     setSignaturePadFor(null);
   }
@@ -671,6 +717,10 @@ export function SigningView({
       const saved = savedTypeValues[field.type as "signature" | "initials"];
       if (saved) {
         setValue(field.id, saved);
+        // Carry the remembered value's method across too — this field's mark
+        // was produced the same way the first one was.
+        const savedMethod = savedTypeMethods[field.type as "signature" | "initials"];
+        if (savedMethod) setSignatureMethods((prev) => ({ ...prev, [field.id]: savedMethod }));
         advanceCardIfCurrent(field.id);
         return;
       }
@@ -706,7 +756,10 @@ export function SigningView({
         res = await fetch(`/api/sign/${token}/submit`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ consent: true, values }),
+          // `methods` is additive and optional server-side — an older client
+          // (or a restored draft from before this shipped) simply omits it and
+          // the fields record no method, same as every historical document.
+          body: JSON.stringify({ consent: true, values, methods: signatureMethods }),
         });
       } catch {
         // Network-level failure — we never got a response, so we don't know
@@ -978,6 +1031,29 @@ export function SigningView({
             // outline-style secondary buttons used for this everywhere else
             // in the app, rather than duplicating the Share button's own
             // solid dark styling right above it.
+            //
+            // KNOWN MISMATCH, deliberately left in place (2026-08-16).
+            //
+            // This is an EmbeddedPdfPreview: the trigger opens an in-page
+            // preview and the actual download lives inside that panel. So
+            // "Download signed PDF" promises something this control doesn't
+            // do — which is exactly what the first external tester reported
+            // (item #6: "the Download button doesn't download — you need a
+            // second Download/share click").
+            //
+            // It was briefly changed to "View & download signed PDF" and then
+            // changed BACK the same day, on purpose. Reverting restores the
+            // known mismatch, and that is an accepted interim state rather
+            // than an oversight: the wording question is bigger than this one
+            // button. Every other EmbeddedPdfPreview call site uses a noun
+            // label ("Post-doc sealed PDF", "Badge-on sealed PDF") that
+            // promises no action at all, so a one-off verb fix here would
+            // just make this button inconsistent in a different direction.
+            //
+            // Do NOT "fix" this label on its own — it's tracked as a naming
+            // pass across all the output controls. See MASTER_BACKLOG.md
+            // (Design) and the preview-first note at the top of
+            // sealed-document-outputs.tsx.
             <EmbeddedPdfPreview
               href={`/api/sign/${token}/signed-file`}
               filename={`${documentTitle.replace(/[^\w.\- ]/g, "")}-signed.pdf`}
@@ -1591,6 +1667,22 @@ export function SigningView({
         const padField = initialFields.find((f) => f.id === signaturePadFor);
         const isInitials = padField?.type === "initials";
         const actionLabel = isInitials ? "initials" : "signature";
+        // What we'd expect them to type, given the name on the invitation:
+        // the full name for a signature, the derived initials for initials.
+        const expectedTyped = padField ? defaultTypedValue(padField, signerName) : "";
+        // WARN, NEVER BLOCK (decided 2026-08-16). Strict matching would break
+        // entirely legitimate cases — signing as "J. Smith" when invited as
+        // "John Smith", married names, transliterations, or signing on behalf
+        // of a company — and blocking a signer mid-flow collides with
+        // feedback-no-friction-in-signing-flow. The save button below stays
+        // enabled regardless; this is a nudge against a typo or the wrong
+        // person signing, not a gate. Only shown once there's something to
+        // compare and a name to compare it against.
+        const typedNameMismatch =
+          padMode === "type" &&
+          !!expectedTyped &&
+          !!typedValue.trim() &&
+          normalizeForNameMatch(typedValue) !== normalizeForNameMatch(expectedTyped);
         return (
           <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-4">
             <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-xl">
@@ -1625,9 +1717,41 @@ export function SigningView({
                     type="text"
                     value={typedValue}
                     onChange={(e) => setTypedValue(e.target.value)}
+                    maxLength={isInitials ? MAX_INITIALS_LENGTH : undefined}
                     placeholder={isInitials ? "Your initials" : "Your full name"}
                     className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400"
                   />
+                  {/* Matches the shared "Double-check this address" warning
+                      card used by the email-domain checks
+                      (frequent-signers-settings.tsx, magic-quote-form.tsx,
+                      signer-row.tsx — BOUNCE_TRACKING_SCOPE.md): white card,
+                      slate border, bold short title, muted detail line. Those
+                      replaced inline warning text deliberately (825e14e,
+                      af45d22), so a bare coloured <p> here was out of step
+                      with the rest of the app.
+
+                      Deliberately NOT the floating-popover half of that
+                      pattern — no X, no fixed-inset dismiss layer. Those exist
+                      because the domain check is a one-shot async result you
+                      acknowledge once. This warning re-evaluates on every
+                      keystroke, so a close button would be meaningless (the
+                      next character brings it back), and the popover's
+                      z-40/z-50 layers would stack on top of the pad modal
+                      this sits inside. Same visual language, appropriate
+                      mechanics. */}
+                  {typedNameMismatch && (
+                    <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {isInitials ? "Double-check these initials" : "Double-check this name"}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-600">
+                        {isInitials
+                          ? `We expected ${expectedTyped} for ${signerName}.`
+                          : `This was sent to ${expectedTyped}.`}{" "}
+                        You can still use what you&apos;ve typed.
+                      </p>
+                    </div>
+                  )}
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     {SIGNATURE_STYLES.map((style, i) => (
                       <button
