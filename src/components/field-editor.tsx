@@ -576,6 +576,22 @@ export function FieldEditor({
   // the ring on the page itself (see the page container's className).
   const walkthroughStep: 1 | 2 | 3 | null =
     confirmedFields.length > 0 ? null : recipients.length === 0 ? 1 : selectedTool ? 3 : 2;
+
+  // THE ONE-HELPER-AT-A-TIME RULE. Two things can explain what to do next: the
+  // blue walkthrough (first-run only, steps 1-2) and the black armed-tool bar
+  // (whenever a field tool is selected). Only one may be on screen.
+  //
+  // Dropping walkthrough step 3 covers the ordinary path, because step 3 is
+  // exactly "a tool is selected" and that's the black bar's job. It does NOT
+  // cover selecting a tool BEFORE adding a recipient: recipients.length === 0
+  // pins the step at 1, so the blue panel and the black bar both rendered —
+  // reachable in one click, since the tools row sits above the recipients row.
+  //
+  // Derived once here rather than repeated in two JSX guards so the invariant
+  // can't quietly drift apart again. The walkthrough wins when both could
+  // show: it's asking for the recipient, which is the thing actually blocking
+  // progress, while the bar would be inviting a click that lands unassigned.
+  const walkthroughVisible = showWalkthrough && walkthroughStep !== null && walkthroughStep !== 3;
   // Whether the "This looks like it needs N signer(s)" panel is on screen.
   // Read by the panel itself and by the "+ Add recipient" glow, so the
   // guided cue can never point at the manual path while the guided one is
@@ -2027,18 +2043,23 @@ export function FieldEditor({
                       <SaveIcon />
                       {saving ? "Saving…" : "Save draft"}
                     </button>
-                    {/* Disabled when there's nothing left to guide — the
-                        walkthrough is derived from what the sender has done,
-                        so on a document that already has fields there is no
-                        next step to show. Same disabled-row treatment as
-                        "Save as template" below rather than a row that looks
-                        live and then does nothing. */}
+                    {/* Always enabled. It was briefly `disabled` when there was
+                        no step left to show (a document that already has
+                        fields) on the reasoning that clicking it would be a
+                        no-op — but that greys it to 50% at exactly the moment
+                        someone goes hunting for it, and it was reported as
+                        missing within the hour. A control you can't find when
+                        you want it is worse than one that doesn't visibly do
+                        anything on this particular document.
+                        Turning it on still clears the seen-flag, so it takes
+                        effect on the next document, and the label flipping to
+                        "Hide setup help" is the confirmation that the click
+                        registered. */}
                     <button
                       onClick={() => {
                         toggleWalkthrough();
                         setShowMoreMenu(false);
                       }}
-                      disabled={!showWalkthrough && walkthroughStep === null}
                       className={cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")}
                     >
                       <HelpIcon />
@@ -2789,7 +2810,7 @@ export function FieldEditor({
             field tool. A sender who never picks one never sees it — the
             `next-step-highlight` glow on the signature tool is the existing
             answer to that. */}
-        {selectedTool && (
+        {selectedTool && !walkthroughVisible && (
           <p className="flex items-center justify-center gap-2 bg-slate-900 px-6 py-2.5 text-center text-sm font-medium text-white">
             <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-white" aria-hidden="true" />
             <span>
@@ -2812,7 +2833,7 @@ export function FieldEditor({
           covers the two steps nothing else narrates; the existing bar keeps
           step 3. walkthroughStep still reaches 3 and then null, so completion
           and the seen-flag below are unaffected. */}
-      {showWalkthrough && walkthroughStep !== null && walkthroughStep !== 3 && (
+      {walkthroughVisible && (
         <div className="flex items-start justify-between gap-3 border-b border-blue-200 bg-blue-50 px-4 py-3 sm:px-6">
           <div className="flex items-start gap-3">
             <span
