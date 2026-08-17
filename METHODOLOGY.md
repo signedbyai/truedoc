@@ -146,7 +146,7 @@ Stated plainly, because a rubric that only lists strengths is marketing.
 ## 9. Checking the tool itself
 
 ```bash
-curl -s https://verifiedby.dev | shasum -a 256          # what is served
+curl -s https://truedoc.eu | shasum -a 256               # what is served
 cat verify-core.mjs shell.html | shasum -a 256 | cut -c1-12   # the build stamp on the page
 node build.mjs && shasum -a 256 index.html              # what this repo builds
 ```

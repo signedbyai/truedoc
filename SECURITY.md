@@ -51,7 +51,7 @@ below until a fix is out.
 
 ## Scope
 
-This repository and whatever is served at https://verifiedby.dev.
+This repository and whatever is served at https://truedoc.eu.
 
 If you are reporting something about SignedBy itself rather than this
 verifier, use the same address and say so.

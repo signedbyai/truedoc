@@ -1,11 +1,11 @@
-# VerifiedBy
+# TrueDOC
 
-[![verify](https://github.com/signedbyai/verifiedby/actions/workflows/verify.yml/badge.svg)](https://github.com/signedbyai/verifiedby/actions/workflows/verify.yml)
+[![verify](https://github.com/signedbyai/truedoc/actions/workflows/verify.yml/badge.svg)](https://github.com/signedbyai/truedoc/actions/workflows/verify.yml)
 [![licence](https://img.shields.io/badge/licence-Apache--2.0-blue)](LICENSE)
 
 An independent, offline verifier for signed and timestamped PDFs.
 
-**[verifiedby.dev](https://verifiedby.dev)** — drop a PDF in. It runs
+**[truedoc.eu](https://truedoc.eu)** — drop a PDF in. It runs
 entirely in your browser. The file is never uploaded, and the page makes no
 network requests at all.
 
@@ -72,7 +72,7 @@ forces the bytes served to match the source published. So verify it:
 
 ```bash
 # what is actually being served
-curl -s https://verifiedby.dev | shasum -a 256
+curl -s https://truedoc.eu | shasum -a 256
 
 # what this repository builds
 node build.mjs && shasum -a 256 index.html
@@ -158,7 +158,7 @@ talks to nothing, and the entire implementation is in front of you.
 
 ## Licence
 
-[Apache-2.0](LICENSE). The name "VerifiedBy" and the SignedBy name are
+[Apache-2.0](LICENSE). The name "TrueDOC" and the SignedBy name are
 trademarks and are not licensed with the code (Apache-2.0 §6) — fork it
 freely, but ship it under your own name, so a reader can always tell whose
 verifier they are running.

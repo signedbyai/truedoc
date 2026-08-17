@@ -1,7 +1,7 @@
 # Changelog
 
 **Why this file matters more than usual here.** The page served at
-verifiedby.dev can be hash-checked against this repository. That check is
+truedoc.eu can be hash-checked against this repository. That check is
 only useful if a *change* in the hash can be explained — an unexplained
 change is indistinguishable from tampering. So every release records the
 build stamp shown in the page footer and the SHA-256 of the deployed file.
@@ -15,7 +15,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+
+- Rebranded from VerifiedBy/verifiedby.dev to TrueDOC/truedoc.eu. No
+  behaviour, checks, or verdicts changed — this is the domain, page title,
+  repository name, and trademark references only. The build stamp changes
+  as a result, which is why it is recorded here rather than left
+  unexplained.
 
 ## 2026-08-15 (second release)
 

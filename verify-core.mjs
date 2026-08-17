@@ -1,4 +1,4 @@
-// verifiedby.dev — independent PDF signature & timestamp verifier (core).
+// truedoc.eu — independent PDF signature & timestamp verifier (core).
 //
 // Deliberately zero dependencies: a minimal DER walker plus WebCrypto. The
 // whole point of this tool is that it keeps working when nothing else is
