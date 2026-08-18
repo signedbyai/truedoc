@@ -51,7 +51,7 @@ jobs:
         run: node test/verify-fixtures.mjs
 
   served-matches-source:
-    name: verifiedby.dev serves exactly this commit
+    name: truedoc.eu serves exactly this commit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,7 +66,7 @@ jobs:
         run: |
           set -euo pipefail
           expected=$(sha256sum index.html | cut -d' ' -f1)
-          served=$(curl -fsSL --retry 3 --retry-delay 5 https://verifiedby.dev | sha256sum | cut -d' ' -f1)
+          served=$(curl -fsSL --retry 3 --retry-delay 5 https://truedoc.eu | sha256sum | cut -d' ' -f1)
           echo "expected (this commit): $expected"
           echo "served   (live site)  : $served"
           if [ "$expected" != "$served" ]; then
@@ -78,7 +78,7 @@ jobs:
       - name: Security headers are present
         run: |
           set -euo pipefail
-          h=$(curl -fsSI --retry 3 --retry-delay 5 https://verifiedby.dev)
+          h=$(curl -fsSI --retry 3 --retry-delay 5 https://truedoc.eu)
           for want in "content-security-policy" "strict-transport-security" "x-content-type-options" "x-frame-options" "referrer-policy"; do
             echo "$h" | grep -qi "^$want:" || { echo "::error::missing header: $want"; exit 1; }
           done
@@ -88,3 +88,9 @@ jobs:
           echo "$h" | grep -qi "content-security-policy:.*default-src 'none'" \
             || { echo "::error::CSP no longer starts from default-src 'none'"; exit 1; }
           echo "Headers OK."
+      - name: verifiedby.dev still redirects to truedoc.eu
+        run: |
+          set -euo pipefail
+          loc=$(curl -fsSI --retry 3 --retry-delay 5 https://verifiedby.dev | grep -i '^location:' | tr -d '\r')
+          echo "$loc" | grep -qi 'truedoc.eu' || { echo "::error::verifiedby.dev no longer redirects to truedoc.eu"; exit 1; }
+          echo "Redirect OK: $loc"
