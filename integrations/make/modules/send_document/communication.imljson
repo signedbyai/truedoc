@@ -1,0 +1,21 @@
+{
+  "url": "/documents",
+  "method": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "template_id": "{{parameters.templateId}}",
+    "signer": {
+      "email": "{{parameters.signerEmail}}",
+      "name": "{{if(parameters.signerName, parameters.signerName, null)}}",
+      "auth_required": "{{if(parameters.authRequired, true, false)}}"
+    },
+    "invite_subject": "{{if(parameters.inviteSubject, parameters.inviteSubject, undefined)}}",
+    "invite_message": "{{if(parameters.inviteMessage, parameters.inviteMessage, undefined)}}",
+    "expires_at": "{{if(parameters.expiresAt, formatDate(parameters.expiresAt, \"YYYY-MM-DDTHH:mm:ssZ\"), undefined)}}"
+  },
+  "response": {
+    "output": "{{body}}"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "url": "/templates",
+  "method": "GET",
+  "response": {
+    "valid": "{{statusCode === 200}}",
+    "error": {
+      "message": "Invalid API key — check Settings → Integration & API in your SignedBy dashboard."
+    }
+  },
+  "log": {
+    "sanitize": ["request.headers.Authorization"]
+  }
+}

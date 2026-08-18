@@ -1,0 +1,53 @@
+[
+  {
+    "name": "templateId",
+    "type": "select",
+    "label": "Template",
+    "required": true,
+    "options": {
+      "store": "rpc://list_templates",
+      "nested": []
+    },
+    "help": "Pick the SignedBy template to send. Must already have fields placed on it."
+  },
+  {
+    "name": "signerEmail",
+    "type": "email",
+    "label": "Recipient Email",
+    "required": true
+  },
+  {
+    "name": "signerName",
+    "type": "text",
+    "label": "Recipient Name",
+    "required": false
+  },
+  {
+    "name": "authRequired",
+    "type": "boolean",
+    "label": "Require Email Verification to Open",
+    "required": false,
+    "default": false,
+    "help": "If enabled, the recipient must verify a one-time code sent to their email before they can view the document."
+  },
+  {
+    "name": "inviteSubject",
+    "type": "text",
+    "label": "Custom Invite Email Subject",
+    "required": false
+  },
+  {
+    "name": "inviteMessage",
+    "type": "text",
+    "label": "Custom Invite Email Message",
+    "required": false,
+    "multiline": true
+  },
+  {
+    "name": "expiresAt",
+    "type": "date",
+    "label": "Expires At",
+    "required": false,
+    "help": "Optional — if set, the document can no longer be signed after this time."
+  }
+]

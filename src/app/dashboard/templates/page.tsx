@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { UseTemplateButton } from "@/components/use-template-button";
 import { DeleteTemplateButton } from "@/components/delete-template-button";
 import { BulkSendButton } from "@/components/bulk-send-button";
+import { CopyIdChip } from "@/components/copy-id-chip";
 
 export default async function TemplatesPage() {
   const ctx = await getUserAndOrg();
@@ -14,6 +15,7 @@ export default async function TemplatesPage() {
   const { data: org } = await ctx.supabase.from("organizations").select("plan").eq("id", ctx.orgId).single();
   const hasBulkSend = planHasFeature(org?.plan, "bulkSend");
   const hasTemplates = planHasFeature(org?.plan, "templates");
+  const hasApiAccess = planHasFeature(org?.plan, "apiAccess") || planHasFeature(org?.plan, "consoleAccess");
 
   if (!hasTemplates) {
     return (
@@ -78,7 +80,12 @@ export default async function TemplatesPage() {
                         {Array.isArray(t.field_map) && t.field_map.length === 1 ? "" : "s"} ·{" "}
                         {new Date(t.created_at).toLocaleDateString()}
                       </p>
-                      <div className="mt-1 flex flex-wrap items-center gap-3">
+                      {hasApiAccess && (
+                        <div className="mt-1.5">
+                          <CopyIdChip value={t.id} label="Copy template ID" />
+                        </div>
+                      )}
+                      <div className="mt-1.5 flex flex-wrap items-center gap-3">
                         <DeleteTemplateButton templateId={t.id} />
                         {hasBulkSend ? (
                           <BulkSendButton templateId={t.id} />

@@ -1,0 +1,11 @@
+{
+  "url": "/documents",
+  "qs": {
+    "status": "declined",
+    "limit": 100
+  },
+  "method": "GET",
+  "response": {
+    "output": "{{sort(body.documents, \"desc\", \"updated_at\")}}"
+  }
+}

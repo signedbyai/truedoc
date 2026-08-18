@@ -1,0 +1,14 @@
+{
+  "baseUrl": "https://signedby.ai/api/v1",
+  "headers": {
+    "Authorization": "Bearer {{parameters.apiKey}}"
+  },
+  "log": {
+    "sanitize": ["request.headers.Authorization"]
+  },
+  "response": {
+    "error": {
+      "message": "[{{statusCode}}] {{if(body.error, body.error, \"Unexpected error from SignedBy.\")}}"
+    }
+  }
+}

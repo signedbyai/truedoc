@@ -1,0 +1,20 @@
+{
+  "name": "signedby-zapier-integration",
+  "version": "1.0.0",
+  "description": "SignedBy (signedby.ai) Zapier integration — send documents for e-signature and trigger on completed/declined documents.",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "zapier-platform-core": "16.0.0"
+  },
+  "devDependencies": {
+    "zapier-platform-cli": "16.0.0"
+  },
+  "private": true
+}

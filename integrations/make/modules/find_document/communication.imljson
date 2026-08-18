@@ -1,0 +1,7 @@
+{
+  "url": "/documents/{{parameters.documentId}}",
+  "method": "GET",
+  "response": {
+    "output": "{{body}}"
+  }
+}

@@ -1,0 +1,6 @@
+[
+  { "name": "id", "type": "text", "label": "Document ID" },
+  { "name": "status", "type": "text", "label": "Status" },
+  { "name": "expires_at", "type": "date", "label": "Expires At" },
+  { "name": "auth_required", "type": "boolean", "label": "Auth Required" }
+]
