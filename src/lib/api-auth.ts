@@ -49,6 +49,27 @@ export async function authenticateApiRequest(request: Request): Promise<ApiAuthR
   // rather than blocked.
   const freeCapped = !hasUnlimitedAccess && !hasMeteredAccess;
 
+  // API usage visibility (API_USAGE_VISIBILITY_SCOPE.md, 2026-08-18 direct
+  // ask: "can I even see what CRM is calling the API?"). This is the single
+  // choke point every /api/v1/* route and /api/mcp goes through, so logging
+  // here once covers every current and future route for free. Same
+  // best-effort pattern as plan_cap_hits in plan.ts: `admin` above is
+  // already a fresh service-role client, awaited (not fire-and-forget,
+  // since serverless functions can be frozen/killed right after the
+  // response is sent) but a logging failure must never block or fail the
+  // real request.
+  try {
+    const { error } = await admin.from("api_usage").insert({
+      org_id: org.id,
+      method: request.method,
+      endpoint: new URL(request.url).pathname,
+      user_agent: request.headers.get("user-agent"),
+    });
+    if (error) console.error("api_usage log failed", error);
+  } catch (err) {
+    console.error("api_usage log failed", err);
+  }
+
   return {
     ok: true,
     orgId: org.id,

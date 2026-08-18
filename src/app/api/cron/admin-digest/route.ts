@@ -264,6 +264,134 @@ export async function GET(request: Request) {
   const capiLastError =
     (capiWeekRows || []).find((r) => r.outcome === "failed" || r.outcome === "error")?.error ?? null;
 
+  // API usage visibility (API_USAGE_VISIBILITY_SCOPE.md, 2026-08-18 direct
+  // ask: "is anyone calling this at all" / "can I even see what CRM is
+  // calling the API?"). authenticateApiRequest() (lib/api-auth.ts) is the
+  // single choke point every /api/v1/* + /api/mcp handler goes through, and
+  // now logs one row per successful call to api_usage
+  // (0059_api_usage.sql) — before this there was zero visibility, only
+  // apiCapHitsMonth above (which counts *blocked* free-tier attempts, an
+  // anti-signal, not a usage signal). Same non-fatal treatment as the
+  // sections above.
+  const { data: apiUsageMonthRows, error: apiUsageMonthError } = await admin
+    .from("api_usage")
+    .select("org_id, user_agent, created_at")
+    .gte("created_at", monthAgoDate)
+    .order("created_at", { ascending: false }); // newest-first, relied on below
+  if (apiUsageMonthError) {
+    console.error("Admin digest cron: api_usage fetch failed", apiUsageMonthError);
+  }
+  const apiUsageRows = apiUsageMonthRows || [];
+  const apiUsageRowsToday = apiUsageRows.filter((r) => new Date(r.created_at).getTime() >= dayAgo);
+  const apiUsageRowsWeek = apiUsageRows.filter((r) => new Date(r.created_at).getTime() >= weekAgo);
+
+  const apiUsageOrgsToday = new Set(apiUsageRowsToday.map((r) => r.org_id).filter(Boolean)).size;
+  const apiUsageOrgsWeek = new Set(apiUsageRowsWeek.map((r) => r.org_id).filter(Boolean)).size;
+  const apiUsageOrgsMonth = new Set(apiUsageRows.map((r) => r.org_id).filter(Boolean)).size;
+  const apiUsageCallsToday = apiUsageRowsToday.length;
+  const apiUsageCallsWeek = apiUsageRowsWeek.length;
+  const apiUsageCallsMonth = apiUsageRows.length;
+  const apiUsageLastCallAt = apiUsageRows[0]?.created_at ?? null; // rows sorted newest-first
+
+  // Rough tool guess from the raw User-Agent header — a simple substring
+  // match, not a real UA parser. This is the actual answer to "what's
+  // calling the API," to the extent a UA string reveals it: Zapier/Make/
+  // Postman/curl/etc. mostly send identifiable UAs, but a native CRM's
+  // outbound-webhook action (e.g. a HubSpot workflow) often sends a generic
+  // HTTP client UA instead of announcing "HubSpot" — this narrows it, it
+  // doesn't guarantee an exact tool name every time.
+  function guessTool(userAgent: string | null): string {
+    if (!userAgent) return "unknown";
+    const ua = userAgent.toLowerCase();
+    if (ua.includes("zapier")) return "Zapier";
+    if (ua.includes("make.com") || ua.includes("integromat")) return "Make";
+    if (ua.includes("hubspot")) return "HubSpot";
+    if (ua.includes("postman")) return "Postman";
+    if (ua.includes("curl")) return "curl";
+    if (ua.includes("python")) return "Python";
+    if (ua.includes("node") || ua.includes("axios")) return "Node.js";
+    return "other/unrecognized";
+  }
+
+  const apiUsageToolTallyMonth: Record<string, number> = {};
+  for (const r of apiUsageRows) {
+    const tool = guessTool(r.user_agent);
+    apiUsageToolTallyMonth[tool] = (apiUsageToolTallyMonth[tool] ?? 0) + 1;
+  }
+
+  // Org names for the per-org breakdown below — a separate lookup since
+  // api_usage only stores org_id.
+  const orgIdsThisMonth = Array.from(new Set(apiUsageRows.map((r) => r.org_id).filter((id): id is string => !!id)));
+  const orgNameById = new Map<string, string>();
+  if (orgIdsThisMonth.length > 0) {
+    const { data: orgNameRows, error: orgNameError } = await admin
+      .from("organizations")
+      .select("id, name")
+      .in("id", orgIdsThisMonth);
+    if (orgNameError) {
+      console.error("Admin digest cron: api_usage org name lookup failed", orgNameError);
+    }
+    for (const o of orgNameRows || []) orgNameById.set(o.id, o.name ?? "(unnamed org)");
+  }
+
+  // "New integrators today" (direct ask: "a someone just started
+  // integrating would be good to know") — an org counts as new if its
+  // first-ever api_usage row (across ALL time, not just this month) falls
+  // within today's window. Checked via a second query bounded to just
+  // today's orgs (cheap, indexed by org_id) rather than scanning the whole
+  // table's history. Known first-run caveat, not a bug: every org will
+  // look "new" for the first day or two after this ships, since there's no
+  // prior history yet for anyone to compare against — self-corrects as
+  // api_usage accumulates real history.
+  const orgIdsToday = Array.from(new Set(apiUsageRowsToday.map((r) => r.org_id).filter((id): id is string => !!id)));
+  const newIntegratorOrgIds = new Set<string>();
+  if (orgIdsToday.length > 0) {
+    const { data: priorRows, error: priorError } = await admin
+      .from("api_usage")
+      .select("org_id")
+      .in("org_id", orgIdsToday)
+      .lt("created_at", dayAgoDate);
+    if (priorError) {
+      console.error("Admin digest cron: api_usage prior-history lookup failed", priorError);
+    }
+    const orgIdsWithPriorHistory = new Set((priorRows || []).map((r) => r.org_id));
+    for (const id of orgIdsToday) {
+      if (!orgIdsWithPriorHistory.has(id)) newIntegratorOrgIds.add(id);
+    }
+  }
+
+  // Per-org breakdown for the month — org name + call count + most recent
+  // call + guessed tool from that most recent call's UA. Rows are already
+  // sorted newest-first, so the first row seen per org is its most recent
+  // call.
+  type ApiUsageOrgSummary = { orgId: string; orgName: string; calls: number; lastCallAt: string; tool: string };
+  const apiUsageByOrg = new Map<string, ApiUsageOrgSummary>();
+  for (const r of apiUsageRows) {
+    if (!r.org_id) continue;
+    const existing = apiUsageByOrg.get(r.org_id);
+    if (!existing) {
+      apiUsageByOrg.set(r.org_id, {
+        orgId: r.org_id,
+        orgName: orgNameById.get(r.org_id) ?? "(unknown org)",
+        calls: 1,
+        lastCallAt: r.created_at,
+        tool: guessTool(r.user_agent),
+      });
+    } else {
+      existing.calls++;
+    }
+  }
+  const apiUsageOrgSummaries = Array.from(apiUsageByOrg.values())
+    .sort((a, b) => b.calls - a.calls)
+    .map((o) => ({
+      orgName: o.orgName,
+      calls: o.calls,
+      lastCallAt: o.lastCallAt,
+      tool: o.tool,
+      isNew: newIntegratorOrgIds.has(o.orgId),
+    }));
+  const apiUsageNewIntegratorsCount = newIntegratorOrgIds.size;
+
   const dateLabel = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -303,6 +431,16 @@ export async function GET(request: Request) {
       capiReddit,
       capiLinkedin,
       capiLastError,
+      apiUsageOrgsToday,
+      apiUsageOrgsWeek,
+      apiUsageOrgsMonth,
+      apiUsageCallsToday,
+      apiUsageCallsWeek,
+      apiUsageCallsMonth,
+      apiUsageLastCallAt,
+      apiUsageNewIntegratorsCount,
+      apiUsageToolTallyMonth,
+      apiUsageOrgSummaries,
     });
   } catch (err) {
     console.error("Admin digest cron: send failed", err);
@@ -337,5 +475,15 @@ export async function GET(request: Request) {
     capiReddit,
     capiLinkedin,
     capiLastError,
+    apiUsageOrgsToday,
+    apiUsageOrgsWeek,
+    apiUsageOrgsMonth,
+    apiUsageCallsToday,
+    apiUsageCallsWeek,
+    apiUsageCallsMonth,
+    apiUsageLastCallAt,
+    apiUsageNewIntegratorsCount,
+    apiUsageToolTallyMonth,
+    apiUsageOrgSummaries,
   });
 }

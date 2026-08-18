@@ -325,6 +325,16 @@ export async function sendAdminDigestEmail(opts: {
   capiReddit: { ok: number; failed: number; error: number; skipped: number };
   capiLinkedin: { ok: number; failed: number; error: number; skipped: number };
   capiLastError: string | null;
+  apiUsageOrgsToday: number;
+  apiUsageOrgsWeek: number;
+  apiUsageOrgsMonth: number;
+  apiUsageCallsToday: number;
+  apiUsageCallsWeek: number;
+  apiUsageCallsMonth: number;
+  apiUsageLastCallAt: string | null;
+  apiUsageNewIntegratorsCount: number;
+  apiUsageToolTallyMonth: Record<string, number>;
+  apiUsageOrgSummaries: { orgName: string; calls: number; lastCallAt: string; tool: string; isNew: boolean }[];
 }) {
   const totalOrgs = opts.freeOrgs + opts.paidOrgs;
   const row = (label: string, value: string | number) => `
@@ -453,6 +463,63 @@ export async function sendAdminDigestEmail(opts: {
           opts.capiLastError
             ? `<p style="margin:8px 0 0;padding:8px 10px;background:#fef2f2;border-radius:6px;color:#991b1b;font-size:11px;font-family:monospace;word-break:break-all;">Last error: ${opts.capiLastError.replace(/</g, "&lt;").slice(0, 300)}</p>`
             : ""
+        }
+
+        <h3 style="margin:20px 0 4px;color:#0f172a;font-size:15px;">API usage</h3>
+        <p style="color:#94a3b8;font-size:11px;margin:0 0 6px;">Successful /api/v1/* + /api/mcp calls (logged since 2026-08-18, no history before then). "Tool" is a rough guess from the User-Agent header, not a guarantee.</p>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
+          ${row("Orgs calling today", opts.apiUsageOrgsToday)}
+          ${row("Orgs calling this week", opts.apiUsageOrgsWeek)}
+          ${row("Orgs calling this month", opts.apiUsageOrgsMonth)}
+          ${row("Calls today", opts.apiUsageCallsToday)}
+          ${row("Calls this week", opts.apiUsageCallsWeek)}
+          ${row("Calls this month", opts.apiUsageCallsMonth)}
+          ${row(
+            "Most recent call",
+            opts.apiUsageLastCallAt
+              ? new Date(opts.apiUsageLastCallAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })
+              : "—"
+          )}
+          ${row("New integrators today", opts.apiUsageNewIntegratorsCount)}
+        </table>
+        ${
+          Object.keys(opts.apiUsageToolTallyMonth).length > 0
+            ? `
+        <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
+          <tr><td colspan="2" style="padding:6px 0 2px;color:#94a3b8;font-size:11px;">Tool guess, this month</td></tr>
+          ${Object.entries(opts.apiUsageToolTallyMonth)
+            .sort((a, b) => b[1] - a[1])
+            .map(([tool, count]) => row(escapeHtml(tool), count))
+            .join("")}
+        </table>
+        `
+            : ""
+        }
+        ${
+          opts.apiUsageOrgSummaries.length > 0
+            ? `
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="padding:6px 0;color:#94a3b8;font-size:11px;">Org (this month)</td>
+            <td style="padding:6px 0;color:#94a3b8;font-size:11px;text-align:right;">Calls</td>
+            <td style="padding:6px 0 6px 10px;color:#94a3b8;font-size:11px;text-align:right;">Tool</td>
+            <td style="padding:6px 0 6px 10px;color:#94a3b8;font-size:11px;text-align:right;">Last call</td>
+          </tr>
+          ${opts.apiUsageOrgSummaries
+            .map(
+              (o) => `
+          <tr>
+            <td style="padding:4px 0;color:#0f172a;font-size:13px;">${o.isNew ? "🆕 " : ""}${escapeHtml(o.orgName)}</td>
+            <td style="padding:4px 0;color:#0f172a;font-size:13px;font-weight:700;text-align:right;">${o.calls}</td>
+            <td style="padding:4px 0 4px 10px;color:#64748b;font-size:12px;text-align:right;">${escapeHtml(o.tool)}</td>
+            <td style="padding:4px 0 4px 10px;color:#64748b;font-size:12px;text-align:right;">${new Date(o.lastCallAt).toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" })}</td>
+          </tr>
+          `
+            )
+            .join("")}
+        </table>
+        `
+            : `<p style="color:#94a3b8;font-size:12px;margin:0;">No API calls this month.</p>`
         }
       </div>
     `,
