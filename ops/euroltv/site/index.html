@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EuroLTV — coming soon</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; color: #1a1a1a; line-height: 1.6; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.2em; }
+  footer { margin-top: 4em; padding-top: 1em; border-top: 1px solid #ddd; font-size: 0.85rem; color: #666; }
+  a { color: #1a1a1a; }
+  .intro { display: flex; align-items: flex-start; gap: 24px; flex-wrap: wrap; }
+  .intro .badge { width: 120px; height: 120px; flex-shrink: 0; }
+  @media (max-width: 480px) { .intro { flex-direction: column-reverse; align-items: center; text-align: center; } }
+
+  form { margin-top: 28px; display: flex; gap: 8px; max-width: 420px; }
+  input[type="email"] { flex: 1; padding: 10px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; }
+  button { padding: 10px 18px; border: none; border-radius: 6px; background: #1a1a1a; color: #fff; font-size: 1rem; cursor: pointer; }
+  button:disabled { opacity: 0.6; cursor: default; }
+  #status { margin-top: 12px; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<h1>EuroLTV</h1>
+<div class="intro">
+  <p>A long-term validity and preservation service for signed documents,
+  from the team behind EuroTSA. Re-timestamping and evidence tracking so a
+  signed document stays provably valid for decades — not just until the
+  original certificate expires.</p>
+  <img class="badge" src="/badges/badge-eu-hosted.svg" width="120" height="120"
+       alt="EU-Hosted Infrastructure — Frankfurt and Falkenstein, EU">
+</div>
+
+<p>In development. Leave your email and we'll let you know when it's
+available — no spam, no other list.</p>
+
+<form id="waitlist-form">
+  <input type="email" id="email" placeholder="you@company.com" required>
+  <button type="submit">Notify me</button>
+</form>
+<p id="status"></p>
+
+<footer>
+<p>Operated by SPRK10 B.V. · <a href="https://eurotsa.eu">EuroTSA, the free EU-hosted RFC 3161 timestamp authority</a></p>
+<p>We also built <a href="https://truedoc.eu">TrueDoc</a>, an open-source,
+hash-verifiable document verifier — read the source rather than take our
+word for anything.</p>
+</footer>
+
+<script>
+  // Reads ?source= from the URL so it's possible to see which conversion
+  // point actually works, without any account/identity beyond the email
+  // itself. Same pattern as EuroTSA's waitlist page.
+  const params = new URLSearchParams(window.location.search);
+  const source = params.get("source") || "waitlist_page";
+
+  document.getElementById("waitlist-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("email").value;
+    const status = document.getElementById("status");
+    const button = e.target.querySelector("button");
+    button.disabled = true;
+    status.textContent = "";
+    try {
+      const res = await fetch("https://signedby.ai/api/euroltv-waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, source }),
+      });
+      if (res.ok) {
+        status.textContent = "You're on the list — thanks.";
+        e.target.reset();
+      } else if (res.status === 429) {
+        status.textContent = "Too many attempts — try again in a bit.";
+      } else {
+        status.textContent = "Something went wrong. Try again shortly.";
+      }
+    } catch {
+      status.textContent = "Something went wrong. Try again shortly.";
+    } finally {
+      button.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>
