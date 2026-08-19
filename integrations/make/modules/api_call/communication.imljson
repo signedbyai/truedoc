@@ -1,0 +1,14 @@
+{
+  "url": "{{parameters.url}}",
+  "method": "{{parameters.method}}",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{{if(parameters.body, parameters.body, undefined)}}",
+  "response": {
+    "output": {
+      "statusCode": "{{statusCode}}",
+      "body": "{{body}}"
+    }
+  }
+}

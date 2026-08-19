@@ -7,5 +7,11 @@
   "method": "GET",
   "response": {
     "output": "{{sort(body.documents, \"desc\", \"updated_at\")}}"
+  },
+  "pagination": {
+    "qs": {
+      "offset": "{{(pagination.page - 1) * 100}}"
+    },
+    "condition": "{{body.has_more}}"
   }
 }

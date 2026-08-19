@@ -1,5 +1,8 @@
 {
   "url": "/templates",
+  "qs": {
+    "limit": 100
+  },
   "method": "GET",
   "response": {
     "iterate": "{{body.templates}}",
@@ -7,5 +10,11 @@
       "label": "{{item.name}}",
       "value": "{{item.id}}"
     }
+  },
+  "pagination": {
+    "qs": {
+      "offset": "{{(pagination.page - 1) * 100}}"
+    },
+    "condition": "{{body.has_more}}"
   }
 }
