@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getUserAndOrg } from "@/lib/org";
 import { planHasFeature } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
 import { UseTemplateButton } from "@/components/use-template-button";
 import { DeleteTemplateButton } from "@/components/delete-template-button";
 import { BulkSendButton } from "@/components/bulk-send-button";
@@ -46,17 +47,24 @@ export default async function TemplatesPage() {
           <p className="text-sm text-slate-600">
             Reusable field layouts. Open any draft document and use &quot;Save as template&quot; to create one.
           </p>
+          {/* Matches the Team page's "Invite your team" upgrade card exactly
+              (same border/padding/centering, same button component) —
+              2026-08-19 direct ask to make the two upgrade prompts visually
+              consistent instead of this one being a lighter inline text
+              link. The usage count is the headline in place of a "you're
+              blocked" message, since Free has partial access here (not a
+              hard wall like Team) — see the mockup discussion for why this
+              reads as "raise Templates to Team's weight" rather than the
+              other direction. */}
           {!hasTemplates && (
-            <div className="mt-3 rounded-md border border-dashed border-slate-300 p-3">
-              <p className="text-sm text-slate-700">
-                Free plan: {Math.min(ownTemplateCount, 1)} of 1 saved template used.
+            <div className="mt-3 rounded-md border border-dashed border-slate-300 p-4 text-center">
+              <p className="text-sm font-medium text-slate-900">
+                {Math.min(ownTemplateCount, 1)} of 1 saved template used
               </p>
-              <p className="mt-1 text-xs text-slate-500">
-                <Link href="/pricing" className="font-medium text-slate-700 underline underline-offset-2">
-                  Upgrade to Pro
-                </Link>{" "}
-                for unlimited templates &amp; reminders.
-              </p>
+              <p className="mt-1 text-xs text-slate-500">Upgrade to Pro for unlimited templates &amp; reminders.</p>
+              <Link href="/pricing" className={buttonVariants({ size: "default", className: "mt-3" })}>
+                Upgrade to Pro
+              </Link>
             </div>
           )}
         </div>
