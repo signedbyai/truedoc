@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUserAndOrg } from "@/lib/org";
 import { planHasFeature } from "@/lib/plan";
-import { EXAMPLE_TEMPLATE_R2_KEY } from "@/lib/example-template";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { UseTemplateButton } from "@/components/use-template-button";
 import { DeleteTemplateButton } from "@/components/delete-template-button";
@@ -11,11 +10,13 @@ import { CopyIdChip } from "@/components/copy-id-chip";
 
 // Free orgs used to get a full paywall here instead of this page (blocked
 // by planHasFeature(..., "templates")) — but Free is now allowed to save 1
-// template of its own (FREE_TIER_ONE_TEMPLATE_SCOPE.md, 2026-08-19), on top
-// of the shared seeded "Example Agreement" every org already gets, so the
-// page needs to actually show them both instead of turning Free away at
-// the door. `hasTemplates` below still means "unlimited" (Pro+); Free's
-// capped-at-1 case is handled inline further down.
+// template of its own (FREE_TIER_ONE_TEMPLATE_SCOPE.md, 2026-08-19), so the
+// page needs to actually show it instead of turning Free away at the door.
+// `hasTemplates` below still means "unlimited" (Pro+); Free's capped-at-1
+// case is handled inline further down. (The shared seeded "Example
+// Agreement" every org used to also get was removed the same day, once
+// Free could save its own template made it redundant — see
+// checkFreePlanTemplateCap's doc comment in plan.ts.)
 export default async function TemplatesPage() {
   const ctx = await getUserAndOrg();
   if (!ctx) redirect("/login");
@@ -26,15 +27,16 @@ export default async function TemplatesPage() {
 
   const { data: templates } = await ctx.supabase
     .from("templates")
-    .select("id, name, page_count, field_map, created_at, base_file_path")
+    .select("id, name, page_count, field_map, created_at")
     .eq("org_id", ctx.orgId)
     .order("created_at", { ascending: false });
 
-  // Own templates only, excluding the shared seeded example — this is the
-  // same count checkFreePlanTemplateCap enforces server-side, recomputed
-  // here purely for display so the "N of 1 used" messaging can never drift
-  // from what actually blocks a save.
-  const ownTemplateCount = (templates || []).filter((t) => t.base_file_path !== EXAMPLE_TEMPLATE_R2_KEY).length;
+  // Every row here is something the org saved itself (no more shared
+  // seeded example to exclude, see the top-of-file comment) — same count
+  // checkFreePlanTemplateCap enforces server-side, recomputed here purely
+  // for display so the "N of 1 used" messaging can never drift from what
+  // actually blocks a save.
+  const ownTemplateCount = (templates || []).length;
 
   return (
     <main className="px-4 py-8 sm:px-6 sm:py-10">

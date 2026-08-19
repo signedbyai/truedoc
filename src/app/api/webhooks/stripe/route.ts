@@ -5,8 +5,6 @@ import { getStripe, planFromPriceId } from "@/lib/stripe";
 import { referralCouponId } from "@/lib/referral";
 import { sendPlanUpgradeEmail, sendCreditPackTopUpEmail } from "@/lib/email";
 import { resetConsolePeriod } from "@/lib/console-usage";
-import { planHasFeature } from "@/lib/plan";
-import { seedExampleTemplateIfNeeded } from "@/lib/example-template";
 
 // Stripe webhooks arrive unauthenticated (verified by signature instead), so
 // this route uses the service-role admin client throughout — same pattern as
@@ -329,13 +327,4 @@ async function syncSubscription(
     },
     { onConflict: "org_id" }
   );
-
-  // Example template seed (2026-07-31, direct instruction) — so a newly
-  // Pro-or-higher org has something ready to send/sign immediately rather
-  // than an empty Templates list. Fire-and-forget: seedExampleTemplateIfNeeded
-  // never throws (see example-template.ts) and its own existence check
-  // makes this safe to call on every subscription sync, not just the first
-  // one — a Pro org later moving to Team just no-ops here instead of
-  // getting a second copy.
-  if (isActive && planHasFeature(plan, "templates")) void seedExampleTemplateIfNeeded(orgId);
 }

@@ -7,7 +7,6 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { sanitizeNextPath } from "@/lib/safe-redirect";
 import { isDisposableEmailAddress } from "@/lib/disposable-email";
 import { isFirstLogin } from "@/lib/first-login";
-import { seedExampleTemplateForNewUser } from "@/lib/example-template";
 import { recordSignupOriginHost } from "@/lib/signup-origin";
 import { storePendingAttribution, claimPendingAttribution } from "@/lib/pending-attribution";
 import { isConsoleHost } from "@/lib/console-host";
@@ -157,10 +156,6 @@ export async function verifyLoginCode(formData: FormData) {
     // and recordOrgAttribution is set-once so whichever lands first wins and
     // the other is a no-op.
     await claimPendingAttribution(data.user.id, data.user.email);
-    // Free-tier API/console sandbox (2026-08-19, see example-template.ts's
-    // doc comment) — fire-and-forget like every other seedExampleTemplate*
-    // call site, never blocks or fails the sign-in.
-    void seedExampleTemplateForNewUser(data.user.id);
   }
   return { success: true, firstLogin };
 }
@@ -185,8 +180,6 @@ export async function signInWithPassword(formData: FormData) {
   if (firstLogin && data.user) {
     const originHost = isConsoleHost((await headers()).get("host")) ? "console.signedby.ai" : "signedby.ai";
     await recordSignupOriginHost(data.user.id, originHost);
-    // See verifyLoginCode's matching comment — same reasoning applies here.
-    void seedExampleTemplateForNewUser(data.user.id);
   }
   return { success: true, firstLogin };
 }

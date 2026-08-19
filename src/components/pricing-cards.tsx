@@ -39,8 +39,8 @@ const PLANS: {
       "1 user",
       // Added 2026-08-19 (FREE_TIER_ONE_TEMPLATE_SCOPE.md decision 2) — Free
       // can now save 1 template of its own (checkFreePlanTemplateCap in
-      // plan.ts), on top of the shared seeded "Example Agreement" every org
-      // already gets.
+      // plan.ts). The shared seeded "Example Agreement" every org used to
+      // also get was removed the same day, once this made it redundant.
       "1 saved template",
       "SignedBy branding on signing page",
     ],

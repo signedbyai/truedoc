@@ -125,8 +125,8 @@ export async function sendDocumentAction(params: {
   // was never meant to be Free's actual limit. Free has no subscription and
   // its real limit is the same 3-sends/month cap the REST API and dashboard
   // already enforce (checkFreePlanSendCap) — this only became reachable
-  // once Free orgs got a real template to send (see example-template.ts),
-  // so it has to be checked here explicitly rather than assumed impossible.
+  // once Free orgs had a real template to send, so it has to be checked
+  // here explicitly rather than assumed impossible.
   // Mutually exclusive with `metered` — a caller sets exactly one of the
   // two true (see api/console/chat/route.ts, the only caller that varies
   // this by plan).

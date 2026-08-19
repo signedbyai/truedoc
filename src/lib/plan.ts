@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { EXAMPLE_TEMPLATE_R2_KEY } from "@/lib/example-template";
 
 // Feature gating for paid-tier functionality. Kept as a single source of
 // truth so the app logic always matches what pricing-cards.tsx promises —
@@ -27,9 +26,11 @@ const FEATURE_PLANS = {
   // org is now separately allowed exactly 1 self-saved template — see
   // checkFreePlanTemplateCap below, enforced at the two save-as-template
   // call sites instead of here, since planHasFeature is a plain yes/no and
-  // has no room for a standing count. The seeded shared example template
-  // (example-template.ts) doesn't count against that 1 and was never
-  // gated by this key either way.
+  // has no room for a standing count. (The shared seeded "Example
+  // Agreement" template that used to give Free/new orgs something to test
+  // with was removed 2026-08-19, same day, once this made it unnecessary —
+  // Free can just save its own now. See checkFreePlanTemplateCap's own
+  // comment for the removal.)
   templates: ["starter", "team", "business"],
   reminders: ["starter", "team", "business"],
   // Pro: "AI-drafted documents" — the plain-language-ask drafting
@@ -336,9 +337,17 @@ export async function getFreePlanUsage(
 // standing asset an org keeps reusing, not a monthly consumable, so
 // "3/month" framing doesn't fit — Free gets exactly 1 template, kept until
 // they delete it (DELETE /api/templates/[id] has no plan gate, so an org at
-// the cap can always delete-then-save a different one). The seeded shared
-// "Example Agreement" (EXAMPLE_TEMPLATE_R2_KEY) is excluded from the count:
-// it isn't something the org saved, so it shouldn't spend their one slot.
+// the cap can always delete-then-save a different one).
+//
+// Counts every templates row for the org with no exclusion — until
+// 2026-08-19 this excluded the shared seeded "Example Agreement" every org
+// used to get (example-template.ts), but that seeding was removed the same
+// day as this cap shipped: once Free could save its own template, the
+// generic seeded one had no reason to keep existing (direct instruction:
+// "it is also no longer necessary to have an example agreement in
+// templates"). Existing seeded rows were cleaned up in the same pass (see
+// FREE_TIER_ONE_TEMPLATE_SCOPE.md), so there's nothing left to exclude.
+//
 // Called from both save-as-template call sites (the dashboard route and
 // console-actions.ts's saveAsTemplateAction) only when planHasFeature(...,
 // "templates") is already false — a Pro+ org never reaches this, unlimited
@@ -351,11 +360,7 @@ export async function checkFreePlanTemplateCap(
   const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
   if (org && org.plan !== "free") return null;
 
-  const { count } = await supabase
-    .from("templates")
-    .select("id", { count: "exact", head: true })
-    .eq("org_id", orgId)
-    .neq("base_file_path", EXAMPLE_TEMPLATE_R2_KEY);
+  const { count } = await supabase.from("templates").select("id", { count: "exact", head: true }).eq("org_id", orgId);
 
   if ((count ?? 0) >= 1) {
     // Best-effort log (2026-08-19, direct ask: "log when a free org hits
