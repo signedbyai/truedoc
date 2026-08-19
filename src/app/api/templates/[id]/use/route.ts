@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserAndOrg } from "@/lib/org";
-import { planHasFeature } from "@/lib/plan";
 
 const bodySchema = z.object({ title: z.string().trim().max(200).optional() });
 
@@ -41,17 +40,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Template not found" }, { status: 404 });
   }
 
-  // Templates require at least the Pro plan. Since Free orgs are blocked
-  // here, the old "free plan monthly document cap" check below them is now
-  // unreachable and was removed.
-  const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
-  if (!planHasFeature(org?.plan, "templates")) {
-    return NextResponse.json(
-      { error: "Templates are a Pro plan feature. Upgrade to use templates.", upgrade: true },
-      { status: 402 }
-    );
-  }
-
+  // No plan gate here (2026-08-19, FREE_TIER_ONE_TEMPLATE_SCOPE.md) — using
+  // a template you already own (whether it's the seeded shared example or
+  // Free's own 1 self-saved template) works on every plan now. The gate
+  // that matters lives at the two SAVE points instead (save-as-template/
+  // route.ts and console-actions.ts's saveAsTemplateAction), where
+  // checkFreePlanTemplateCap enforces Free's 1-template limit.
   const documentId = crypto.randomUUID();
   const title = parsed.data.title || template.name;
 

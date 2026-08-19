@@ -94,14 +94,27 @@ export async function GET(request: Request) {
   const dayAgoDate = new Date(dayAgo).toISOString();
   const weekAgoDate = new Date(weekAgo).toISOString();
   const monthAgoDate = new Date(monthAgo).toISOString();
+  // Template-cap sources (2026-08-19, see templateCapHitsMonth below) are
+  // deliberately excluded from the today/week counts here — this section
+  // is specifically the Free plan's 3-documents/month send-or-seal cap, and
+  // the 1-template cap is a structurally different, non-monthly limit (same
+  // reasoning as why checkFreePlanTemplateCap in plan.ts isn't just another
+  // branch of checkFreePlanCap). Left in one shared table rather than a
+  // second one (0043_plan_cap_hits.sql's `source` is free text specifically
+  // so new cap types don't need a migration), but the digest still needs to
+  // keep them apart so "3-doc cap hits" doesn't quietly start counting
+  // something else.
+  const TEMPLATE_CAP_SOURCES = ["save_as_template", "console_chat_save_as_template"];
   const { count: capHitsToday, error: capHitsTodayError } = await admin
     .from("plan_cap_hits")
     .select("*", { count: "exact", head: true })
-    .gte("created_at", dayAgoDate);
+    .gte("created_at", dayAgoDate)
+    .not("source", "in", `(${TEMPLATE_CAP_SOURCES.join(",")})`);
   const { count: capHitsWeek, error: capHitsWeekError } = await admin
     .from("plan_cap_hits")
     .select("*", { count: "exact", head: true })
-    .gte("created_at", weekAgoDate);
+    .gte("created_at", weekAgoDate)
+    .not("source", "in", `(${TEMPLATE_CAP_SOURCES.join(",")})`);
   const { data: capHitsMonthRows, error: capHitsMonthError } = await admin
     .from("plan_cap_hits")
     .select("org_id, source")
@@ -115,7 +128,16 @@ export async function GET(request: Request) {
     // numbers above, better to send the digest without it than fail the
     // whole cron over a table that could still need its migration applied.
   }
-  const capHitsMonth = capHitsMonthRows?.length ?? 0;
+  // Free-plan 1-template cap hits (2026-08-19, FREE_TIER_ONE_TEMPLATE_SCOPE.md
+  // decision 4: "log when a free org hits the 1 template cap, add it as a
+  // line in the daily admin email"). Reuses the capHitsMonthRows already
+  // fetched above rather than a new query — same plan_cap_hits table,
+  // logged by checkFreePlanTemplateCap in plan.ts from both save-as-
+  // template call sites (the dashboard route and console-actions.ts's
+  // saveAsTemplateAction). Computed before capHitsMonth below so that count
+  // can exclude these rows the same way the today/week counts do above.
+  const templateCapHitsMonth = (capHitsMonthRows || []).filter((r) => TEMPLATE_CAP_SOURCES.includes(r.source)).length;
+  const capHitsMonth = (capHitsMonthRows || []).filter((r) => !TEMPLATE_CAP_SOURCES.includes(r.source)).length;
   const apiCapHitsMonth = (capHitsMonthRows || []).filter((r) => r.source === "api_v1_documents").length;
 
   // Send-vs-seal org grouping (2026-08-06, direct ask: "group together the
@@ -131,6 +153,10 @@ export async function GET(request: Request) {
   const orgCapCategories = new Map<string, { send: boolean; seal: boolean }>();
   for (const r of capHitsMonthRows || []) {
     if (!r.org_id) continue;
+    // Template-cap hits are neither a send nor a seal cap hit — skip them
+    // here too, same reasoning as capHitsMonth above, otherwise they'd
+    // silently fall into the `else` branch and get miscounted as sends.
+    if (TEMPLATE_CAP_SOURCES.includes(r.source)) continue;
     const cat = orgCapCategories.get(r.org_id) ?? { send: false, seal: false };
     if (SEAL_CAP_SOURCES.has(r.source)) cat.seal = true;
     else cat.send = true;
@@ -420,6 +446,7 @@ export async function GET(request: Request) {
       capHitsSendOnlyOrgs,
       capHitsSealOnlyOrgs,
       apiCapHitsMonth,
+      templateCapHitsMonth,
       packsSoldMonth,
       packsRevenueMonth,
       outstandingCredits,
@@ -464,6 +491,7 @@ export async function GET(request: Request) {
     capHitsSendOnlyOrgs,
     capHitsSealOnlyOrgs,
     apiCapHitsMonth,
+    templateCapHitsMonth,
     packsSoldMonth,
     packsRevenueMonth,
     outstandingCredits,

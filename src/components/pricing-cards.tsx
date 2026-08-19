@@ -37,6 +37,11 @@ const PLANS: {
       // documents/mo above.
       "3 Verified Badge seals/mo",
       "1 user",
+      // Added 2026-08-19 (FREE_TIER_ONE_TEMPLATE_SCOPE.md decision 2) — Free
+      // can now save 1 template of its own (checkFreePlanTemplateCap in
+      // plan.ts), on top of the shared seeded "Example Agreement" every org
+      // already gets.
+      "1 saved template",
       "SignedBy branding on signing page",
     ],
   },
@@ -50,7 +55,12 @@ const PLANS: {
       // $0.20/doc overage was retired entirely, not just for this surface.
       "Verified Badge, unlimited",
       "1 user",
-      "Templates & reminders",
+      // "Unlimited" added 2026-08-19 (FREE_TIER_ONE_TEMPLATE_SCOPE.md
+      // decision 2) — now that Free also gets 1 saved template, Pro's copy
+      // needs to say what actually differentiates it: no cap, either on
+      // templates or reminders (reminders were never gated for Free to
+      // begin with, so "unlimited" there is just accurate, not new).
+      "Unlimited templates & reminders",
       "AI-drafted documents",
       "Engagement tracking",
       "API access",

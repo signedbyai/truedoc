@@ -314,6 +314,12 @@ export async function sendAdminDigestEmail(opts: {
   capHitsSendOnlyOrgs: number;
   capHitsSealOnlyOrgs: number;
   apiCapHitsMonth: number;
+  // Free plan's 1-saved-template cap (2026-08-19, FREE_TIER_ONE_TEMPLATE_
+  // SCOPE.md decision 4) — a separate, non-monthly cap from the 3-doc
+  // send/seal caps above, so it's rendered as its own line rather than
+  // folded into capHitsMonth (see admin-digest/route.ts for how it's kept
+  // out of that total).
+  templateCapHitsMonth: number;
   packsSoldMonth: number;
   packsRevenueMonth: number;
   outstandingCredits: number;
@@ -392,6 +398,11 @@ export async function sendAdminDigestEmail(opts: {
           ${row("Orgs hit on send only", opts.capHitsSendOnlyOrgs)}
           ${row("Orgs hit on seal only", opts.capHitsSealOnlyOrgs)}
           ${row("Of which, via API", opts.apiCapHitsMonth)}
+        </table>
+
+        <h3 style="margin:0 0 4px;color:#0f172a;font-size:15px;">Free plan 1-template cap hits</h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+          ${row("This month", opts.templateCapHitsMonth)}
         </table>
 
         <h3 style="margin:0 0 4px;color:#0f172a;font-size:15px;">Credit packs ($5 / 25 seals)</h3>

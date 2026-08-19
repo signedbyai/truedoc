@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { EXAMPLE_TEMPLATE_R2_KEY } from "@/lib/example-template";
 
 // Feature gating for paid-tier functionality. Kept as a single source of
 // truth so the app logic always matches what pricing-cards.tsx promises —
@@ -19,8 +20,16 @@ export const PLAN_LABEL: Record<string, string> = {
 };
 
 const FEATURE_PLANS = {
-  // Pro: "Templates & reminders" — saving/using templates and both
-  // manual + automatic signer reminders.
+  // Pro: "Unlimited templates & reminders" — unlimited saved templates and
+  // both manual + automatic signer reminders. `reminders` stays untouched
+  // and Pro+-only (2026-08-19, direct instruction: "leave reminders
+  // untouched"). `templates` here still gates the UNLIMITED case; a Free
+  // org is now separately allowed exactly 1 self-saved template — see
+  // checkFreePlanTemplateCap below, enforced at the two save-as-template
+  // call sites instead of here, since planHasFeature is a plain yes/no and
+  // has no room for a standing count. The seeded shared example template
+  // (example-template.ts) doesn't count against that 1 and was never
+  // gated by this key either way.
   templates: ["starter", "team", "business"],
   reminders: ["starter", "team", "business"],
   // Pro: "AI-drafted documents" — the plain-language-ask drafting
@@ -319,4 +328,54 @@ export async function getFreePlanUsage(
     sealsUsedThisMonth: sealsCount ?? 0,
     docCredits: org?.doc_credits ?? 0,
   };
+}
+
+// Free plan: 1 self-saved template, total — not a monthly-resetting pool
+// like checkFreePlanSendCap/checkFreePlanSealCap above (FREE_TIER_ONE_
+// TEMPLATE_SCOPE.md, 2026-08-19 direct instruction). A template is a
+// standing asset an org keeps reusing, not a monthly consumable, so
+// "3/month" framing doesn't fit — Free gets exactly 1 template, kept until
+// they delete it (DELETE /api/templates/[id] has no plan gate, so an org at
+// the cap can always delete-then-save a different one). The seeded shared
+// "Example Agreement" (EXAMPLE_TEMPLATE_R2_KEY) is excluded from the count:
+// it isn't something the org saved, so it shouldn't spend their one slot.
+// Called from both save-as-template call sites (the dashboard route and
+// console-actions.ts's saveAsTemplateAction) only when planHasFeature(...,
+// "templates") is already false — a Pro+ org never reaches this, unlimited
+// as before.
+export async function checkFreePlanTemplateCap(
+  supabase: SupabaseClient,
+  orgId: string,
+  source: string
+): Promise<NextResponse | null> {
+  const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
+  if (org && org.plan !== "free") return null;
+
+  const { count } = await supabase
+    .from("templates")
+    .select("id", { count: "exact", head: true })
+    .eq("org_id", orgId)
+    .neq("base_file_path", EXAMPLE_TEMPLATE_R2_KEY);
+
+  if ((count ?? 0) >= 1) {
+    // Best-effort log (2026-08-19, direct ask: "log when a free org hits
+    // the 1 template cap"), same always-fresh-admin-client reasoning as
+    // checkFreePlanCap above — some callers pass a session-bound client
+    // with no insert policy on plan_cap_hits.
+    try {
+      const { error } = await createAdminClient().from("plan_cap_hits").insert({ org_id: orgId, source });
+      if (error) console.error("plan_cap_hits log failed", error);
+    } catch (err) {
+      console.error("plan_cap_hits log failed", err);
+    }
+
+    return NextResponse.json(
+      {
+        error: "You've hit the Free plan's 1 saved template limit. Delete your existing template or upgrade to save more.",
+        upgrade: true,
+      },
+      { status: 402 }
+    );
+  }
+  return null;
 }

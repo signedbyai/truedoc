@@ -17,7 +17,11 @@ import { getFromR2, uploadToR2 } from "@/lib/r2";
 // doubles as the idempotency marker: "does this org already have a
 // templates row pointing at this exact key" IS "have we already seeded
 // them," with no extra column or migration needed.
-const EXAMPLE_TEMPLATE_R2_KEY = "templates/system/example-agreement.pdf";
+// Exported (2026-08-19, FREE_TIER_ONE_TEMPLATE_SCOPE.md) so plan.ts's
+// checkFreePlanTemplateCap can exclude this shared seeded row when counting
+// a Free org's own saved templates toward its 1-template cap — the example
+// template doesn't count against that limit.
+export const EXAMPLE_TEMPLATE_R2_KEY = "templates/system/example-agreement.pdf";
 const EXAMPLE_TEMPLATE_NAME = "Example Agreement (try me!)";
 
 // Matches FIELD_TYPES' own "signature" default in field-types.ts exactly,

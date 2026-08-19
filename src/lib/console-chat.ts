@@ -241,6 +241,7 @@ async function executeTool(
   orgId: string,
   metered: boolean,
   freeCapped: boolean,
+  hasBulkSend: boolean,
   name: string,
   args: Record<string, unknown>
 ): Promise<ToolExecutionResult> {
@@ -259,6 +260,18 @@ async function executeTool(
         inviteMessage: typeof args.invite_message === "string" ? args.invite_message : null,
       });
     case "bulk_send":
+      // Pre-existing gap, fixed 2026-08-19 (FREE_TIER_ONE_TEMPLATE_SCOPE.md
+      // decision 3): api/v1/documents/bulk-send/route.ts has always gated
+      // this to Team+ before calling bulkSendAction; this console-chat path
+      // called straight through with no equivalent check. Checked here,
+      // not in bulkSendAction itself, matching how every other plan-feature
+      // gate in this codebase lives at the caller rather than the shared
+      // action (see save_as_template below and console-actions.ts's own
+      // saveAsTemplateAction, which duplicates its own planHasFeature check
+      // rather than the caller doing it once centrally).
+      if (!hasBulkSend) {
+        return { ok: false, error: "Bulk send requires the Team plan or higher.", status: 402 };
+      }
       return bulkSendAction({
         orgId,
         templateId: String(args.template_id ?? ""),
@@ -432,18 +445,23 @@ export async function runConsoleChatTurn(params: {
   // the caller (api/console/chat/route.ts) sets exactly one true based on
   // the org's actual plan.
   freeCapped?: boolean;
+  // Team+ gate for the bulk_send tool (FREE_TIER_ONE_TEMPLATE_SCOPE.md
+  // decision 3, 2026-08-19) — see executeTool's "bulk_send" case. Defaults
+  // to false (the safe/blocked side) so a caller that forgets to pass this
+  // fails closed rather than silently allowing bulk send.
+  hasBulkSend?: boolean;
   messages: ChatMessage[];
   confirmedTool?: { name: string; arguments: Record<string, unknown> };
   onStatus?: (text: string) => void;
 }): Promise<ConsoleChatTurnResult> {
-  const { orgId, metered, freeCapped = false, messages, confirmedTool, onStatus } = params;
+  const { orgId, metered, freeCapped = false, hasBulkSend = false, messages, confirmedTool, onStatus } = params;
 
   if (confirmedTool) {
     if (!CONFIRM_REQUIRED.has(confirmedTool.name)) {
       return { type: "error", error: "That action doesn't require confirmation." };
     }
     onStatus?.(toolStatusPhrase(confirmedTool.name, confirmedTool.arguments));
-    const result = await executeTool(orgId, metered, freeCapped, confirmedTool.name, confirmedTool.arguments);
+    const result = await executeTool(orgId, metered, freeCapped, hasBulkSend, confirmedTool.name, confirmedTool.arguments);
     if (!result.ok) {
       // seal_document's one special failure mode: no verified identity on
       // file yet (or it's gone stale) — point at Settings rather than just
@@ -564,7 +582,7 @@ export async function runConsoleChatTurn(params: {
     // Read-only tool: execute, feed the result back, and see whether Mistral
     // is ready to answer in text or wants to chain into another tool call.
     onStatus?.(toolStatusPhrase(name, args));
-    const result = await executeTool(orgId, metered, freeCapped, name, args);
+    const result = await executeTool(orgId, metered, freeCapped, hasBulkSend, name, args);
     const toolResultText = JSON.stringify(result);
 
     wireMessages = [

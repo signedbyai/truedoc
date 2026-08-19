@@ -75,6 +75,18 @@ export async function POST(request: Request) {
   const metered = !isFreePlan;
   const freeCapped = isFreePlan;
 
+  // Pre-existing gap found while scoping FREE_TIER_ONE_TEMPLATE_SCOPE.md
+  // (2026-08-19): the REST API's bulk-send route (api/v1/documents/bulk-
+  // send/route.ts) has always gated bulkSend to Team+ before calling
+  // bulkSendAction, but this console-chat route called runConsoleChatTurn
+  // straight through to the same bulkSendAction with no equivalent check —
+  // so a Free or Pro org could bulk-send through the chat tool despite the
+  // pricing page promising bulk send as Team+-only. Threaded down the same
+  // way metered/freeCapped already are, and checked per-tool-call inside
+  // executeTool's "bulk_send" case (not here) — this route handles a whole
+  // chat turn, which may never touch bulk_send at all.
+  const hasBulkSend = planHasFeature(org.plan, "bulkSend");
+
   const rateOk = await checkRateLimit(`console-chat:${orgId}`, 60, 3600);
   if (!rateOk) return NextResponse.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });
 
@@ -93,6 +105,7 @@ export async function POST(request: Request) {
           orgId,
           metered,
           freeCapped,
+          hasBulkSend,
           messages: parsed.data.messages,
           confirmedTool: parsed.data.confirmedTool,
           onStatus: (text) => emit({ type: "status", content: text }),

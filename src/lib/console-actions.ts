@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSignerInviteEmail } from "@/lib/email";
 import { checkEmailDomainHasMx } from "@/lib/validate-email-domain";
 import { checkConsoleCap, recordConsoleUsage } from "@/lib/console-usage";
-import { planHasFeature, checkFreePlanSendCap } from "@/lib/plan";
+import { planHasFeature, checkFreePlanSendCap, checkFreePlanTemplateCap } from "@/lib/plan";
 import { getReferralSummary, type ReferralSummary } from "@/lib/referral";
 
 // Shared action functions behind the console chat (src/app/api/console/chat)
@@ -560,9 +560,17 @@ export async function saveAsTemplateAction(params: {
 
   const admin = createAdminClient();
 
+  // Pro+ gets unlimited templates; Free is allowed exactly 1 self-saved
+  // template instead of being blocked outright (FREE_TIER_ONE_TEMPLATE_
+  // SCOPE.md, 2026-08-19) — same cap enforced at the dashboard's save-as-
+  // template route.
   const { data: org } = await admin.from("organizations").select("plan").eq("id", orgId).single();
   if (!planHasFeature(org?.plan, "templates")) {
-    return { ok: false, error: "Templates are a Pro plan feature. Upgrade to save documents as templates.", status: 402 };
+    const capResponse = await checkFreePlanTemplateCap(admin, orgId, "console_chat_save_as_template");
+    if (capResponse) {
+      const body = (await capResponse.json().catch(() => ({}))) as { error?: string };
+      return { ok: false, error: body.error || "You've hit the Free plan's 1 saved template limit.", status: capResponse.status };
+    }
   }
 
   const { data: doc } = await admin.from("documents").select("id, org_id, file_path, page_count").eq("id", documentId).single();

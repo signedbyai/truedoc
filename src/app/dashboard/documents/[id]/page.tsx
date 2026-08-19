@@ -79,7 +79,15 @@ export default async function DocumentEditorPage({
   const orgPlan = orgRecord?.plan;
   const hasPaymentCollection = planHasFeature(orgPlan, "paymentCollection");
   const hasDocGate = planHasFeature(orgPlan, "docGate");
-  const hasTemplates = planHasFeature(orgPlan, "templates");
+  // Every plan can now attempt "Save as template" (2026-08-19,
+  // FREE_TIER_ONE_TEMPLATE_SCOPE.md) — Pro+ saves unlimited, Free is
+  // allowed exactly 1 and gets a clear 402 from save-as-template/route.ts
+  // once it's used, surfaced inline in the save-template modal's existing
+  // error state (field-editor.tsx's templateError). `hasTemplates` here
+  // just means "show the enabled menu item, not the Pro+ upsell badge" —
+  // it's no longer the same thing as planHasFeature(orgPlan, "templates"),
+  // which still means "unlimited" and is used elsewhere on this page.
+  const hasTemplates = true;
   const hasReminders = planHasFeature(orgPlan, "reminders");
   const hasPageViewTracking = planHasFeature(orgPlan, "pageViewTracking");
   // Column defaults to false; ?? false covers the (should-never-happen)
