@@ -55,12 +55,25 @@ export async function POST(request: Request) {
     );
   }
   // Console is a distinct, metered signing-ops product layered on top of
-  // every plan (2026-07-30, direct instruction) — NOT the same thing as
-  // Business's existing unmetered `apiAccess` perk on the plain
+  // every PAYING plan (2026-07-30, direct instruction) — NOT the same thing
+  // as Business's existing unmetered `apiAccess` perk on the plain
   // /api/v1/documents endpoint, which is untouched by this. "Pro plan or
   // higher" is only the access gate here; usage through console itself is
   // always billed, Business included.
-  const metered = true;
+  //
+  // Free is the one exception (FREE_TEMPLATE_SANDBOX, 2026-08-19) — the
+  // $/doc spend-cap mechanism `metered: true` drives (100 free units/mo,
+  // then billed against the org's Stripe subscription) assumes a
+  // subscription to bill against, which Free orgs don't have. This was
+  // unreachable before Free had a template to send (see example-
+  // template.ts) — now that it does, Free routes through freeCapped
+  // instead, which enforces the real Free-plan limit: the same
+  // 3-sends/month cap the REST API and dashboard already use
+  // (checkFreePlanSendCap). See console-actions.ts's sendDocumentAction/
+  // bulkSendAction for where this actually gets checked.
+  const isFreePlan = (org.plan || "free") === "free";
+  const metered = !isFreePlan;
+  const freeCapped = isFreePlan;
 
   const rateOk = await checkRateLimit(`console-chat:${orgId}`, 60, 3600);
   if (!rateOk) return NextResponse.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });
@@ -79,6 +92,7 @@ export async function POST(request: Request) {
         const result = await runConsoleChatTurn({
           orgId,
           metered,
+          freeCapped,
           messages: parsed.data.messages,
           confirmedTool: parsed.data.confirmedTool,
           onStatus: (text) => emit({ type: "status", content: text }),

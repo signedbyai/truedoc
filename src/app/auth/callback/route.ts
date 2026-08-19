@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { consoleUrl } from "@/lib/console-host";
 import { isFirstLogin } from "@/lib/first-login";
+import { seedExampleTemplateForNewUser } from "@/lib/example-template";
 import { recordSignupOriginHost } from "@/lib/signup-origin";
 import { claimPendingAttribution } from "@/lib/pending-attribution";
 
@@ -61,6 +62,11 @@ export async function GET(request: Request) {
         // server-side row keyed off their email address is the only surviving
         // record of which campaign brought them.
         await claimPendingAttribution(data.user.id, data.user.email);
+        // Free-tier API/console sandbox (2026-08-19, see example-template.ts's
+        // doc comment on seedExampleTemplateForNewUser) — covers the magic-
+        // link/OAuth signup path, same as login/actions.ts's OTP-code and
+        // password paths.
+        void seedExampleTemplateForNewUser(data.user.id);
       }
       // Every sign-in with no explicit ?next destination (not just the
       // first) lands on the new-document flow instead of the dashboard

@@ -1,8 +1,15 @@
 // One-off script: seeds the "Example Agreement" template (see
-// src/lib/example-template.ts) into every EXISTING Pro-or-higher org, so
+// src/lib/example-template.ts) into every EXISTING org, Free included, so
 // current customers get the same starter template new upgrades get going
 // forward (2026-07-31, direct instruction: "anyone that already upgraded
 // to Pro or higher, make sure the example template is included").
+//
+// Widened to Free orgs 2026-08-19 (FREE_TEMPLATE_SANDBOX) — new Free
+// signups are now seeded automatically at first login (see example-
+// template.ts's seedExampleTemplateForNewUser), but that only covers
+// signups going forward; this run is what backfills every Free org that
+// already existed before that shipped, same "existing customers get what
+// new ones get" logic as the original Pro+ backfill.
 //
 // Deliberately a standalone script, not a call into src/lib/example-
 // template.ts directly -- that file uses this project's "@/..." path
@@ -43,9 +50,14 @@ const REQUIRED_ENV = [
   "CLOUDFLARE_R2_BUCKET_NAME",
 ];
 
-// Plans that unlock the "templates" feature -- must match
-// FEATURE_PLANS.templates in src/lib/plan.ts exactly.
-const TEMPLATE_PLANS = ["starter", "team", "business"];
+// Every plan gets seeded now (2026-08-19, widened from the original
+// Pro-only "starter"/"team"/"business" list) -- Free orgs get the same
+// shared example template so a Free API key / Console chat session has a
+// real template_id to test create-and-send against. This constant name is
+// now a slight misnomer (kept to avoid a bigger diff for a one-off script)
+// -- it really means "every plan this script seeds," not "plans with the
+// templates feature."
+const TEMPLATE_PLANS = ["free", "starter", "team", "business"];
 
 // Must match src/lib/example-template.ts's constants exactly -- see the
 // file-header comment above for why this can't just import that file.
@@ -161,7 +173,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Found ${orgs.length} org(s) on a templates-eligible plan (${TEMPLATE_PLANS.join("/")}).`);
+  console.log(`Found ${orgs.length} org(s) on a plan this backfill covers (${TEMPLATE_PLANS.join("/")}).`);
 
   let seeded = 0;
   let alreadyHad = 0;

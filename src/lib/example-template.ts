@@ -149,3 +149,43 @@ export async function seedExampleTemplateIfNeeded(orgId: string): Promise<void> 
     console.error("Failed to seed example template", orgId, err);
   }
 }
+
+/** Seeds the same shared Example Agreement into a just-signed-up user's
+ *  personal org (FREE_TEMPLATE_SANDBOX, 2026-08-19 direct instruction —
+ *  "templates may have to work in the free version since people can't
+ *  really try out the API unless they have access to it"). Confirmed the
+ *  gap first: a Free org already gets a real API key and passes auth on
+ *  POST /api/v1/documents (freeCapped: true, 3 sends/month — see
+ *  api-auth.ts), but that route requires a template_id the org owns, and
+ *  saving a template is Pro+-gated (`templates` in plan.ts) — so a Free
+ *  dev could authenticate and then had nothing to actually send. Console
+ *  chat's send_document/bulk_send tools hit the same dead end for the same
+ *  reason.
+ *
+ *  This does NOT touch that gate — Free still can't save/customize its own
+ *  templates, only send the one generic shared example, same as every
+ *  Pro+ org already gets via the Stripe webhook below. Takes a userId
+ *  rather than an orgId because the only place this needs to fire (first
+ *  login) doesn't have an org row in hand yet — personal orgs are created
+ *  by a DB trigger on signup (0002_new_user_org.sql), so by the time a
+ *  first-login callback runs, the membership already exists and can be
+ *  resolved here. Never throws — same fire-and-forget contract as
+ *  seedExampleTemplateIfNeeded above, called the same way (`void`) from
+ *  every first-login call site (login/actions.ts x2, auth/callback/
+ *  route.ts). */
+export async function seedExampleTemplateForNewUser(userId: string): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const { data: membership } = await admin
+      .from("organization_members")
+      .select("org_id")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (!membership) return;
+    await seedExampleTemplateIfNeeded(membership.org_id);
+  } catch (err) {
+    console.error("Failed to seed example template for new user", userId, err);
+  }
+}

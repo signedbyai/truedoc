@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSignerInviteEmail } from "@/lib/email";
 import { checkEmailDomainHasMx } from "@/lib/validate-email-domain";
 import { checkConsoleCap, recordConsoleUsage } from "@/lib/console-usage";
-import { planHasFeature } from "@/lib/plan";
+import { planHasFeature, checkFreePlanSendCap } from "@/lib/plan";
 import { getReferralSummary, type ReferralSummary } from "@/lib/referral";
 
 // Shared action functions behind the console chat (src/app/api/console/chat)
@@ -118,6 +118,19 @@ export async function sendDocumentAction(params: {
   signerEmail: string;
   signerName?: string | null;
   metered: boolean;
+  // Free plan (FREE_TEMPLATE_SANDBOX, 2026-08-19) — Console is metered for
+  // every PAYING plan via the $/doc spend-cap mechanism above
+  // (checkConsoleCap: 100 free units/mo, then billed against the org's
+  // Stripe subscription), which assumes a subscription to bill against and
+  // was never meant to be Free's actual limit. Free has no subscription and
+  // its real limit is the same 3-sends/month cap the REST API and dashboard
+  // already enforce (checkFreePlanSendCap) — this only became reachable
+  // once Free orgs got a real template to send (see example-template.ts),
+  // so it has to be checked here explicitly rather than assumed impossible.
+  // Mutually exclusive with `metered` — a caller sets exactly one of the
+  // two true (see api/console/chat/route.ts, the only caller that varies
+  // this by plan).
+  freeCapped?: boolean;
   expiresAt?: string | null;
   authRequired?: boolean;
   inviteSubject?: string | null;
@@ -131,7 +144,19 @@ export async function sendDocumentAction(params: {
   // unchanged with no call-site updates required.
   source?: "console" | "mcp";
 }): Promise<{ ok: true; documentId: string; domainWarning?: string } | ConsoleActionError> {
-  const { orgId, templateId, signerEmail, signerName, metered, expiresAt, authRequired, inviteSubject, inviteMessage, source = "console" } = params;
+  const {
+    orgId,
+    templateId,
+    signerEmail,
+    signerName,
+    metered,
+    freeCapped = false,
+    expiresAt,
+    authRequired,
+    inviteSubject,
+    inviteMessage,
+    source = "console",
+  } = params;
 
   const expiresAtResult = parseExpiresAt(expiresAt);
   if (!expiresAtResult.ok) return { ok: false, error: expiresAtResult.error, status: 400 };
@@ -139,7 +164,17 @@ export async function sendDocumentAction(params: {
   const inviteSubjectTrimmed = inviteSubject?.trim().slice(0, 200) || null;
   const inviteMessageTrimmed = inviteMessage?.trim().slice(0, 2000) || null;
 
-  if (metered) {
+  if (freeCapped) {
+    const capResponse = await checkFreePlanSendCap(createAdminClient(), orgId, "console_chat");
+    if (capResponse) {
+      const body = (await capResponse.json().catch(() => ({}))) as { error?: string };
+      return {
+        ok: false,
+        error: body.error || "You've hit the Free plan's 3 documents/month limit. Upgrade to keep going.",
+        status: capResponse.status,
+      };
+    }
+  } else if (metered) {
     const cap = await checkConsoleCap(orgId);
     if (!cap.allowed) return { ok: false, error: cap.reason, status: 402 };
   }
@@ -296,6 +331,10 @@ export async function bulkSendAction(params: {
   templateId: string;
   recipients: { email: string; name?: string | null }[];
   metered: boolean;
+  // See sendDocumentAction's matching param doc comment — same Free-plan
+  // 3-sends/month cap, checked per-recipient in the loop below instead of
+  // the console spend cap.
+  freeCapped?: boolean;
   expiresAt?: string | null;
   authRequired?: boolean;
   inviteSubject?: string | null;
@@ -310,7 +349,18 @@ export async function bulkSendAction(params: {
     }
   | ConsoleActionError
 > {
-  const { orgId, templateId, recipients, metered, expiresAt, authRequired, inviteSubject, inviteMessage, source = "console" } = params;
+  const {
+    orgId,
+    templateId,
+    recipients,
+    metered,
+    freeCapped = false,
+    expiresAt,
+    authRequired,
+    inviteSubject,
+    inviteMessage,
+    source = "console",
+  } = params;
   if (recipients.length === 0) return { ok: false, error: "No recipients provided.", status: 400 };
 
   const sent: { documentId: string; email: string }[] = [];
@@ -328,7 +378,13 @@ export async function bulkSendAction(params: {
       skippedTimeoutReached.push(recipient.email, ...recipients.slice(recipients.indexOf(recipient) + 1).map((r) => r.email));
       break;
     }
-    if (metered) {
+    if (freeCapped) {
+      const capResponse = await checkFreePlanSendCap(createAdminClient(), orgId, "console_chat_bulk");
+      if (capResponse) {
+        skippedCapReached.push(recipient.email, ...recipients.slice(recipients.indexOf(recipient) + 1).map((r) => r.email));
+        break;
+      }
+    } else if (metered) {
       const cap = await checkConsoleCap(orgId);
       if (!cap.allowed) {
         skippedCapReached.push(recipient.email, ...recipients.slice(recipients.indexOf(recipient) + 1).map((r) => r.email));
@@ -341,6 +397,7 @@ export async function bulkSendAction(params: {
       signerEmail: recipient.email,
       signerName: recipient.name,
       metered,
+      freeCapped,
       expiresAt,
       authRequired,
       inviteSubject,

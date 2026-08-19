@@ -237,7 +237,13 @@ type ToolExecutionResult =
   | Awaited<ReturnType<typeof getReferralInfoAction>>
   | { ok: false; error: string; status: number };
 
-async function executeTool(orgId: string, metered: boolean, name: string, args: Record<string, unknown>): Promise<ToolExecutionResult> {
+async function executeTool(
+  orgId: string,
+  metered: boolean,
+  freeCapped: boolean,
+  name: string,
+  args: Record<string, unknown>
+): Promise<ToolExecutionResult> {
   switch (name) {
     case "send_document":
       return sendDocumentAction({
@@ -246,6 +252,7 @@ async function executeTool(orgId: string, metered: boolean, name: string, args: 
         signerEmail: String(args.signer_email ?? ""),
         signerName: typeof args.signer_name === "string" ? args.signer_name : null,
         metered,
+        freeCapped,
         expiresAt: typeof args.expires_at === "string" ? args.expires_at : null,
         authRequired: args.auth_required === true,
         inviteSubject: typeof args.invite_subject === "string" ? args.invite_subject : null,
@@ -257,6 +264,7 @@ async function executeTool(orgId: string, metered: boolean, name: string, args: 
         templateId: String(args.template_id ?? ""),
         recipients: Array.isArray(args.recipients) ? (args.recipients as { email: string; name?: string }[]) : [],
         metered,
+        freeCapped,
         expiresAt: typeof args.expires_at === "string" ? args.expires_at : null,
         authRequired: args.auth_required === true,
         inviteSubject: typeof args.invite_subject === "string" ? args.invite_subject : null,
@@ -419,18 +427,23 @@ export type ConsoleChatTurnResult =
 export async function runConsoleChatTurn(params: {
   orgId: string;
   metered: boolean;
+  // Free plan (FREE_TEMPLATE_SANDBOX, 2026-08-19) — see sendDocumentAction's
+  // doc comment in console-actions.ts. Mutually exclusive with `metered`;
+  // the caller (api/console/chat/route.ts) sets exactly one true based on
+  // the org's actual plan.
+  freeCapped?: boolean;
   messages: ChatMessage[];
   confirmedTool?: { name: string; arguments: Record<string, unknown> };
   onStatus?: (text: string) => void;
 }): Promise<ConsoleChatTurnResult> {
-  const { orgId, metered, messages, confirmedTool, onStatus } = params;
+  const { orgId, metered, freeCapped = false, messages, confirmedTool, onStatus } = params;
 
   if (confirmedTool) {
     if (!CONFIRM_REQUIRED.has(confirmedTool.name)) {
       return { type: "error", error: "That action doesn't require confirmation." };
     }
     onStatus?.(toolStatusPhrase(confirmedTool.name, confirmedTool.arguments));
-    const result = await executeTool(orgId, metered, confirmedTool.name, confirmedTool.arguments);
+    const result = await executeTool(orgId, metered, freeCapped, confirmedTool.name, confirmedTool.arguments);
     if (!result.ok) {
       // seal_document's one special failure mode: no verified identity on
       // file yet (or it's gone stale) — point at Settings rather than just
@@ -551,7 +564,7 @@ export async function runConsoleChatTurn(params: {
     // Read-only tool: execute, feed the result back, and see whether Mistral
     // is ready to answer in text or wants to chain into another tool call.
     onStatus?.(toolStatusPhrase(name, args));
-    const result = await executeTool(orgId, metered, name, args);
+    const result = await executeTool(orgId, metered, freeCapped, name, args);
     const toolResultText = JSON.stringify(result);
 
     wireMessages = [
