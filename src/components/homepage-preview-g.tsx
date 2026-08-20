@@ -69,13 +69,13 @@ export function HomepagePreviewG({ currency }: { currency: Currency }) {
         <div className="min-w-0 text-center sm:text-left">
           <Link
             href="/vs/docusign"
-            className="mb-6 inline-flex flex-wrap items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 sm:text-sm"
+            className="mb-6 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 sm:text-sm"
           >
-            <span className="hidden sm:inline">Teams save</span>
-            <span className="sm:hidden">Save</span>
+            <span className="hidden lg:inline">Teams save</span>
+            <span className="lg:hidden">Save</span>
             <span className="font-bold text-yellow-300">$700+/year</span>
             <span>vs DocuSign</span>
-            <span className="hidden sm:inline">— see the math</span>
+            <span className="hidden lg:inline">— see the math</span>
             <span aria-hidden>→</span>
           </Link>
           <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-slate-900 sm:text-6xl">
