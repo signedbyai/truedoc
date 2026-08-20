@@ -5,9 +5,7 @@ import { planHasFeature } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { UseTemplateButton } from "@/components/use-template-button";
-import { DeleteTemplateButton } from "@/components/delete-template-button";
-import { BulkSendButton } from "@/components/bulk-send-button";
-import { CopyIdChip } from "@/components/copy-id-chip";
+import { TemplateRowActions } from "@/components/template-row-actions";
 
 // Free orgs used to get a full paywall here instead of this page (blocked
 // by planHasFeature(..., "templates")) — but Free is now allowed to save 1
@@ -78,32 +76,30 @@ export default async function TemplatesPage() {
             {templates && templates.length > 0 ? (
               <ul className="divide-y divide-slate-100">
                 {templates.map((t) => (
-                  <li key={t.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900">{t.name}</p>
-                      <p className="text-xs text-slate-500">
-                        {t.page_count} page{t.page_count === 1 ? "" : "s"} ·{" "}
-                        {Array.isArray(t.field_map) ? t.field_map.length : 0} field
-                        {Array.isArray(t.field_map) && t.field_map.length === 1 ? "" : "s"} ·{" "}
-                        {new Date(t.created_at).toLocaleDateString()}
-                      </p>
-                      {hasApiAccess && (
-                        <div className="mt-1.5">
-                          <CopyIdChip value={t.id} label="Copy template ID" />
-                        </div>
-                      )}
-                      <div className="mt-1.5 flex flex-wrap items-center gap-3">
-                        <DeleteTemplateButton templateId={t.id} />
-                        {hasBulkSend ? (
-                          <BulkSendButton templateId={t.id} />
-                        ) : (
-                          <Link href="/pricing" className="text-xs text-slate-400 hover:text-slate-600">
-                            Bulk send (Team+)
-                          </Link>
-                        )}
+                  // Single line per row, matching Documents: title/meta
+                  // left, primary action + kebab menu right. Bulk send /
+                  // Copy template ID / Delete used to sit as their own
+                  // always-visible text-link row under the name — folded
+                  // into TemplateRowActions' "⋯" menu so this page finally
+                  // shares Documents' interaction model instead of a
+                  // visually lighter one (2026-08-20 row-actions
+                  // consistency pass, "Option C").
+                  <li key={t.id} className="py-2.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-900">{t.name}</p>
+                        <p className="text-xs text-slate-500">
+                          {t.page_count} page{t.page_count === 1 ? "" : "s"} ·{" "}
+                          {Array.isArray(t.field_map) ? t.field_map.length : 0} field
+                          {Array.isArray(t.field_map) && t.field_map.length === 1 ? "" : "s"} ·{" "}
+                          {new Date(t.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="mt-0.5 flex shrink-0 items-center gap-1.5">
+                        <UseTemplateButton templateId={t.id} />
+                        <TemplateRowActions templateId={t.id} hasBulkSend={hasBulkSend} hasApiAccess={hasApiAccess} />
                       </div>
                     </div>
-                    <UseTemplateButton templateId={t.id} />
                   </li>
                 ))}
               </ul>

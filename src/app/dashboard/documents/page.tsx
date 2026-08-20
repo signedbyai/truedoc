@@ -5,8 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { DeleteDocumentButton } from "@/components/delete-document-button";
-import { DuplicateDocumentButton } from "@/components/duplicate-document-button";
+import { DocumentRowActions } from "@/components/document-row-actions";
 import { LIST_STATUS_PILL, SEALED_LIST_PILL, StatusPill } from "@/components/status-pill";
 import { formatRelativeTime, latestViewedByDocument } from "@/lib/last-viewed";
 
@@ -247,13 +246,17 @@ export default async function DocumentsPage({
                   {documents.map((doc) => {
                     const pill = doc.is_verified_badge && doc.status === "completed" ? SEALED_LIST_PILL : LIST_STATUS_PILL[doc.status];
                     return (
-                    // Same shape as the dashboard's recent-documents rows
-                    // (title left, status pill top-right) with the action
-                    // buttons on their own right-aligned line — previously
-                    // the pill and buttons wrapped into one left-aligned
-                    // cluster under the title on mobile, which read as
-                    // misaligned clutter.
-                    <li key={doc.id} className="py-3">
+                    // Single line per row: title/meta left, pill + kebab
+                    // menu right. Duplicate/Delete used to sit on their own
+                    // second line as always-visible buttons — collapsing
+                    // them into DocumentRowActions' "⋯" menu roughly halves
+                    // row height (2026-08-20 row-actions consistency pass,
+                    // "Option C" — chosen over raising Templates to this
+                    // page's old button weight for the density and
+                    // mobile-thumb-target wins of one compact line; see
+                    // DocumentRowActions' own comment for the full
+                    // rationale).
+                    <li key={doc.id} className="py-2.5">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <Link
@@ -278,22 +281,14 @@ export default async function DocumentsPage({
                             )}
                           </p>
                         </div>
-                        {/* One pill, right-aligned at every width. A mobile
-                            copy on the meta line was tried and dropped — two
-                            pills per row read as a duplicate rather than a
-                            responsive swap. */}
-                        {pill && (
-                          <StatusPill
-                            tone={pill.tone}
-                            dotTone={pill.dotTone}
-                            label={pill.label}
-                            className="mt-0.5 shrink-0"
-                          />
-                        )}
-                      </div>
-                      <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
-                        <DuplicateDocumentButton documentId={doc.id} />
-                        {doc.status === "draft" && <DeleteDocumentButton documentId={doc.id} />}
+                        {/* Pill + kebab, right-aligned at every width. A
+                            mobile copy on the meta line was tried and
+                            dropped — two pills per row read as a duplicate
+                            rather than a responsive swap. */}
+                        <div className="mt-0.5 flex shrink-0 items-center gap-1">
+                          {pill && <StatusPill tone={pill.tone} dotTone={pill.dotTone} label={pill.label} />}
+                          <DocumentRowActions documentId={doc.id} isDraft={doc.status === "draft"} />
+                        </div>
                       </div>
                     </li>
                     );

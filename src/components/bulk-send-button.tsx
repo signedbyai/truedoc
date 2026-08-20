@@ -4,9 +4,25 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MailIcon, MENU_ITEM_CLASS } from "@/components/ui/menu-item";
+import { cn } from "@/lib/utils";
 import { parseRecipients } from "@/lib/parse-recipients";
 
-export function BulkSendButton({ templateId }: { templateId: string }) {
+export function BulkSendButton({
+  templateId,
+  asMenuItem = false,
+  onSelect,
+}: {
+  templateId: string;
+  // Renders the trigger as a full-width menu row instead of a text link —
+  // the recipient form below is unchanged either way, it's still the same
+  // modal (2026-08-20 row-actions consistency pass, used from
+  // TemplateRowActions' kebab menu).
+  asMenuItem?: boolean;
+  // Lets the parent close its kebab menu when this is chosen, before the
+  // bulk-send modal opens on top of it.
+  onSelect?: () => void;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
@@ -49,9 +65,17 @@ export function BulkSendButton({ templateId }: { templateId: string }) {
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
-        className="text-xs font-medium text-slate-500 hover:text-slate-700"
+        onClick={() => {
+          onSelect?.();
+          setOpen(true);
+        }}
+        className={
+          asMenuItem
+            ? cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")
+            : "text-xs font-medium text-slate-500 hover:text-slate-700"
+        }
       >
+        {asMenuItem && <MailIcon />}
         Bulk send
       </button>
 
