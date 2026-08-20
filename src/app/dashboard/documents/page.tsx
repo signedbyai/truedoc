@@ -179,14 +179,17 @@ export default async function DocumentsPage({
                 immediately. Overridden here rather than in ui/input.tsx: the
                 app-wide version of this change was tried in b0e3748 and rolled
                 back, so every other form keeps the current height. */}
-            {/* flex-nowrap, not flex-wrap (2026-08-20, direct ask): with
-                4 controls plus Apply/Clear, wrapping put the sort dropdown's
-                native option list flush against Apply and looked broken.
-                Instead only Search (min-w-0 flex-1) gives up width as the
-                row narrows -- Status/Sort/Apply/Clear keep shrink-0 so their
-                labels and native dropdowns never get squeezed. */}
-            <form method="get" className="flex flex-nowrap items-end gap-3">
-              <div className="min-w-0 flex-1">
+            {/* sm:flex-nowrap, not flex-nowrap everywhere (2026-08-20,
+                direct ask): letting Search keep shrinking below sm made it
+                unusably narrow on phones (down to a couple characters wide).
+                Below sm it wraps instead -- Search takes the full first row,
+                Status/Sort/Apply/Clear wrap together onto a second row as a
+                group. At sm and up there's enough width that shrinking
+                Search (min-w-0 flex-1, sm:min-w-0) instead of wrapping reads
+                better -- shrink-0 on the other controls still keeps their
+                labels and native dropdowns from being squeezed either way. */}
+            <form method="get" className="flex flex-wrap items-end gap-3 sm:flex-nowrap">
+              <div className="min-w-[200px] flex-1 sm:min-w-0">
                 <label htmlFor="q" className="mb-1 block text-xs font-medium text-slate-600">
                   Search
                 </label>
