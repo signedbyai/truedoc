@@ -28,8 +28,13 @@ export function DeleteDocumentButton({
   // menu it resizes the menu under the cursor and the menu can be dismissed
   // mid-confirm, which is a poor way to run an irreversible action.
   asMenuItem?: boolean;
-  // Called when the row is chosen, so the parent can close its menu before
-  // the dialog opens.
+  // Called once the interaction is actually DONE — delete succeeded, or the
+  // dialog was dismissed/cancelled — so the parent can close its menu. NOT
+  // called on the initial trigger click: that used to fire onSelect()
+  // immediately, which closes (unmounts) the parent's menu panel before
+  // this component's own confirm modal ever gets to render, since the
+  // modal lives in this same subtree. Found 2026-08-20 when the row-actions
+  // kebab menu shipped and "Delete" silently did nothing.
   onSelect?: () => void;
 }) {
   const router = useRouter();
@@ -46,6 +51,7 @@ export function DeleteDocumentButton({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Couldn't delete this document.");
       }
+      onSelect?.();
       if (redirectTo) {
         router.push(redirectTo);
       } else {
@@ -62,7 +68,6 @@ export function DeleteDocumentButton({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        onSelect?.();
         setConfirming(true);
       }}
       className={
@@ -90,7 +95,10 @@ export function DeleteDocumentButton({
             aria-modal="true"
             aria-labelledby="delete-draft-title"
             onClick={() => {
-              if (!loading) setConfirming(false);
+              if (!loading) {
+                setConfirming(false);
+                onSelect?.();
+              }
             }}
           >
             <div
@@ -112,7 +120,15 @@ export function DeleteDocumentButton({
               </p>
               {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
               <div className="mt-4 flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => setConfirming(false)} disabled={loading}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setConfirming(false);
+                    onSelect?.();
+                  }}
+                  disabled={loading}
+                >
                   Cancel
                 </Button>
                 <Button variant="destructive" size="sm" onClick={handleDelete} disabled={loading}>

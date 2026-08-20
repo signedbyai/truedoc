@@ -21,7 +21,12 @@ export function DeleteTemplateButton({
   // Used from TemplateRowActions' kebab menu (2026-08-20 row-actions
   // consistency pass).
   asMenuItem?: boolean;
-  // Lets the parent close its menu when this row is chosen.
+  // Called once the interaction is DONE (delete succeeded, or the dialog
+  // was cancelled/dismissed) — not on the initial trigger click. See
+  // DeleteDocumentButton's identical comment: calling onSelect() on the
+  // trigger click closes (unmounts) the parent kebab menu before this
+  // component's own confirm modal ever renders, since the modal lives in
+  // this same subtree. Found 2026-08-20 — this shipped broken.
   onSelect?: () => void;
 }) {
   const router = useRouter();
@@ -38,6 +43,7 @@ export function DeleteTemplateButton({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Couldn't delete this template.");
       }
+      onSelect?.();
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -52,7 +58,6 @@ export function DeleteTemplateButton({
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            onSelect?.();
             setConfirming(true);
           }}
           className={cn(MENU_ITEM_CLASS, "text-red-600 hover:bg-red-50")}
@@ -68,7 +73,10 @@ export function DeleteTemplateButton({
             aria-modal="true"
             aria-labelledby="delete-template-title"
             onClick={() => {
-              if (!loading) setConfirming(false);
+              if (!loading) {
+                setConfirming(false);
+                onSelect?.();
+              }
             }}
           >
             <div
@@ -83,7 +91,15 @@ export function DeleteTemplateButton({
               </p>
               {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
               <div className="mt-4 flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => setConfirming(false)} disabled={loading}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setConfirming(false);
+                    onSelect?.();
+                  }}
+                  disabled={loading}
+                >
                   Cancel
                 </Button>
                 <Button variant="destructive" size="sm" onClick={handleDelete} disabled={loading}>

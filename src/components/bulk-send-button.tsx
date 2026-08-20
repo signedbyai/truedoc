@@ -19,8 +19,11 @@ export function BulkSendButton({
   // modal (2026-08-20 row-actions consistency pass, used from
   // TemplateRowActions' kebab menu).
   asMenuItem?: boolean;
-  // Lets the parent close its kebab menu when this is chosen, before the
-  // bulk-send modal opens on top of it.
+  // Called once the bulk-send modal is actually dismissed (cancelled, or
+  // closed after sending) — not on the initial trigger click. Calling it
+  // there closed the parent kebab menu immediately, which unmounts this
+  // component (and the modal below, which lives in the same subtree)
+  // before it ever renders. Found 2026-08-20 — this shipped broken.
   onSelect?: () => void;
 }) {
   const router = useRouter();
@@ -65,10 +68,7 @@ export function BulkSendButton({
   return (
     <>
       <button
-        onClick={() => {
-          onSelect?.();
-          setOpen(true);
-        }}
+        onClick={() => setOpen(true)}
         className={
           asMenuItem
             ? cn(MENU_ITEM_CLASS, "text-slate-700 hover:bg-slate-50")
@@ -134,7 +134,14 @@ export function BulkSendButton({
             {status === "error" && <p className="mt-2 text-sm text-red-600">{message}</p>}
             {status === "done" && <p className="mt-2 text-sm text-emerald-600">{message}</p>}
             <div className="mt-4 flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setOpen(false);
+                  onSelect?.();
+                }}
+              >
                 {status === "done" ? "Close" : "Cancel"}
               </Button>
               {status !== "done" && (
