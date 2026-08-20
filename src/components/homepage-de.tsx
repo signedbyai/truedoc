@@ -121,10 +121,10 @@ export function HomepageDe({ currency }: { currency: Currency }) {
       </header>
 
       <section className="mx-auto grid w-full max-w-6xl gap-10 px-6 pt-12 pb-16 sm:grid-cols-2 sm:items-start sm:pt-16">
-        <div className="text-center sm:text-left">
+        <div className="min-w-0 text-center sm:text-left">
           <Link
             href="/vs/docusign"
-            className="mb-6 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 sm:text-sm"
+            className="mb-6 inline-flex flex-wrap items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 sm:text-sm"
           >
             <span className="hidden sm:inline">Teams sparen</span>
             <span className="sm:hidden">Sparen</span>

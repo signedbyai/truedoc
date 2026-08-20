@@ -136,13 +136,13 @@ export function InteractiveProductTabsG({ tabs = TABS }: { tabs?: ProductTab[] }
 
   return (
     <div
-      className="w-full"
+      className="w-full min-w-0"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
-      <div className="flex items-center justify-center gap-2 sm:justify-start">
+      <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
         {tabs.map((t, i) => {
           const isActive = i === active;
           return (
