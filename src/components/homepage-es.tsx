@@ -1,3 +1,15 @@
+"use client";
+// Required: TABS_ES below embeds lucide-react icon COMPONENTS (Icon:
+// Signature/ShieldCheck/Receipt/Sparkles), and passes that array as the
+// `tabs` prop into InteractiveProductTabsG (a client component). Server
+// Components can't serialize a function/component reference across the
+// RSC boundary — without this directive, Next.js throws "Functions cannot
+// be passed directly to Client Components" and the page 500s (caught
+// live 2026-08-20, see [[site-localization-spanish-build-2026-08-20]]).
+// homepage-preview-g.tsx avoids this because its own TABS array is
+// defined inside the client-only tabs file itself and never crosses the
+// boundary as a prop value.
+
 import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
