@@ -79,11 +79,11 @@ export function HomepagePreviewG({ currency }: { currency: Currency }) {
             <span aria-hidden>→</span>
           </Link>
           <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-slate-900 sm:text-6xl">
-            <span className="whitespace-nowrap border-b-[5px] border-yellow-300 pb-0.5">E-signatures</span>, without
+            <span className="whitespace-nowrap border-b-[5px] border-yellow-300 pb-0.5">eSignatures</span>, without
             the per-seat tax
           </h1>
           <p className="mx-auto mt-5 max-w-md text-lg text-slate-600 sm:mx-0 sm:max-w-sm sm:text-xl">
-            SignedBy is a fast, affordable alternative for e-Signatures — built for solo professionals
+            SignedBy is a fast, affordable alternative for eSignatures — built for solo professionals
             and small teams who sign a handful of documents each month, not a whole sales floor.
           </p>
           <div className="mt-9 flex flex-col items-center sm:items-start">
