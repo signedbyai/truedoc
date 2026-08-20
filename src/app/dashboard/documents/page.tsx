@@ -179,8 +179,14 @@ export default async function DocumentsPage({
                 immediately. Overridden here rather than in ui/input.tsx: the
                 app-wide version of this change was tried in b0e3748 and rolled
                 back, so every other form keeps the current height. */}
-            <form method="get" className="flex flex-wrap items-end gap-3">
-              <div className="min-w-[200px] flex-1">
+            {/* flex-nowrap, not flex-wrap (2026-08-20, direct ask): with
+                4 controls plus Apply/Clear, wrapping put the sort dropdown's
+                native option list flush against Apply and looked broken.
+                Instead only Search (min-w-0 flex-1) gives up width as the
+                row narrows -- Status/Sort/Apply/Clear keep shrink-0 so their
+                labels and native dropdowns never get squeezed. */}
+            <form method="get" className="flex flex-nowrap items-end gap-3">
+              <div className="min-w-0 flex-1">
                 <label htmlFor="q" className="mb-1 block text-xs font-medium text-slate-600">
                   Search
                 </label>
@@ -192,7 +198,7 @@ export default async function DocumentsPage({
                   className="h-9 rounded-lg"
                 />
               </div>
-              <div>
+              <div className="shrink-0">
                 <label htmlFor="status" className="mb-1 block text-xs font-medium text-slate-600">
                   Status
                 </label>
@@ -210,29 +216,33 @@ export default async function DocumentsPage({
                   ))}
                 </select>
               </div>
-              <div>
+              <div className="shrink-0">
                 <label htmlFor="sort" className="mb-1 block text-xs font-medium text-slate-600">
                   Sort
                 </label>
+                {/* Labels trimmed ("Newest first" -> "Newest", etc, 2026-08-20
+                    direct ask) so the closed select and its native option
+                    list stay narrow -- the open list was wide enough to
+                    overlap the Apply button. Option values unchanged. */}
                 <select
                   id="sort"
                   name="sort"
                   defaultValue={sort}
                   className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
                 >
-                  <option value="newest">Newest first</option>
-                  <option value="oldest">Oldest first</option>
-                  <option value="title">Title (A–Z)</option>
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="title">Title</option>
                 </select>
               </div>
               <button
                 type="submit"
-                className={cn(buttonVariants({ size: "sm" }), "rounded-lg")}
+                className={cn(buttonVariants({ size: "sm" }), "shrink-0 rounded-lg")}
               >
                 Apply
               </button>
               {(q || status || (sort && sort !== "newest")) && (
-                <Link href="/dashboard/documents" className="text-sm text-slate-500 hover:text-slate-700">
+                <Link href="/dashboard/documents" className="shrink-0 text-sm text-slate-500 hover:text-slate-700">
                   Clear
                 </Link>
               )}
