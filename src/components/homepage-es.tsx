@@ -38,12 +38,16 @@ import { Signature, ShieldCheck, Receipt, Sparkles } from "lucide-react";
 // page — hero, comparison, pricing, FAQ — is real Spanish copy, not
 // machine-translated placeholder text.
 //
-// Tagline: uses the new simplified tagline Michael picked ("eSignatures,
-// without the extras" in English) rather than translating the EN homepage's
-// "per-seat tax" line, which leans on an English SaaS idiom that doesn't
-// carry over. Spanish version: "Firmas electrónicas, sin vueltas" — "sin
-// vueltas" is an idiomatic Rioplatense way of saying "no runaround/no fuss,"
-// matching "without the extras" in spirit rather than word-for-word.
+// Tagline: uses the new simplified tagline Michael picked, after several
+// rounds of options ("eSignature essentials", "without the extras", "sin
+// vueltas" as-is, etc.) — final pick 2026-08-20: "eSignatures, without the
+// runaround" in English, rather than translating the EN homepage's "per-seat
+// tax" line, which leans on an English SaaS idiom that doesn't carry over.
+// Spanish version: "Firmas electrónicas, sin vueltas" — unchanged from the
+// prior "without the extras" pick, since "sin vueltas" (idiomatic Rioplatense
+// for "no runaround/no fuss/straight to the point") already matches "without
+// the runaround" at least as well as it matched the phrase it was drafted
+// against, if not better.
 
 const DOCUSIGN_COMPARISON = [
   { label: "Plan pago más barato", signedby: "$7/mes fijo", competitor: "$10-15/mes, 1 usuario" },
