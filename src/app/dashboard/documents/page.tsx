@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUserAndOrg } from "@/lib/org";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -163,10 +163,10 @@ export default async function DocumentsPage({
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Find a document</CardTitle>
-            <CardDescription>Search by title or recipient name/email, filter by status, or sort.</CardDescription>
-          </CardHeader>
+          {/* No CardHeader here (2026-08-20, direct ask) -- "Find a document"
+              plus a description restating what the Search placeholder and
+              Status/Sort labels already say was pure redundancy. The "Search"
+              field label below carries the meaning on its own. */}
           <CardContent>
             {/* Search, Status, Sort and Apply all sit at h-9 rounded-lg to match
                 the New document button above. They share a row, so a control
@@ -237,7 +237,7 @@ export default async function DocumentsPage({
 
         <Card>
           <CardHeader>
-            <CardTitle>Results</CardTitle>
+            <CardTitle>Your documents</CardTitle>
           </CardHeader>
           <CardContent>
             {documents && documents.length > 0 ? (
