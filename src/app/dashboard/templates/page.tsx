@@ -45,26 +45,6 @@ export default async function TemplatesPage() {
           <p className="text-sm text-slate-600">
             Reusable field layouts. Open any draft document and use &quot;Save as template&quot; to create one.
           </p>
-          {/* Matches the Team page's "Invite your team" upgrade card exactly
-              (same border/padding/centering, same button component) —
-              2026-08-19 direct ask to make the two upgrade prompts visually
-              consistent instead of this one being a lighter inline text
-              link. The usage count is the headline in place of a "you're
-              blocked" message, since Free has partial access here (not a
-              hard wall like Team) — see the mockup discussion for why this
-              reads as "raise Templates to Team's weight" rather than the
-              other direction. */}
-          {!hasTemplates && (
-            <div className="mt-3 rounded-md border border-dashed border-slate-300 p-4 text-center">
-              <p className="text-sm font-medium text-slate-900">
-                {Math.min(ownTemplateCount, 1)} of 1 saved template used
-              </p>
-              <p className="mt-1 text-xs text-slate-500">Upgrade to Pro for unlimited templates &amp; reminders.</p>
-              <Link href="/pricing" className={buttonVariants({ size: "default", className: "mt-3" })}>
-                Upgrade to Pro
-              </Link>
-            </div>
-          )}
         </div>
 
         <Card>
@@ -107,6 +87,28 @@ export default async function TemplatesPage() {
               <p className="text-sm text-slate-500">
                 No templates yet. Open a draft document with fields placed, then click &quot;Save as template&quot;.
               </p>
+            )}
+            {/* Matches the Team page's "Invite your team" card exactly — same
+                border/padding/centering, same button component, AND the same
+                structural spot: inside this card, as the last thing after the
+                list, not floating above the card in the page header. It used
+                to sit up in the header div (523e7c1, 2026-08-19) — that fixed
+                the button styling but left a second inconsistency Michael
+                flagged 2026-08-20: Templates' box was outside/above its card
+                while Team's was inside/below its list. "Option A" from that
+                mockup discussion — moving this one to match Team, not the
+                other way around, for the same reason 523e7c1 did: Team's
+                page is the more deliberate pattern. */}
+            {!hasTemplates && (
+              <div className="mt-4 rounded-md border border-dashed border-slate-300 p-4 text-center">
+                <p className="text-sm font-medium text-slate-900">
+                  {Math.min(ownTemplateCount, 1)} of 1 saved template used
+                </p>
+                <p className="mt-1 text-xs text-slate-500">Upgrade to Pro for unlimited templates &amp; reminders.</p>
+                <Link href="/pricing" className={buttonVariants({ size: "default", className: "mt-3" })}>
+                  Upgrade to Pro
+                </Link>
+              </div>
             )}
           </CardContent>
         </Card>
