@@ -34,7 +34,7 @@ import { Signature, ShieldCheck, Receipt, Sparkles } from "lucide-react";
 // copied unchanged, only the rotation behaviour differs.
 const AUTO_ADVANCE_MS = 5000;
 
-const TABS: {
+export type ProductTab = {
   key: string;
   title: string;
   description: string;
@@ -44,7 +44,9 @@ const TABS: {
   height: number;
   objectPosition?: string;
   Icon: typeof Signature;
-}[] = [
+};
+
+const TABS: ProductTab[] = [
   {
     key: "sign",
     title: "Sign",
@@ -92,7 +94,12 @@ const TABS: {
   },
 ];
 
-export function InteractiveProductTabsG() {
+// `tabs` override lets a translated variant (e.g. the /es homepage) reuse
+// all of this component's interaction/rotation logic with its own copy,
+// instead of duplicating the whole component just to change strings — see
+// [[site-localization-scope-2026-08-20]]. Defaults to the English TABS so
+// every existing call site is unaffected.
+export function InteractiveProductTabsG({ tabs = TABS }: { tabs?: ProductTab[] } = {}) {
   const [active, setActive] = useState(0);
   // Set once and never unset — see behaviour (1) in this file's top comment.
   const [visitorTookControl, setVisitorTookControl] = useState(false);
@@ -120,12 +127,12 @@ export function InteractiveProductTabsG() {
     if (stopped) return;
     const id = window.setInterval(() => {
       if (stoppedRef.current) return;
-      setActive((i) => (i + 1) % TABS.length);
+      setActive((i) => (i + 1) % tabs.length);
     }, AUTO_ADVANCE_MS);
     return () => window.clearInterval(id);
-  }, [stopped]);
+  }, [stopped, tabs.length]);
 
-  const tab = TABS[active];
+  const tab = tabs[active];
 
   return (
     <div
@@ -136,7 +143,7 @@ export function InteractiveProductTabsG() {
       onBlurCapture={() => setPaused(false)}
     >
       <div className="flex items-center justify-center gap-2 sm:justify-start">
-        {TABS.map((t, i) => {
+        {tabs.map((t, i) => {
           const isActive = i === active;
           return (
             <button
@@ -175,7 +182,7 @@ export function InteractiveProductTabsG() {
             tab comes up — visible as a flash of empty box. Keeping them
             mounted costs four decodes up front and makes every subsequent
             rotation instant. `priority` stays on the first only. */}
-        {TABS.map((t, i) => (
+        {tabs.map((t, i) => (
           <Image
             key={t.key}
             src={t.image}
