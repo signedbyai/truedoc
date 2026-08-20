@@ -234,19 +234,21 @@ export default async function DocumentsPage({
                 <label htmlFor="sort" className="mb-1 block text-xs font-medium text-slate-600">
                   Sort
                 </label>
-                {/* Labels trimmed ("Newest first" -> "Newest", etc, 2026-08-20
-                    direct ask) so the closed select and its native option
-                    list stay narrow -- the open list was wide enough to
-                    overlap the Apply button. Option values unchanged. */}
+                {/* Labels trimmed to "Newest"/"Oldest"/"Title" earlier
+                    2026-08-20 because the open option list overlapped
+                    Apply -- restored to the full text the same day once the
+                    row-wrap fix (Apply glued to Search, Status/Sort dropping
+                    to their own row below sm) freed the width back up.
+                    Option values unchanged either way. */}
                 <select
                   id="sort"
                   name="sort"
                   defaultValue={sort}
                   className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
                 >
-                  <option value="newest">Newest</option>
-                  <option value="oldest">Oldest</option>
-                  <option value="title">Title</option>
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="title">Title (A–Z)</option>
                 </select>
               </div>
               {(q || status || (sort && sort !== "newest")) && (
