@@ -166,8 +166,13 @@ export default async function DocumentsPage({
           {/* No CardHeader here (2026-08-20, direct ask) -- "Find a document"
               plus a description restating what the Search placeholder and
               Status/Sort labels already say was pure redundancy. The "Search"
-              field label below carries the meaning on its own. */}
-          <CardContent>
+              field label below carries the meaning on its own.
+              CardContent normally pairs with CardHeader and drops its own
+              top padding (p-6 pt-0) so the two don't double up -- with no
+              header here that left "Search" flush against the card's top
+              edge. pt-6 restores the same 24px used on every other side,
+              flagged by Michael 2026-08-20 right after this shipped. */}
+          <CardContent className="pt-6">
             {/* Search, Status, Sort and Apply all sit at h-9 rounded-lg to match
                 the New document button above. They share a row, so a control
                 that is 4px taller or squarer than its neighbour is visible
