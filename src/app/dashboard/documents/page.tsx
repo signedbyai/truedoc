@@ -179,17 +179,21 @@ export default async function DocumentsPage({
                 immediately. Overridden here rather than in ui/input.tsx: the
                 app-wide version of this change was tried in b0e3748 and rolled
                 back, so every other form keeps the current height. */}
-            {/* sm:flex-nowrap, not flex-nowrap everywhere (2026-08-20,
-                direct ask): letting Search keep shrinking below sm made it
-                unusably narrow on phones (down to a couple characters wide).
-                Below sm it wraps instead -- Search takes the full first row,
-                Status/Sort/Apply/Clear wrap together onto a second row as a
-                group. At sm and up there's enough width that shrinking
-                Search (min-w-0 flex-1, sm:min-w-0) instead of wrapping reads
-                better -- shrink-0 on the other controls still keeps their
-                labels and native dropdowns from being squeezed either way. */}
+            {/* Below sm: Search + Apply share row 1, Status/Sort/Clear wrap
+                to row 2 as a group (2026-08-20, direct ask -- Apply should
+                stay glued to Search, only the filter controls should drop).
+                Plain flex-wrap can't guarantee that split on its own (it
+                wraps whichever item runs out of room, in DOM order, which
+                puts Apply on row 2 with the rest) so this uses two things
+                together: `order` moves Apply to sit right after Search only
+                below sm (sm:order-none reverts everyone to the normal
+                Search/Status/Sort/Apply/Clear DOM order at sm+), and the
+                aria-hidden basis-full spacer right after Apply forces a hard
+                line break there so Status always starts row 2, regardless of
+                how much width happens to be left over. At sm and up the
+                spacer is hidden and the row is nowrap, same as before. */}
             <form method="get" className="flex flex-wrap items-end gap-3 sm:flex-nowrap">
-              <div className="min-w-[200px] flex-1 sm:min-w-0">
+              <div className="order-1 min-w-[200px] flex-1 sm:order-none sm:min-w-0">
                 <label htmlFor="q" className="mb-1 block text-xs font-medium text-slate-600">
                   Search
                 </label>
@@ -201,7 +205,14 @@ export default async function DocumentsPage({
                   className="h-9 rounded-lg"
                 />
               </div>
-              <div className="shrink-0">
+              <button
+                type="submit"
+                className={cn(buttonVariants({ size: "sm" }), "order-2 shrink-0 rounded-lg sm:order-none")}
+              >
+                Apply
+              </button>
+              <div aria-hidden="true" className="order-3 h-0 w-full sm:hidden" />
+              <div className="order-4 shrink-0 sm:order-none">
                 <label htmlFor="status" className="mb-1 block text-xs font-medium text-slate-600">
                   Status
                 </label>
@@ -219,7 +230,7 @@ export default async function DocumentsPage({
                   ))}
                 </select>
               </div>
-              <div className="shrink-0">
+              <div className="order-5 shrink-0 sm:order-none">
                 <label htmlFor="sort" className="mb-1 block text-xs font-medium text-slate-600">
                   Sort
                 </label>
@@ -238,14 +249,11 @@ export default async function DocumentsPage({
                   <option value="title">Title</option>
                 </select>
               </div>
-              <button
-                type="submit"
-                className={cn(buttonVariants({ size: "sm" }), "shrink-0 rounded-lg")}
-              >
-                Apply
-              </button>
               {(q || status || (sort && sort !== "newest")) && (
-                <Link href="/dashboard/documents" className="shrink-0 text-sm text-slate-500 hover:text-slate-700">
+                <Link
+                  href="/dashboard/documents"
+                  className="order-6 shrink-0 text-sm text-slate-500 hover:text-slate-700 sm:order-none"
+                >
                   Clear
                 </Link>
               )}
