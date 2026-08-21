@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Signature, ShieldCheck } from "lucide-react";
 import { getUserAndOrg } from "@/lib/org";
 import { seatsOverLimit, PLAN_LABEL } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import { TimeGreeting } from "@/components/time-greeting";
 import { ReferralCard } from "@/components/referral-card";
 import { AttributionClaim } from "@/components/attribution-claim";
 import { NewDocumentButton } from "@/components/new-document-button";
+import { HeroCardLink } from "@/components/hero-card-link";
 
 // Protected dashboard shell — middleware already redirects unauthenticated
 // requests to /login, this is a second server-side check as defense in depth.
@@ -148,6 +150,28 @@ export default async function DashboardPage() {
               {new Date(user.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
             </p>
           )}
+        </div>
+
+        {/* Sign / Seal hero cards (2026-08-21, direct ask, mockup-approved) —
+            bigger, previewable entry points into the two most common New
+            document modes, sitting alongside the existing New document
+            button rather than replacing it. Quote and Draft get the same
+            treatment on the Documents page instead of here — see
+            HeroCardLink's own doc comment for why the copy/icons/colors
+            below match new-document-client.tsx's panels exactly. */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <HeroCardLink
+            href="/dashboard/documents/new"
+            icon={Signature}
+            title="Sign"
+            description="Get a document signed — by you or someone else"
+          />
+          <HeroCardLink
+            href="/dashboard/documents/new?mode=badge"
+            icon={ShieldCheck}
+            title="Seal"
+            description="Self-sign and lock a document — no recipient needed"
+          />
         </div>
 
         <ReferralCard />
