@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { LucideIcon } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 // Locked variant of HeroCardLink for a mode the org's plan doesn't include
 // (currently just Draft on sub-Pro+ plans). Same dashed-border/grey-icon/
@@ -13,12 +13,19 @@ import type { LucideIcon } from "lucide-react";
 // mode rather than erroring), which reads as a broken link. This makes the
 // lock explicit instead, in the same words and with the same /pricing
 // link the tab already uses.
+//
+// The icon is imported directly here rather than taken as a prop
+// (2026-08-21, hotfix) — this component is "use client", and its caller
+// (documents/page.tsx) is a Server Component; passing a component
+// reference like a lucide-react icon across that boundary as a prop isn't
+// serializable and crashed the page in production ("Functions cannot be
+// passed directly to Client Components", digest 1621801304). Sparkles is
+// the only icon this card has ever needed (Draft is the only gated mode),
+// so hardcoding it here removes the crash rather than working around it.
 export function LockedHeroCard({
-  icon: Icon,
   title,
   description,
 }: {
-  icon: LucideIcon;
   title: string;
   description: string;
 }) {
@@ -32,7 +39,7 @@ export function LockedHeroCard({
         className="flex w-full items-center gap-4 rounded-2xl border border-dashed border-slate-300 bg-white p-5 text-left transition hover:border-slate-400"
       >
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100">
-          <Icon className="h-5 w-5 text-slate-400" strokeWidth={1.75} aria-hidden="true" />
+          <Sparkles className="h-5 w-5 text-slate-400" strokeWidth={1.75} aria-hidden="true" />
         </span>
         <div className="min-w-0">
           <p className="text-[15px] font-semibold text-slate-400">{title}</p>
