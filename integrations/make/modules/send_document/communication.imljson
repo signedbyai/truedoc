@@ -13,7 +13,7 @@
     },
     "invite_subject": "{{if(parameters.inviteSubject, parameters.inviteSubject, undefined)}}",
     "invite_message": "{{if(parameters.inviteMessage, parameters.inviteMessage, undefined)}}",
-    "expires_at": "{{if(parameters.expiresAt, formatDate(parameters.expiresAt, \"YYYY-MM-DDTHH:mm:ssZ\"), undefined)}}"
+    "expires_at": "{{if(parameters.expiresAt, formatDate(parameters.expiresAt, \"YYYY-MM-DDTHH:mm:ss[Z]\", \"UTC\"), undefined)}}"
   },
   "response": {
     "output": "{{body}}"

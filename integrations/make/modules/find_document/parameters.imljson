@@ -4,6 +4,6 @@
     "type": "text",
     "label": "Document ID",
     "required": true,
-    "help": "The document's ID, as returned by the Send Document action or a trigger."
+    "help": "The document's ID, as returned by the Send a document action or a trigger."
   }
 ]

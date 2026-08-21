@@ -1,13 +1,18 @@
 {
   "url": "{{parameters.url}}",
   "method": "{{parameters.method}}",
+  "qs": {
+    "{{...}}": "{{toCollection(parameters.qs, 'key', 'value')}}"
+  },
   "headers": {
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
+    "{{...}}": "{{toCollection(parameters.headers, 'key', 'value')}}"
   },
   "body": "{{if(parameters.body, parameters.body, undefined)}}",
   "response": {
     "output": {
       "statusCode": "{{statusCode}}",
+      "headers": "{{headers}}",
       "body": "{{body}}"
     }
   }

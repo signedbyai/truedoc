@@ -1,19 +1,5 @@
 [
   {
-    "name": "method",
-    "type": "select",
-    "label": "Method",
-    "required": true,
-    "default": "GET",
-    "options": [
-      { "label": "GET", "value": "GET" },
-      { "label": "POST", "value": "POST" },
-      { "label": "PUT", "value": "PUT" },
-      { "label": "PATCH", "value": "PATCH" },
-      { "label": "DELETE", "value": "DELETE" }
-    ]
-  },
-  {
     "name": "url",
     "type": "text",
     "label": "URL",
@@ -21,11 +7,81 @@
     "help": "Path relative to https://signedby.ai/api/v1 — e.g. /documents, /documents/abc123, or /documents?status=completed&limit=50. See the REST API docs for available endpoints."
   },
   {
-    "name": "body",
-    "type": "text",
-    "label": "Body (raw JSON)",
+    "name": "method",
+    "type": "select",
+    "label": "Method",
+    "required": true,
+    "default": "GET",
+    "options": [
+      {
+        "label": "GET",
+        "value": "GET"
+      },
+      {
+        "label": "POST",
+        "value": "POST"
+      },
+      {
+        "label": "PUT",
+        "value": "PUT"
+      },
+      {
+        "label": "PATCH",
+        "value": "PATCH"
+      },
+      {
+        "label": "DELETE",
+        "value": "DELETE"
+      }
+    ]
+  },
+  {
+    "name": "headers",
+    "type": "array",
+    "label": "Headers",
     "required": false,
-    "multiline": true,
+    "spec": {
+      "type": "collection",
+      "spec": [
+        {
+          "name": "key",
+          "type": "text",
+          "label": "Key"
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "label": "Value"
+        }
+      ]
+    }
+  },
+  {
+    "name": "qs",
+    "type": "array",
+    "label": "Query string",
+    "required": false,
+    "spec": {
+      "type": "collection",
+      "spec": [
+        {
+          "name": "key",
+          "type": "text",
+          "label": "Key"
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "label": "Value"
+        }
+      ]
+    }
+  },
+  {
+    "name": "body",
+    "type": "any",
+    "label": "Body",
+    "required": false,
     "help": "Optional. Raw JSON request body for POST/PUT/PATCH calls, e.g. {\"template_id\": \"...\", \"signer\": {\"email\": \"...\"}}. Leave blank for GET/DELETE."
   }
 ]
