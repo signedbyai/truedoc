@@ -34,7 +34,7 @@ export function UseTemplateButton({ templateId }: { templateId: string }) {
   return (
     <div className="flex flex-col items-end gap-1">
       <Button size="sm" onClick={handleUse} disabled={loading}>
-        {loading ? "Creating…" : "Use template"}
+        {loading ? "Creating…" : "Use"}
       </Button>
       {error && (
         <p className="max-w-[220px] text-right text-xs text-red-600">
