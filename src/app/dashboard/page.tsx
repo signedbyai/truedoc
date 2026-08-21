@@ -349,39 +349,6 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Own card between Your workspace and Recent documents
-            (2026-08-21, direct ask, follow-up to putting it in Recent
-            documents' header) — no CardHeader/title, same "bare grid,
-            pt-6 stands in for the header's padding" pattern
-            documents/page.tsx already uses for its search card. All four
-            numbers share the same neutral slate (2026-08-21, direct ask —
-            the amber on the first two read as red and was dropped) rather
-            than singling out the two that want the sender's attention.
-            4-column grid at every width, same as the mockup — labels wrap
-            to two lines on a narrow phone rather than the strip going to
-            2x2 or losing a column, since the numbers are the part worth
-            keeping legible, not the labels. */}
-        <Card>
-          <CardContent className="grid grid-cols-4 divide-x divide-slate-100 pt-6">
-            <div className="pr-3">
-              <p className="text-xl font-semibold text-slate-900">{counts.sent}</p>
-              <p className="text-xs text-slate-500">Waiting for others</p>
-            </div>
-            <div className="px-3">
-              <p className="text-xl font-semibold text-slate-900">{expiringSoonCount ?? 0}</p>
-              <p className="text-xs text-slate-500">Expiring soon</p>
-            </div>
-            <div className="px-3">
-              <p className="text-xl font-semibold text-slate-900">{counts.draft}</p>
-              <p className="text-xs text-slate-500">Drafts</p>
-            </div>
-            <div className="pl-3">
-              <p className="text-xl font-semibold text-slate-900">{completedThisMonthCount}</p>
-              <p className="text-xs text-slate-500">Completed this month</p>
-            </div>
-          </CardContent>
-        </Card>
-
         <Card>
           {/* From template / New document buttons removed from this header
               (2026-08-21, direct ask) — the Sign/Seal hero cards above now
@@ -436,6 +403,39 @@ export default async function DashboardPage() {
               <Link href="/dashboard/documents" className="text-sm font-medium text-slate-600 hover:text-slate-900">
                 View all documents →
               </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Moved below Recent documents (2026-08-21, direct ask) — was
+            between Your workspace and Recent documents. No CardHeader/
+            title, same "bare grid, pt-6 stands in for the header's
+            padding" pattern documents/page.tsx already uses for its
+            search card. All four numbers share the same neutral slate
+            (2026-08-21, direct ask — the amber on the first two read as
+            red and was dropped) rather than singling out the two that
+            want the sender's attention. 4-column grid at every width,
+            same as the mockup — labels wrap to two lines on a narrow
+            phone rather than the strip going to 2x2 or losing a column,
+            since the numbers are the part worth keeping legible, not the
+            labels. */}
+        <Card>
+          <CardContent className="grid grid-cols-4 divide-x divide-slate-100 pt-6">
+            <div className="pr-3">
+              <p className="text-xl font-semibold text-slate-900">{counts.sent}</p>
+              <p className="text-xs text-slate-500">Waiting for others</p>
+            </div>
+            <div className="px-3">
+              <p className="text-xl font-semibold text-slate-900">{expiringSoonCount ?? 0}</p>
+              <p className="text-xs text-slate-500">Expiring soon</p>
+            </div>
+            <div className="px-3">
+              <p className="text-xl font-semibold text-slate-900">{counts.draft}</p>
+              <p className="text-xs text-slate-500">Drafts</p>
+            </div>
+            <div className="pl-3">
+              <p className="text-xl font-semibold text-slate-900">{completedThisMonthCount}</p>
+              <p className="text-xs text-slate-500">Completed this month</p>
             </div>
           </CardContent>
         </Card>
