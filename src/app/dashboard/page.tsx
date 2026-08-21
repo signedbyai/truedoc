@@ -349,6 +349,38 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
+        {/* Own card between Your workspace and Recent documents
+            (2026-08-21, direct ask, follow-up to putting it in Recent
+            documents' header) — no CardHeader/title, same "bare grid,
+            pt-6 stands in for the header's padding" pattern
+            documents/page.tsx already uses for its search card. Amber for
+            the two that want the sender's attention (something's waiting
+            on them, or waiting to lapse); slate for the two that are just
+            status. 4-column grid at every width, same as the mockup —
+            labels wrap to two lines on a narrow phone rather than the
+            strip going to 2x2 or losing a column, since the numbers are
+            the part worth keeping legible, not the labels. */}
+        <Card>
+          <CardContent className="grid grid-cols-4 divide-x divide-slate-100 pt-6">
+            <div className="pr-3">
+              <p className="text-xl font-semibold text-amber-600">{counts.sent}</p>
+              <p className="text-xs text-slate-500">Waiting for others</p>
+            </div>
+            <div className="px-3">
+              <p className="text-xl font-semibold text-amber-600">{expiringSoonCount ?? 0}</p>
+              <p className="text-xs text-slate-500">Expiring soon</p>
+            </div>
+            <div className="px-3">
+              <p className="text-xl font-semibold text-slate-900">{counts.draft}</p>
+              <p className="text-xs text-slate-500">Drafts</p>
+            </div>
+            <div className="pl-3">
+              <p className="text-xl font-semibold text-slate-900">{completedThisMonthCount}</p>
+              <p className="text-xs text-slate-500">Completed this month</p>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           {/* From template / New document buttons removed from this header
               (2026-08-21, direct ask) — the Sign/Seal hero cards above now
@@ -359,34 +391,6 @@ export default async function DashboardPage() {
               deleted, since removing it wasn't asked for. */}
           <CardHeader>
             <CardTitle>Recent documents</CardTitle>
-            {/* "Upload a PDF and place signature fields." removed
-                (2026-08-21, direct ask) — replaced with this small stats
-                strip instead of just deleted, same mockup this whole hero-
-                card pass has been working from. Amber for the two that
-                want the sender's attention (something's waiting on them,
-                or waiting to lapse); slate for the two that are just
-                status. 4-column grid at every width, same as the mockup —
-                labels wrap to two lines on a narrow phone rather than the
-                strip going to 2x2 or losing a column, since the numbers
-                are the part worth keeping legible, not the labels. */}
-            <div className="grid grid-cols-4 divide-x divide-slate-100 pt-1">
-              <div className="pr-3">
-                <p className="text-xl font-semibold text-amber-600">{counts.sent}</p>
-                <p className="text-xs text-slate-500">Waiting for others</p>
-              </div>
-              <div className="px-3">
-                <p className="text-xl font-semibold text-amber-600">{expiringSoonCount ?? 0}</p>
-                <p className="text-xs text-slate-500">Expiring soon</p>
-              </div>
-              <div className="px-3">
-                <p className="text-xl font-semibold text-slate-900">{counts.draft}</p>
-                <p className="text-xs text-slate-500">Drafts</p>
-              </div>
-              <div className="pl-3">
-                <p className="text-xl font-semibold text-slate-900">{completedThisMonthCount}</p>
-                <p className="text-xs text-slate-500">Completed this month</p>
-              </div>
-            </div>
           </CardHeader>
           <CardContent>
             {documents && documents.length > 0 ? (
