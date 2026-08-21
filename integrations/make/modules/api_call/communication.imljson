@@ -5,6 +5,7 @@
     "{{...}}": "{{toCollection(parameters.qs, 'key', 'value')}}"
   },
   "headers": {
+    "Authorization": "Bearer {{connection.apiKey}}",
     "Content-Type": "application/json",
     "{{...}}": "{{toCollection(parameters.headers, 'key', 'value')}}"
   },
