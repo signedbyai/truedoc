@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Receipt, Sparkles } from "lucide-react";
 import { getUserAndOrg } from "@/lib/org";
+import { planHasFeature } from "@/lib/plan";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { buttonVariants } from "@/components/ui/button";
@@ -8,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { DocumentRowActions } from "@/components/document-row-actions";
 import { LIST_STATUS_PILL, SEALED_LIST_PILL, StatusPill } from "@/components/status-pill";
 import { formatRelativeTime, latestViewedByDocument } from "@/lib/last-viewed";
+import { HeroCardLink } from "@/components/hero-card-link";
+import { LockedHeroCard } from "@/components/locked-hero-card";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -45,6 +49,14 @@ export default async function DocumentsPage({
   const ctx = await getUserAndOrg();
   if (!ctx) redirect("/login");
   const { supabase, orgId } = ctx;
+
+  // Only fetched for the Draft hero card below (mirrors the same
+  // planHasFeature(org?.plan, "aiDraft") check new/page.tsx already does
+  // for the picker's own Draft tab) — a locked-plan org gets an explicit
+  // "Draft is available on Pro+" card here instead of a card that silently
+  // lands them back on the Sign panel (see LockedHeroCard's doc comment).
+  const { data: org } = await supabase.from("organizations").select("plan").eq("id", orgId).single();
+  const hasAiDraft = planHasFeature(org?.plan, "aiDraft");
 
   const searchTerm = sanitizeSearchTerm(q);
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
@@ -160,6 +172,35 @@ export default async function DocumentsPage({
               New document<span className="hidden sm:inline"> →</span>
             </Link>
           </div>
+        </div>
+
+        {/* Quote / Draft hero cards (2026-08-21, direct ask, mockup-approved)
+            — Sign and Seal got the same treatment on the dashboard home
+            instead of here, alongside (not replacing) the buttons above.
+            Draft is plan-gated the same way its picker tab is — see
+            LockedHeroCard's doc comment for why a silent link isn't used
+            for a locked plan instead. */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <HeroCardLink
+            href="/dashboard/documents/new?mode=quote"
+            icon={Receipt}
+            title="Quote"
+            description="Itemize a job — Magic Quote turns it into a signable quote"
+          />
+          {hasAiDraft ? (
+            <HeroCardLink
+              href="/dashboard/documents/new?mode=draft"
+              icon={Sparkles}
+              title="Draft"
+              description="Describe what you need — AI drafts it, ready to review"
+            />
+          ) : (
+            <LockedHeroCard
+              icon={Sparkles}
+              title="Draft"
+              description="Describe what you need — AI drafts it, ready to review"
+            />
+          )}
         </div>
 
         <Card>
