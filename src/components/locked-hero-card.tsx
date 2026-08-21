@@ -23,9 +23,11 @@ import { Sparkles } from "lucide-react";
 // the only icon this card has ever needed (Draft is the only gated mode),
 // so hardcoding it here removes the crash rather than working around it.
 //
-// Same mobile layout switch as HeroCardLink (2026-08-21, direct ask) —
-// centered icon-over-text below sm, horizontal at sm+ — kept in sync so
-// the two cards in this row don't visibly diverge at any width.
+// Same mobile layout as HeroCardLink (2026-08-21, direct ask, then a
+// same-day follow-up) — centered icon-over-text below sm, horizontal at
+// sm+, kept in sync so the two cards in this row don't visibly diverge at
+// any width. Icon/title/description sizes are the same at every width now
+// (the first pass also shrank them below sm and it read as too small).
 export function LockedHeroCard({
   title,
   description,
@@ -40,14 +42,14 @@ export function LockedHeroCard({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white p-3 text-center transition hover:border-slate-400 sm:flex-row sm:items-center sm:gap-4 sm:p-5 sm:text-left"
+        className="flex w-full flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-center transition hover:border-slate-400 sm:flex-row sm:items-center sm:gap-4 sm:p-5 sm:text-left"
       >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 sm:h-12 sm:w-12">
-          <Sparkles className="h-4 w-4 text-slate-400 sm:h-5 sm:w-5" strokeWidth={1.75} aria-hidden="true" />
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100">
+          <Sparkles className="h-5 w-5 text-slate-400" strokeWidth={1.75} aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-400 sm:text-[15px]">{title}</p>
-          <p className="mt-0.5 text-[11px] leading-snug text-slate-400 sm:text-xs">{description}</p>
+          <p className="text-[15px] font-semibold text-slate-400">{title}</p>
+          <p className="mt-0.5 text-xs leading-snug text-slate-400">{description}</p>
         </div>
       </button>
       {open && (

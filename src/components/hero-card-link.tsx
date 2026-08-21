@@ -18,12 +18,13 @@ import type { LucideIcon } from "lucide-react";
 // Two-column at every width, not just sm+ (2026-08-21, direct ask — the
 // pair stacking to one-per-row on a phone read as "increase the card
 // size" rather than the intended compact side-by-side). Below sm the card
-// switches to a centered icon-over-text layout instead of the roomier
-// horizontal one — a horizontal layout squeezed into a ~170px column
-// leaves the description only ~100px of text width and wraps to 4-5
-// lines; stacking the icon on top gives the text the card's full width
-// instead. At sm+ nothing changed: same horizontal layout, same sizes as
-// before this pass.
+// switches to a centered icon-over-text layout instead of the horizontal
+// one — a horizontal layout squeezed into a ~170px column leaves the
+// description only ~100px of text width. Icon/title/description sizes
+// themselves stay the same as sm+ (2026-08-21, direct follow-up — the
+// first pass also shrank the text below sm and it read as too small;
+// "ok if the cards end up a bit larger" — only the layout direction and
+// padding change now, not the type scale).
 export function HeroCardLink({
   href,
   icon: Icon,
@@ -38,14 +39,14 @@ export function HeroCardLink({
   return (
     <Link
       href={href}
-      className="flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-white p-3 text-center transition hover:border-slate-300 hover:shadow-sm sm:flex-row sm:items-center sm:gap-4 sm:p-5 sm:text-left"
+      className="flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-center transition hover:border-slate-300 hover:shadow-sm sm:flex-row sm:items-center sm:gap-4 sm:p-5 sm:text-left"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-yellow-300 sm:h-12 sm:w-12">
-        <Icon className="h-4 w-4 text-slate-900 sm:h-5 sm:w-5" strokeWidth={1.75} aria-hidden="true" />
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-yellow-300">
+        <Icon className="h-5 w-5 text-slate-900" strokeWidth={1.75} aria-hidden="true" />
       </span>
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-slate-900 sm:text-[15px]">{title}</p>
-        <p className="mt-0.5 text-[11px] leading-snug text-slate-500 sm:text-xs">{description}</p>
+        <p className="text-[15px] font-semibold text-slate-900">{title}</p>
+        <p className="mt-0.5 text-xs leading-snug text-slate-500">{description}</p>
       </div>
     </Link>
   );
