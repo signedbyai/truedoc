@@ -135,51 +135,24 @@ export default async function DocumentsPage({
   return (
     <main className="px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-5xl space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Documents</h1>
-            <p className="text-sm text-slate-600">{count ?? 0} total</p>
-          </div>
-          {/* Same pair as the dashboard home, in the same order and at the same
-              equal width: slim, rounded, arrowed, min-w set off the longer
-              label. Two entry points to the same task should not look
-              different depending on which page you reached them from.
-
-              Left button is "From template", not "Upload template" — there is
-              no upload-a-template flow to point at. Templates are only created
-              by "Save as template" from a document
-              (/api/documents/[id]/save-as-template); this goes to the picker,
-              which is the real action. Local override rather than a
-              ui/button.tsx change — the app-wide restyle was tried in b0e3748
-              and rolled back. */}
-          <div className="flex w-full items-center gap-2 sm:w-auto">
-            <Link
-              href="/dashboard/templates"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "flex-1 rounded-lg px-2.5 sm:min-w-[10.5rem] sm:flex-none sm:px-3"
-              )}
-            >
-              From template<span className="hidden sm:inline"> →</span>
-            </Link>
-            <Link
-              href="/dashboard/documents/new"
-              className={cn(
-                buttonVariants({ size: "sm" }),
-                "flex-1 rounded-lg px-2.5 sm:min-w-[10.5rem] sm:flex-none sm:px-3"
-              )}
-            >
-              New document<span className="hidden sm:inline"> →</span>
-            </Link>
-          </div>
+        {/* From template / New document buttons removed here (2026-08-21,
+            direct ask) — the Quote/Draft hero cards below plus the Sign/Seal
+            pair on the dashboard home now cover those entry points, and
+            Templates still has its own dashboard-nav.tsx entry, so nothing
+            became unreachable. */}
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Documents</h1>
+          <p className="text-sm text-slate-600">{count ?? 0} total</p>
         </div>
 
         {/* Quote / Draft hero cards (2026-08-21, direct ask, mockup-approved)
             — Sign and Seal got the same treatment on the dashboard home
-            instead of here, alongside (not replacing) the buttons above.
-            Draft is plan-gated the same way its picker tab is — see
-            LockedHeroCard's doc comment for why a silent link isn't used
-            for a locked plan instead. */}
+            instead of here. Originally added alongside the From
+            template/New document buttons above; those were removed the
+            same day (see the comment above), so these are now the page's
+            only entry points into the picker. Draft is plan-gated the
+            same way its picker tab is — see LockedHeroCard's doc comment
+            for why a silent link isn't used for a locked plan instead. */}
         <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <HeroCardLink
             href="/dashboard/documents/new?mode=quote"

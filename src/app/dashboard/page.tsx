@@ -4,17 +4,14 @@ import { Signature, ShieldCheck } from "lucide-react";
 import { getUserAndOrg } from "@/lib/org";
 import { seatsOverLimit, PLAN_LABEL } from "@/lib/plan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { buttonVariants } from "@/components/ui/button";
 import { LIST_STATUS_PILL, SEALED_LIST_PILL, StatusPill } from "@/components/status-pill";
 import { BadgeIcon, FirstStepIcon } from "@/components/badge-icon";
 import { PrizeDrawPill } from "@/components/prize-draw-pill";
 import { tallyStatuses, workspaceStats } from "@/lib/workspace-stats";
 import { monthStart, prizeProgress, PRIZE_ENABLED } from "@/lib/prize-draw";
-import { cn } from "@/lib/utils";
 import { TimeGreeting } from "@/components/time-greeting";
 import { ReferralCard } from "@/components/referral-card";
 import { AttributionClaim } from "@/components/attribution-claim";
-import { NewDocumentButton } from "@/components/new-document-button";
 import { HeroCardLink } from "@/components/hero-card-link";
 
 // Protected dashboard shell — middleware already redirects unauthenticated
@@ -154,11 +151,14 @@ export default async function DashboardPage() {
 
         {/* Sign / Seal hero cards (2026-08-21, direct ask, mockup-approved) —
             bigger, previewable entry points into the two most common New
-            document modes, sitting alongside the existing New document
-            button rather than replacing it. Quote and Draft get the same
-            treatment on the Documents page instead of here — see
-            HeroCardLink's own doc comment for why the copy/icons/colors
-            below match new-document-client.tsx's panels exactly. */}
+            document modes. Originally added alongside the Recent
+            documents card's own New document button; that button (and
+            its From template neighbor on the Documents page) was removed
+            the same day once these cards existed, so this is now the
+            page's only entry point into the picker. Quote and Draft get
+            the same treatment on the Documents page instead of here —
+            see HeroCardLink's own doc comment for why the copy/icons/
+            colors below match new-document-client.tsx's panels exactly. */}
         <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <HeroCardLink
             href="/dashboard/documents/new"
@@ -296,54 +296,16 @@ export default async function DashboardPage() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-col items-start gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle>Recent documents</CardTitle>
-              <CardDescription>Upload a PDF and place signature fields.</CardDescription>
-            </div>
-            {/* Same slim, rounded shape as the field editor's header trio
-                (size="sm" + rounded-lg). Scoped to this pair on purpose: the
-                app-wide version of this restyle was tried and rolled back, so
-                it stays a local override rather than a ui/button.tsx change.
-
-                Equal width, but reached two different ways. From sm up, a
-                shared min-w sized off the longer label ("New document →").
-                On mobile, flex-1 instead: a fixed 10.5rem pair needs 344px and
-                the card only offers ~340px even on a 420pt phone, so the min-w
-                wrapped them onto separate lines. Splitting the row equally
-                keeps them side by side and still equal.
-
-                The arrow is also hidden on mobile. With it, the longer label
-                needs 155px a side and only clears on 420pt-and-up devices;
-                without it, 136px, which holds from 375pt up. Dropping the
-                arrow was preferred over shrinking to text-xs — the type stays
-                the same size as the rest of the UI, and the arrow is
-                decoration rather than meaning. They're two alternatives for
-                starting a document, and unequal boxes read as a primary with
-                an afterthought beside it.
-
-                The right-hand button is a client component (NewDocumentButton),
-                not a plain Link like the one on its left — it owns the
-                first-visit popover explaining AI Drafter/Magic Quote live
-                behind it now too. flex-1/sm:flex-none/sm:min-w live inside
-                that component so it still matches this Link's sizing exactly. */}
-            <div className="flex w-full items-center gap-2 sm:w-auto">
-              <Link
-                href="/dashboard/templates"
-                className={cn(
-                  buttonVariants({ variant: "outline", size: "sm" }),
-                  "flex-1 rounded-lg px-2.5 sm:min-w-[10.5rem] sm:flex-none sm:px-3"
-                )}
-              >
-                From template<span className="hidden sm:inline"> →</span>
-              </Link>
-              {/* Stays slate-900, not yellow. Yellow was tried and pulled: the
-                  dashboard already has a primary CTA above this card, and two
-                  competing yellows in one viewport cancel each other out.
-                  Yellow is worth more kept scarce — it marks "Send for
-                  signature", the irreversible step, and nothing else. */}
-              <NewDocumentButton />
-            </div>
+          {/* From template / New document buttons removed from this header
+              (2026-08-21, direct ask) — the Sign/Seal hero cards above now
+              cover starting a document, and Templates still has its own
+              dashboard-nav.tsx entry, so nothing became unreachable. That
+              also drops the only remaining render of NewDocumentButton
+              (new-document-button.tsx) — left in place unused rather than
+              deleted, since removing it wasn't asked for. */}
+          <CardHeader>
+            <CardTitle>Recent documents</CardTitle>
+            <CardDescription>Upload a PDF and place signature fields.</CardDescription>
           </CardHeader>
           <CardContent>
             {documents && documents.length > 0 ? (
