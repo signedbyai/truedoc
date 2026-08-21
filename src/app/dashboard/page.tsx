@@ -353,21 +353,22 @@ export default async function DashboardPage() {
             (2026-08-21, direct ask, follow-up to putting it in Recent
             documents' header) — no CardHeader/title, same "bare grid,
             pt-6 stands in for the header's padding" pattern
-            documents/page.tsx already uses for its search card. Amber for
-            the two that want the sender's attention (something's waiting
-            on them, or waiting to lapse); slate for the two that are just
-            status. 4-column grid at every width, same as the mockup —
-            labels wrap to two lines on a narrow phone rather than the
-            strip going to 2x2 or losing a column, since the numbers are
-            the part worth keeping legible, not the labels. */}
+            documents/page.tsx already uses for its search card. All four
+            numbers share the same neutral slate (2026-08-21, direct ask —
+            the amber on the first two read as red and was dropped) rather
+            than singling out the two that want the sender's attention.
+            4-column grid at every width, same as the mockup — labels wrap
+            to two lines on a narrow phone rather than the strip going to
+            2x2 or losing a column, since the numbers are the part worth
+            keeping legible, not the labels. */}
         <Card>
           <CardContent className="grid grid-cols-4 divide-x divide-slate-100 pt-6">
             <div className="pr-3">
-              <p className="text-xl font-semibold text-amber-600">{counts.sent}</p>
+              <p className="text-xl font-semibold text-slate-900">{counts.sent}</p>
               <p className="text-xs text-slate-500">Waiting for others</p>
             </div>
             <div className="px-3">
-              <p className="text-xl font-semibold text-amber-600">{expiringSoonCount ?? 0}</p>
+              <p className="text-xl font-semibold text-slate-900">{expiringSoonCount ?? 0}</p>
               <p className="text-xs text-slate-500">Expiring soon</p>
             </div>
             <div className="px-3">
