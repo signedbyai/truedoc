@@ -300,3 +300,61 @@ both `master` (`11b81e5`... — hero-card fix; Make fixes are the commits
 just before it) and `dev`. Needs a push from Michael's own machine before
 any of this — including the `/api/v1/templates` pagination backend
 change — is actually live.
+
+## 2026-08-21 live-debug: "Make an API Call" 401'd with a genuinely valid key
+
+After pasting the review-round changes above into Make's live editor,
+"Make an API Call" (only that module — the other 5 worked) failed every
+run with `[401] Invalid API key.`, even after confirming via a direct
+`curl` straight to `https://signedby.ai/api/v1/templates` that the key
+itself was valid (got a real 200). Two real bugs found and fixed along
+the way:
+
+1. **`base.imljson` referenced the wrong scope.** It had
+   `"Authorization": "Bearer {{parameters.apiKey}}"` — but `parameters` in
+   Base scope means the *currently-running module's* own parameters, and
+   no module (including `api_call`) declares an `apiKey` field of its
+   own; only the Connection does. The correct reference, confirmed
+   against Make's own Authorization docs (developers.make.com/
+   custom-apps-documentation/app-components/base/authorization — their
+   own example is `"Authorization": "Bearer {{connection.accessToken}}"`),
+   is `{{connection.apiKey}}`. Fixed in the repo's `base.imljson`.
+
+2. **`api_call` needed Authorization set in its own Communication panel,
+   not just inherited from Base.** Every other module has no `headers`
+   key of its own in `communication.imljson`, so Base's headers apply to
+   them wholesale. `api_call` is the only module that declares its own
+   `headers` object (for `Content-Type` and the Headers/Query-string
+   `toCollection` merges) — and empirically, once Base was already fixed
+   and a fresh connection with a freshly-regenerated key still 401'd
+   (even a version with the *literal* key hardcoded straight into that
+   module's Communication panel, bypassing all templating, also 401'd at
+   one point during debugging), something about a module supplying its
+   own `headers` object was interfering with inheriting Base's
+   Authorization. Fix: `api_call/communication.imljson` now sets
+   `"Authorization": "Bearer {{connection.apiKey}}"` directly inside its
+   own `headers`, rather than depending on it merging in from Base.
+
+**Confirmed working after both fixes** (Michael, 2026-08-21) — verified
+panel-by-panel against the repo after the fact:
+- Base: matches repo exactly.
+- Connection → Parameters (`apiKey`, password type): matches repo exactly.
+- `api_call` → Parameters, Communication (with the explicit Authorization
+  line), Interface: all match repo exactly.
+
+**One loose end, not yet confirmed:** the Connection's own Communication
+panel (the request Make fires when you click Verify) was pasted back at
+one point showing content identical to Base — which doesn't match what
+should be there (`{"url": "/templates", "method": "GET", "response":
+{"valid": "{{statusCode === 200}}", "error": {...}}, ...}`, per
+`connection/communication.imljson`). Most likely a copy-paste mixup while
+working through several panels quickly, not a real change — nothing about
+fixing the 401 touched the connection-test endpoint. Worth a quick check
+next time the Make editor is open, but not blocking anything that's
+currently working.
+
+**Takeaway for next time:** if a *specific* module 401s while others
+using the same connection work fine, suspect that module's own `headers`
+(or other Base-inherited field) declaration first, not the connection or
+key itself — check whether it's the only one of the set that overrides a
+field Base also sets.
