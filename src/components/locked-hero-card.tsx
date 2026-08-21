@@ -28,6 +28,21 @@ import { Sparkles } from "lucide-react";
 // sm+, kept in sync so the two cards in this row don't visibly diverge at
 // any width. Icon/title/description sizes are the same at every width now
 // (the first pass also shrank them below sm and it read as too small).
+//
+// The <button> carries h-full (2026-08-21, direct ask) — this component's
+// outer element is a plain <div> (needed as the positioning root for the
+// popover below), so unlike HeroCardLink (whose <Link> IS the grid item
+// and stretches to the row height by default), the grid's height-stretch
+// only reached that outer wrapper, not the visibly-bordered <button>
+// inside it — Draft ended up shorter than Quote whenever Quote's
+// description ran to more lines. h-full makes the button fill the
+// stretched wrapper so both cards in a row match height regardless of
+// how many lines either description wraps to.
+//
+// Description bumped text-xs -> text-sm alongside HeroCardLink
+// (2026-08-21, direct ask, after trimming the Quote/Seal copy shorter) —
+// kept in sync with HeroCardLink so paired cards in the same row never
+// show mismatched type sizes.
 export function LockedHeroCard({
   title,
   description,
@@ -42,14 +57,14 @@ export function LockedHeroCard({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-center transition hover:border-slate-400 sm:flex-row sm:items-center sm:gap-4 sm:p-5 sm:text-left"
+        className="flex h-full w-full flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-center transition hover:border-slate-400 sm:flex-row sm:items-center sm:gap-4 sm:p-5 sm:text-left"
       >
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100">
           <Sparkles className="h-5 w-5 text-slate-400" strokeWidth={1.75} aria-hidden="true" />
         </span>
         <div className="min-w-0">
           <p className="text-[15px] font-semibold text-slate-400">{title}</p>
-          <p className="mt-0.5 text-xs leading-snug text-slate-400">{description}</p>
+          <p className="mt-0.5 text-sm leading-snug text-slate-400">{description}</p>
         </div>
       </button>
       {open && (
