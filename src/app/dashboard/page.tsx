@@ -224,7 +224,7 @@ export default async function DashboardPage() {
             href="/dashboard/documents/new?mode=badge"
             icon={ShieldCheck}
             title="Seal"
-            description="Self-sign and lock a document — no recipient needed"
+            description="Seal a document or invoice so it can be verified"
           />
         </div>
 

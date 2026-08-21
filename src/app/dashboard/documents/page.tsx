@@ -158,7 +158,7 @@ export default async function DocumentsPage({
             href="/dashboard/documents/new?mode=quote"
             icon={Receipt}
             title="Quote"
-            description="Itemize a job — Magic Quote turns it into a signable quote"
+            description="Itemize a job — turn it into a signable quote"
           />
           {hasAiDraft ? (
             <HeroCardLink

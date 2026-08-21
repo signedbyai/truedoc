@@ -46,7 +46,7 @@ export function HeroCardLink({
       </span>
       <div className="min-w-0">
         <p className="text-[15px] font-semibold text-slate-900">{title}</p>
-        <p className="mt-0.5 text-xs leading-snug text-slate-500">{description}</p>
+        <p className="mt-0.5 text-sm leading-snug text-slate-500">{description}</p>
       </div>
     </Link>
   );
