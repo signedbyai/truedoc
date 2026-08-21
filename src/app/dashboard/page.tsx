@@ -56,7 +56,62 @@ export default async function DashboardPage() {
   // unchanged; nothing in workspace-stats.ts needed to change, only which
   // rows this query includes.
   const { data: allStatuses } = await supabase.from("documents").select("status").eq("org_id", orgId);
-  const stats = workspaceStats(tallyStatuses((allStatuses ?? []).map((d) => d.status)));
+  const counts = tallyStatuses((allStatuses ?? []).map((d) => d.status));
+  const stats = workspaceStats(counts);
+
+  // Recent documents card's small stats strip (2026-08-21, direct ask,
+  // mockup-approved). "Waiting for others" and "Drafts" reuse the tally
+  // above (counts.sent is every in-flight document, counts.draft every
+  // draft) — free, no extra query. "Expiring soon" and "Completed this
+  // month" aren't covered by that tally and get their own queries below.
+  const now = new Date();
+
+  // Same expires_at column the reminders cron sweeps
+  // (0030_document_expiration.sql) — a document already past its expires_at
+  // should already have been flipped out of "sent" by that daily sweep, so
+  // this only needs to look forward, not also exclude already-expired rows.
+  // 3-day window is a starting guess, not a documented product decision —
+  // easy to tune later if it reads as too wide or too narrow in practice.
+  const EXPIRING_SOON_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+  const { count: expiringSoonCount } = await supabase
+    .from("documents")
+    .select("id", { count: "exact", head: true })
+    .eq("org_id", orgId)
+    .eq("status", "sent")
+    .not("expires_at", "is", null)
+    .lte("expires_at", new Date(now.getTime() + EXPIRING_SOON_WINDOW_MS).toISOString());
+
+  // "Completed this month" has no single timestamp to filter on — documents
+  // has no completed_at (same gap the prize query below works around for
+  // signers). Two sources, unioned by document id: audit_events' own
+  // "completed" row for the ordinary signer-completes-it path (inserted in
+  // /api/sign/[token]/submit/route.ts — the same event type
+  // dashboard/documents/page.tsx already reads for its "Last viewed" merge,
+  // just a different event_type here), and sealed_at for the self-seal path
+  // (Verified Badge completes synchronously, so that submit route's audit
+  // event never fires for it). The .eq("documents.status", "completed") on
+  // the first query is defensive, not load-bearing — void only ever applies
+  // to "sent" documents (see the void routes), so a completed document
+  // can't currently un-complete, but the filter costs nothing and keeps
+  // this correct if that ever changes.
+  const { data: completedEvents } = await supabase
+    .from("audit_events")
+    .select("document_id, documents!inner(org_id, status)")
+    .eq("documents.org_id", orgId)
+    .eq("documents.status", "completed")
+    .eq("event_type", "completed")
+    .gte("created_at", monthStart(now).toISOString());
+  const { data: sealedThisMonth } = await supabase
+    .from("documents")
+    .select("id")
+    .eq("org_id", orgId)
+    .eq("is_verified_badge", true)
+    .eq("status", "completed")
+    .gte("sealed_at", monthStart(now).toISOString());
+  const completedThisMonthCount = new Set([
+    ...(completedEvents ?? []).map((e) => e.document_id),
+    ...(sealedThisMonth ?? []).map((d) => d.id),
+  ]).size;
 
   // Monthly gift-card draw progress. Deliberately a different number from the
   // badge: the badge counts documents sent, which is fine for a badge, but
@@ -67,7 +122,6 @@ export default async function DashboardPage() {
   // Read from signers.signed_at rather than documents, because documents has
   // no completed_at; signed_at is the only timestamp that says when signing
   // actually happened.
-  const now = new Date();
   const { data: monthSignatures } = await supabase
     .from("signers")
     .select("email, signed_at, documents!inner(org_id)")
@@ -305,7 +359,34 @@ export default async function DashboardPage() {
               deleted, since removing it wasn't asked for. */}
           <CardHeader>
             <CardTitle>Recent documents</CardTitle>
-            <CardDescription>Upload a PDF and place signature fields.</CardDescription>
+            {/* "Upload a PDF and place signature fields." removed
+                (2026-08-21, direct ask) — replaced with this small stats
+                strip instead of just deleted, same mockup this whole hero-
+                card pass has been working from. Amber for the two that
+                want the sender's attention (something's waiting on them,
+                or waiting to lapse); slate for the two that are just
+                status. 4-column grid at every width, same as the mockup —
+                labels wrap to two lines on a narrow phone rather than the
+                strip going to 2x2 or losing a column, since the numbers
+                are the part worth keeping legible, not the labels. */}
+            <div className="grid grid-cols-4 divide-x divide-slate-100 pt-1">
+              <div className="pr-3">
+                <p className="text-xl font-semibold text-amber-600">{counts.sent}</p>
+                <p className="text-xs text-slate-500">Waiting for others</p>
+              </div>
+              <div className="px-3">
+                <p className="text-xl font-semibold text-amber-600">{expiringSoonCount ?? 0}</p>
+                <p className="text-xs text-slate-500">Expiring soon</p>
+              </div>
+              <div className="px-3">
+                <p className="text-xl font-semibold text-slate-900">{counts.draft}</p>
+                <p className="text-xs text-slate-500">Drafts</p>
+              </div>
+              <div className="pl-3">
+                <p className="text-xl font-semibold text-slate-900">{completedThisMonthCount}</p>
+                <p className="text-xs text-slate-500">Completed this month</p>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {documents && documents.length > 0 ? (
