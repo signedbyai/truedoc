@@ -62,22 +62,15 @@ export async function GET(request: Request) {
         // record of which campaign brought them.
         await claimPendingAttribution(data.user.id, data.user.email);
       }
-      // Every sign-in with no explicit ?next destination (not just the
-      // first) lands on the new-document flow instead of the dashboard
-      // list — direct instruction, 2026-08-04: get people straight to
-      // signing docs, don't waste their time on a stop at the dashboard
-      // first. Matches login/page.tsx's verifyLoginCode/signInWithPassword
-      // handlers. Console is unaffected — its own login links always carry
-      // an explicit next=/app (see console/page.tsx), so rawNext is never
-      // empty on that path. Mutating the already-built redirect Location
-      // rather than branching the NextResponse.redirect(...) call above,
-      // since exchangeCodeForSession's cookie writes already targeted this
-      // exact response object (see comment above) — the Location header is
-      // still just a plain response header at this point, safe to update
-      // before returning.
-      if (!rawNext) {
-        response.headers.set("Location", `${origin}/dashboard/documents/new`);
-      }
+      // A sign-in with no explicit ?next destination lands on the plain
+      // dashboard (`next`'s own "/dashboard" fallback above already
+      // handles this — no override needed here). Used to send people
+      // straight to the new-document flow instead (2026-08-04 direct
+      // instruction), reverted 2026-08-21 direct ask: back to landing on
+      // the home screen. Matches login/page.tsx's
+      // verifyLoginCode/signInWithPassword handlers. Console is
+      // unaffected either way — its own login links always carry an
+      // explicit next=/app (see console/page.tsx).
       return response;
     }
   }
