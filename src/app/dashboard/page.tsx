@@ -247,18 +247,6 @@ export default async function DashboardPage() {
               {orgs.map((o) => (
                 <li key={o.id}>
                   <p className="truncate">{o.name}</p>
-                  {/* Member since (2026-08-21, direct ask, moved from the
-                      page header's "Signed in as" line) — the user's
-                      account creation date, not the org's; repeats per
-                      row for the rare multi-workspace account, same as
-                      the header version repeated nothing since it only
-                      ever rendered once. */}
-                  {user.created_at && (
-                    <p className="mt-0.5 text-xs text-slate-400">
-                      Member since{" "}
-                      {new Date(user.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-                    </p>
-                  )}
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     <span className="text-xs text-slate-500">
                       Plan: <strong className="font-medium text-slate-700">{PLAN_LABEL[o.plan] ?? o.plan}</strong>
