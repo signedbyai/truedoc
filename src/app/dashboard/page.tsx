@@ -159,7 +159,7 @@ export default async function DashboardPage() {
             treatment on the Documents page instead of here — see
             HeroCardLink's own doc comment for why the copy/icons/colors
             below match new-document-client.tsx's panels exactly. */}
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <HeroCardLink
             href="/dashboard/documents/new"
             icon={Signature}
