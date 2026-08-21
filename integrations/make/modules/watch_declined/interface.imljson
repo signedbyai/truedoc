@@ -1,8 +1,32 @@
 [
-  { "name": "id", "type": "text", "label": "Document ID" },
-  { "name": "title", "type": "text", "label": "Title" },
-  { "name": "status", "type": "text", "label": "Status" },
-  { "name": "created_at", "type": "date", "label": "Created At" },
-  { "name": "updated_at", "type": "date", "label": "Updated At" },
-  { "name": "expires_at", "type": "date", "label": "Expires At" }
+  {
+    "name": "id",
+    "type": "text",
+    "label": "Document ID"
+  },
+  {
+    "name": "title",
+    "type": "text",
+    "label": "Title"
+  },
+  {
+    "name": "status",
+    "type": "text",
+    "label": "Status"
+  },
+  {
+    "name": "created_at",
+    "type": "date",
+    "label": "Created at"
+  },
+  {
+    "name": "updated_at",
+    "type": "date",
+    "label": "Updated at"
+  },
+  {
+    "name": "expires_at",
+    "type": "date",
+    "label": "Expires at"
+  }
 ]

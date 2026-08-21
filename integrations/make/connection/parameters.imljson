@@ -2,7 +2,7 @@
   {
     "name": "apiKey",
     "type": "password",
-    "label": "API Key",
+    "label": "API key",
     "required": true,
     "help": "Find or generate your API key in SignedBy under Settings → Integration & API. Requires the Pro plan or higher."
   }

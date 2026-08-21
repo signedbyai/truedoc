@@ -13,19 +13,19 @@
   {
     "name": "signerEmail",
     "type": "email",
-    "label": "Recipient Email",
+    "label": "Recipient email",
     "required": true
   },
   {
     "name": "signerName",
     "type": "text",
-    "label": "Recipient Name",
+    "label": "Recipient name",
     "required": false
   },
   {
     "name": "authRequired",
     "type": "boolean",
-    "label": "Require Email Verification to Open",
+    "label": "Require email verification to open",
     "required": false,
     "default": false,
     "help": "If enabled, the recipient must verify a one-time code sent to their email before they can view the document."
@@ -33,20 +33,20 @@
   {
     "name": "inviteSubject",
     "type": "text",
-    "label": "Custom Invite Email Subject",
+    "label": "Custom invite email subject",
     "required": false
   },
   {
     "name": "inviteMessage",
     "type": "text",
-    "label": "Custom Invite Email Message",
+    "label": "Custom invite email message",
     "required": false,
     "multiline": true
   },
   {
     "name": "expiresAt",
     "type": "date",
-    "label": "Expires At",
+    "label": "Expires at",
     "required": false,
     "help": "Optional — if set, the document can no longer be signed after this time."
   }
