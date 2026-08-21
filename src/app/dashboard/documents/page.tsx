@@ -196,7 +196,6 @@ export default async function DocumentsPage({
             />
           ) : (
             <LockedHeroCard
-              icon={Sparkles}
               title="Draft"
               description="Describe what you need — AI drafts it, ready to review"
             />
