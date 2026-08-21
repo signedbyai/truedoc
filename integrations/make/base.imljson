@@ -1,7 +1,7 @@
 {
   "baseUrl": "https://signedby.ai/api/v1",
   "headers": {
-    "Authorization": "Bearer {{parameters.apiKey}}"
+    "Authorization": "Bearer {{connection.apiKey}}"
   },
   "log": {
     "sanitize": ["request.headers.Authorization"]
