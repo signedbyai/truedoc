@@ -300,9 +300,14 @@ export default async function DocumentsPage({
                     <li key={doc.id} className="py-2.5">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
+                          {/* block truncate (2026-08-21, direct ask) — a
+                              long title was wrapping to a second line on
+                              small screens; the parent's min-w-0 lets this
+                              ellipsize instead, same as the dashboard
+                              home's Recent documents list. */}
                           <Link
                             href={`/dashboard/documents/${doc.id}`}
-                            className="text-sm font-medium text-slate-900 hover:underline"
+                            className="block truncate text-sm font-medium text-slate-900 hover:underline"
                           >
                             {doc.title}
                           </Link>
