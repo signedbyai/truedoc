@@ -170,6 +170,9 @@ export default async function VsDocumensoPage() {
           <Link href="/vs/swisssign" className="hover:text-slate-600">
             SignedBy vs SwissSign
           </Link>
+          <Link href="/vs/signedly" className="hover:text-slate-600">
+            SignedBy vs Signedly
+          </Link>
           <Link href="/templates" className="hover:text-slate-600">
             Free templates
           </Link>
