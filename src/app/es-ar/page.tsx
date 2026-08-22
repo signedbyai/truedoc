@@ -1,15 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ReferralCapture } from "@/components/referral-capture";
-import { HomepageEs } from "@/components/homepage-es";
+import { HomepageEsAr } from "@/components/homepage-es-ar";
 import { getRequestCurrency } from "@/lib/currency.server";
 
 // Spanish (Rioplatense/Argentina) homepage — 2026-08-20, local-language
-// growth test. See [[site-localization-scope-2026-08-20]] and
-// src/components/homepage-es.tsx for the full reasoning. Deliberately a
+// growth test. Moved from /es to /es-ar on 2026-08-22 (direct ask) once a
+// separate Spain-Spanish variant (/es-es) was built — the Argentina Reddit
+// campaign audience turned out to be small (~50-60k), prompting the DE/FR/
+// ES-ES expansion, and "/es" was ambiguous once a second Spanish dialect
+// existed. See [[site-localization-scope-2026-08-20]] and
+// src/components/homepage-es-ar.tsx for the full reasoning. Deliberately a
 // standalone route + component, not a locale-prefixed rewrite of "/" — this
 // is a single reversible test page, not the site-wide i18n infra scoped as
-// Phase 3.
+// Phase 3. The old /es path 301s here (and /es/verified-badge-invoices to
+// /es-ar/verified-badge-invoices) — see next.config.ts — so the live
+// Reddit "ES-AR" campaign's existing destination URL keeps working even
+// though its dashboard label should be updated to /es-ar directly when
+// convenient.
 //
 // Indexable (not noindexed) since this is a real page real visitors land
 // on from the Spanish Reddit ad, same reasoning as the English homepage —
@@ -22,18 +30,18 @@ const DESCRIPTION =
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
-  alternates: { canonical: "/es" },
-  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/es" },
+  alternates: { canonical: "/es-ar" },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/es-ar" },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
-export default async function LandingPageEs() {
+export default async function LandingPageEsAr() {
   const currency = await getRequestCurrency();
 
   return (
     <main className="flex min-h-screen flex-col bg-white">
       <ReferralCapture />
-      <HomepageEs currency={currency} />
+      <HomepageEsAr currency={currency} />
 
       <footer className="mt-auto border-t border-slate-100 px-6 py-8 text-center text-xs text-slate-400">
         <p>© {new Date().getFullYear()} SignedBy. signedby.ai</p>
