@@ -93,6 +93,23 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // 2026-08-22, direct ask: /es was renamed to /es-ar once a separate
+  // Spain-Spanish variant (/es-es) was built (small ~50-60k Argentina Reddit
+  // audience prompted the DE/FR/ES-ES expansion). These 301s keep the
+  // already-live "ES-AR" Reddit campaign's existing destination URL working
+  // without waiting on a Reddit Ads Manager edit -- update the campaign's
+  // dashboard URL to /es-ar directly when convenient, this is a safety net,
+  // not the permanent path.
+  async redirects() {
+    return [
+      { source: "/es", destination: "/es-ar", permanent: false },
+      {
+        source: "/es/verified-badge-invoices",
+        destination: "/es-ar/verified-badge-invoices",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

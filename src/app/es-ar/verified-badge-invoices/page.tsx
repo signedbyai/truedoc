@@ -6,7 +6,9 @@ import { CtaLink } from "@/components/cta-link";
 
 // Spanish (Rioplatense/Argentina) companion to /verified-badge-invoices —
 // 2026-08-20, local-language growth test, pairs with the Spanish "invoice
-// fraud" Reddit ad (verified-badge-invoice-fraud-campaign-es.md). See
+// fraud" Reddit ad. Moved from /es/verified-badge-invoices to
+// /es-ar/verified-badge-invoices on 2026-08-22 (direct ask) alongside the
+// new /es-es (Spain) variant — see es-ar/page.tsx's comment for why. See
 // [[site-localization-scope-2026-08-20]] and [[homepage-tagline-capitalization-fix-2026-08-20]].
 //
 // Deliberately simplified vs. the English page: the EN page runs its own
@@ -20,15 +22,15 @@ import { CtaLink } from "@/components/cta-link";
 // proves a specific file existed, unaltered, as of a verified timestamp,
 // sealed by an identity-verified person; and don't overstate what
 // AI-generated fake invoices are doing today.
-const TITLE = "Verified Badge — demostrá que tu factura es realmente tuya, no una falsificación con IA | SignedBy";
+const TITLE = "Verified Badge — demostrá que tu factura es realmente tuya, no una falsificación con IA | SignedBy"; // Rioplatense voseo, unchanged from the original /es copy
 const DESCRIPTION =
   "Sellá tu factura como inalterada y con identidad verificada antes de enviarla. Tu cliente escanea un código y sabe al instante que es realmente tuya. Gratis para empezar, sin tarjeta.";
 
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
-  alternates: { canonical: "/es/verified-badge-invoices" },
-  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/es/verified-badge-invoices" },
+  alternates: { canonical: "/es-ar/verified-badge-invoices" },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://signedby.ai/es-ar/verified-badge-invoices" },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
@@ -38,7 +40,7 @@ export const metadata: Metadata = {
 const START_HREF =
   "/login?intent=signup&next=" +
   encodeURIComponent("/dashboard/documents/new?mode=badge") +
-  "&utm_source=verified_badge_es&utm_medium=cta&utm_campaign=verified_badge_invoice_page_es";
+  "&utm_source=verified_badge_es_ar&utm_medium=cta&utm_campaign=verified_badge_invoice_page_es_ar";
 
 const FAQ = [
   {
@@ -67,7 +69,7 @@ const FAQ = [
   },
 ];
 
-export default function VerifiedBadgeInvoicesEsPage() {
+export default function VerifiedBadgeInvoicesEsArPage() {
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -83,7 +85,7 @@ export default function VerifiedBadgeInvoicesEsPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-6">
-        <Link href="/es">
+        <Link href="/es-ar">
           <Image src="/brand/signedby-lockup-yellow-badge-beta-micro-small.png" alt="SignedBy" width={266} height={64} className="h-7 w-auto" priority />
         </Link>
         <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
@@ -114,7 +116,7 @@ export default function VerifiedBadgeInvoicesEsPage() {
               aria-hidden="true"
             />
           </div>
-          <CtaLink href={START_HREF} color="purple" page="verified-badge-invoices-es" position="hero" variant="es">
+          <CtaLink href={START_HREF} color="purple" page="verified-badge-invoices-es-ar" position="hero" variant="es-ar">
             Conseguí tu Verified Badge ahora →
           </CtaLink>
           <p className="text-xs text-slate-400">Gratis para empezar, sin tarjeta — lleva alrededor de un minuto.</p>
@@ -193,7 +195,7 @@ export default function VerifiedBadgeInvoicesEsPage() {
           Gratis para empezar — 3 sellos por mes incluidos, sin tarjeta. ¿Necesitás más? El plan Pro o superior
           tiene sellado ilimitado, sin cargo por sello.
         </p>
-        <CtaLink href={START_HREF} className="mt-5" color="purple" page="verified-badge-invoices-es" position="footer" variant="es">
+        <CtaLink href={START_HREF} className="mt-5" color="purple" page="verified-badge-invoices-es-ar" position="footer" variant="es-ar">
           Conseguí tu Verified Badge ahora →
         </CtaLink>
       </section>

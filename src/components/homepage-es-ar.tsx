@@ -144,7 +144,7 @@ const TABS_ES: ProductTab[] = [
   },
 ];
 
-export function HomepageEs({ currency }: { currency: Currency }) {
+export function HomepageEsAr({ currency }: { currency: Currency }) {
   return (
     <>
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
@@ -185,11 +185,11 @@ export function HomepageEs({ currency }: { currency: Currency }) {
           </p>
           <div className="mt-9 flex flex-col items-center sm:items-start">
             <CtaLink
-              href="/login?intent=signup&utm_source=homepage_es&utm_medium=cta&utm_campaign=homepage_page_es&utm_content=preview-g-es"
+              href="/login?intent=signup&utm_source=homepage_es_ar&utm_medium=cta&utm_campaign=homepage_page_es_ar&utm_content=preview-g-es-ar"
               color="purple"
-              page="homepage-es"
+              page="homepage-es-ar"
               position="hero"
-              variant="es"
+              variant="es-ar"
             >
               Empezá gratis →
             </CtaLink>
