@@ -54,6 +54,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // a genuinely different buyer question (self-host vs. hosted-AI-first)
     // than the other /vs pages, which are all hosted-vs-hosted.
     { url: `${BASE_URL}/vs/documenso`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    // Added 2026-08-22, direct ask — Signedly markets "LTV Enabled Digital
+    // Signatures" starting on its free tier; our own research post on
+    // proof expiry (linked from this page) made it worth answering
+    // directly rather than skipping the claim.
+    { url: `${BASE_URL}/vs/signedly`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     // Programmatic-SEO template pages, added 2026-07-21 (see the DocuSign/
     // SignNow GTM research this was modeled on) — one per AI Drafter
     // document type, index page plus each individual /templates/[slug].
