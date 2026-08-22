@@ -78,12 +78,12 @@ export default function VerifiedBadgeInvoicesFrPage() {
       <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-5 px-6 py-10 text-center">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Verified Badge</p>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          L'IA peut falsifier une facture en quelques secondes. Prouvez que la vôtre vient vraiment de vous.{" "}
+          L&apos;IA peut falsifier une facture en quelques secondes. Prouvez que la vôtre vient vraiment de vous.{" "}
           <ShieldCheck className="inline-block h-6 w-6 -translate-y-0.5 text-slate-900 sm:h-7 sm:w-7" aria-hidden="true" />
         </h1>
         <p className="max-w-xl text-base text-slate-600">
           Un escroc peut désormais fabriquer en quelques secondes une fausse facture convaincante à votre nom
-          et à vos couleurs, et l'envoyer à l'un de vos clients. Scellez d'abord votre vraie facture : un hash
+          et à vos couleurs, et l&apos;envoyer à l&apos;un de vos clients. Scellez d&apos;abord votre vraie facture : un hash
           et une preuve avec identité vérifiée de ce que vous avez réellement envoyé, pour que votre client
           puisse vérifier avant de payer.
         </p>
@@ -147,10 +147,10 @@ export default function VerifiedBadgeInvoicesFrPage() {
         </div>
 
         <Link
-          href="/verified-badge-invoices/guide"
+          href="/fr/verified-badge-invoices/guide"
           className="mt-4 block rounded-xl border border-slate-200 p-5 text-left transition-colors hover:border-slate-400"
         >
-          <h3 className="text-base font-semibold text-slate-900">Nouveau sur SignedBy ? Consultez le guide de scellement et d'envoi</h3>
+          <h3 className="text-base font-semibold text-slate-900">Nouveau sur SignedBy ? Consultez le guide de scellement et d&apos;envoi</h3>
           <p className="mt-1.5 text-sm text-slate-600">
             Étape par étape : vérifiez votre identité une fois, et ce qui se passe exactement à chaque
             scellement et envoi de facture par la suite.
@@ -164,10 +164,10 @@ export default function VerifiedBadgeInvoicesFrPage() {
       <section className="mx-auto w-full max-w-3xl px-6 py-8">
         <h2 className="text-lg font-semibold text-slate-900">Ce que cela prouve réellement</h2>
         <p className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-          Un Verified Badge est une preuve de provenance et d'intégrité, pas un outil de détection de fraude.
+          Un Verified Badge est une preuve de provenance et d&apos;intégrité, pas un outil de détection de fraude.
           Il confirme que ce fichier exact existait, inaltéré, à un horodatage vérifié cryptographiquement,
-          scellé par une personne à l'identité vérifiée — une affirmation réelle et utile, différente de
-          &laquo;&nbsp;ça a l'air légitime&nbsp;&raquo;. Une formulation volontairement honnête : en faire trop
+          scellé par une personne à l&apos;identité vérifiée — une affirmation réelle et utile, différente de
+          &laquo;&nbsp;ça a l&apos;air légitime&nbsp;&raquo;. Une formulation volontairement honnête : en faire trop
           ici affaiblirait la seule chose qui résiste réellement à un examen approfondi.
         </p>
       </section>
@@ -175,7 +175,7 @@ export default function VerifiedBadgeInvoicesFrPage() {
       <section className="mx-auto w-full max-w-3xl px-6 py-10 text-center">
         <h2 className="text-2xl font-semibold text-slate-900">Sécurisez votre facture gratuitement</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Gratuit pour commencer — 3 sceaux par mois inclus, sans carte bancaire. Besoin de plus ? L'offre Pro
+          Gratuit pour commencer — 3 sceaux par mois inclus, sans carte bancaire. Besoin de plus ? L&apos;offre Pro
           ou supérieure permet un scellement illimité, sans frais par sceau.
         </p>
         <CtaLink href={START_HREF} className="mt-5" color="purple" page="verified-badge-invoices-fr" position="footer" variant="fr">
@@ -220,8 +220,8 @@ export default function VerifiedBadgeInvoicesFrPage() {
         <p>© {new Date().getFullYear()} SignedBy. signedby.ai</p>
         <p className="mt-1">A trading name of SPRK10 B.V. KVK 98888625</p>
         <p className="mt-2 space-x-4">
-          <Link href="/verified-badge-invoices/guide" className="hover:text-slate-600">
-            Guide de scellement et d'envoi
+          <Link href="/fr/verified-badge-invoices/guide" className="hover:text-slate-600">
+            Guide de scellement et d&apos;envoi
           </Link>
           <Link href="/pricing" className="hover:text-slate-600">
             Tarifs

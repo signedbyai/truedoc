@@ -78,7 +78,7 @@ export default function VerifiedBadgeInvoicesItPage() {
       <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-5 px-6 py-10 text-center">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Verified Badge</p>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          L'IA può falsificare una fattura in pochi secondi. Dimostra che la tua viene davvero da te.{" "}
+          L&apos;IA può falsificare una fattura in pochi secondi. Dimostra che la tua viene davvero da te.{" "}
           <ShieldCheck className="inline-block h-6 w-6 -translate-y-0.5 text-slate-900 sm:h-7 sm:w-7" aria-hidden="true" />
         </h1>
         <p className="max-w-xl text-base text-slate-600">
@@ -147,10 +147,10 @@ export default function VerifiedBadgeInvoicesItPage() {
         </div>
 
         <Link
-          href="/verified-badge-invoices/guide"
+          href="/it/verified-badge-invoices/guide"
           className="mt-4 block rounded-xl border border-slate-200 p-5 text-left transition-colors hover:border-slate-400"
         >
-          <h3 className="text-base font-semibold text-slate-900">Nuovo su SignedBy? Guarda la guida alla sigillatura e all'invio</h3>
+          <h3 className="text-base font-semibold text-slate-900">Nuovo su SignedBy? Guarda la guida alla sigillatura e all&apos;invio</h3>
           <p className="mt-1.5 text-sm text-slate-600">
             Passo dopo passo: verifica la tua identità una volta, e cosa succede esattamente ogni volta che
             sigilli e invii una fattura da quel momento in poi.
@@ -166,9 +166,9 @@ export default function VerifiedBadgeInvoicesItPage() {
         <p className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
           Un Verified Badge è una prova di provenienza e integrità, non uno strumento di rilevamento delle
           frodi. Conferma che questo file esatto esisteva, inalterato, con un timestamp verificato
-          crittograficamente, sigillato da una persona con identità verificata — un'affermazione reale e
+          crittograficamente, sigillato da una persona con identità verificata — un&apos;affermazione reale e
           utile, diversa da &laquo;&nbsp;sembra legittimo&nbsp;&raquo;. Un linguaggio volutamente onesto:
-          esagerare qui indebolirebbe l'unica cosa che regge davvero a un controllo approfondito.
+          esagerare qui indebolirebbe l&apos;unica cosa che regge davvero a un controllo approfondito.
         </p>
       </section>
 
@@ -220,8 +220,8 @@ export default function VerifiedBadgeInvoicesItPage() {
         <p>© {new Date().getFullYear()} SignedBy. signedby.ai</p>
         <p className="mt-1">A trading name of SPRK10 B.V. KVK 98888625</p>
         <p className="mt-2 space-x-4">
-          <Link href="/verified-badge-invoices/guide" className="hover:text-slate-600">
-            Guida alla sigillatura e all'invio
+          <Link href="/it/verified-badge-invoices/guide" className="hover:text-slate-600">
+            Guida alla sigillatura e all&apos;invio
           </Link>
           <Link href="/pricing" className="hover:text-slate-600">
             Prezzi

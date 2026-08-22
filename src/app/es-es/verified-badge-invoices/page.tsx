@@ -160,7 +160,7 @@ export default function VerifiedBadgeInvoicesEsEsPage() {
         </div>
 
         <Link
-          href="/verified-badge-invoices/guide"
+          href="/es-es/verified-badge-invoices/guide"
           className="mt-4 block rounded-xl border border-slate-200 p-5 text-left transition-colors hover:border-slate-400"
         >
           <h3 className="text-base font-semibold text-slate-900">¿Recién llegas a SignedBy? Lee la guía de sellado y envío</h3>
@@ -233,7 +233,7 @@ export default function VerifiedBadgeInvoicesEsEsPage() {
         <p>© {new Date().getFullYear()} SignedBy. signedby.ai</p>
         <p className="mt-1">A trading name of SPRK10 B.V. KVK 98888625</p>
         <p className="mt-2 space-x-4">
-          <Link href="/verified-badge-invoices/guide" className="hover:text-slate-600">
+          <Link href="/es-es/verified-badge-invoices/guide" className="hover:text-slate-600">
             Guía de sellado y envío
           </Link>
           <Link href="/pricing" className="hover:text-slate-600">
