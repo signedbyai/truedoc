@@ -159,31 +159,35 @@ export function formatCreditPackPrice(currency: Currency): string {
 // in console-usage.ts) — DISPLAY ONLY, for the two pre-signup marketing
 // pages that quote it (`/verified-badge`, `/console`), added 2026-08-01
 // direct follow-up ("make sure the CTA page for verified-badge uses the
-// same local price rather than always USD"). Same conversion ratios as
-// everywhere else in this file: EUR at 1.0x nominal, GBP/CHF at ~0.86x
-// (20¢ → 17p/17 rappen), INR at the ~55%-off PPP ratio — ₹8, which isn't
-// a new number invented for this, it's the exact figure
-// RAZORPAY_INDIA_SCOPE.md already recommended for this same rate back on
-// 2026-08-03 ("~₹8/doc... $0.20 nominal x 84 x 0.45 ~ ₹7.56").
+// same local price rather than always USD").
+//
+// 2026-08-23 UPDATE: re-derived from live ECB EUR reference rates
+// (2026-08-21: 1 EUR = 1.1699 USD / 0.85670 GBP / 0.9353 CHF) instead of
+// the original flat ~0.86x-for-everything approximation this shipped
+// with (which produced EUR 0.20/GBP 0.17/CHF 0.17 — GBP and CHF
+// coincidentally shared a value only because both used the same rough
+// ratio, not because they're actually close). New values: EUR 0.17,
+// GBP 0.15, CHF 0.16. INR's ₹8 PPP-adjusted figure is untouched — it was
+// never FX-derived and doesn't need reconciling the same way.
+// NOTE: these are still an approximation, not read from Stripe's actual
+// EUR/GBP/CHF Price object unit_amounts (STRIPE_PRICE_CONSOLE_METERED_EUR
+// / _GBP / _CHF in stripe.ts) — no Stripe API access from this pass. Per
+// [[console-overage-price-gap]] Michael confirmed 2026-08-23 those Price
+// objects are correctly set at the $0.20-equivalent rate; if their exact
+// per-currency unit_amounts are ever pulled from the Stripe dashboard,
+// swap these three numbers to match exactly rather than an FX estimate.
 //
 // IMPORTANT — this does NOT touch what a paying org is actually billed.
 // `CONSOLE_OVERAGE_CENTS` (console-usage.ts) itself stays a single USD
 // number driving the real spend-cap math and the logged-in usage panel —
 // deliberately untouched here, out of scope for a marketing-copy fix and
 // a materially bigger change (real customer billing display, not a
-// pre-signup page). See [[console-overage-price-gap]] for the existing,
-// separate, still-open gap on that side: the real Stripe metered Price
-// objects per currency aren't confirmed configured, so a non-USD
-// customer's actual overage billing may not match either this page's
-// copy or the dashboard's own $-denominated panel yet regardless of this
-// change — this only makes the *marketing* copy consistent with the rest
-// of the site's currency-adaptive convention instead of uniquely
-// hardcoded to USD.
+// pre-signup page).
 const CONSOLE_OVERAGE_DISPLAY_CENTS: Partial<Record<Currency, number>> = {
   USD: 20,
-  EUR: 20,
-  GBP: 17,
-  CHF: 17,
+  EUR: 17,
+  GBP: 15,
+  CHF: 16,
   INR: 800,
 };
 
