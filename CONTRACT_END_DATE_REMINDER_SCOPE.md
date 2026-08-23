@@ -80,31 +80,29 @@ note above). Send via a new `sendContractEndDateReminderEmail()` in
 along the lines of `"<title>"'s contract term ends soon`, link to the
 document, CTA to review/renew.
 
-## Open questions — need Michael's call before building
+## Decisions — Michael, 2026-08-23
 
-1. **Lead time**: fixed (e.g. 30 days before) vs configurable per
-   document. Recommend a fixed lead time for v1 — simpler, matches how
-   the signer-nudge cadence (3 days) is a fixed constant, not
-   configurable. 30 days feels right for a legal renewal window but this
-   is a guess, not a researched number.
-2. **One reminder or several**: v1 could send a single reminder at
-   T-minus-lead-time. A v2 could add a second, closer reminder (e.g.
-   T-7) — deliberately not scoping that now, flag as a fast-follow only
-   if lawyers ask for it.
-3. **Gating**: free on every plan (matching `expires_at`'s precedent and
-   Michael's stated pattern for these low-infra-cost additions) is the
-   default recommendation, but worth an explicit decision rather than
-   assuming.
-4. **`date` vs `timestamptz`**: leaning `date` — a contract term-end is
-   naturally a calendar date, not a specific moment, and it avoids the
-   timezone-conversion UI complexity `expires_at`'s modal needed
-   (`isoToLocalInput`/`localInputToIso` helpers).
-5. **Does this ever interact with the CMS-integrations item** (Clio/
-   MyCase, [[crm-integrations-plan]])? Not for v1 — that's a separate,
-   bigger piece of work about syncing documents into practice-management
-   tools generally. Worth keeping in mind if that gets built later, since
-   contract end dates are exactly the kind of field a practice-management
-   tool would also want synced, but nothing here should block on that.
+1. **Lead time: 1 month (30 days) before `contract_end_date`.**
+2. **Two reminders, not one**: one at T-minus-1-month, a second at
+   T-minus-1-week. This changes the reminder mechanism from the single
+   lead-time email originally proposed above to two distinct sends —
+   needs two dedupe markers (or one column tracking which of the two has
+   fired, e.g. `contract_end_date_reminder_sent_at` +
+   `contract_end_date_final_reminder_sent_at`, or a small
+   `contract_end_date_reminders_sent` jsonb/text[] if more stages get
+   added later) so the cron doesn't re-send either one, and both still
+   clear on edit per the invalidate-on-edit note above.
+3. **Gating: any tier can use it** — free on every plan, no plan check
+   needed on the write path or the cron read.
+4. **`date` vs `timestamptz`**: still leaning `date`, not decided by
+   Michael explicitly — flag before building, low-stakes either way.
+5. **CMS-integrations interaction**: still out of scope for v1, per the
+   original reasoning above.
+
+**Scope is now settled enough to build** (lead time, reminder count, and
+gating were the load-bearing open questions) — not started yet, this is
+still a scoping pass per [[feedback-scope-means-scope-only]]; say the
+word when ready to build.
 
 ## Effort estimate
 
