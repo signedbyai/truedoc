@@ -238,6 +238,47 @@ export async function sendDocumentExpiredEmail(opts: { to: string; documentTitle
   });
 }
 
+// Contract end-date reminder (CONTRACT_END_DATE_REMINDER_SCOPE.md) -- two
+// lead-time emails, 1 month and 1 week before documents.contract_end_date
+// (migration 0060), sent by the reminders cron's
+// remindUpcomingContractEndDates(). Distinct from sendDocumentExpiredEmail
+// above: this never implies the document itself is expiring or that
+// signing failed -- the document is already completed, this is just a
+// reminder about the underlying contract's own term.
+export async function sendContractEndDateReminderEmail(opts: {
+  to: string;
+  documentTitle: string;
+  documentId: string;
+  endDateLabel: string;
+  milestone: "1_month" | "1_week";
+}) {
+  const link = `${appUrl()}/dashboard/documents/${opts.documentId}`;
+  const isMonth = opts.milestone === "1_month";
+  const timeframe = isMonth ? "1 month" : "1 week";
+
+  await getClient().emails.send({
+    from: FROM,
+    to: opts.to,
+    subject: `"${opts.documentTitle}" ends in ${timeframe}`,
+    html: `
+      <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <p><strong>${opts.documentTitle}</strong> reaches its contract end date on <strong>${opts.endDateLabel}</strong> — that's ${timeframe} from now.</p>
+        <p>${
+          isMonth
+            ? "This is your first reminder — plenty of time to review terms, start a renewal, or plan a transition before it lapses."
+            : "This is your final reminder before the end date. If you need more time or a renewal, now's the moment to act."
+        }</p>
+        ${ctaButton(link, "View Document")}
+        <p style="color:#64748b;font-size:13px;">${
+          isMonth
+            ? "You'll get one more reminder 1 week before this date. Free on every SignedBy plan — edit or clear the end date any time from the document page."
+            : "This was the second and final reminder for this contract end date. Edit or clear the end date any time from the document page."
+        }</p>
+      </div>
+    `,
+  });
+}
+
 // Per-recipient authentication (Business tier, PER_RECIPIENT_AUTH_SCOPE.md):
 // sent every time a signer required to verify requests a code, including
 // resends — the code itself is the only thing that changes between sends,
