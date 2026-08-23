@@ -57,5 +57,12 @@ export async function GET(request: Request) {
     limit,
     offset,
     has_more: count !== null ? offset + (data?.length || 0) < count : (data?.length || 0) === limit,
+    // Added 2026-08-23 for the Zapier connection-label publishing
+    // requirement (5.6) — this route doubles as the Zapier/Make auth test
+    // call (see integrations/zapier/authentication.js,
+    // integrations/make/connection/), which had nothing org-identifying to
+    // build a per-connection label from. Purely additive, so existing
+    // direct API callers are unaffected.
+    org_name: auth.orgName,
   });
 }
