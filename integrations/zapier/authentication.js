@@ -29,15 +29,20 @@ module.exports = {
   fields: [
     {
       key: "api_key",
-      type: "string",
+      // "password" (not "string") masks the key as it's typed/displayed —
+      // Zapier publishing requirement 5.5. Flagged in review 2026-08-23.
+      type: "password",
       required: true,
       helpText:
         "Find or generate your API key in SignedBy under Settings → Integration & API. Requires the Pro plan or higher.",
     },
   ],
   test: testAuth,
-  // Nothing sensitive enough to show beyond confirming the connection —
-  // the templates test call doesn't return anything identity-scoped worth
-  // surfacing here (no org name in that response today).
-  connectionLabel: "SignedBy account",
+  // org_name now comes back from the templates test call (added to
+  // GET /api/v1/templates's response specifically for this) so someone
+  // with multiple SignedBy accounts can tell their Zapier connections
+  // apart — Zapier publishing requirement 5.6 (a fixed "SignedBy account"
+  // label for every connection failed review 2026-08-23). Deliberately an
+  // org name, not the integration's own name, per that same requirement.
+  connectionLabel: "{{org_name}}",
 };
