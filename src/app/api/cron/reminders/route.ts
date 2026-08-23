@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendReminderEmail, sendDocumentExpiredEmail } from "@/lib/email";
+import { sendReminderEmail, sendDocumentExpiredEmail, sendContractEndDateReminderEmail } from "@/lib/email";
 import { planHasFeature } from "@/lib/plan";
 
 const REMINDER_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000; // nudge every 3 days until signed, declined, or voided
@@ -78,6 +78,78 @@ async function expireOverdueDocuments(admin: ReturnType<typeof createAdminClient
   return expiredCount;
 }
 
+// Contract end-date reminder (CONTRACT_END_DATE_REMINDER_SCOPE.md) -- two
+// lead-time emails per document (1 month out, 1 week out), never a status
+// change, distinct from expireOverdueDocuments() above. Runs alongside
+// that pass in the same daily invocation, its own function since the
+// semantics (completed documents, two independent dedupe markers, no
+// status flip) are different enough to keep separate rather than folding
+// into the expiration sweep.
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+async function remindUpcomingContractEndDates(admin: ReturnType<typeof createAdminClient>): Promise<{ sent30: number; sent7: number }> {
+  const { data: candidates, error } = await admin
+    .from("documents")
+    .select("id, owner_id, title, contract_end_date, contract_end_date_reminder_30_sent_at, contract_end_date_reminder_7_sent_at")
+    .eq("status", "completed")
+    .not("contract_end_date", "is", null)
+    .limit(MAX_PER_RUN);
+
+  if (error) {
+    console.error("Reminder cron: contract end-date fetch failed", error);
+    return { sent30: 0, sent7: 0 };
+  }
+
+  const now = Date.now();
+  let sent30 = 0;
+  let sent7 = 0;
+
+  for (const doc of candidates || []) {
+    const endMs = new Date(`${doc.contract_end_date}T00:00:00Z`).getTime();
+    const daysUntil = Math.round((endMs - now) / DAY_MS);
+    // Past its end date with nobody having cleared it -- stop reminding
+    // rather than firing forever; the sender still sees the date and
+    // "Ended N days ago" on the document page itself.
+    if (daysUntil < 0) continue;
+
+    const endDateLabel = new Date(`${doc.contract_end_date}T00:00:00Z`).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    });
+
+    async function sendMilestone(milestone: "1_month" | "1_week", column: "contract_end_date_reminder_30_sent_at" | "contract_end_date_reminder_7_sent_at") {
+      const { data: ownerData } = await admin.auth.admin.getUserById(doc.owner_id);
+      const ownerEmail = ownerData?.user?.email;
+      if (!ownerEmail) return false;
+      try {
+        await sendContractEndDateReminderEmail({
+          to: ownerEmail,
+          documentTitle: doc.title,
+          documentId: doc.id,
+          endDateLabel,
+          milestone,
+        });
+      } catch (err) {
+        console.error("Reminder cron: contract end-date reminder email failed for document", doc.id, err);
+        return false;
+      }
+      await admin.from("documents").update({ [column]: new Date().toISOString() }).eq("id", doc.id);
+      return true;
+    }
+
+    if (daysUntil <= 30 && !doc.contract_end_date_reminder_30_sent_at) {
+      if (await sendMilestone("1_month", "contract_end_date_reminder_30_sent_at")) sent30++;
+    }
+    if (daysUntil <= 7 && !doc.contract_end_date_reminder_7_sent_at) {
+      if (await sendMilestone("1_week", "contract_end_date_reminder_7_sent_at")) sent7++;
+    }
+  }
+
+  return { sent30, sent7 };
+}
+
 // Daily Vercel Cron job (see vercel.json). Nudges signers who've been sitting
 // on a "sent"/"viewed" status for 3+ days since their last email (initial
 // invite or previous reminder), stopping once they sign, decline, or the
@@ -93,6 +165,7 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient();
   const expiredCount = await expireOverdueDocuments(admin);
+  await remindUpcomingContractEndDates(admin);
 
   const { data, error } = await admin
     .from("signers")
