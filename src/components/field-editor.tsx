@@ -2765,8 +2765,12 @@ export function FieldEditor({
         <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-4 py-2.5 sm:px-6">
           <span className="text-xs font-medium text-slate-500">Document gate:</span>
           {!hasDocGate ? (
-            <a href="/pricing" className="text-xs text-slate-400 hover:text-slate-600">
-              Gate a linked asset behind signing (Business)
+            <a
+              href="/pricing"
+              title="Once every signer has signed, this link (e.g. a file or page) becomes available to all of them."
+              className="text-xs text-slate-400 hover:text-slate-600"
+            >
+              Release a link once everyone signs (Business)
             </a>
           ) : showDocgateEditor ? (
             <div className="flex flex-col gap-1.5">
