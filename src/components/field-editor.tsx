@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Rocket } from "lucide-react";
+import { Rocket, Pencil } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -351,6 +351,15 @@ export function FieldEditor({
   const [showAddRecipient, setShowAddRecipient] = useState(false);
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  // Inline recipient-chip edit (Andrew David tester feedback #3/#6, see
+  // recipient-inline-edit-scope-2026-08-23.md) — lets a sender fix a typoed
+  // name/email at draft time without deleting and re-adding the recipient.
+  // null = no chip is being edited. Deliberately local state only, same as
+  // removeRecipient/toggleAuthRequired below — no new API route, since this
+  // only ever touches an unsent draft's client-side recipients array.
+  const [editingRecipientId, setEditingRecipientId] = useState<string | null>(null);
+  const [editRecipientName, setEditRecipientName] = useState("");
+  const [editRecipientEmail, setEditRecipientEmail] = useState("");
   const [pageCanvases, setPageCanvases] = useState<{ page: number; dataUrl: string; width: number; height: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1206,6 +1215,31 @@ export function FieldEditor({
 
   function toggleAuthRequired(id: string) {
     setRecipients((prev) => prev.map((r) => (r.id === id ? { ...r, auth_required: !r.auth_required } : r)));
+  }
+
+  function startEditRecipient(r: Recipient) {
+    setEditingRecipientId(r.id);
+    setEditRecipientName(r.name);
+    setEditRecipientEmail(r.email);
+  }
+
+  function cancelEditRecipient() {
+    setEditingRecipientId(null);
+  }
+
+  // Mirrors buildPendingRecipient's own leniency: only a non-empty email is
+  // required here too (full format validation already happens later, at
+  // send time, via the same domain-warning check every other recipient goes
+  // through) — so editing doesn't hold a draft to a stricter rule than
+  // adding one does.
+  function saveRecipientEdit() {
+    const id = editingRecipientId;
+    if (!id) return;
+    const email = editRecipientEmail.trim();
+    if (!email) return;
+    const name = editRecipientName.trim();
+    setRecipients((prev) => prev.map((r) => (r.id === id ? { ...r, name, email } : r)));
+    setEditingRecipientId(null);
   }
 
   // Bulk version of the above, driven by the "Verification" menu item's
@@ -2491,6 +2525,45 @@ export function FieldEditor({
           <span className="text-xs font-medium text-slate-500">Recipients:</span>
           {recipients.map((r, i) => {
             const color = RECIPIENT_COLORS[i % RECIPIENT_COLORS.length];
+            if (editingRecipientId === r.id) {
+              // Same editable-in-place shape as the payment-link/DocGate
+              // editors elsewhere in this file: a couple of Inputs plus
+              // Save/Cancel, swapped in for the chip rather than layered on
+              // top of it — a real <button> and a real <input> shouldn't
+              // nest, so this renders instead of the chip below rather than
+              // inside it.
+              return (
+                <div
+                  key={r.id}
+                  className="flex flex-wrap items-center gap-1.5 rounded-full border border-slate-300 bg-white px-2 py-1"
+                >
+                  <Input
+                    value={editRecipientName}
+                    onChange={(e) => setEditRecipientName(e.target.value)}
+                    placeholder="Name (optional)"
+                    className="h-6 w-24 min-w-0 text-xs sm:w-28"
+                    autoFocus
+                  />
+                  <Input
+                    value={editRecipientEmail}
+                    onChange={(e) => setEditRecipientEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    type="email"
+                    className="h-6 w-36 min-w-0 text-xs sm:w-40"
+                    onKeyDown={(e) => e.key === "Enter" && saveRecipientEdit()}
+                  />
+                  <button
+                    onClick={saveRecipientEdit}
+                    className="rounded-md bg-slate-900 px-2 py-0.5 text-xs font-medium text-white"
+                  >
+                    Save
+                  </button>
+                  <button onClick={cancelEditRecipient} className="text-xs text-slate-400 hover:text-slate-600">
+                    Cancel
+                  </button>
+                </div>
+              );
+            }
             return (
               <button
                 key={r.id}
@@ -2535,6 +2608,17 @@ export function FieldEditor({
                       ? "Verification required before signing — click to remove"
                       : "Require a one-time email code before this signer can open the document"}
                   </span>
+                </span>
+                <span
+                  role="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startEditRecipient(r);
+                  }}
+                  aria-label="Edit recipient"
+                  className="ml-0.5 inline-flex items-center px-0.5 text-slate-400 hover:text-slate-600"
+                >
+                  <Pencil className="h-3 w-3" />
                 </span>
                 <span
                   role="button"
