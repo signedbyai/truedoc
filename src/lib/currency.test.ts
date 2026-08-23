@@ -161,14 +161,18 @@ describe("formatCreditPackPrice", () => {
 // CONSOLE_OVERAGE_DISPLAY_CENTS above for why this doesn't touch real
 // Stripe billing).
 describe("formatConsoleOveragePrice", () => {
-  it("formats USD/EUR at the same nominal 20¢/20c (EUR at 1.0x, matches the credit pack's EUR ratio)", () => {
+  // 2026-08-23: re-derived from live ECB EUR reference rates instead of
+  // the original flat ~0.86x approximation — see the doc comment on
+  // CONSOLE_OVERAGE_DISPLAY_CENTS for the exact rates and why GBP/CHF no
+  // longer share a value.
+  it("formats USD at 20c and EUR at its own ECB-derived rate", () => {
     expect(formatConsoleOveragePrice("USD")).toBe("$0.20");
-    expect(formatConsoleOveragePrice("EUR")).toBe("€0.20");
+    expect(formatConsoleOveragePrice("EUR")).toBe("€0.17");
   });
 
-  it("formats GBP/CHF at the ~0.86x discount, sharing one number", () => {
-    expect(formatConsoleOveragePrice("GBP")).toBe("£0.17");
-    expect(formatConsoleOveragePrice("CHF")).toBe("CHF 0.17");
+  it("formats GBP and CHF at their own distinct ECB-derived rates", () => {
+    expect(formatConsoleOveragePrice("GBP")).toBe("£0.15");
+    expect(formatConsoleOveragePrice("CHF")).toBe("CHF 0.16");
   });
 
   // ₹8 isn't a new number invented for this fix — it's the exact figure
