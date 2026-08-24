@@ -152,24 +152,46 @@ workspace. Concrete proposal:
 - `templates.slug text` — unique **within its org** only (the workspace
   prefix already disambiguates), via a composite unique index
   `(org_id, slug)`.
-- **New consideration surfaced 2026-08-24, not in the original doc:** if
-  `{workspace}/{template}` lives at the site root (`signedby.ai/acme-co/
-  engagement-letter`), it can collide with existing top-level routes
-  (`/dashboard`, `/templates`, `/pricing`, `/es-ar`, etc.) — needs either
-  a reserved-word blocklist on slug claims, or a dedicated path prefix
-  (`signedby.ai/e/{workspace}/{template}`) to sidestep collisions
-  entirely. Michael's call which.
+- **Decided 2026-08-24: dedicated `/e/` prefix, not a reserved-word
+  blocklist.** URLs are `signedby.ai/e/{workspace}/{template}`. A
+  blocklist looks fine on day one but is a standing maintenance risk —
+  every future top-level route SignedBy adds would need to also be added
+  to the list, and a miss means a live customer's already-claimed
+  workspace slug silently collides with something new later. Calendly can
+  get away with a bare-root username because scheduling is nearly all
+  they do; SignedBy already has plenty competing for root paths
+  (`/dashboard`, `/templates`, `/pricing`, `/es-ar`, `/sign`, `/verify`,
+  ...). The `/e/` prefix trades a little URL prettiness for permanent
+  immunity from that whole failure class.
 
-## Open questions — still genuinely unresolved
+## Decisions — Michael, 2026-08-24 (open items)
 
-1. Reserved-word blocklist vs. a dedicated `/e/` prefix for the URL
-   scheme (see schema section above).
-2. Rate-limiting/abuse-prevention shape for the new public
-   create-and-send endpoint (per-IP? per-template? per-org daily cap?
-   CAPTCHA on the widget itself?).
-3. Whether Phase 1's "check your email" confirmation state needs any
-   richer content (e.g. showing which document/template they're about to
-   receive) or stays minimal.
+1. **URL scheme: `/e/` prefix, confirmed** — see schema section above.
+2. **Rate limiting: reuse existing infrastructure, layer it, skip CAPTCHA
+   for v1, confirmed.** Two pieces already exist and should be reused
+   rather than built new: `checkRateLimit()` (`src/lib/rate-limit.ts`,
+   already used by the auth-code request/verify routes) for a per-IP
+   throttle, and `checkFreePlanSendCap()` (`src/lib/plan.ts`) — already
+   documented to be called by "the send route, and the REST API's
+   create+send route" for the existing Free-plan 3-documents/month cap —
+   the new widget endpoint should call this same function so a Free org
+   is automatically protected, no new limit logic needed. On top of
+   that: a per-template throttle (protects the org even from a
+   distributed abuse attempt spread across many IPs), and treat a repeat
+   submission of the same email to the same template within a short
+   window as a no-op rather than a resend (stops double-submits, also
+   just better UX). A hidden honeypot field on the widget is the first
+   line against bots — skip a real CAPTCHA for v1; it adds friction and a
+   third-party dependency for abuse that hasn't been observed yet on a
+   feature that isn't even validated. Escalate to CAPTCHA only if actual
+   abuse shows up.
+3. **Confirmation state: minimal but named, confirmed.** No document
+   preview, no extra fields — but include the sending business's name
+   alongside the "check your email" message (e.g. "You'll get an email
+   from Acme Co to sign Engagement Letter"), not a bare generic
+   confirmation. The visitor just handed a stranger's website their
+   email address; naming who it's actually going to is what makes them
+   trust the follow-through, which is the entire point of the funnel.
 4. Full inline signing (Option A / BoldSign-Adobe shape) stays a
    possible Phase 2 — not scoped further now, revisited only if Phase 1
    shows real adoption.
@@ -177,8 +199,9 @@ workspace. Concrete proposal:
 ## Suggested next step
 
 Scoped, Phase 1 shape decided (capture-and-send, reusing the existing
-send/email/signing pipeline, no iframe). Not approved to build, per
-[[feedback-scope-means-scope-only]]. Pacing item is still the workspace/
-template short-name schema work, now joined by picking the URL-collision
-approach (open question 1) and the rate-limiting shape (open question 2)
-before real technical planning.
+send/email/signing pipeline, no iframe), all remaining open items from
+08-24 now resolved (`/e/` prefix, rate-limiting shape, confirmation
+content). Still not approved to build, per
+[[feedback-scope-means-scope-only]]. Pacing item remains the workspace/
+template short-name schema work — the actual migration + claim UI is the
+next real piece of work whenever Michael says go.
