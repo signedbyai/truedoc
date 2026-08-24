@@ -162,8 +162,7 @@ export function HomepageEsEs({ currency }: { currency: Currency }) {
           </h1>
           <p className="mx-auto mt-5 max-w-md text-lg text-slate-600 sm:mx-0 sm:max-w-sm sm:text-xl">
             SignedBy es una alternativa rápida y accesible para firmar electrónicamente — pensada para
-            profesionales independientes y equipos chicos que firman algunos documentos por mes, no para un piso
-            de ventas entero.
+            profesionales independientes y equipos pequeños que firman algunos documentos por mes.
           </p>
           <div className="mt-9 flex flex-col items-center sm:items-start">
             <CtaLink
