@@ -62,12 +62,18 @@ different asks bundled together:
 features here have been scoped)
 
 **Layer 1 — make the existing order real, and let a sender build parallel
-steps.** No new tables. Compose UI reorganizes the recipient chip row
-around "steps" (each step = one `order_index` value, one or more
-recipients per step) instead of a flat list — a numbered "Step 1 / Step 2"
-grouping with a way to add a recipient to the current step vs. start a
-new one, plus reordering steps (drag, or simple up/down). Only the order
-column changes value; no schema change.
+steps.** No new tables. Confirmed 2026-08-24: model this the way DocuSign
+does — each recipient gets a visible **routing number** (1, 2, 2, 3, ...)
+rather than an abstract "step" concept; the number IS `order_index`, so
+this is a direct UI on the existing column, no translation layer. Same
+number = parallel/same tier (a later number only unlocks once *every*
+recipient sharing every lower number has completed — e.g. with 1, 2, 2, 3,
+recipient 3 waits for both recipients tagged 2). Compose UI needs a way
+to assign/edit each recipient's number (reorder or renumber, not just a
+flat add-in-order list) and, before sending, a read-only **Signing Order
+Diagram** — a preview view the sender opens (DocuSign's pattern: a "View"
+link next to the signing-order control) that visualizes the routing
+sequence/parallel groups so they can confirm it's right before committing.
 
 **Layer 2 — recipient role.** New column, e.g. `signers.recipient_role
 text not null default 'signer' check (in ('signer', 'viewer'))`, plus
@@ -78,34 +84,34 @@ completion check, and get their own reminder/email copy ("shared with
 you for review" rather than "please sign"). `signer` stays today's
 behavior, unchanged.
 
-## Open questions (Michael's call, nothing here is decided)
+## Decisions — Michael, 2026-08-24
 
-1. Whether to redesign the compose recipient UI around explicit "steps"
-   (the parallel-step problem needs this either way) or ship a smaller
-   flat-list-plus-reorder first and treat parallel grouping as a later
-   pass — bigger IA question, not just a component swap.
-2. Whether view-only recipients are worth building now, or whether
-   Layer 1 (visible/reorderable sequential order) alone answers most of
-   what this feedback call actually asked for — the "finance" role
-   framing came from one call, not a repeated ask yet.
-3. Fixed role enum (`signer`/`viewer`, extensible later to e.g.
-   `approver`) vs. a freeform per-recipient label — enum can drive real
-   behavior (the viewer gate above); freeform is cheap but decorative
-   only. Could ship both: enum for the two real behaviors, plus an
-   optional freeform label on top for display.
-4. Whether order (and step membership) should lock once a document is
-   sent — reordering signers after tier-1 emails have already gone out
-   seems like it should be blocked or at least warned on, not silently
-   allowed from the draft-editing surface.
-5. Plan-tier gating — `frequent_signers` and per-recipient auth both
-   shipped ungated; worth deciding up front whether this follows that
-   precedent or is a differentiator, rather than gating it as an
-   afterthought.
-6. Interaction with `saved-recipient-groups-scope.md` (project memory) —
-   if saved recipient groups ship, would a saved group also carry sticky
-   order/step and role defaults, or only names/emails? Same shape of
-   question that doc already flagged for `auth_required` defaults.
+1. **Build the full routing-number model, not a smaller reorder-only
+   pass.** Confirmed DocuSign-style: same number = parallel, a later
+   number waits for every recipient sharing every lower number. Also
+   wants the pre-send Signing Order Diagram preview (see Layer 1 above)
+   — not just an editable list, but a way to visually confirm the routing
+   before sending.
+2. **View-only role — likely yes, not yet locked.** Michael's read is
+   that a viewer was the actual pain point behind this feedback (more
+   than the "finance" label). He's going to double-check with the source
+   before this is final — treat as probable, not confirmed. Don't start
+   building the viewer-role behavior change until he confirms.
+3. **Fixed enum for role, confirmed** — `signer`/`viewer`. Explicitly
+   wants this shaped so a freeform display label (the "Finance"-style
+   tag) can be added later without rework — don't box that out, but no
+   need to build the label itself now.
+4. **Lock order once a document is sent, confirmed.** No reordering or
+   renumbering after tier-1 notifications have gone out.
+5. **Ungated, confirmed.** Free on every plan, matching the
+   `frequent_signers`/per-recipient-auth precedent.
+6. **Saved recipient groups should carry sticky order/role defaults,
+   confirmed** — applies once/if `saved-recipient-groups-scope.md`
+   actually gets built, not before.
 
 ## Status
 
-Scoped only, not approved to build. No code changes in this pass.
+Scoped, with decisions above locked in on 2026-08-24 (except #2, still
+pending Michael's confirmation). Still not approved to build — answering
+these questions isn't a go-ahead, per `feedback-scope-means-scope-only.md`.
+No code changes in this pass.
